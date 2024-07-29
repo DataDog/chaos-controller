@@ -537,7 +537,7 @@ var _ = Describe("Disruption Webhook", func() {
 					_, err := newDisruption.ValidateCreate()
 
 					Expect(err).Should(HaveOccurred())
-					Expect(err.Error()).Should(ContainSubstring("at least one of the initial safety nets caught an issue"))
+					Expect(err).Should(MatchError(ContainSubstring("at least one of the initial safety nets caught an issue")))
 					Expect(err.Error()).Should(ContainSubstring("node failure disruptions are not allowed in this cluster"))
 
 				})
@@ -587,7 +587,7 @@ var _ = Describe("Disruption Webhook", func() {
 			})
 		})
 
-		Describe("expectations with a disk failure disruption", func() {
+		Describe("safemode expectations with a disk failure disruption", func() {
 			BeforeEach(func() {
 				ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})
 				k8sClient = makek8sClientWithDisruptionPod()
@@ -600,7 +600,6 @@ var _ = Describe("Disruption Webhook", func() {
 
 			JustBeforeEach(func() {
 				newDisruption = makeValidDiskFailureDisruption()
-				controllerutil.AddFinalizer(newDisruption, chaostypes.DisruptionFinalizer)
 			})
 
 			AfterEach(func() {
@@ -623,7 +622,16 @@ var _ = Describe("Disruption Webhook", func() {
 						// Assert
 						Expect(err).Should(HaveOccurred())
 						Expect(err.Error()).Should(ContainSubstring("at least one of the initial safety nets caught an issue"))
-						Expect(err.Error()).Should(ContainSubstring("the specified path for the disk failure disruption targeting a node must not be \"/\"."))
+						Expect(err.Error()).Should(ContainSubstring("the specified path for the disk failure disruption targeting a node must not be \"/\""))
+					})
+				})
+				Context("with the '/test' path", func() {
+					It("should allow the usage", func() {
+						newDisruption.Spec.DiskFailure.Paths = []string{"/test"}
+
+						_, err := newDisruption.ValidateCreate()
+
+						Expect(err).ShouldNot(HaveOccurred())
 					})
 				})
 				Context("with the '  /  ' path", func() {
@@ -637,7 +645,7 @@ var _ = Describe("Disruption Webhook", func() {
 						// Assert
 						Expect(err).Should(HaveOccurred())
 						Expect(err.Error()).Should(ContainSubstring("at least one of the initial safety nets caught an issue"))
-						Expect(err.Error()).Should(ContainSubstring("the specified path for the disk failure disruption targeting a node must not be \"/\"."))
+						Expect(err.Error()).Should(ContainSubstring("the specified path for the disk failure disruption targeting a node must not be \"/\""))
 					})
 				})
 				Context("safe-mode disabled", func() {
@@ -687,6 +695,75 @@ var _ = Describe("Disruption Webhook", func() {
 					})
 				})
 			})
+		})
+
+		Describe("safemode expectations with a network failure disruption", func() {
+			BeforeEach(func() {
+				ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})
+				k8sClient = makek8sClientWithDisruptionPod()
+				recorder = record.NewFakeRecorder(1)
+				metricsSink = metricsnoop.New(logger)
+				tracerSink = tracernoop.New(logger)
+				deleteOnly = false
+				enableSafemode = true
+			})
+
+			JustBeforeEach(func() {
+				newDisruption = makeValidNetworkDisruption()
+			})
+
+			AfterEach(func() {
+				k8sClient = nil
+				newDisruption = nil
+			})
+
+			When("only services are defined", func() {
+				It("should pass validation", func() {
+					newDisruption.Spec.Network.Hosts = nil
+					newDisruption.Spec.Network.Services = []NetworkDisruptionServiceSpec{{Name: "foo", Namespace: chaosNamespace}}
+
+					_, err := newDisruption.ValidateCreate()
+
+					Expect(err).ShouldNot(HaveOccurred())
+				})
+			})
+
+			When("various host filters are defined", func() {
+				DescribeTable("should pass validation", func(hosts []NetworkDisruptionHostSpec) {
+					newDisruption.Spec.Network.Hosts = hosts
+
+					_, err := newDisruption.ValidateCreate()
+
+					Expect(err).ShouldNot(HaveOccurred())
+				},
+					Entry("with just a port filter", []NetworkDisruptionHostSpec{{Port: 80}}),
+					Entry("with just a protocol filter", []NetworkDisruptionHostSpec{{Protocol: "tcp"}}),
+					Entry("with just a hostname filter", []NetworkDisruptionHostSpec{{Host: "localhost"}}),
+					Entry("with all possible host filters together", []NetworkDisruptionHostSpec{{Host: "localhost", Port: 443, Protocol: "udp"}}),
+				)
+			})
+
+			When("no filters are defined", func() {
+				It("should be rejected", func() {
+					newDisruption.Spec.Network.Hosts = nil
+
+					_, err := newDisruption.ValidateCreate()
+
+					Expect(err).Should(HaveOccurred())
+					Expect(err.Error()).Should(ContainSubstring("at least one of the initial safety nets caught an issue"))
+					Expect(err.Error()).Should(ContainSubstring("the specified disruption either contains no Host or Service filters. This will result in all network traffic being affected"))
+				})
+
+				It("should be allowed with DisableNeitherHostNorPort", func() {
+					newDisruption.Spec.Network.Hosts = nil
+					newDisruption.Spec.Unsafemode = &UnsafemodeSpec{DisableNeitherHostNorPort: true}
+
+					_, err := newDisruption.ValidateCreate()
+
+					Expect(err).ShouldNot(HaveOccurred())
+				})
+			})
+
 		})
 	})
 })
@@ -776,6 +853,17 @@ func makek8sClientWithDisruptionPod() client.Client {
 					},
 				},
 			},
-		}).
+		},
+			&v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: chaosNamespace,
+				},
+				Spec: v1.ServiceSpec{
+					ClusterIP: "localhost",
+					Type:      v1.ServiceTypeClusterIP,
+				},
+			},
+		).
 		Build()
 }
