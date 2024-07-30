@@ -24,6 +24,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gstruct"
 )
 
 var _ = Describe("UserInfoMutator", func() {
@@ -97,9 +98,13 @@ var _ = Describe("UserInfoMutator", func() {
 					// Assert
 					Expect(response.Allowed).To(BeTrue())
 					Expect(*response.PatchType).To(Equal(v1.PatchTypeJSONPatch))
-					Expect(response.Patches[0].Operation).To(Equal("add"))
-					Expect(response.Patches[0].Path).To(Equal("/metadata/annotations"))
-					Expect(response.Patches[0].Value).To(ContainElement(ContainSubstring("{\"username\":\"username@mail.com\"}")))
+					Expect(response.Patches).To(ContainElement(
+						MatchFields(IgnoreExtras, Fields{
+							"Operation": Equal("add"),
+							"Path":      Equal("/metadata/annotations"),
+							"Value":     ContainElement(ContainSubstring("{\"username\":\"username@mail.com\"}")),
+						}),
+					))
 				},
 					Entry("with a disruption kind", v1beta1.DisruptionKind),
 					Entry("with a disruption cron kind", v1beta1.DisruptionCronKind),
