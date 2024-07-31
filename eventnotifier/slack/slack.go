@@ -235,8 +235,10 @@ func (n *Notifier) buildSlackMessage(obj client.Object, event corev1.Event, noti
 
 	switch d := obj.(type) {
 	case *v1beta1.Disruption:
+		logger.Warnw("LETS PRINT ENTIRE OBJECT", "d", d, "meta", d.GetObjectMeta(), "annotations", d.GetAnnotations())
 		userInfo, err = d.UserInfo()
 	case *v1beta1.DisruptionCron:
+		logger.Warnw("LETS PRINT ENTIRE OBJECT", "d", d)
 		userInfo, err = d.UserInfo()
 	}
 
