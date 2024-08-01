@@ -12,22 +12,24 @@ import (
 	"github.com/DataDog/chaos-controller/utils"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
+const (
+	EventDisruptionCronAnnotation = "disruption_cron"
+	EventDisruptionAnnotation     = "disruption"
+)
+
 var (
 	disruptionCronWebhookLogger            *zap.SugaredLogger
-	disruptionCronWebhookRecorder          record.EventRecorder
 	disruptionCronWebhookDeleteOnly        bool
 	disruptionCronPermittedUserGroups      map[string]struct{}
 	disruptionCronPermittedUserGroupString string
 )
 
 func (d *DisruptionCron) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebhookWithManagerConfig) error {
-	disruptionCronWebhookRecorder = setupWebhookConfig.Recorder
 	disruptionCronWebhookDeleteOnly = setupWebhookConfig.DeleteOnlyFlag
 	disruptionCronWebhookLogger = setupWebhookConfig.Logger.With(
 		"source", "admission-controller",
@@ -66,9 +68,6 @@ func (d *DisruptionCron) ValidateCreate() (admission.Warnings, error) {
 		return nil, err
 	}
 
-	// send informative event to disruption cron to broadcast
-	disruptionCronWebhookRecorder.Event(d, Events[EventDisruptionCronCreated].Type, string(EventDisruptionCronCreated), Events[EventDisruptionCronCreated].OnDisruptionTemplateMessage)
-
 	return nil, nil
 }
 
@@ -81,9 +80,6 @@ func (d *DisruptionCron) ValidateUpdate(oldObject runtime.Object) (warnings admi
 		return nil, err
 	}
 
-	// send informative event to disruption cron to broadcast
-	disruptionCronWebhookRecorder.Event(d, Events[EventDisruptionCronUpdated].Type, string(EventDisruptionCronUpdated), Events[EventDisruptionCronUpdated].OnDisruptionTemplateMessage)
-
 	return nil, nil
 }
 
@@ -91,9 +87,6 @@ func (d *DisruptionCron) ValidateDelete() (warnings admission.Warnings, err erro
 	log := disruptionCronWebhookLogger.With("disruptionCronName", d.Name, "disruptionCronNamespace", d.Namespace)
 
 	log.Infow("validating deleted disruption cron", "spec", d.Spec)
-
-	// send informative event to disruption cron to broadcast
-	disruptionCronWebhookRecorder.Event(d, Events[EventDisruptionCronDeleted].Type, string(EventDisruptionCronDeleted), Events[EventDisruptionCronDeleted].OnDisruptionTemplateMessage)
 
 	return nil, nil
 }
