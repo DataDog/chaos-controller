@@ -52,7 +52,7 @@ var _ = Describe("DisruptionCron Webhook", func() {
 
 					By("sending the EventDisruptionCronCreated event to the broadcast")
 					mockEventRecorder := mocks.NewEventRecorderMock(GinkgoT())
-					mockEventRecorder.EXPECT().Event(disruptionCron, Events[EventDisruptionCronCreated].Type, string(EventDisruptionCronCreated), Events[EventDisruptionCronCreated].OnDisruptionTemplateMessage)
+					mockEventRecorder.EXPECT().AnnotatedEventf(disruptionCron, map[string]string{}, Events[EventDisruptionCronCreated].Type, string(EventDisruptionCronCreated), Events[EventDisruptionCronCreated].OnDisruptionTemplateMessage)
 					disruptionCronWebhookRecorder = mockEventRecorder
 
 					// Act
@@ -84,7 +84,7 @@ var _ = Describe("DisruptionCron Webhook", func() {
 
 						By("sending the EventDisruptionCronCreated event to the broadcast")
 						mockEventRecorder := mocks.NewEventRecorderMock(GinkgoT())
-						mockEventRecorder.EXPECT().Event(disruptionCron, Events[EventDisruptionCronCreated].Type, string(EventDisruptionCronCreated), Events[EventDisruptionCronCreated].OnDisruptionTemplateMessage)
+						mockEventRecorder.EXPECT().AnnotatedEventf(disruptionCron, map[string]string{}, Events[EventDisruptionCronCreated].Type, string(EventDisruptionCronCreated), Events[EventDisruptionCronCreated].OnDisruptionTemplateMessage)
 						disruptionCronWebhookRecorder = mockEventRecorder
 
 						// Act
@@ -108,7 +108,7 @@ var _ = Describe("DisruptionCron Webhook", func() {
 
 					By("not emit an event to the broadcast")
 					mockEventRecorder := mocks.NewEventRecorderMock(GinkgoT())
-					mockEventRecorder.AssertNotCalled(GinkgoT(), "Event", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+					mockEventRecorder.AssertNotCalled(GinkgoT(), "AnnotatedEventf", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 					disruptionCronWebhookRecorder = mockEventRecorder
 
 					// Act
@@ -135,7 +135,7 @@ var _ = Describe("DisruptionCron Webhook", func() {
 
 						By("not emit an event to the broadcast")
 						mockEventRecorder := mocks.NewEventRecorderMock(GinkgoT())
-						mockEventRecorder.AssertNotCalled(GinkgoT(), "Event", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+						mockEventRecorder.AssertNotCalled(GinkgoT(), "AnnotatedEventf", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 						disruptionCronWebhookRecorder = mockEventRecorder
 
 						// Act
@@ -159,7 +159,7 @@ var _ = Describe("DisruptionCron Webhook", func() {
 
 						By("not emit an event to the broadcast")
 						mockEventRecorder := mocks.NewEventRecorderMock(GinkgoT())
-						mockEventRecorder.AssertNotCalled(GinkgoT(), "Event", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+						mockEventRecorder.AssertNotCalled(GinkgoT(), "AnnotatedEventf", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 						disruptionCronWebhookRecorder = mockEventRecorder
 
 						// Act
