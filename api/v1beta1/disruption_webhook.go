@@ -250,7 +250,7 @@ func (r *Disruption) ValidateCreate() (admission.Warnings, error) {
 	}
 
 	// send informative event to disruption to broadcast
-	recorder.Event(r, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+	recorder.AnnotatedEventf(r, r.Annotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
 
 	return nil, nil
 }
