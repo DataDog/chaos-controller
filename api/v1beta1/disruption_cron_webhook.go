@@ -76,12 +76,16 @@ func (d *DisruptionCron) ValidateCreate() (admission.Warnings, error) {
 	return nil, nil
 }
 
-func (d *DisruptionCron) ValidateUpdate(oldObject runtime.Object) (warnings admission.Warnings, err error) {
+func (d *DisruptionCron) ValidateUpdate(oldObject runtime.Object) (admission.Warnings, error) {
 	log := logger.With("disruptionCronName", d.Name, "disruptionCronNamespace", d.Namespace)
 
 	log.Infow("validating updated disruption cron", "spec", d.Spec)
 
 	if err := validateUserInfoImmutable(oldObject.(*DisruptionCron), d); err != nil {
+		return nil, err
+	}
+
+	if err := d.Spec.DisruptionTemplate.ValidateSelectorsOptional(false); err != nil {
 		return nil, err
 	}
 
