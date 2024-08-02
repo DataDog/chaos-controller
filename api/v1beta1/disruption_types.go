@@ -502,7 +502,7 @@ func (s DisruptionSpec) Validate() (retErr error) {
 
 // ValidateSelectorsOptional applies rules for disruption global scope and all subsequent disruption specifications
 func (s DisruptionSpec) ValidateSelectorsOptional(requireSelectors bool) (retErr error) {
-	if err := s.validateGlobalDisruptionScopeSelectorsOptional(requireSelectors); err != nil {
+	if err := s.validateGlobalDisruptionScope(requireSelectors); err != nil {
 		retErr = multierror.Append(retErr, err)
 	}
 
@@ -555,14 +555,8 @@ func AdvancedSelectorsToRequirements(advancedSelectors []metav1.LabelSelectorReq
 	return reqs, nil
 }
 
-// validateGlobalDisruptionScopeSelectorsOptional applies rules for disruption global scope and requires the spec have selectors
-// exists for backwards compatibility
-func (s DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
-	return s.validateGlobalDisruptionScopeSelectorsOptional(true)
-}
-
-// validateGlobalDisruptionScopeSelectorsOptional applies rules for disruption global scope, leaving selectors optional
-func (s DisruptionSpec) validateGlobalDisruptionScopeSelectorsOptional(requireSelectors bool) (retErr error) {
+// validateGlobalDisruptionScope applies rules for disruption global scope, leaving selectors optional
+func (s DisruptionSpec) validateGlobalDisruptionScope(requireSelectors bool) (retErr error) {
 	if requireSelectors {
 		// Rule: at least one kind of selector is set
 		if s.Selector.AsSelector().Empty() && len(s.AdvancedSelector) == 0 {
