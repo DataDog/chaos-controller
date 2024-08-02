@@ -380,6 +380,8 @@ func main() {
 		if err = (&chaosv1beta1.DisruptionCron{}).SetupWebhookWithManager(setupWebhookConfig); err != nil {
 			logger.Fatalw("unable to create webhook for disruption cron", "webhook", chaosv1beta1.DisruptionCronKind, "error", err)
 		}
+
+		defer disruptionCronBroadcaster.Shutdown()
 	}
 
 	webhookDecoder := admission.NewDecoder(scheme)
