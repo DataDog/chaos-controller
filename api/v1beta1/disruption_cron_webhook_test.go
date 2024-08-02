@@ -366,9 +366,11 @@ var _ = Describe("DisruptionCron Webhook", func() {
 })
 
 func makeValidDisruptionCron() *DisruptionCron {
+	validDisruption := makeValidNetworkDisruption()
 	return &DisruptionCron{
 		TypeMeta: metav1.TypeMeta{
 			Kind: DisruptionCronKind,
 		},
+		Spec: DisruptionCronSpec{DisruptionTemplate: validDisruption.Spec},
 	}
 }
