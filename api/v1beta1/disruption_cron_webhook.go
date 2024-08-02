@@ -66,6 +66,10 @@ func (d *DisruptionCron) ValidateCreate() (admission.Warnings, error) {
 		return nil, err
 	}
 
+	if err := d.Spec.DisruptionTemplate.ValidateSelectorsOptional(false); err != nil {
+		return nil, err
+	}
+
 	// send informative event to disruption cron to broadcast
 	disruptionCronWebhookRecorder.Event(d, Events[EventDisruptionCronCreated].Type, string(EventDisruptionCronCreated), Events[EventDisruptionCronCreated].OnDisruptionTemplateMessage)
 
