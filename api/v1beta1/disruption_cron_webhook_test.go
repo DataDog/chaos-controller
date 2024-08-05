@@ -46,9 +46,7 @@ var _ = Describe("DisruptionCron Webhook", func() {
 			When("the controller is not in delete-only mode", func() {
 				It("should send an EventDisruptionCronCreated event to the broadcast", func() {
 					// Arrange
-					disruptionCron := &DisruptionCron{
-						Spec: DisruptionCronSpec{},
-					}
+					disruptionCron := makeValidDisruptionCron()
 
 					By("sending the EventDisruptionCronCreated event to the broadcast")
 					mockEventRecorder := mocks.NewEventRecorderMock(GinkgoT())
