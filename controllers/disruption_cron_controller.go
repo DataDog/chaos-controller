@@ -65,8 +65,8 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	// check whether the object is being deleted or not
 	if !instance.DeletionTimestamp.IsZero() {
 		// the instance is being deleted, clean it if the finalizer is still present
-		if controllerutil.ContainsFinalizer(instance, chaostypes.DisruptionCronFinalizer) {
-			controllerutil.RemoveFinalizer(instance, chaostypes.DisruptionCronFinalizer)
+		if controllerutil.ContainsFinalizer(instance, chaostypes.ChaosFinalizer) {
+			controllerutil.RemoveFinalizer(instance, chaostypes.ChaosFinalizer)
 
 			// we reach this code when all the cleanup disruption cron have succeeded
 			// we can remove the finalizer and let the resource being garbage collected
@@ -74,7 +74,7 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 				return ctrl.Result{}, fmt.Errorf("error removing disruptioncron finalizer: %w", err)
 			}
 
-			if err := r.emmitEvent(instance, chaosv1beta1.EventDisruptionCronDeleted); err != nil {
+			if err := r.emitEvent(instance, chaosv1beta1.EventDisruptionCronDeleted); err != nil {
 				r.log.Warnw("failed to emit event", "err", err)
 			}
 		}
@@ -82,18 +82,18 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, nil
 	}
 
-	if controllerutil.ContainsFinalizer(instance, chaostypes.DisruptionCronFinalizer) {
-		if err := r.emmitEvent(instance, chaosv1beta1.EventDisruptionCronUpdated); err != nil {
+	if controllerutil.ContainsFinalizer(instance, chaostypes.ChaosFinalizer) {
+		if err := r.emitEvent(instance, chaosv1beta1.EventDisruptionCronUpdated); err != nil {
 			r.log.Warnw("failed to emit event", "err", err)
 		}
 	} else {
 		// the injection is being created, add the finalizer
-		controllerutil.AddFinalizer(instance, chaostypes.DisruptionCronFinalizer)
+		controllerutil.AddFinalizer(instance, chaostypes.ChaosFinalizer)
 		if err := r.Client.Update(ctx, instance); err != nil {
 			return ctrl.Result{}, fmt.Errorf("error adding disruption cron finalizer: %w", err)
 		}
 
-		if err := r.emmitEvent(instance, chaosv1beta1.EventDisruptionCronCreated); err != nil {
+		if err := r.emitEvent(instance, chaosv1beta1.EventDisruptionCronCreated); err != nil {
 			r.log.Warnw("failed to emit event", "err", err)
 		}
 	}
@@ -221,7 +221,7 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	return scheduledResult, nil
 }
 
-func (r *DisruptionCronReconciler) emmitEvent(instance *chaosv1beta1.DisruptionCron, eventReason chaosv1beta1.EventReason) error {
+func (r *DisruptionCronReconciler) emitEvent(instance *chaosv1beta1.DisruptionCron, eventReason chaosv1beta1.EventReason) error {
 	disruptionCronJSON, err := json.Marshal(instance)
 	if err != nil {
 		return err

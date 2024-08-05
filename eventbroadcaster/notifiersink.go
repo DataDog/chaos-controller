@@ -76,8 +76,6 @@ func (s *NotifierSink) getObject(event *corev1.Event) (client.Object, error) {
 
 		// If the event has the annotation, use it to unmarshal the disruption
 		if disruptionString, ok := annotations[v1beta1.EventDisruptionAnnotation]; ok {
-			s.logger.Debugw("event has disruptionCron annotation", "disruption", disruptionString)
-
 			if disruptionString == "" {
 				return nil, fmt.Errorf("eventnotifier: empty disruption annotation")
 			}
@@ -104,8 +102,6 @@ func (s *NotifierSink) getObject(event *corev1.Event) (client.Object, error) {
 
 		// If the event has the annotation, use it to unmarshal the disruptionCron
 		if disruptionCronString, ok := annotations[v1beta1.EventDisruptionCronAnnotation]; ok {
-			s.logger.Debugw("event has disruptionCron annotation", "disruptionCron", disruptionCronString)
-
 			if disruptionCronString == "" {
 				return nil, fmt.Errorf("eventnotifier: empty disruptionCron annotation")
 			}
@@ -114,8 +110,6 @@ func (s *NotifierSink) getObject(event *corev1.Event) (client.Object, error) {
 				return nil, fmt.Errorf("eventnotifier: failed to unmarshal disruptionCron from annotation: %w", err)
 			}
 		} else {
-			s.logger.Debugw("event does not have disruptionCron annotation")
-			s.logger.Debugw("fetching disruptionCron from API server")
 			// Otherwise, fetch the disruptionCron from the API server
 			disruptionCron, err = s.getDisruptionCron(event)
 			if err != nil {

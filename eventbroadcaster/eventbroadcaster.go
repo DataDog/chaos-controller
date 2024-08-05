@@ -21,8 +21,8 @@ func DisruptionEventBroadcaster() record.EventBroadcaster {
 
 func DisruptionCronEventBroadcaster() record.EventBroadcaster {
 	correlator := record.CorrelatorOptions{
-		MaxEvents:            1000,
-		MaxIntervalInSeconds: 1,
+		MaxEvents:            10,
+		MaxIntervalInSeconds: 300,
 	}
 	eventBroadcaster := record.NewBroadcasterWithCorrelatorOptions(correlator)
 

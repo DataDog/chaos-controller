@@ -54,7 +54,7 @@ var _ = Describe("Disruption Webhook", func() {
 		Describe("finalizer removal expectations", func() {
 			BeforeEach(func() {
 				k8sClient = makek8sClientWithDisruptionPod()
-				controllerutil.AddFinalizer(oldDisruption, chaostypes.DisruptionFinalizer)
+				controllerutil.AddFinalizer(oldDisruption, chaostypes.ChaosFinalizer)
 			})
 
 			AfterEach(func() {
@@ -273,7 +273,7 @@ var _ = Describe("Disruption Webhook", func() {
 
 			JustBeforeEach(func() {
 				newDisruption = makeValidNetworkDisruption()
-				controllerutil.AddFinalizer(newDisruption, chaostypes.DisruptionFinalizer)
+				controllerutil.AddFinalizer(newDisruption, chaostypes.ChaosFinalizer)
 			})
 
 			AfterEach(func() {

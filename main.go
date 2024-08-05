@@ -377,7 +377,15 @@ func main() {
 			os.Exit(1) //nolint:gocritic
 		}
 
-		if err = (&chaosv1beta1.DisruptionCron{}).SetupWebhookWithManager(setupWebhookConfig); err != nil {
+		disruptionCronSetupWebhookConfig := utils.SetupWebhookWithManagerConfig{
+			Manager:             mgr,
+			Logger:              logger,
+			Recorder:            disruptionReconciler.Recorder,
+			DeleteOnlyFlag:      cfg.Controller.DeleteOnly,
+			PermittedUserGroups: cfg.Controller.SafeMode.PermittedUserGroups,
+		}
+
+		if err = (&chaosv1beta1.DisruptionCron{}).SetupWebhookWithManager(disruptionCronSetupWebhookConfig); err != nil {
 			logger.Fatalw("unable to create webhook for disruption cron", "webhook", chaosv1beta1.DisruptionCronKind, "error", err)
 		}
 
