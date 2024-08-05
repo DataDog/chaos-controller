@@ -7,6 +7,7 @@ package v1beta1
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/DataDog/chaos-controller/utils"
@@ -67,7 +68,7 @@ func (d *DisruptionCron) ValidateCreate() (admission.Warnings, error) {
 	}
 
 	if err := d.Spec.DisruptionTemplate.ValidateSelectorsOptional(false); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error while validating the spec.disruptionTemplate: %w", err)
 	}
 
 	// send informative event to disruption cron to broadcast

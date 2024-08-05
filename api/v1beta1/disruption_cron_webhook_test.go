@@ -11,6 +11,7 @@ import (
 	"go.uber.org/zap/zaptest"
 	authV1 "k8s.io/api/authentication/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -116,6 +117,23 @@ var _ = Describe("DisruptionCron Webhook", func() {
 					Expect(warnings).To(BeNil())
 					Expect(err).Should(HaveOccurred())
 					Expect(err).To(MatchError("the controller is currently in delete-only mode, you can't create new disruption cron for now"))
+				})
+			})
+
+			When("disruptionTemplate is invalid", func() {
+				When("the count is invalid", func() {
+					It("should return an error", func() {
+						disruptionCron := makeValidDisruptionCron()
+						disruptionCron.Spec.DisruptionTemplate.Count = &intstr.IntOrString{
+							StrVal: "2hr",
+						}
+
+						warnings, err := disruptionCron.ValidateCreate()
+
+						Expect(warnings).To(BeNil())
+						Expect(err).Should(HaveOccurred())
+						Expect(err).To(MatchError(ContainSubstring("error while validating the spec.disruptionTemplate")))
+					})
 				})
 			})
 
