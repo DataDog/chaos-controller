@@ -46,7 +46,7 @@ func (s *NotifierSink) Create(event *corev1.Event) (*corev1.Event, error) {
 
 	obj, err := s.getObject(event)
 	if err != nil {
-		s.logger.Warn(err)
+		s.logger.Debug(err) // Involved object is a target Pod or Node, we don't send notifications for these.
 
 		return event, nil
 	}
