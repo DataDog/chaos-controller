@@ -241,7 +241,7 @@ func (n *Notifier) buildSlackMessage(obj client.Object, event corev1.Event, noti
 	}
 
 	if err != nil {
-		logger.Errorw("unable to retrieve user info", "error", err)
+		logger.Warnw("unable to retrieve user info", "error", err)
 	}
 
 	return slackMessage{

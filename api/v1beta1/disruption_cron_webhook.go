@@ -67,7 +67,7 @@ func (d *DisruptionCron) ValidateCreate() (admission.Warnings, error) {
 	}
 
 	// send informative event to disruption cron to broadcast
-	disruptionCronWebhookRecorder.Event(d, Events[EventDisruptionCronCreated].Type, string(EventDisruptionCronCreated), Events[EventDisruptionCronCreated].OnDisruptionTemplateMessage)
+	disruptionCronWebhookRecorder.AnnotatedEventf(d, d.GetAnnotations(), Events[EventDisruptionCronCreated].Type, string(EventDisruptionCronCreated), Events[EventDisruptionCronCreated].OnDisruptionTemplateMessage)
 
 	return nil, nil
 }
