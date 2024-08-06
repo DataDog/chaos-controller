@@ -13,6 +13,7 @@ import (
 	"go.uber.org/zap/zaptest"
 	authV1 "k8s.io/api/authentication/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -353,16 +354,21 @@ var _ = Describe("DisruptionCron Webhook", func() {
 					// Arrange
 					disruptionCron := makeValidDisruptionCron()
 
-					disruptionCronJSON, err := json.Marshal(disruptionCron)
-					Expect(err).ShouldNot(HaveOccurred())
-
-					expectedAnnotation := map[string]string{
-						EventDisruptionCronAnnotation: string(disruptionCronJSON),
-					}
-
 					By("sending the EventDisruptionCronDeleted event to the broadcast")
 					mockEventRecorder := mocks.NewEventRecorderMock(GinkgoT())
-					mockEventRecorder.EXPECT().AnnotatedEventf(disruptionCron, expectedAnnotation, Events[EventDisruptionCronDeleted].Type, string(EventDisruptionCronDeleted), Events[EventDisruptionCronDeleted].OnDisruptionTemplateMessage)
+					mockEventRecorder.EXPECT().AnnotatedEventf(disruptionCron, mock.Anything, Events[EventDisruptionCronDeleted].Type, string(EventDisruptionCronDeleted), Events[EventDisruptionCronDeleted].OnDisruptionTemplateMessage).RunAndReturn(
+						func(object runtime.Object, annotations map[string]string, _ string, _ string, _ string, _ ...interface{}) {
+							inputDisruptionCron := object.(*DisruptionCron)
+
+							inputDisruptionCronAnnotationString := annotations[EventDisruptionCronAnnotation]
+							err := json.Unmarshal([]byte(inputDisruptionCronAnnotationString), inputDisruptionCron)
+							Expect(err).ShouldNot(HaveOccurred())
+
+							inputDisruptionCron.DeletionTimestamp = nil
+
+							Expect(inputDisruptionCron).To(Equal(disruptionCron))
+						},
+					)
 					disruptionCronWebhookRecorder = mockEventRecorder
 
 					// Act
@@ -382,16 +388,9 @@ var _ = Describe("DisruptionCron Webhook", func() {
 					disruptionCronWebhookDeleteOnly = true
 					disruptionCron := makeValidDisruptionCron()
 
-					disruptionCronJSON, err := json.Marshal(disruptionCron)
-					Expect(err).ShouldNot(HaveOccurred())
-
-					expectedAnnotation := map[string]string{
-						EventDisruptionCronAnnotation: string(disruptionCronJSON),
-					}
-
 					By("sending the EventDisruptionCronDeleted event to the broadcast")
 					mockEventRecorder := mocks.NewEventRecorderMock(GinkgoT())
-					mockEventRecorder.EXPECT().AnnotatedEventf(disruptionCron, expectedAnnotation, Events[EventDisruptionCronDeleted].Type, string(EventDisruptionCronDeleted), Events[EventDisruptionCronDeleted].OnDisruptionTemplateMessage)
+					mockEventRecorder.EXPECT().AnnotatedEventf(disruptionCron, mock.Anything, Events[EventDisruptionCronDeleted].Type, string(EventDisruptionCronDeleted), Events[EventDisruptionCronDeleted].OnDisruptionTemplateMessage)
 					disruptionCronWebhookRecorder = mockEventRecorder
 
 					// Act
