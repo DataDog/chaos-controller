@@ -271,7 +271,7 @@ func (r *Disruption) ValidateUpdate(old runtime.Object) (admission.Warnings, err
 	// ensure finalizer removal is only allowed if no related chaos pods exists
 	// we should NOT always prevent finalizer removal because chaos controller reconcile loop will go through this mutating webhook when perfoming updates
 	// and need to be able to remove the finalizer to enable the disruption to be garbage collected on successful removal
-	if controllerutil.ContainsFinalizer(oldDisruption, chaostypes.ChaosFinalizer) && !controllerutil.ContainsFinalizer(r, chaostypes.ChaosFinalizer) {
+	if controllerutil.ContainsFinalizer(oldDisruption, chaostypes.DisruptionFinalizer) && !controllerutil.ContainsFinalizer(r, chaostypes.DisruptionFinalizer) {
 		oldPods, err := GetChaosPods(context.Background(), logger, chaosNamespace, k8sClient, oldDisruption, nil)
 		if err != nil {
 			return nil, fmt.Errorf("error getting disruption pods: %w", err)

@@ -6,10 +6,6 @@
 package v1beta1
 
 import (
-	"crypto/md5"
-	"encoding/json"
-	"fmt"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -67,18 +63,6 @@ type DisruptionCronSpec struct {
 
 	// +nullable
 	Reporting *Reporting `json:"reporting,omitempty"`
-}
-
-// Hash returns the disruption cron spec JSON hash
-func (s DisruptionCronSpec) Hash() (string, error) {
-	// serialize instance spec to JSON
-	specBytes, err := json.Marshal(s)
-	if err != nil {
-		return "", fmt.Errorf("error serializing instance spec: %w", err)
-	}
-
-	// compute bytes hash
-	return fmt.Sprintf("%x", md5.Sum(specBytes)), nil
 }
 
 // TargetResourceSpec specifies the long-lived resource to be targeted for disruptions.

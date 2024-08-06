@@ -177,7 +177,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	// check whether the object is being deleted or not
 	if !instance.DeletionTimestamp.IsZero() {
 		// the instance is being deleted, clean it if the finalizer is still present
-		if controllerutil.ContainsFinalizer(instance, chaostypes.ChaosFinalizer) {
+		if controllerutil.ContainsFinalizer(instance, chaostypes.DisruptionFinalizer) {
 			// Check if the deletion time has expired for the 'instance' and it's not stuck on removal.
 			if instance.IsDeletionExpired(r.DisruptionsDeletionTimeout) && !instance.Status.IsStuckOnRemoval {
 				instance.Status.IsStuckOnRemoval = true
@@ -216,7 +216,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionFinished, "", "")
 
 			r.DisruptionsWatchersManager.RemoveAllWatchers(instance)
-			controllerutil.RemoveFinalizer(instance, chaostypes.ChaosFinalizer)
+			controllerutil.RemoveFinalizer(instance, chaostypes.DisruptionFinalizer)
 
 			if err := r.Client.Update(ctx, instance); err != nil {
 				return ctrl.Result{}, fmt.Errorf("error removing disruption finalizer: %w", err)
@@ -259,7 +259,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 
 		// the injection is being created or modified, apply needed actions
-		controllerutil.AddFinalizer(instance, chaostypes.ChaosFinalizer)
+		controllerutil.AddFinalizer(instance, chaostypes.DisruptionFinalizer)
 		if err := r.Client.Update(ctx, instance); err != nil {
 			return ctrl.Result{}, fmt.Errorf("error adding disruption finalizer: %w", err)
 		}
