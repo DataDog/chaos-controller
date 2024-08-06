@@ -109,7 +109,7 @@ func main() {
 		logger.Fatalw("unable to start manager", "error", err)
 	}
 
-	disruptionBroadcaster := eventbroadcaster.DisruptionEventBroadcaster()
+	broadcaster := eventbroadcaster.EventBroadcaster()
 
 	// event notifiers
 	notifiers, err := eventnotifier.CreateNotifiers(cfg.Controller.Notifiers, logger)
@@ -117,7 +117,7 @@ func main() {
 		logger.Errorw("error(s) while creating notifiers", "error", err)
 	}
 
-	eventbroadcaster.RegisterNotifierSinks(mgr, disruptionBroadcaster, notifiers, logger)
+	eventbroadcaster.RegisterNotifierSinks(mgr, broadcaster, notifiers, logger)
 
 	metricsSink := initMetricsSink(cfg.Controller.MetricsSink, logger, metricstypes.SinkAppController)
 
@@ -203,7 +203,7 @@ func main() {
 		Client:                     mgr.GetClient(),
 		BaseLog:                    logger,
 		Scheme:                     mgr.GetScheme(),
-		Recorder:                   disruptionBroadcaster.NewRecorder(mgr.GetScheme(), corev1.EventSource{Component: chaosv1beta1.SourceDisruptionComponent}),
+		Recorder:                   broadcaster.NewRecorder(mgr.GetScheme(), corev1.EventSource{Component: chaosv1beta1.SourceDisruptionComponent}),
 		MetricsSink:                metricsSink,
 		TracerSink:                 tracerSink,
 		TargetSelector:             targetSelector,
@@ -356,9 +356,9 @@ func main() {
 	}
 
 	if cfg.Controller.DisruptionCronEnabled {
-		disruptionCronBroadcaster := eventbroadcaster.DisruptionCronEventBroadcaster()
+		eventbroadcaster.RegisterNotifierSinks(mgr, broadcaster, notifiers, logger)
 
-		eventbroadcaster.RegisterNotifierSinks(mgr, disruptionCronBroadcaster, notifiers, logger)
+		disruptionCronRecorder := broadcaster.NewRecorder(mgr.GetScheme(), corev1.EventSource{Component: chaosv1beta1.SourceDisruptionCronComponent})
 
 		// create disruption cron reconciler
 		disruptionCronReconciler := &controllers.DisruptionCronReconciler{
@@ -367,7 +367,6 @@ func main() {
 			Scheme:  mgr.GetScheme(),
 			// new metrics sink for cron controller
 			MetricsSink: initMetricsSink(cfg.Controller.MetricsSink, logger, metricstypes.SinkAppCronController),
-			Recorder:    disruptionCronBroadcaster.NewRecorder(mgr.GetScheme(), corev1.EventSource{Component: chaosv1beta1.SourceDisruptionCronComponent}),
 		}
 
 		defer closeMetricsSink(logger, disruptionCronReconciler.MetricsSink)
@@ -380,7 +379,7 @@ func main() {
 		disruptionCronSetupWebhookConfig := utils.SetupWebhookWithManagerConfig{
 			Manager:             mgr,
 			Logger:              logger,
-			Recorder:            disruptionReconciler.Recorder,
+			Recorder:            disruptionCronRecorder,
 			DeleteOnlyFlag:      cfg.Controller.DeleteOnly,
 			PermittedUserGroups: cfg.Controller.SafeMode.PermittedUserGroups,
 		}
@@ -388,8 +387,6 @@ func main() {
 		if err = (&chaosv1beta1.DisruptionCron{}).SetupWebhookWithManager(disruptionCronSetupWebhookConfig); err != nil {
 			logger.Fatalw("unable to create webhook for disruption cron", "webhook", chaosv1beta1.DisruptionCronKind, "error", err)
 		}
-
-		defer disruptionCronBroadcaster.Shutdown()
 	}
 
 	webhookDecoder := admission.NewDecoder(scheme)
@@ -428,8 +425,8 @@ func main() {
 	})
 
 	// for safety purposes: as long as no event is emitted and mgr.Start(ctx.Context) isn't
-	// called, the disruptionBroadcaster isn't actually initiated
-	defer disruptionBroadcaster.Shutdown()
+	// called, the broadcaster isn't actually initiated
+	defer broadcaster.Shutdown()
 
 	// erase/close caches contexts
 	defer func() {

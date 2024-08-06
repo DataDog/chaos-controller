@@ -9,19 +9,9 @@ import (
 	"k8s.io/client-go/tools/record"
 )
 
-func DisruptionEventBroadcaster() record.EventBroadcaster {
+func EventBroadcaster() record.EventBroadcaster {
 	correlator := record.CorrelatorOptions{
 		MaxEvents:            2,
-		MaxIntervalInSeconds: 300,
-	}
-	eventBroadcaster := record.NewBroadcasterWithCorrelatorOptions(correlator)
-
-	return eventBroadcaster
-}
-
-func DisruptionCronEventBroadcaster() record.EventBroadcaster {
-	correlator := record.CorrelatorOptions{
-		MaxEvents:            10,
 		MaxIntervalInSeconds: 300,
 	}
 	eventBroadcaster := record.NewBroadcasterWithCorrelatorOptions(correlator)

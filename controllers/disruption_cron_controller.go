@@ -7,16 +7,11 @@ package controllers
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/o11y/metrics"
-	chaostypes "github.com/DataDog/chaos-controller/types"
-	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-
 	"github.com/robfig/cron"
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,7 +28,6 @@ type DisruptionCronReconciler struct {
 	BaseLog     *zap.SugaredLogger
 	log         *zap.SugaredLogger
 	MetricsSink metrics.Sink
-	Recorder    record.EventRecorder
 }
 
 func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
@@ -62,40 +56,8 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	r.log.Infow("fetched last known history", "history", instance.Status.History)
 	DisruptionCronTags = []string{"disruptionCronName:" + instance.Name, "disruptionCronNamespace:" + instance.Namespace, "targetName:" + instance.Spec.TargetResource.Name}
 
-	// check whether the object is being deleted or not
 	if !instance.DeletionTimestamp.IsZero() {
-		// the instance is being deleted, clean it if the finalizer is still present
-		if controllerutil.ContainsFinalizer(instance, chaostypes.ChaosFinalizer) {
-			controllerutil.RemoveFinalizer(instance, chaostypes.ChaosFinalizer)
-
-			// we reach this code when all the cleanup disruption cron have succeeded
-			// we can remove the finalizer and let the resource being garbage collected
-			if err := r.Client.Update(ctx, instance); err != nil {
-				return ctrl.Result{}, fmt.Errorf("error removing disruptioncron finalizer: %w", err)
-			}
-
-			if err := r.emitEvent(instance, chaosv1beta1.EventDisruptionCronDeleted); err != nil {
-				r.log.Warnw("failed to emit event", "err", err)
-			}
-		}
-
 		return ctrl.Result{}, nil
-	}
-
-	if controllerutil.ContainsFinalizer(instance, chaostypes.ChaosFinalizer) {
-		if err := r.emitEvent(instance, chaosv1beta1.EventDisruptionCronUpdated); err != nil {
-			r.log.Warnw("failed to emit event", "err", err)
-		}
-	} else {
-		// the injection is being created, add the finalizer
-		controllerutil.AddFinalizer(instance, chaostypes.ChaosFinalizer)
-		if err := r.Client.Update(ctx, instance); err != nil {
-			return ctrl.Result{}, fmt.Errorf("error adding disruption cron finalizer: %w", err)
-		}
-
-		if err := r.emitEvent(instance, chaosv1beta1.EventDisruptionCronCreated); err != nil {
-			r.log.Warnw("failed to emit event", "err", err)
-		}
 	}
 
 	// Update the DisruptionCron status based on the presence of the target resource
@@ -219,28 +181,6 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	return scheduledResult, nil
-}
-
-func (r *DisruptionCronReconciler) emitEvent(instance *chaosv1beta1.DisruptionCron, eventReason chaosv1beta1.EventReason) error {
-	disruptionCronJSON, err := json.Marshal(instance)
-	if err != nil {
-		return err
-	}
-
-	// Annotate the event with the DisruptionCron JSON
-	annotations := make(map[string]string)
-	annotations[chaosv1beta1.EventDisruptionCronAnnotation] = string(disruptionCronJSON)
-
-	specHash, err := instance.Spec.Hash()
-	if err != nil {
-		return err
-	}
-
-	message := fmt.Sprintf(chaosv1beta1.Events[eventReason].OnDisruptionTemplateMessage, specHash)
-
-	r.Recorder.AnnotatedEventf(instance, annotations, chaosv1beta1.Events[eventReason].Type, string(eventReason), message)
-
-	return nil
 }
 
 // updateLastScheduleTime updates the LastScheduleTime in the status of a DisruptionCron instance

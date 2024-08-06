@@ -258,19 +258,19 @@ var Events = map[EventReason]Event{
 	EventDisruptionCronCreated: {
 		Type:                        corev1.EventTypeNormal,
 		Reason:                      EventDisruptionCronCreated,
-		OnDisruptionTemplateMessage: "DisruptionCron created with hash %s",
+		OnDisruptionTemplateMessage: "DisruptionCron created",
 		Category:                    DisruptionCronEvent,
 	},
 	EventDisruptionCronUpdated: {
 		Type:                        corev1.EventTypeNormal,
 		Reason:                      EventDisruptionCronUpdated,
-		OnDisruptionTemplateMessage: "DisruptionCron updated with hash %s",
+		OnDisruptionTemplateMessage: "DisruptionCron updated",
 		Category:                    DisruptionCronEvent,
 	},
 	EventDisruptionCronDeleted: {
 		Type:                        corev1.EventTypeNormal,
 		Reason:                      EventDisruptionCronDeleted,
-		OnDisruptionTemplateMessage: "DisruptionCron deleted with hash %s",
+		OnDisruptionTemplateMessage: "DisruptionCron deleted",
 		Category:                    DisruptionCronEvent,
 	},
 	EventDisruptionFinished: {
