@@ -143,7 +143,7 @@ func (n *Notifier) notifyForDisruption(dis *v1beta1.Disruption, event corev1.Eve
 		return nil
 	}
 
-	if err := n.sendMessageToUserChannel(dis, slackMsg, logger); err != nil {
+	if err := n.sendMessageToUserChannel(slackMsg, logger); err != nil {
 		return fmt.Errorf("slack notifier: %w", err)
 	}
 
@@ -169,7 +169,7 @@ func (n *Notifier) notifyForDisruptionCron(disruptionCron *v1beta1.DisruptionCro
 		}
 	}
 
-	if err := n.sendMessageToUserChannel(disruptionCron, slackMsg, logger); err != nil {
+	if err := n.sendMessageToUserChannel(slackMsg, logger); err != nil {
 		return fmt.Errorf("slack notifier: %w", err)
 	}
 
@@ -178,12 +178,10 @@ func (n *Notifier) notifyForDisruptionCron(disruptionCron *v1beta1.DisruptionCro
 	return nil
 }
 
-func (n *Notifier) sendMessageToUserChannel(obj client.Object, slackMsg slackMessage, logger *zap.SugaredLogger) error {
-	objKind := obj.GetObjectKind().GroupVersionKind().Kind
-
+func (n *Notifier) sendMessageToUserChannel(slackMsg slackMessage, logger *zap.SugaredLogger) error {
 	emailAddr, err := mail.ParseAddress(slackMsg.UserInfo.Username)
 	if err != nil {
-		logger.Warnf("invalid user info email in %s %s: %s", objKind, obj.GetName(), err.Error())
+		logger.Warnw("username could not be parsed as an email address", "err", err, "username", slackMsg.UserInfo.Username)
 
 		return nil
 	}
