@@ -183,7 +183,7 @@ func (n *Notifier) sendMessageToUserChannel(obj client.Object, slackMsg slackMes
 
 	emailAddr, err := mail.ParseAddress(slackMsg.UserInfo.Username)
 	if err != nil {
-		logger.Warnw("invalid user info email in %s %s: %w", objKind, obj.GetName(), err)
+		logger.Warnf("invalid user info email in %s %s: %s", objKind, obj.GetName(), err.Error())
 
 		return nil
 	}
