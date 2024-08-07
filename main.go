@@ -356,8 +356,6 @@ func main() {
 	}
 
 	if cfg.Controller.DisruptionCronEnabled {
-		eventbroadcaster.RegisterNotifierSinks(mgr, broadcaster, notifiers, logger)
-
 		disruptionCronRecorder := broadcaster.NewRecorder(mgr.GetScheme(), corev1.EventSource{Component: chaosv1beta1.SourceDisruptionCronComponent})
 
 		// create disruption cron reconciler
