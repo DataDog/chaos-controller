@@ -6,17 +6,25 @@
 package v1beta1
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/DataDog/chaos-controller/utils"
 	"go.uber.org/zap"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+)
+
+const (
+	EventDisruptionCronAnnotation = "disruption_cron"
+	EventDisruptionAnnotation     = "disruption"
 )
 
 var (
@@ -72,7 +80,7 @@ func (d *DisruptionCron) ValidateCreate() (admission.Warnings, error) {
 	}
 
 	// send informative event to disruption cron to broadcast
-	disruptionCronWebhookRecorder.Event(d, Events[EventDisruptionCronCreated].Type, string(EventDisruptionCronCreated), Events[EventDisruptionCronCreated].OnDisruptionTemplateMessage)
+	d.emitEvent(EventDisruptionCronCreated)
 
 	return nil, nil
 }
@@ -91,7 +99,7 @@ func (d *DisruptionCron) ValidateUpdate(oldObject runtime.Object) (admission.War
 	}
 
 	// send informative event to disruption cron to broadcast
-	disruptionCronWebhookRecorder.Event(d, Events[EventDisruptionCronUpdated].Type, string(EventDisruptionCronUpdated), Events[EventDisruptionCronUpdated].OnDisruptionTemplateMessage)
+	d.emitEvent(EventDisruptionCronUpdated)
 
 	return nil, nil
 }
@@ -101,8 +109,25 @@ func (d *DisruptionCron) ValidateDelete() (warnings admission.Warnings, err erro
 
 	log.Infow("validating deleted disruption cron", "spec", d.Spec)
 
+	// During the validation of the deletion the timestamp does not exist so we need to set it before emitting the event
+	d.DeletionTimestamp = &metav1.Time{Time: time.Now()}
+
 	// send informative event to disruption cron to broadcast
-	disruptionCronWebhookRecorder.Event(d, Events[EventDisruptionCronDeleted].Type, string(EventDisruptionCronDeleted), Events[EventDisruptionCronDeleted].OnDisruptionTemplateMessage)
+	d.emitEvent(EventDisruptionCronDeleted)
 
 	return nil, nil
+}
+
+func (d *DisruptionCron) emitEvent(eventReason EventReason) {
+	disruptionCronJSON, err := json.Marshal(d)
+	if err != nil {
+		disruptionCronWebhookLogger.Errorw("failed to marshal disruption cron", "error", err)
+		return
+	}
+
+	annotations := map[string]string{
+		EventDisruptionCronAnnotation: string(disruptionCronJSON),
+	}
+
+	disruptionCronWebhookRecorder.AnnotatedEventf(d, annotations, Events[eventReason].Type, string(eventReason), Events[eventReason].OnDisruptionTemplateMessage)
 }

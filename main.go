@@ -327,24 +327,6 @@ func main() {
 		}
 	}
 
-	if cfg.Controller.DisruptionCronEnabled {
-		// create disruption cron reconciler
-		disruptionCronReconciler := &controllers.DisruptionCronReconciler{
-			Client:  mgr.GetClient(),
-			BaseLog: logger,
-			Scheme:  mgr.GetScheme(),
-			// new metrics sink for cron controller
-			MetricsSink: initMetricsSink(cfg.Controller.MetricsSink, logger, metricstypes.SinkAppCronController),
-		}
-
-		defer closeMetricsSink(logger, disruptionCronReconciler.MetricsSink)
-
-		if err := disruptionCronReconciler.SetupWithManager(mgr); err != nil {
-			logger.Errorw("unable to create controller", "controller", "DisruptionCron", "error", err)
-			os.Exit(1) //nolint:gocritic
-		}
-	}
-
 	// register disruption validating webhook
 	setupWebhookConfig := utils.SetupWebhookWithManagerConfig{
 		Manager:                       mgr,
@@ -374,9 +356,35 @@ func main() {
 	}
 
 	if cfg.Controller.DisruptionCronEnabled {
-		logger.Debug("setup webhook for disruption cron")
+		eventbroadcaster.RegisterNotifierSinks(mgr, broadcaster, notifiers, logger)
 
-		if err = (&chaosv1beta1.DisruptionCron{}).SetupWebhookWithManager(setupWebhookConfig); err != nil {
+		disruptionCronRecorder := broadcaster.NewRecorder(mgr.GetScheme(), corev1.EventSource{Component: chaosv1beta1.SourceDisruptionCronComponent})
+
+		// create disruption cron reconciler
+		disruptionCronReconciler := &controllers.DisruptionCronReconciler{
+			Client:  mgr.GetClient(),
+			BaseLog: logger,
+			Scheme:  mgr.GetScheme(),
+			// new metrics sink for cron controller
+			MetricsSink: initMetricsSink(cfg.Controller.MetricsSink, logger, metricstypes.SinkAppCronController),
+		}
+
+		defer closeMetricsSink(logger, disruptionCronReconciler.MetricsSink)
+
+		if err := disruptionCronReconciler.SetupWithManager(mgr); err != nil {
+			logger.Errorw("unable to create controller", "controller", "DisruptionCron", "error", err)
+			os.Exit(1) //nolint:gocritic
+		}
+
+		disruptionCronSetupWebhookConfig := utils.SetupWebhookWithManagerConfig{
+			Manager:             mgr,
+			Logger:              logger,
+			Recorder:            disruptionCronRecorder,
+			DeleteOnlyFlag:      cfg.Controller.DeleteOnly,
+			PermittedUserGroups: cfg.Controller.SafeMode.PermittedUserGroups,
+		}
+
+		if err = (&chaosv1beta1.DisruptionCron{}).SetupWebhookWithManager(disruptionCronSetupWebhookConfig); err != nil {
 			logger.Fatalw("unable to create webhook for disruption cron", "webhook", chaosv1beta1.DisruptionCronKind, "error", err)
 		}
 	}

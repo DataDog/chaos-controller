@@ -7,6 +7,7 @@ package eventbroadcaster
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
@@ -14,7 +15,6 @@ import (
 	notifTypes "github.com/DataDog/chaos-controller/eventnotifier/types"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
@@ -46,7 +46,7 @@ func (s *NotifierSink) Create(event *corev1.Event) (*corev1.Event, error) {
 
 	obj, err := s.getObject(event)
 	if err != nil {
-		s.logger.Warn(err)
+		s.logger.Debug(err) // Involved object is a target Pod or Node, we don't send notifications for these.
 
 		return event, nil
 	}
@@ -65,56 +65,63 @@ func (s *NotifierSink) Create(event *corev1.Event) (*corev1.Event, error) {
 }
 
 func (s *NotifierSink) getObject(event *corev1.Event) (client.Object, error) {
-	var obj client.Object
-
 	switch event.InvolvedObject.Kind {
 	case v1beta1.DisruptionKind:
-		disruption, err := s.getDisruption(event)
-		if err != nil {
-			s.logger.Warn(err)
+		var (
+			disruption v1beta1.Disruption
+			err        error
+		)
 
-			// Unable to fetch the latest version of the disruption from the k8s api, we'll construct what we can from the event
-			disruption = v1beta1.Disruption{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       event.InvolvedObject.Kind,
-					APIVersion: event.InvolvedObject.APIVersion,
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:            event.InvolvedObject.Name,
-					Namespace:       event.InvolvedObject.Namespace,
-					UID:             event.InvolvedObject.UID,
-					ResourceVersion: event.InvolvedObject.ResourceVersion,
-				},
+		annotations := event.GetAnnotations()
+
+		// If the event has the annotation, use it to unmarshal the disruption
+		if disruptionString, ok := annotations[v1beta1.EventDisruptionAnnotation]; ok {
+			if disruptionString == "" {
+				return nil, fmt.Errorf("eventnotifier: empty disruption annotation")
+			}
+
+			if err := json.Unmarshal([]byte(disruptionString), &disruption); err != nil {
+				return nil, fmt.Errorf("eventnotifier: failed to unmarshal disruption from annotation: %w", err)
+			}
+		} else {
+			disruption, err = s.getDisruption(event)
+			if err != nil {
+				// If we can't get the disruption, we can't notify about it
+				return nil, fmt.Errorf("eventnotifier: failed to get disruption: %w", err)
 			}
 		}
 
-		obj = &disruption
+		return &disruption, nil
 	case v1beta1.DisruptionCronKind:
-		disruptionCron, err := s.getDisruptionCron(event)
-		if err != nil {
-			s.logger.Warn(err)
+		var (
+			disruptionCron v1beta1.DisruptionCron
+			err            error
+		)
 
-			// Unable to fetch the latest version of the disruptionCron from the k8s api, we'll construct what we can from the event
-			disruptionCron = v1beta1.DisruptionCron{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       event.InvolvedObject.Kind,
-					APIVersion: event.InvolvedObject.APIVersion,
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:            event.InvolvedObject.Name,
-					Namespace:       event.InvolvedObject.Namespace,
-					UID:             event.InvolvedObject.UID,
-					ResourceVersion: event.InvolvedObject.ResourceVersion,
-				},
+		annotations := event.GetAnnotations()
+
+		// If the event has the annotation, use it to unmarshal the disruptionCron
+		if disruptionCronString, ok := annotations[v1beta1.EventDisruptionCronAnnotation]; ok {
+			if disruptionCronString == "" {
+				return nil, fmt.Errorf("eventnotifier: empty disruptionCron annotation")
+			}
+
+			if err := json.Unmarshal([]byte(disruptionCronString), &disruptionCron); err != nil {
+				return nil, fmt.Errorf("eventnotifier: failed to unmarshal disruptionCron from annotation: %w", err)
+			}
+		} else {
+			// Otherwise, fetch the disruptionCron from the API server
+			disruptionCron, err = s.getDisruptionCron(event)
+			if err != nil {
+				// If we can't get the disruptionCron, we can't notify about it
+				return nil, fmt.Errorf("eventnotifier: failed to get disruptionCron: %w", err)
 			}
 		}
 
-		obj = &disruptionCron
-	default:
-		return obj, fmt.Errorf("eventnotifier: not a disruption/disruptioncron event: kind %s", event.InvolvedObject.Kind)
+		return &disruptionCron, nil
 	}
 
-	return obj, nil
+	return nil, fmt.Errorf("eventnotifier: not a disruption/disruptioncron event: kind %s", event.InvolvedObject.Kind)
 }
 
 func (s *NotifierSink) Update(event *corev1.Event) (*corev1.Event, error) {

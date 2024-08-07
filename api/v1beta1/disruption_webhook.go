@@ -7,6 +7,7 @@ package v1beta1
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -119,16 +120,16 @@ var _ webhook.Validator = &Disruption{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *Disruption) ValidateCreate() (admission.Warnings, error) {
-	logger := logger.With("disruptionName", r.Name, "disruptionNamespace", r.Namespace)
+	log := logger.With("disruptionName", r.Name, "disruptionNamespace", r.Namespace)
 
 	ctx, err := r.SpanContext(context.Background())
 	if err != nil {
-		logger.Errorw("did not find span context", "err", err)
+		log.Errorw("did not find span context", "err", err)
 	} else {
-		logger = logger.With(tracerSink.GetLoggableTraceContext(trace.SpanFromContext(ctx))...)
+		log = log.With(tracerSink.GetLoggableTraceContext(trace.SpanFromContext(ctx))...)
 	}
 
-	logger.Infow("validating created disruption", "spec", r.Spec)
+	log.Infow("validating created disruption", "spec", r.Spec)
 
 	// delete-only mode, reject everything trying to be created
 	if deleteOnly {
@@ -204,7 +205,7 @@ func (r *Disruption) ValidateCreate() (admission.Warnings, error) {
 
 	if err := r.Spec.Validate(); err != nil {
 		if mErr := metricsSink.MetricValidationFailed(r.getMetricsTags()); mErr != nil {
-			logger.Errorw("error sending a metric", "error", mErr)
+			log.Errorw("error sending a metric", "error", mErr)
 		}
 
 		return nil, err
@@ -246,19 +247,29 @@ func (r *Disruption) ValidateCreate() (admission.Warnings, error) {
 
 	// send validation metric
 	if err := metricsSink.MetricValidationCreated(r.getMetricsTags()); err != nil {
-		logger.Errorw("error sending a metric", "error", err)
+		log.Errorw("error sending a metric", "error", err)
 	}
 
 	// send informative event to disruption to broadcast
-	recorder.Event(r, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+	disruptionJSON, err := json.Marshal(r)
+	if err != nil {
+		log.Errorw("failed to marshal disruption", "error", err)
+		return nil, nil
+	}
+
+	annotations := map[string]string{
+		EventDisruptionAnnotation: string(disruptionJSON),
+	}
+
+	recorder.AnnotatedEventf(r, annotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
 
 	return nil, nil
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *Disruption) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
-	logger := logger.With("disruptionName", r.Name, "disruptionNamespace", r.Namespace)
-	logger.Debugw("validating updated disruption", "spec", r.Spec)
+	log := logger.With("disruptionName", r.Name, "disruptionNamespace", r.Namespace)
+	log.Debugw("validating updated disruption", "spec", r.Spec)
 
 	var err error
 
@@ -272,7 +283,7 @@ func (r *Disruption) ValidateUpdate(old runtime.Object) (admission.Warnings, err
 	// we should NOT always prevent finalizer removal because chaos controller reconcile loop will go through this mutating webhook when perfoming updates
 	// and need to be able to remove the finalizer to enable the disruption to be garbage collected on successful removal
 	if controllerutil.ContainsFinalizer(oldDisruption, chaostypes.DisruptionFinalizer) && !controllerutil.ContainsFinalizer(r, chaostypes.DisruptionFinalizer) {
-		oldPods, err := GetChaosPods(context.Background(), logger, chaosNamespace, k8sClient, oldDisruption, nil)
+		oldPods, err := GetChaosPods(context.Background(), log, chaosNamespace, k8sClient, oldDisruption, nil)
 		if err != nil {
 			return nil, fmt.Errorf("error getting disruption pods: %w", err)
 		}
@@ -285,7 +296,7 @@ func (r *Disruption) ValidateUpdate(old runtime.Object) (admission.Warnings, err
 
 			metricTags := append(r.getMetricsTags(), "prevent_finalizer_removal:true")
 			if mErr := metricsSink.MetricValidationFailed(metricTags); mErr != nil {
-				logger.Errorw("error sending a metric", "error", mErr)
+				log.Errorw("error sending a metric", "error", mErr)
 			}
 
 			return nil, fmt.Errorf(`unable to remove disruption finalizer, disruption '%s/%s' still has associated pods:
@@ -319,10 +330,10 @@ You first need to remove those chaos pods (and potentially their finalizers) to 
 		}
 	}
 
-	logger.Debugw("comparing disruption spec hashes", "oldHash", oldHash, "newHash", newHash)
+	log.Debugw("comparing disruption spec hashes", "oldHash", oldHash, "newHash", newHash)
 
 	if oldHash != newHash {
-		logger.Errorw("error when comparing disruption spec hashes", "oldHash", oldHash, "newHash", newHash)
+		log.Errorw("error when comparing disruption spec hashes", "oldHash", oldHash, "newHash", newHash)
 
 		if oldDisruption.Spec.StaticTargeting {
 			return nil, fmt.Errorf("[StaticTargeting: true] a disruption spec cannot be updated, please delete and recreate it if needed")
@@ -333,7 +344,7 @@ You first need to remove those chaos pods (and potentially their finalizers) to 
 
 	if err := r.Spec.Validate(); err != nil {
 		if mErr := metricsSink.MetricValidationFailed(r.getMetricsTags()); mErr != nil {
-			logger.Errorw("error sending a metric", "error", mErr)
+			log.Errorw("error sending a metric", "error", mErr)
 		}
 
 		return nil, err
@@ -341,7 +352,7 @@ You first need to remove those chaos pods (and potentially their finalizers) to 
 
 	// send validation metric
 	if err := metricsSink.MetricValidationUpdated(r.getMetricsTags()); err != nil {
-		logger.Errorw("error sending a metric", "error", err)
+		log.Errorw("error sending a metric", "error", err)
 	}
 
 	return nil, nil

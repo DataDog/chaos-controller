@@ -7,12 +7,14 @@ package eventbroadcaster
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier"
 	notifTypes "github.com/DataDog/chaos-controller/eventnotifier/types"
 	"github.com/DataDog/chaos-controller/mocks"
+	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
@@ -121,205 +123,440 @@ var _ = Describe("NotifierSink", func() {
 				),
 			)
 
-			DescribeTable("when the Notifier is triggered", func(event corev1.Event, expectedObject client.Object, expectedNotifType notifTypes.NotificationType) {
-				// Arrange
-				By("expecting the client to get the object")
-				mockClient.EXPECT().Get(
-					mock.Anything, types.NamespacedName{Namespace: event.InvolvedObject.Namespace, Name: event.InvolvedObject.Name}, mock.Anything,
-				).RunAndReturn(func(ctx context.Context, name types.NamespacedName, object client.Object, option ...client.GetOption) error {
-					switch expectedObject.(type) {
-					case *v1beta1.Disruption:
-						disruption := expectedObject.(*v1beta1.Disruption)
-						*object.(*v1beta1.Disruption) = *disruption
-					case *v1beta1.DisruptionCron:
-						disruptionCron := expectedObject.(*v1beta1.DisruptionCron)
-						*object.(*v1beta1.DisruptionCron) = *disruptionCron
+			When("the Notifier is triggered", func() {
+				DescribeTable("without annotation", func(event corev1.Event, expectedObject client.Object, expectedNotifType notifTypes.NotificationType) {
+					// Arrange
+					By("expecting the client to get the object")
+					mockClient.EXPECT().Get(
+						mock.Anything, types.NamespacedName{Namespace: event.InvolvedObject.Namespace, Name: event.InvolvedObject.Name}, mock.Anything,
+					).RunAndReturn(func(ctx context.Context, name types.NamespacedName, object client.Object, option ...client.GetOption) error {
+						switch expectedObject.(type) {
+						case *v1beta1.Disruption:
+							disruption := expectedObject.(*v1beta1.Disruption)
+							*object.(*v1beta1.Disruption) = *disruption
+						case *v1beta1.DisruptionCron:
+							disruptionCron := expectedObject.(*v1beta1.DisruptionCron)
+							*object.(*v1beta1.DisruptionCron) = *disruptionCron
+						}
+
+						return nil
+					})
+
+					notifierMock := eventnotifier.NewNotifierMock(GinkgoT())
+
+					By("expecting the notifier to be called")
+					notifierMock.EXPECT().Notify(expectedObject, event, expectedNotifType).Return(nil)
+					notifierSink := NotifierSink{
+						client:   mockClient,
+						notifier: notifierMock,
+						logger:   logger,
 					}
 
-					return nil
-				})
+					// Action
+					_, err := notifierSink.Create(&event)
 
-				notifierMock := eventnotifier.NewNotifierMock(GinkgoT())
+					// Assert
+					Expect(err).ShouldNot(HaveOccurred())
+				},
+					Entry("a Manifest kind event with a warning type",
+						corev1.Event{
+							InvolvedObject: corev1.ObjectReference{
+								Kind: v1beta1.DisruptionKind,
+							},
+							Type: corev1.EventTypeWarning,
+						},
+						&v1beta1.Disruption{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "test",
+								Namespace: "fake-namespace",
+							},
+						},
+						notifTypes.NotificationWarning,
+					),
+					Entry("a Manifest kind event with a normal notifiable type",
+						corev1.Event{
+							Source: corev1.EventSource{
+								Component: v1beta1.SourceDisruptionComponent,
+							},
+							InvolvedObject: corev1.ObjectReference{
+								Kind: v1beta1.DisruptionKind,
+							},
+							Type: corev1.EventTypeNormal,
+						},
+						&v1beta1.Disruption{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "test",
+								Namespace: "fake-namespace",
+							},
+						},
+						notifTypes.NotificationInfo,
+					),
+					Entry("a Manifest kind event with a normal type with a target node recovered reason",
+						corev1.Event{
+							Reason: string(v1beta1.EventTargetNodeRecoveredState),
+							Source: corev1.EventSource{
+								Component: v1beta1.SourceDisruptionComponent,
+							},
+							InvolvedObject: corev1.ObjectReference{
+								Kind: v1beta1.DisruptionKind,
+							},
+							Type: corev1.EventTypeNormal,
+						},
+						&v1beta1.Disruption{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "test",
+								Namespace: "fake-namespace",
+							},
+						},
+						notifTypes.NotificationSuccess,
+					),
+					Entry("a Manifest kind event with a normal type and a Finished reason",
+						corev1.Event{
+							Reason: string(v1beta1.EventDisruptionFinished),
+							Source: corev1.EventSource{
+								Component: v1beta1.SourceDisruptionComponent,
+							},
+							InvolvedObject: corev1.ObjectReference{
+								Kind: v1beta1.DisruptionKind,
+							},
+							Type: corev1.EventTypeNormal,
+						},
+						&v1beta1.Disruption{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "test",
+								Namespace: "fake-namespace",
+							},
+						},
+						notifTypes.NotificationCompletion,
+					),
+					Entry("a Manifest kind event with a normal type and a DurationOver reason",
+						corev1.Event{
+							Reason: string(v1beta1.EventDisruptionDurationOver),
+							Source: corev1.EventSource{
+								Component: v1beta1.SourceDisruptionComponent,
+							},
+							InvolvedObject: corev1.ObjectReference{
+								Kind: v1beta1.DisruptionKind,
+							},
+							Type: corev1.EventTypeNormal,
+						},
+						&v1beta1.Disruption{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "test",
+								Namespace: "fake-namespace",
+							},
+						},
+						notifTypes.NotificationCompletion,
+					),
+					Entry("a Manifest kind event with a normal type and a GCOver reason",
+						corev1.Event{
+							Reason: string(v1beta1.EventDisruptionGCOver),
+							Source: corev1.EventSource{
+								Component: v1beta1.SourceDisruptionComponent,
+							},
+							InvolvedObject: corev1.ObjectReference{
+								Kind: v1beta1.DisruptionKind,
+							},
+							Type: corev1.EventTypeNormal,
+						},
+						&v1beta1.Disruption{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "test",
+								Namespace: "fake-namespace",
+							},
+						},
+						notifTypes.NotificationCompletion,
+					),
+					Entry("a Manifest kind event with a warning type",
+						corev1.Event{
+							InvolvedObject: corev1.ObjectReference{
+								Kind:      v1beta1.DisruptionCronKind,
+								Namespace: "fake-namespace",
+								Name:      "test",
+							},
+							Type: corev1.EventTypeWarning,
+						},
+						&v1beta1.DisruptionCron{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "test",
+								Namespace: "fake-namespace",
+							},
+						},
+						notifTypes.NotificationWarning,
+					),
+					Entry("a Manifest kind event with a normal notifiable type",
+						corev1.Event{
+							Source: corev1.EventSource{
+								Component: v1beta1.SourceDisruptionCronComponent,
+							},
+							InvolvedObject: corev1.ObjectReference{
+								Kind: v1beta1.DisruptionCronKind,
+							},
+							Type: corev1.EventTypeNormal,
+						},
+						&v1beta1.DisruptionCron{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "test",
+								Namespace: "fake-namespace",
+							},
+						},
+						notifTypes.NotificationInfo,
+					),
+					Entry("a Manifest kind event with a normal type and a Deleted reason",
+						corev1.Event{
+							Reason: string(v1beta1.EventDisruptionCronDeleted),
+							Source: corev1.EventSource{
+								Component: v1beta1.SourceDisruptionCronComponent,
+							},
+							InvolvedObject: corev1.ObjectReference{
+								Kind: v1beta1.DisruptionCronKind,
+							},
+							Type: corev1.EventTypeNormal,
+						},
+						&v1beta1.DisruptionCron{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "test",
+								Namespace: "fake-namespace",
+							},
+						},
+						notifTypes.NotificationInfo,
+					),
+				)
 
-				By("expecting the notifier to be called")
-				notifierMock.EXPECT().Notify(expectedObject, event, expectedNotifType).Return(nil)
+				DescribeTable("with annotation", func(event corev1.Event, expectedObject client.Object, expectedNotifType notifTypes.NotificationType) {
+					// Arrange
+					annotations := map[string]string{}
 
-				notifierSink := NotifierSink{
-					client:   mockClient,
-					notifier: notifierMock,
-					logger:   logger,
-				}
+					switch d := expectedObject.(type) {
+					case *v1beta1.Disruption:
+						disruptionJson, err := json.Marshal(d)
+						Expect(err).ShouldNot(HaveOccurred())
+						annotations[v1beta1.EventDisruptionAnnotation] = string(disruptionJson)
+					case *v1beta1.DisruptionCron:
+						disruptionCronJson, err := json.Marshal(d)
+						Expect(err).ShouldNot(HaveOccurred())
+						annotations[v1beta1.EventDisruptionCronAnnotation] = string(disruptionCronJson)
+					}
 
-				// Action
-				_, err := notifierSink.Create(&event)
+					event.SetAnnotations(annotations)
 
-				// Assert
-				Expect(err).ShouldNot(HaveOccurred())
-			},
-				Entry("a Manifest kind event with a warning type",
-					corev1.Event{
-						InvolvedObject: corev1.ObjectReference{
-							Kind: v1beta1.DisruptionKind,
+					By("expecting the client to not get the object")
+					mockClient.AssertNotCalled(GinkgoT(), "Get", mock.Anything, mock.Anything, mock.Anything)
+
+					notifierMock := eventnotifier.NewNotifierMock(GinkgoT())
+
+					By("expecting the notifier to be called")
+					notifierMock.EXPECT().Notify(expectedObject, event, expectedNotifType).Return(nil)
+					notifierSink := NotifierSink{
+						client:   mockClient,
+						notifier: notifierMock,
+						logger:   logger,
+					}
+
+					// Action
+					_, err := notifierSink.Create(&event)
+
+					// Assert
+					Expect(err).ShouldNot(HaveOccurred())
+				},
+					Entry("a Manifest kind event with a warning type",
+						corev1.Event{
+							InvolvedObject: corev1.ObjectReference{
+								Kind: v1beta1.DisruptionKind,
+							},
+							Type: corev1.EventTypeWarning,
 						},
-						Type: corev1.EventTypeWarning,
-					},
-					&v1beta1.Disruption{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "test",
-							Namespace: "fake-namespace",
+						&v1beta1.Disruption{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "test",
+								Namespace: "fake-namespace",
+							},
+							Spec: v1beta1.DisruptionSpec{
+								Level: chaostypes.DisruptionLevelPod,
+							},
 						},
-					},
-					notifTypes.NotificationWarning,
-				),
-				Entry("a Manifest kind event with a normal notifiable type",
-					corev1.Event{
-						Source: corev1.EventSource{
-							Component: v1beta1.SourceDisruptionComponent,
+						notifTypes.NotificationWarning,
+					),
+					Entry("a Manifest kind event with a normal notifiable type",
+						corev1.Event{
+							Source: corev1.EventSource{
+								Component: v1beta1.SourceDisruptionComponent,
+							},
+							InvolvedObject: corev1.ObjectReference{
+								Kind: v1beta1.DisruptionKind,
+							},
+							Type: corev1.EventTypeNormal,
 						},
-						InvolvedObject: corev1.ObjectReference{
-							Kind: v1beta1.DisruptionKind,
+						&v1beta1.Disruption{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "test",
+								Namespace: "fake-namespace",
+							},
+							Spec: v1beta1.DisruptionSpec{
+								Level: chaostypes.DisruptionLevelPod,
+							},
 						},
-						Type: corev1.EventTypeNormal,
-					},
-					&v1beta1.Disruption{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "test",
-							Namespace: "fake-namespace",
+						notifTypes.NotificationInfo,
+					),
+					Entry("a Manifest kind event with a normal type with a target node recovered reason",
+						corev1.Event{
+							Reason: string(v1beta1.EventTargetNodeRecoveredState),
+							Source: corev1.EventSource{
+								Component: v1beta1.SourceDisruptionComponent,
+							},
+							InvolvedObject: corev1.ObjectReference{
+								Kind: v1beta1.DisruptionKind,
+							},
+							Type: corev1.EventTypeNormal,
 						},
-					},
-					notifTypes.NotificationInfo,
-				),
-				Entry("a Manifest kind event with a normal type with a target node recovered reason",
-					corev1.Event{
-						Reason: string(v1beta1.EventTargetNodeRecoveredState),
-						Source: corev1.EventSource{
-							Component: v1beta1.SourceDisruptionComponent,
+						&v1beta1.Disruption{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "test",
+								Namespace: "fake-namespace",
+							},
+							Spec: v1beta1.DisruptionSpec{
+								Level: chaostypes.DisruptionLevelPod,
+							},
 						},
-						InvolvedObject: corev1.ObjectReference{
-							Kind: v1beta1.DisruptionKind,
+						notifTypes.NotificationSuccess,
+					),
+					Entry("a Manifest kind event with a normal type and a Finished reason",
+						corev1.Event{
+							Reason: string(v1beta1.EventDisruptionFinished),
+							Source: corev1.EventSource{
+								Component: v1beta1.SourceDisruptionComponent,
+							},
+							InvolvedObject: corev1.ObjectReference{
+								Kind: v1beta1.DisruptionKind,
+							},
+							Type: corev1.EventTypeNormal,
 						},
-						Type: corev1.EventTypeNormal,
-					},
-					&v1beta1.Disruption{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "test",
-							Namespace: "fake-namespace",
+						&v1beta1.Disruption{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "test",
+								Namespace: "fake-namespace",
+							},
+							Spec: v1beta1.DisruptionSpec{
+								Level: chaostypes.DisruptionLevelPod,
+							},
 						},
-					},
-					notifTypes.NotificationSuccess,
-				),
-				Entry("a Manifest kind event with a normal type and a Finished reason",
-					corev1.Event{
-						Reason: string(v1beta1.EventDisruptionFinished),
-						Source: corev1.EventSource{
-							Component: v1beta1.SourceDisruptionComponent,
+						notifTypes.NotificationCompletion,
+					),
+					Entry("a Manifest kind event with a normal type and a DurationOver reason",
+						corev1.Event{
+							Reason: string(v1beta1.EventDisruptionDurationOver),
+							Source: corev1.EventSource{
+								Component: v1beta1.SourceDisruptionComponent,
+							},
+							InvolvedObject: corev1.ObjectReference{
+								Kind: v1beta1.DisruptionKind,
+							},
+							Type: corev1.EventTypeNormal,
 						},
-						InvolvedObject: corev1.ObjectReference{
-							Kind: v1beta1.DisruptionKind,
+						&v1beta1.Disruption{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "test",
+								Namespace: "fake-namespace",
+							},
+							Spec: v1beta1.DisruptionSpec{
+								Level: chaostypes.DisruptionLevelPod,
+							},
 						},
-						Type: corev1.EventTypeNormal,
-					},
-					&v1beta1.Disruption{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "test",
-							Namespace: "fake-namespace",
+						notifTypes.NotificationCompletion,
+					),
+					Entry("a Manifest kind event with a normal type and a GCOver reason",
+						corev1.Event{
+							Reason: string(v1beta1.EventDisruptionGCOver),
+							Source: corev1.EventSource{
+								Component: v1beta1.SourceDisruptionComponent,
+							},
+							InvolvedObject: corev1.ObjectReference{
+								Kind: v1beta1.DisruptionKind,
+							},
+							Type: corev1.EventTypeNormal,
 						},
-					},
-					notifTypes.NotificationCompletion,
-				),
-				Entry("a Manifest kind event with a normal type and a DurationOver reason",
-					corev1.Event{
-						Reason: string(v1beta1.EventDisruptionDurationOver),
-						Source: corev1.EventSource{
-							Component: v1beta1.SourceDisruptionComponent,
+						&v1beta1.Disruption{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "test",
+								Namespace: "fake-namespace",
+							},
+							Spec: v1beta1.DisruptionSpec{
+								Level: chaostypes.DisruptionLevelPod,
+							},
 						},
-						InvolvedObject: corev1.ObjectReference{
-							Kind: v1beta1.DisruptionKind,
+						notifTypes.NotificationCompletion,
+					),
+					Entry("a Manifest kind event with a warning type",
+						corev1.Event{
+							InvolvedObject: corev1.ObjectReference{
+								Kind:      v1beta1.DisruptionCronKind,
+								Namespace: "fake-namespace",
+								Name:      "test",
+							},
+							Type: corev1.EventTypeWarning,
 						},
-						Type: corev1.EventTypeNormal,
-					},
-					&v1beta1.Disruption{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "test",
-							Namespace: "fake-namespace",
+						&v1beta1.DisruptionCron{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "test",
+								Namespace: "fake-namespace",
+							},
+							Spec: v1beta1.DisruptionCronSpec{
+								DisruptionTemplate: v1beta1.DisruptionSpec{
+									Level: chaostypes.DisruptionLevelPod,
+								},
+							},
 						},
-					},
-					notifTypes.NotificationCompletion,
-				),
-				Entry("a Manifest kind event with a normal type and a GCOver reason",
-					corev1.Event{
-						Reason: string(v1beta1.EventDisruptionGCOver),
-						Source: corev1.EventSource{
-							Component: v1beta1.SourceDisruptionComponent,
+						notifTypes.NotificationWarning,
+					),
+					Entry("a Manifest kind event with a normal notifiable type",
+						corev1.Event{
+							Source: corev1.EventSource{
+								Component: v1beta1.SourceDisruptionCronComponent,
+							},
+							InvolvedObject: corev1.ObjectReference{
+								Kind: v1beta1.DisruptionCronKind,
+							},
+							Type: corev1.EventTypeNormal,
 						},
-						InvolvedObject: corev1.ObjectReference{
-							Kind: v1beta1.DisruptionKind,
+						&v1beta1.DisruptionCron{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "test",
+								Namespace: "fake-namespace",
+							},
+							Spec: v1beta1.DisruptionCronSpec{
+								DisruptionTemplate: v1beta1.DisruptionSpec{
+									Level: chaostypes.DisruptionLevelPod,
+								},
+							},
 						},
-						Type: corev1.EventTypeNormal,
-					},
-					&v1beta1.Disruption{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "test",
-							Namespace: "fake-namespace",
+						notifTypes.NotificationInfo,
+					),
+					Entry("a Manifest kind event with a normal type and a Deleted reason",
+						corev1.Event{
+							Reason: string(v1beta1.EventDisruptionCronDeleted),
+							Source: corev1.EventSource{
+								Component: v1beta1.SourceDisruptionCronComponent,
+							},
+							InvolvedObject: corev1.ObjectReference{
+								Kind: v1beta1.DisruptionCronKind,
+							},
+							Type: corev1.EventTypeNormal,
 						},
-					},
-					notifTypes.NotificationCompletion,
-				),
-				Entry("a Manifest kind event with a warning type",
-					corev1.Event{
-						InvolvedObject: corev1.ObjectReference{
-							Kind:      v1beta1.DisruptionCronKind,
-							Namespace: "fake-namespace",
-							Name:      "test",
+						&v1beta1.DisruptionCron{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "test",
+								Namespace: "fake-namespace",
+							},
+							Spec: v1beta1.DisruptionCronSpec{
+								DisruptionTemplate: v1beta1.DisruptionSpec{
+									Level: chaostypes.DisruptionLevelPod,
+								},
+							},
 						},
-						Type: corev1.EventTypeWarning,
-					},
-					&v1beta1.DisruptionCron{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "test",
-							Namespace: "fake-namespace",
-						},
-					},
-					notifTypes.NotificationWarning,
-				),
-				Entry("a Manifest kind event with a normal notifiable type",
-					corev1.Event{
-						Source: corev1.EventSource{
-							Component: v1beta1.SourceDisruptionCronComponent,
-						},
-						InvolvedObject: corev1.ObjectReference{
-							Kind: v1beta1.DisruptionCronKind,
-						},
-						Type: corev1.EventTypeNormal,
-					},
-					&v1beta1.DisruptionCron{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "test",
-							Namespace: "fake-namespace",
-						},
-					},
-					notifTypes.NotificationInfo,
-				),
-				Entry("a Manifest kind event with a normal type and a Deleted reason",
-					corev1.Event{
-						Reason: string(v1beta1.EventDisruptionCronDeleted),
-						Source: corev1.EventSource{
-							Component: v1beta1.SourceDisruptionCronComponent,
-						},
-						InvolvedObject: corev1.ObjectReference{
-							Kind: v1beta1.DisruptionCronKind,
-						},
-						Type: corev1.EventTypeNormal,
-					},
-					&v1beta1.DisruptionCron{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "test",
-							Namespace: "fake-namespace",
-						},
-					},
-					notifTypes.NotificationInfo,
-				),
-			)
+						notifTypes.NotificationInfo,
+					),
+				)
+			})
 
 			When("the client fails to get the object", func() {
 				DescribeTable("it should not return an error", func(objectKind string) {
@@ -327,7 +564,6 @@ var _ = Describe("NotifierSink", func() {
 					expectedUID := uuid.New().String()
 					expectedNamespace := fmt.Sprintf("namespace-%s", objectKind)
 					expectedName := fmt.Sprintf("name-%s", objectKind)
-					expectedNotificationType := notifTypes.NotificationInfo
 
 					event := corev1.Event{
 						ObjectMeta: metav1.ObjectMeta{},
@@ -340,32 +576,10 @@ var _ = Describe("NotifierSink", func() {
 						Type: corev1.EventTypeNormal,
 					}
 
-					var expectedObject client.Object
-
 					switch objectKind {
 					case v1beta1.DisruptionKind:
-						expectedObject = &v1beta1.Disruption{
-							TypeMeta: metav1.TypeMeta{
-								Kind: v1beta1.DisruptionKind,
-							},
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      expectedName,
-								Namespace: expectedNamespace,
-								UID:       types.UID(expectedUID),
-							},
-						}
 						event.Source.Component = v1beta1.SourceDisruptionComponent
 					case v1beta1.DisruptionCronKind:
-						expectedObject = &v1beta1.DisruptionCron{
-							TypeMeta: metav1.TypeMeta{
-								Kind: v1beta1.DisruptionCronKind,
-							},
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      expectedName,
-								Namespace: expectedNamespace,
-								UID:       types.UID(expectedUID),
-							},
-						}
 						event.Source.Component = v1beta1.SourceDisruptionCronComponent
 					}
 
@@ -374,9 +588,9 @@ var _ = Describe("NotifierSink", func() {
 						mock.Anything, types.NamespacedName{Namespace: event.InvolvedObject.Namespace, Name: event.InvolvedObject.Name}, mock.Anything,
 					).Return(fmt.Errorf("error"))
 
-					By("expecting the notifier to be called")
+					By("expecting the notifier to not be called")
 					notifierMock := eventnotifier.NewNotifierMock(GinkgoT())
-					notifierMock.EXPECT().Notify(expectedObject, event, expectedNotificationType).Return(nil)
+					notifierMock.AssertNotCalled(GinkgoT(), "Notify", mock.Anything, mock.Anything, mock.Anything)
 
 					notifierSink := NotifierSink{
 						client:   mockClient,
@@ -435,6 +649,63 @@ var _ = Describe("NotifierSink", func() {
 					),
 				)
 			})
+
+			DescribeTable("the event annotation is invalid", func(kind string, invalidAnnotation map[string]string) {
+				// Arrange
+				event := corev1.Event{
+					InvolvedObject: corev1.ObjectReference{
+						Kind: kind,
+					},
+					Type: corev1.EventTypeWarning,
+				}
+
+				event.SetAnnotations(invalidAnnotation)
+
+				notifierMock := eventnotifier.NewNotifierMock(GinkgoT())
+
+				By("expecting the client to not get the object")
+				mockClient.AssertNotCalled(GinkgoT(), "Get", mock.Anything, mock.Anything, mock.Anything)
+
+				By("expecting the notifier to not be called")
+				notifierMock.AssertNotCalled(GinkgoT(), "Notify", mock.Anything, mock.Anything, mock.Anything)
+
+				notifierSink := NotifierSink{
+					client:   mockClient,
+					notifier: notifierMock,
+					logger:   logger,
+				}
+
+				// Action
+				_, err := notifierSink.Create(&event)
+
+				// Assert
+				Expect(err).ShouldNot(HaveOccurred())
+			},
+				Entry("with a Disruption kind event with an invalid annotation",
+					v1beta1.DisruptionKind,
+					map[string]string{
+						v1beta1.EventDisruptionAnnotation: "invalid",
+					},
+				),
+				Entry("with a Disruption Cron kind event with an invalid annotation",
+					v1beta1.DisruptionCronKind,
+					map[string]string{
+						v1beta1.EventDisruptionCronAnnotation: "invalid",
+					},
+				),
+				Entry("with a Disruption kind event with an empty annotation",
+					v1beta1.DisruptionKind,
+					map[string]string{
+						v1beta1.EventDisruptionAnnotation: "",
+					},
+				),
+				Entry("with a Disruption Cron kind event with an empty annotation",
+					v1beta1.DisruptionCronKind,
+					map[string]string{
+						v1beta1.EventDisruptionCronAnnotation: "",
+					},
+				),
+			)
 
 			When("the notifier fails to notify", func() {
 				DescribeTable("it should return an error", func(objectKind string) {

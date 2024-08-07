@@ -6,10 +6,12 @@
 package v1beta1
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/DataDog/chaos-controller/ddmark"
+	"github.com/DataDog/chaos-controller/mocks"
 	metricsnoop "github.com/DataDog/chaos-controller/o11y/metrics/noop"
 	tracernoop "github.com/DataDog/chaos-controller/o11y/tracer/noop"
 	chaostypes "github.com/DataDog/chaos-controller/types"
@@ -23,7 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -36,16 +37,21 @@ const (
 var oldDisruption, newDisruption *Disruption
 
 var _ = Describe("Disruption Webhook", func() {
-	var ddmarkMock *ddmark.ClientMock
+	var (
+		ddmarkMock   *ddmark.ClientMock
+		recorderMock *mocks.EventRecorderMock
+	)
 
 	BeforeEach(func() {
 		ddmarkMock = ddmark.NewClientMock(GinkgoT())
 		ddmarkClient = ddmarkMock
 		allowNodeLevel = true
 		allowNodeFailure = true
+		recorderMock = mocks.NewEventRecorderMock(GinkgoT())
+		recorder = recorderMock
 	})
 
-	Context("ValidateUpdate", func() {
+	Describe("ValidateUpdate", func() {
 		BeforeEach(func() {
 			oldDisruption = makeValidNetworkDisruption()
 			newDisruption = oldDisruption.DeepCopy()
@@ -262,11 +268,10 @@ var _ = Describe("Disruption Webhook", func() {
 		})
 	})
 
-	Context("ValidateCreate", func() {
+	Describe("ValidateCreate", func() {
 		Describe("general errors expectations", func() {
 			BeforeEach(func() {
 				k8sClient = makek8sClientWithDisruptionPod()
-				recorder = record.NewFakeRecorder(1)
 				tracerSink = tracernoop.New(logger)
 				deleteOnly = false
 			})
@@ -446,7 +451,9 @@ var _ = Describe("Disruption Webhook", func() {
 
 			When("triggers.*.notBefore is in the future", func() {
 				It("should not return an error", func() {
+					// Arrange
 					ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})
+
 					newDisruption.Spec.Duration = "30m"
 					newDisruption.Spec.Triggers = &DisruptionTriggers{
 						Inject: DisruptionTrigger{
@@ -454,7 +461,19 @@ var _ = Describe("Disruption Webhook", func() {
 						},
 					}
 
-					_, err := newDisruption.ValidateCreate()
+					disruptionJSON, err := json.Marshal(newDisruption)
+					Expect(err).ShouldNot(HaveOccurred())
+
+					expectedAnnotations := map[string]string{
+						EventDisruptionAnnotation: string(disruptionJSON),
+					}
+
+					recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+
+					// Action
+					_, err = newDisruption.ValidateCreate()
+
+					// Assert
 					Expect(err).ShouldNot(HaveOccurred())
 				})
 			})
@@ -489,14 +508,26 @@ var _ = Describe("Disruption Webhook", func() {
 				})
 
 				It("should not return an error if they are within a permitted group", func() {
+					// Arrange
 					ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})
 					permittedUserGroups = map[string]struct{}{}
 					permittedUserGroups["some"] = struct{}{}
 					permittedUserGroups["any"] = struct{}{}
 					permittedUserGroupWarningString = "some, any"
 
-					_, err := newDisruption.ValidateCreate()
+					disruptionJSON, err := json.Marshal(newDisruption)
+					Expect(err).ShouldNot(HaveOccurred())
 
+					expectedAnnotations := map[string]string{
+						EventDisruptionAnnotation: string(disruptionJSON),
+					}
+
+					recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+
+					// Action
+					_, err = newDisruption.ValidateCreate()
+
+					// Assert
 					Expect(err).ShouldNot(HaveOccurred())
 					Expect(ddmarkMock.AssertNumberOfCalls(GinkgoT(), "ValidateStructMultierror", 1)).To(BeTrue())
 				})
@@ -507,7 +538,6 @@ var _ = Describe("Disruption Webhook", func() {
 			BeforeEach(func() {
 				ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})
 				k8sClient = makek8sClientWithDisruptionPod()
-				recorder = record.NewFakeRecorder(1)
 				metricsSink = metricsnoop.New(logger)
 				tracerSink = tracernoop.New(logger)
 				deleteOnly = false
@@ -556,32 +586,59 @@ var _ = Describe("Disruption Webhook", func() {
 
 			Context("allowNodeLevel is false", func() {
 				It("should reject the disruption at node level", func() {
+					// Arrange
 					allowNodeLevel = false
 					newDisruption.Spec.Level = chaostypes.DisruptionLevelNode
 
+					// Action
 					_, err := newDisruption.ValidateCreate()
 
+					// Assert
 					Expect(err).Should(HaveOccurred())
 					Expect(err.Error()).Should(ContainSubstring("at least one of the initial safety nets caught an issue"))
 					Expect(err.Error()).Should(ContainSubstring("node level disruptions are not allowed in this cluster"))
 				})
 
 				It("should allow the disruption at pod level", func() {
-					_, err := newDisruption.ValidateCreate()
+					// Arrange
+					disruptionJSON, err := json.Marshal(newDisruption)
+					Expect(err).ShouldNot(HaveOccurred())
 
+					expectedAnnotations := map[string]string{
+						EventDisruptionAnnotation: string(disruptionJSON),
+					}
+
+					recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+
+					// Action
+					_, err = newDisruption.ValidateCreate()
+
+					// Assert
 					Expect(err).ShouldNot(HaveOccurred())
 				})
 			})
 
 			Context("allowNodeFailure and allowNodeLevel are true", func() {
 				It("should allow a node level node failure disruption", func() {
+					// Arrange
 					allowNodeFailure = true
 					allowNodeLevel = true
 					newDisruption.Spec.Level = chaostypes.DisruptionLevelNode
 					newDisruption.Spec.NodeFailure = &NodeFailureSpec{}
 
-					_, err := newDisruption.ValidateCreate()
+					disruptionJSON, err := json.Marshal(newDisruption)
+					Expect(err).ShouldNot(HaveOccurred())
 
+					expectedAnnotations := map[string]string{
+						EventDisruptionAnnotation: string(disruptionJSON),
+					}
+
+					recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+
+					// Action
+					_, err = newDisruption.ValidateCreate()
+
+					// Assert
 					Expect(err).ShouldNot(HaveOccurred())
 				})
 			})
@@ -591,7 +648,6 @@ var _ = Describe("Disruption Webhook", func() {
 			BeforeEach(func() {
 				ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})
 				k8sClient = makek8sClientWithDisruptionPod()
-				recorder = record.NewFakeRecorder(1)
 				metricsSink = metricsnoop.New(logger)
 				tracerSink = tracernoop.New(logger)
 				deleteOnly = false
@@ -627,10 +683,22 @@ var _ = Describe("Disruption Webhook", func() {
 				})
 				Context("with the '/test' path", func() {
 					It("should allow the usage", func() {
+						// Arrange
 						newDisruption.Spec.DiskFailure.Paths = []string{"/test"}
 
-						_, err := newDisruption.ValidateCreate()
+						disruptionJSON, err := json.Marshal(newDisruption)
+						Expect(err).ShouldNot(HaveOccurred())
 
+						expectedAnnotations := map[string]string{
+							EventDisruptionAnnotation: string(disruptionJSON),
+						}
+
+						recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+
+						// Action
+						_, err = newDisruption.ValidateCreate()
+
+						// Assert
 						Expect(err).ShouldNot(HaveOccurred())
 					})
 				})
@@ -655,8 +723,17 @@ var _ = Describe("Disruption Webhook", func() {
 							AllowRootDiskFailure: true,
 						}
 
+						disruptionJSON, err := json.Marshal(newDisruption)
+						Expect(err).ShouldNot(HaveOccurred())
+
+						expectedAnnotations := map[string]string{
+							EventDisruptionAnnotation: string(disruptionJSON),
+						}
+
+						recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+
 						// Action
-						_, err := newDisruption.ValidateCreate()
+						_, err = newDisruption.ValidateCreate()
 
 						// Assert
 						Expect(err).ShouldNot(HaveOccurred())
@@ -673,8 +750,17 @@ var _ = Describe("Disruption Webhook", func() {
 						// Arrange
 						newDisruption.Spec.DiskFailure.Paths = []string{"/test", "/"}
 
+						disruptionJSON, err := json.Marshal(newDisruption)
+						Expect(err).ShouldNot(HaveOccurred())
+
+						expectedAnnotations := map[string]string{
+							EventDisruptionAnnotation: string(disruptionJSON),
+						}
+
+						recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+
 						// Action
-						_, err := newDisruption.ValidateCreate()
+						_, err = newDisruption.ValidateCreate()
 
 						// Assert
 						Expect(err).ShouldNot(HaveOccurred())
@@ -687,8 +773,17 @@ var _ = Describe("Disruption Webhook", func() {
 							AllowRootDiskFailure: true,
 						}
 
+						disruptionJSON, err := json.Marshal(newDisruption)
+						Expect(err).ShouldNot(HaveOccurred())
+
+						expectedAnnotations := map[string]string{
+							EventDisruptionAnnotation: string(disruptionJSON),
+						}
+
+						recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+
 						// Action
-						_, err := newDisruption.ValidateCreate()
+						_, err = newDisruption.ValidateCreate()
 
 						// Assert
 						Expect(err).ShouldNot(HaveOccurred())
@@ -701,7 +796,6 @@ var _ = Describe("Disruption Webhook", func() {
 			BeforeEach(func() {
 				ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})
 				k8sClient = makek8sClientWithDisruptionPod()
-				recorder = record.NewFakeRecorder(1)
 				metricsSink = metricsnoop.New(logger)
 				tracerSink = tracernoop.New(logger)
 				deleteOnly = false
@@ -719,21 +813,45 @@ var _ = Describe("Disruption Webhook", func() {
 
 			When("only services are defined", func() {
 				It("should pass validation", func() {
+					// Arrange
 					newDisruption.Spec.Network.Hosts = nil
 					newDisruption.Spec.Network.Services = []NetworkDisruptionServiceSpec{{Name: "foo", Namespace: chaosNamespace}}
 
-					_, err := newDisruption.ValidateCreate()
+					disruptionJSON, err := json.Marshal(newDisruption)
+					Expect(err).ShouldNot(HaveOccurred())
 
+					expectedAnnotations := map[string]string{
+						EventDisruptionAnnotation: string(disruptionJSON),
+					}
+
+					recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+
+					// Action
+					_, err = newDisruption.ValidateCreate()
+
+					// Assert
 					Expect(err).ShouldNot(HaveOccurred())
 				})
 			})
 
 			When("various host filters are defined", func() {
 				DescribeTable("should pass validation", func(hosts []NetworkDisruptionHostSpec) {
+					// Arrange
 					newDisruption.Spec.Network.Hosts = hosts
 
-					_, err := newDisruption.ValidateCreate()
+					disruptionJSON, err := json.Marshal(newDisruption)
+					Expect(err).ShouldNot(HaveOccurred())
 
+					expectedAnnotations := map[string]string{
+						EventDisruptionAnnotation: string(disruptionJSON),
+					}
+
+					recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+
+					// Action
+					_, err = newDisruption.ValidateCreate()
+
+					// Assert
 					Expect(err).ShouldNot(HaveOccurred())
 				},
 					Entry("with just a port filter", []NetworkDisruptionHostSpec{{Port: 80}}),
@@ -755,11 +873,23 @@ var _ = Describe("Disruption Webhook", func() {
 				})
 
 				It("should be allowed with DisableNeitherHostNorPort", func() {
+					// Arrange
 					newDisruption.Spec.Network.Hosts = nil
 					newDisruption.Spec.Unsafemode = &UnsafemodeSpec{DisableNeitherHostNorPort: true}
 
-					_, err := newDisruption.ValidateCreate()
+					disruptionJSON, err := json.Marshal(newDisruption)
+					Expect(err).ShouldNot(HaveOccurred())
 
+					expectedAnnotations := map[string]string{
+						EventDisruptionAnnotation: string(disruptionJSON),
+					}
+
+					recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+
+					// Action
+					_, err = newDisruption.ValidateCreate()
+
+					// Assert
 					Expect(err).ShouldNot(HaveOccurred())
 				})
 			})
