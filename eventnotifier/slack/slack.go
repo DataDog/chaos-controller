@@ -181,7 +181,7 @@ func (n *Notifier) notifyForDisruptionCron(disruptionCron *v1beta1.DisruptionCro
 func (n *Notifier) sendMessageToUserChannel(slackMsg slackMessage, logger *zap.SugaredLogger) error {
 	emailAddr, err := mail.ParseAddress(slackMsg.UserInfo.Username)
 	if err != nil {
-		logger.Warnw("username could not be parsed as an email address", "err", err, "username", slackMsg.UserInfo.Username)
+		logger.Infow("username could not be parsed as an email address", "err", err, "username", slackMsg.UserInfo.Username)
 
 		return nil
 	}
