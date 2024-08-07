@@ -122,6 +122,8 @@ var _ = Describe("DisruptionCron Webhook", func() {
 
 			When("disruptionTemplate is invalid", func() {
 				When("the count is invalid", func() {
+				// Other forms of invalid disruptions are covered by the disruption_webook_test.go
+				// we just want to confirm we do validate the disruptionTemplate as part of the disruption cron webhook
 					It("should return an error", func() {
 						disruptionCron := makeValidDisruptionCron()
 						disruptionCron.Spec.DisruptionTemplate.Count = &intstr.IntOrString{
