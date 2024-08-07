@@ -14,6 +14,7 @@ import (
 	authV1 "k8s.io/api/authentication/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -50,7 +51,6 @@ var _ = Describe("DisruptionCron Webhook", func() {
 				It("should send an EventDisruptionCronCreated event to the broadcast", func() {
 					// Arrange
 					disruptionCron := makeValidDisruptionCron()
-
 					disruptionCronJSON, err := json.Marshal(disruptionCron)
 					Expect(err).ShouldNot(HaveOccurred())
 
@@ -133,6 +133,25 @@ var _ = Describe("DisruptionCron Webhook", func() {
 					Expect(warnings).To(BeNil())
 					Expect(err).Should(HaveOccurred())
 					Expect(err).To(MatchError("the controller is currently in delete-only mode, you can't create new disruption cron for now"))
+				})
+			})
+
+			When("disruptionTemplate is invalid", func() {
+				When("the count is invalid", func() {
+				// Other forms of invalid disruptions are covered by the disruption_webook_test.go
+				// we just want to confirm we do validate the disruptionTemplate as part of the disruption cron webhook
+					It("should return an error", func() {
+						disruptionCron := makeValidDisruptionCron()
+						disruptionCron.Spec.DisruptionTemplate.Count = &intstr.IntOrString{
+							StrVal: "2hr",
+						}
+
+						warnings, err := disruptionCron.ValidateCreate()
+
+						Expect(warnings).To(BeNil())
+						Expect(err).Should(HaveOccurred())
+						Expect(err).To(MatchError(ContainSubstring("error while validating the spec.disruptionTemplate")))
+					})
 				})
 			})
 
@@ -409,9 +428,11 @@ var _ = Describe("DisruptionCron Webhook", func() {
 })
 
 func makeValidDisruptionCron() *DisruptionCron {
+	validDisruption := makeValidNetworkDisruption()
 	return &DisruptionCron{
 		TypeMeta: metav1.TypeMeta{
 			Kind: DisruptionCronKind,
 		},
+		Spec: DisruptionCronSpec{DisruptionTemplate: validDisruption.Spec},
 	}
 }

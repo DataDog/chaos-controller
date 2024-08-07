@@ -8,6 +8,7 @@ package v1beta1
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -74,18 +75,26 @@ func (d *DisruptionCron) ValidateCreate() (admission.Warnings, error) {
 		return nil, err
 	}
 
+	if err := d.Spec.DisruptionTemplate.ValidateSelectorsOptional(false); err != nil {
+		return nil, fmt.Errorf("error while validating the spec.disruptionTemplate: %w", err)
+	}
+
 	// send informative event to disruption cron to broadcast
 	d.emitEvent(EventDisruptionCronCreated)
 
 	return nil, nil
 }
 
-func (d *DisruptionCron) ValidateUpdate(oldObject runtime.Object) (warnings admission.Warnings, err error) {
+func (d *DisruptionCron) ValidateUpdate(oldObject runtime.Object) (admission.Warnings, error) {
 	log := logger.With("disruptionCronName", d.Name, "disruptionCronNamespace", d.Namespace)
 
 	log.Infow("validating updated disruption cron", "spec", d.Spec)
 
 	if err := validateUserInfoImmutable(oldObject.(*DisruptionCron), d); err != nil {
+		return nil, err
+	}
+
+	if err := d.Spec.DisruptionTemplate.ValidateSelectorsOptional(false); err != nil {
 		return nil, err
 	}
 
