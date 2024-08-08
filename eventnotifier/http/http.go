@@ -214,7 +214,7 @@ func (n *Notifier) getUserDetails(uInfo authv1.UserInfo, logger *zap.SugaredLogg
 	emailAddr, err := n.extractEmail(username)
 
 	if err != nil {
-		logger.Warnw("http notifier: user info username is not a valid email address", "error", err, "username", username)
+		logger.Infow("http notifier: user info username is not a valid email address", "error", err, "username", username)
 	}
 
 	userGroups, err = n.marshalUserGroups(uInfo.Groups)
