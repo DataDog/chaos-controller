@@ -79,6 +79,10 @@ func (d *DisruptionCron) ValidateCreate() (admission.Warnings, error) {
 		return nil, fmt.Errorf("error while validating the spec.disruptionTemplate: %w", err)
 	}
 
+	if d.Spec.DisruptionTemplate.Reporting != nil {
+		return nil, fmt.Errorf("disruptions created by DisruptionCrons inherit the spec.reporting field of the parent, do not set spec.disruptionTemplate.reporting")
+	}
+
 	// send informative event to disruption cron to broadcast
 	d.emitEvent(EventDisruptionCronCreated)
 

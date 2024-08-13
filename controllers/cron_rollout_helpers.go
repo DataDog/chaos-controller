@@ -111,7 +111,7 @@ func GetSelectors(ctx context.Context, cl client.Client, targetResource *chaosv1
 func createBaseDisruption(owner metav1.Object, disruptionSpec *chaosv1beta1.DisruptionSpec) *chaosv1beta1.Disruption {
 	name := generateDisruptionName(owner)
 
-	return &chaosv1beta1.Disruption{
+	disruption := &chaosv1beta1.Disruption{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        name,
 			Namespace:   owner.GetNamespace(),
@@ -120,6 +120,14 @@ func createBaseDisruption(owner metav1.Object, disruptionSpec *chaosv1beta1.Disr
 		},
 		Spec: *disruptionSpec.DeepCopy(),
 	}
+
+	switch d := owner.(type) {
+	case *chaosv1beta1.DisruptionCron:
+		disruption.Spec.Reporting = d.Spec.Reporting
+	default:
+	}
+
+	return disruption
 }
 
 // setDisruptionAnnotations updates the annotations of a given Disruption object with those of its owner.
