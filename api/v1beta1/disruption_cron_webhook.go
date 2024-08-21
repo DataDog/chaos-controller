@@ -13,9 +13,12 @@ import (
 	"time"
 
 	"github.com/DataDog/chaos-controller/utils"
+	"github.com/robfig/cron"
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	validationutils "k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -75,8 +78,12 @@ func (d *DisruptionCron) ValidateCreate() (admission.Warnings, error) {
 		return nil, err
 	}
 
-	if err := d.Spec.DisruptionTemplate.ValidateSelectorsOptional(false); err != nil {
-		return nil, fmt.Errorf("error while validating the spec.disruptionTemplate: %w", err)
+	if err := d.validateDisruptionCronName(); err != nil {
+		return nil, err
+	}
+
+	if err := d.validateDisruptionCronSpec(); err != nil {
+		return nil, err
 	}
 
 	// send informative event to disruption cron to broadcast
@@ -94,7 +101,11 @@ func (d *DisruptionCron) ValidateUpdate(oldObject runtime.Object) (admission.War
 		return nil, err
 	}
 
-	if err := d.Spec.DisruptionTemplate.ValidateSelectorsOptional(false); err != nil {
+	if err := d.validateDisruptionCronName(); err != nil {
+		return nil, err
+	}
+
+	if err := d.validateDisruptionCronSpec(); err != nil {
 		return nil, err
 	}
 
@@ -130,4 +141,44 @@ func (d *DisruptionCron) emitEvent(eventReason EventReason) {
 	}
 
 	disruptionCronWebhookRecorder.AnnotatedEventf(d, annotations, Events[eventReason].Type, string(eventReason), Events[eventReason].OnDisruptionTemplateMessage)
+}
+
+func (d *DisruptionCron) validateDisruptionCronName() error {
+	if len(d.ObjectMeta.Name) == 0 {
+		return errors.New("disruption cron name must be specified")
+	}
+
+	if len(d.ObjectMeta.Name) > validationutils.DNS1035LabelMaxLength-16 {
+		// The disruption name length is 63 character like all Kubernetes objects
+		// (which must fit in a DNS subdomain). The disruption cron controller appends
+		// a 16-character prefix (`disruption-cron-`) when creating
+		// a disruption. The disruption name length limit is 63 characters.
+		// Therefore disruption cron names must have length <= 63-16=47.
+		// If we don't validate this here, then disruption creation will fail later.
+		return fmt.Errorf("disruption cron name exceeds maximum length: must be no more than 47 characters, currently %d", len(d.ObjectMeta.Name))
+	}
+
+	// reject disruption crons with a name which would not be a valid label value
+	// according to https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set
+	if _, err := labels.Parse(fmt.Sprintf("name=%s", d.ObjectMeta.Name)); err != nil {
+		return fmt.Errorf("disruption cron name must follow Kubernetes label format: %w", err)
+	}
+
+	return nil
+}
+
+func (d *DisruptionCron) validateDisruptionCronSpec() error {
+	if _, err := cron.ParseStandard(d.Spec.Schedule); err != nil {
+		return fmt.Errorf("spec.Schedule must follow the standard cron syntax: %w", err)
+	}
+
+	if d.Spec.DelayedStartTolerance.Duration() < 0 {
+		return fmt.Errorf("spec.delayedStartTolerance must be a positive duration, currently %s", d.Spec.DelayedStartTolerance.Duration())
+	}
+
+	if err := d.Spec.DisruptionTemplate.ValidateSelectorsOptional(false); err != nil {
+		return fmt.Errorf("spec.disruptionTemplate validation failed: %w", err)
+	}
+
+	return nil
 }
