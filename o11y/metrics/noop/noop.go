@@ -212,8 +212,8 @@ func (n Sink) MetricSelectorCacheGauge(gauge float64) error {
 
 // MetricTooLate reports when a scheduled disruption misses its aloted time to be scheduled
 // specific to cron and rollout controllers
-func (n Sink) MetricTooLate(tags []string) error {
-	n.log.Debugf("NOOP: MetricTooLate %s\n", tags)
+func (n Sink) MetricTooLate(duration time.Duration, tags []string) error {
+	n.log.Debugf("NOOP: MetricTooLate %s %s\n", duration, tags)
 
 	return nil
 }

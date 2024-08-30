@@ -46,7 +46,7 @@ type Sink interface {
 	MetricValidationDeleted(tags []string) error
 	MetricInformed(tags []string) error
 	MetricOrphanFound(tags []string) error
-	MetricTooLate(tags []string) error
+	MetricTooLate(duration time.Duration, tags []string) error
 	MetricTargetMissing(duration time.Duration, tags []string) error
 	MetricMissingTargetFound(tags []string) error
 	MetricNextScheduledTime(time time.Duration, tags []string) error

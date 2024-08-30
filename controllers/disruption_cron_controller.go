@@ -122,13 +122,13 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return scheduledResult, nil
 	}
 
-	tooLate := false
+	tooLate := time.Duration(0)
 	if instance.Spec.DelayedStartTolerance.Duration() > 0 {
-		tooLate = missedRun.Add(instance.Spec.DelayedStartTolerance.Duration()).Before(time.Now())
+		tooLate = time.Now().Sub(missedRun.Add(instance.Spec.DelayedStartTolerance.Duration()))
 	}
 
-	if tooLate {
-		r.handleMetricSinkError(r.MetricsSink.MetricTooLate(DisruptionCronTags))
+	if tooLate > 0 {
+		r.handleMetricSinkError(r.MetricsSink.MetricTooLate(tooLate, DisruptionCronTags))
 		r.log.Infow(fmt.Sprintf("missed schedule to start a disruption at %s, scheduling next check in %s", missedRun, requeueTime))
 
 		return scheduledResult, nil
@@ -274,7 +274,6 @@ func (r *DisruptionCronReconciler) handleTargetResourceNowPresent(ctx context.Co
 // getNextSchedule calculates the next scheduled time for a DisruptionCron instance based on its cron schedule and the current time.
 // It returns the last missed schedule time, the next scheduled time, and any error encountered during parsing the schedule.
 func (r *DisruptionCronReconciler) getNextSchedule(instance *chaosv1beta1.DisruptionCron, now time.Time) (lastMissed time.Time, next time.Time, err error) {
-	starts := 0
 	sched, err := cron.ParseStandard(instance.Spec.Schedule)
 
 	if err != nil {
@@ -302,17 +301,18 @@ func (r *DisruptionCronReconciler) getNextSchedule(instance *chaosv1beta1.Disrup
 		return time.Time{}, sched.Next(now), nil
 	}
 
-	for t := sched.Next(earliestTime); !t.After(now); t = sched.Next(t) {
-		lastMissed = t
-		starts++
-
-		if starts > 100 {
-			// We can't get the most recent times so just return an empty slice
-			return time.Time{}, time.Time{}, fmt.Errorf("too many missed start times (> 100)")
-		}
-	}
+	//for t := sched.Next(earliestTime); !t.After(now); t = sched.Next(t) {
+	//	lastMissed = t
+	//	starts++
+	//
+	//	if starts > 100 {
+	//		// We can't get the most recent times so just return an empty slice
+	//		return time.Time{}, time.Time{}, fmt.Errorf("too many missed start times (> 100)")
+	//	}
+	//}
 	r.handleMetricSinkError(r.MetricsSink.MetricNextScheduledTime(time.Until(sched.Next(now)), DisruptionCronTags))
 
+	// TODO define lastMissed
 	return lastMissed, sched.Next(now), nil
 }
 

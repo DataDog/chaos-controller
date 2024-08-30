@@ -224,10 +224,10 @@ func (d Sink) MetricSelectorCacheGauge(gauge float64) error {
 	return d.client.Gauge(d.prefix+"selector.cache.gauge", gauge, []string{}, 1)
 }
 
-// MetricTooLate reports when a scheduled disruption misses its aloted time to be scheduled
+// MetricTooLate reports when a scheduled disruption misses its alloted time to be scheduled
 // specific to cron and rollout controllers
-func (d Sink) MetricTooLate(tags []string) error {
-	return d.metricWithStatus(d.prefix+"schedule.too_late", tags)
+func (d Sink) MetricTooLate(duration time.Duration, tags []string) error {
+	return d.timing(d.prefix+"schedule.too_late", duration, tags)
 }
 
 // MetricTargetMissing reports when a scheduled Disruption can not find its specific target
