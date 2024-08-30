@@ -339,6 +339,7 @@ func main() {
 		EnableSafemodeFlag:            cfg.Controller.SafeMode.Enable,
 		AllowNodeFailure:              cfg.Controller.SafeMode.AllowNodeFailure,
 		AllowNodeLevel:                cfg.Controller.SafeMode.AllowNodeLevel,
+		DisabledDisruptions:           cfg.Controller.DisabledDisruptions,
 		DeleteOnlyFlag:                cfg.Controller.DeleteOnly,
 		HandlerEnabledFlag:            cfg.Handler.Enabled,
 		DefaultDurationFlag:           cfg.Controller.DefaultDuration,
