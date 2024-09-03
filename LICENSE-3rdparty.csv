@@ -311,6 +311,7 @@ github.com/opencontainers/runc,github.com/opencontainers/runc/libcontainer/cgrou
 github.com/opencontainers/runc,github.com/opencontainers/runc/libcontainer/cgroups/fscommon,Apache-2.0
 github.com/opencontainers/runc,github.com/opencontainers/runc/libcontainer/configs,Apache-2.0
 github.com/opencontainers/runc,github.com/opencontainers/runc/libcontainer/devices,Apache-2.0
+github.com/opencontainers/runc,github.com/opencontainers/runc/libcontainer/system,Apache-2.0
 github.com/opencontainers/runc,github.com/opencontainers/runc/libcontainer/user,Apache-2.0
 github.com/opencontainers/runc,github.com/opencontainers/runc/libcontainer/userns,Apache-2.0
 github.com/opencontainers/runc,github.com/opencontainers/runc/libcontainer/utils,Apache-2.0
