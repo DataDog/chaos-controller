@@ -285,6 +285,7 @@ var _ = Describe("Disruption Webhook", func() {
 				k8sClient = nil
 				newDisruption = nil
 				permittedUserGroups = map[string]struct{}{}
+				disabledDisruptions = []string{}
 			})
 
 			When("disruption has delete-only mode enable", func() {
@@ -529,6 +530,19 @@ var _ = Describe("Disruption Webhook", func() {
 
 					// Assert
 					Expect(err).ShouldNot(HaveOccurred())
+					Expect(ddmarkMock.AssertNumberOfCalls(GinkgoT(), "ValidateStructMultierror", 1)).To(BeTrue())
+				})
+			})
+
+			When("controller has dns-disruptions disabled", func() {
+				It("should return an error which denies the creation of a new disruption", func() {
+					ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})
+					disabledDisruptions = []string{"dns-disruption"}
+
+					_, err := newDisruption.ValidateCreate()
+
+					Expect(err).Should(HaveOccurred())
+					Expect(err.Error()).Should(HavePrefix("disruption kind dns-disruption is currently disabled"))
 					Expect(ddmarkMock.AssertNumberOfCalls(GinkgoT(), "ValidateStructMultierror", 1)).To(BeTrue())
 				})
 			})
