@@ -236,7 +236,7 @@ func (r *Disruption) ValidateCreate() (admission.Warnings, error) {
 		return nil, multierror.Prefix(multiErr, "ddmark: ")
 	}
 
-	if err = checkForDisabledDisruptions(r); err == nil {
+	if err = checkForDisabledDisruptions(r); err != nil {
 		return nil, err
 	}
 

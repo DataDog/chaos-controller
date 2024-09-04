@@ -88,6 +88,9 @@ controller:
   disruptionRolloutEnabled: false
   disruptionDeletionTimeout: 15m # The duration after which a disruption will be marked as "stuck on removal" if its removal process exceeds this duration.
   aggregateToClusterRole: false # If this is true two aggregated cluster roles are created for viewing and editing (https://kubernetes.io/docs/reference/access-authn-authz/rbac/#aggregated-clusterroles)
+# disabledDisruptions: # List of disruption kinds to disable at admission
+#   - dns-disruption
+#   - node-failure
 injector:
   image:
     repo: chaos-injector
