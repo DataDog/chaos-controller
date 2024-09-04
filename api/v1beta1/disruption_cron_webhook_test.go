@@ -113,6 +113,36 @@ var _ = Describe("DisruptionCron Webhook", func() {
 					})
 				})
 			})
+
+			When("spec.delayedStartTolerance is set", func() {
+				It("should send an EventDisruptionCronCreated event to the broadcast", func() {
+					// Arrange
+					disruptionCron := makeValidDisruptionCron()
+					disruptionCron.Spec.DelayedStartTolerance = DisruptionDuration("1s")
+
+					disruptionCronJSON, err := json.Marshal(disruptionCron)
+					Expect(err).ShouldNot(HaveOccurred())
+
+					expectedAnnotation := map[string]string{
+						EventDisruptionCronAnnotation: string(disruptionCronJSON),
+					}
+
+					By("sending the EventDisruptionCronCreated event to the broadcast")
+					mockEventRecorder := mocks.NewEventRecorderMock(GinkgoT())
+					mockEventRecorder.EXPECT().AnnotatedEventf(disruptionCron, expectedAnnotation, Events[EventDisruptionCronCreated].Type, string(EventDisruptionCronCreated), Events[EventDisruptionCronCreated].OnDisruptionTemplateMessage)
+					disruptionCronWebhookRecorder = mockEventRecorder
+
+					// Act
+					warnings, err := disruptionCron.ValidateCreate()
+
+					// Assert
+					Expect(warnings).To(BeNil())
+					Expect(err).ShouldNot(HaveOccurred())
+					Expect(disruptionCronWebhookRecorder).ShouldNot(BeNil())
+					Expect(disruptionCronWebhookRecorder).ShouldNot(BeNil())
+				})
+			})
+
 		})
 
 		Describe("error cases", func() {
@@ -136,21 +166,75 @@ var _ = Describe("DisruptionCron Webhook", func() {
 				})
 			})
 
+			DescribeTable("should return an error when disruption cron name is invalid",
+				func(name, expectedError string) {
+					// Arrange
+					disruptionCron := makeValidDisruptionCron()
+					disruptionCron.Name = name
+
+					// Act
+					warnings, err := disruptionCron.ValidateCreate()
+
+					// Assert
+					Expect(warnings).To(BeNil())
+					Expect(err).Should(HaveOccurred())
+					Expect(err).To(MatchError(ContainSubstring(expectedError)))
+				},
+				Entry("when name is an empty string", "", "disruption cron name must be specified"),
+				Entry("when name is too long", "a-very-long-disruptioncron-name-of-48-characters", "disruption cron name exceeds maximum length: must be no more than 47 characters"),
+				Entry("when name is not a valid Kubernetes label", "invalid-name!", "disruption cron name must follow Kubernetes label format"),
+			)
+
+			When("disruption cron schedule is invalid", func() {
+				It("should return an error", func() {
+					// Arrange
+					disruptionCron := makeValidDisruptionCron()
+					disruptionCron.Spec.Schedule = "****"
+
+					// Act
+					warnings, err := disruptionCron.ValidateCreate()
+
+					// Assert
+					Expect(warnings).To(BeNil())
+					Expect(err).Should(HaveOccurred())
+					Expect(err).To(MatchError(ContainSubstring("spec.Schedule must follow the standard cron syntax")))
+				})
+			})
+
+			When("disruption cron spec.delayedStartTolerance is invalid", func() {
+				It("should return an error", func() {
+					// Arrange
+					disruptionCron := makeValidDisruptionCron()
+					disruptionCron.Spec.DelayedStartTolerance = DisruptionDuration("-1s")
+
+					// Act
+					warnings, err := disruptionCron.ValidateCreate()
+
+					// Assert
+					Expect(warnings).To(BeNil())
+					Expect(err).Should(HaveOccurred())
+					Expect(err).To(MatchError(ContainSubstring("spec.delayedStartTolerance must be a positive duration")))
+				})
+			})
+
 			When("disruptionTemplate is invalid", func() {
 				When("the count is invalid", func() {
-				// Other forms of invalid disruptions are covered by the disruption_webook_test.go
-				// we just want to confirm we do validate the disruptionTemplate as part of the disruption cron webhook
+					// Other forms of invalid disruptions are covered by the disruption_webook_test.go
+					// we just want to confirm we do validate the disruptionTemplate as part of the disruption cron webhook
 					It("should return an error", func() {
+						// Arrange
 						disruptionCron := makeValidDisruptionCron()
 						disruptionCron.Spec.DisruptionTemplate.Count = &intstr.IntOrString{
 							StrVal: "2hr",
 						}
 
+						// Act
 						warnings, err := disruptionCron.ValidateCreate()
 
+						// Assert
 						Expect(warnings).To(BeNil())
 						Expect(err).Should(HaveOccurred())
-						Expect(err).To(MatchError(ContainSubstring("error while validating the spec.disruptionTemplate")))
+						Expect(err).To(MatchError(ContainSubstring("spec.disruptionTemplate validation failed")))
 					})
 				})
 			})
@@ -362,6 +446,79 @@ var _ = Describe("DisruptionCron Webhook", func() {
 					),
 				)
 			})
+
+			DescribeTable("should return an error when disruption cron name is invalid",
+				func(name, expectedError string) {
+					// Arrange
+					disruptionCron := makeValidDisruptionCron()
+					disruptionCron.Name = name
+
+					// Act
+					warnings, err := disruptionCron.ValidateUpdate(makeValidDisruptionCron())
+
+					// Assert
+					Expect(warnings).To(BeNil())
+					Expect(err).Should(HaveOccurred())
+					Expect(err).To(MatchError(ContainSubstring(expectedError)))
+				},
+				Entry("when name is an empty string", "", "disruption cron name must be specified"),
+				Entry("when name is too long", "a-very-long-disruptioncron-name-of-48-characters", "disruption cron name exceeds maximum length: must be no more than 47 characters"),
+				Entry("when name is not a valid Kubernetes label", "invalid-name!", "disruption cron name must follow Kubernetes label format"),
+			)
+
+			When("disruption cron schedule is invalid", func() {
+				It("should return an error", func() {
+					// Arrange
+					disruptionCron := makeValidDisruptionCron()
+					disruptionCron.Spec.Schedule = "****"
+
+					// Act
+					warnings, err := disruptionCron.ValidateUpdate(makeValidDisruptionCron())
+
+					// Assert
+					Expect(warnings).To(BeNil())
+					Expect(err).Should(HaveOccurred())
+					Expect(err).To(MatchError(ContainSubstring("spec.Schedule must follow the standard cron syntax")))
+				})
+			})
+
+			When("disruption cron spec.delayedStartTolerance is invalid", func() {
+				It("should return an error", func() {
+					// Arrange
+					disruptionCron := makeValidDisruptionCron()
+					disruptionCron.Spec.DelayedStartTolerance = DisruptionDuration("-1s")
+
+					// Act
+					warnings, err := disruptionCron.ValidateUpdate(makeValidDisruptionCron())
+
+					// Assert
+					Expect(warnings).To(BeNil())
+					Expect(err).Should(HaveOccurred())
+					Expect(err).To(MatchError(ContainSubstring("spec.delayedStartTolerance must be a positive duration")))
+				})
+			})
+
+			When("disruptionTemplate is invalid", func() {
+				When("the count is invalid", func() {
+					// Other forms of invalid disruptions are covered by the disruption_webook_test.go
+					// we just want to confirm we do validate the disruptionTemplate as part of the disruption cron webhook
+					It("should return an error", func() {
+						// Arrange
+						disruptionCron := makeValidDisruptionCron()
+						disruptionCron.Spec.DisruptionTemplate.Count = &intstr.IntOrString{
+							StrVal: "2hr",
+						}
+
+						// Act
+						warnings, err := disruptionCron.ValidateUpdate(makeValidDisruptionCron())
+
+						// Assert
+						Expect(warnings).To(BeNil())
+						Expect(err).Should(HaveOccurred())
+						Expect(err).To(MatchError(ContainSubstring("spec.disruptionTemplate validation failed")))
+					})
+				})
+			})
 		})
 	})
 
@@ -433,6 +590,12 @@ func makeValidDisruptionCron() *DisruptionCron {
 		TypeMeta: metav1.TypeMeta{
 			Kind: DisruptionCronKind,
 		},
-		Spec: DisruptionCronSpec{DisruptionTemplate: validDisruption.Spec},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "valid-disruption-cron",
+		},
+		Spec: DisruptionCronSpec{
+			Schedule:           "0 0 * * *",
+			DisruptionTemplate: validDisruption.Spec,
+		},
 	}
 }
