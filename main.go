@@ -189,6 +189,7 @@ func main() {
 			DNSDisruptionDNSServer:        cfg.Injector.DNSDisruption.DNSServer,
 			DNSDisruptionKubeDNS:          cfg.Injector.DNSDisruption.KubeDNS,
 			ImagePullSecrets:              cfg.Injector.ImagePullSecrets,
+			LogLevel:                      cfg.Injector.LogLevel,
 		},
 		ImagePullSecrets: cfg.Injector.ImagePullSecrets,
 		MetricsSink:      metricsSink,

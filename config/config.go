@@ -73,6 +73,7 @@ type injectorConfig struct {
 	NetworkDisruption injectorNetworkDisruptionConfig `json:"networkDisruption"`
 	ImagePullSecrets  string                          `json:"imagePullSecrets"`
 	Tolerations       []Toleration                    `json:"tolerations"`
+	LogLevel          string                          `json:"logLevel"`
 }
 
 type Toleration struct {
@@ -289,6 +290,12 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 	mainFS.StringVar(&cfg.Injector.ImagePullSecrets, "image-pull-secrets", "", "Secrets used for pulling the Docker image from a private registry")
 
 	if err := viper.BindPFlag("controller.imagePullSecrets", mainFS.Lookup("image-pull-secrets")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.StringVar(&cfg.Injector.LogLevel, "injector-log-level", "DEBUG", "The LOG_LEVEL used for the injector pods")
+
+	if err := viper.BindPFlag("injector.logLevel", mainFS.Lookup("injector-log-level")); err != nil {
 		return cfg, err
 	}
 

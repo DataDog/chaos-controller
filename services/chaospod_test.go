@@ -48,6 +48,7 @@ const (
 	DefaultInjectorImage                  = "image"
 	DefaultInjectorDNSDisruptionDNSServer = "8.8.8.8"
 	DefaultInjectorDNSDisruptionKubeDNS   = "9.9.9.9"
+	DefaultInjectorLogLevel               = "DEBUG"
 	DefaultMetricsSinkName                = "name"
 )
 
@@ -878,6 +879,7 @@ var _ = Describe("Chaos Pod Service", func() {
 				DefaultPathFile,
 				DefaultInjectorServiceAccount,
 				DefaultInjectorImage,
+				DefaultInjectorLogLevel,
 			).Build()
 
 			imagePullSecrets := ""
@@ -891,6 +893,7 @@ var _ = Describe("Chaos Pod Service", func() {
 				Annotations:      DefaultInjectorAnnotation,
 				Labels:           DefaultInjectorLabels,
 				ImagePullSecrets: imagePullSecrets,
+				LogLevel:         DefaultInjectorLogLevel,
 			}
 
 			chaosPodService, err := services.NewChaosPodService(chaosPodServiceConfig)
@@ -980,6 +983,7 @@ var _ = Describe("Chaos Pod Service", func() {
 							DefaultPathFile,
 							DefaultInjectorServiceAccount,
 							DefaultInjectorImage,
+							DefaultInjectorLogLevel,
 						).Build()
 					})
 

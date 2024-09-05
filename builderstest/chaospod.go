@@ -176,7 +176,7 @@ func (b *ChaosPodBuilder) WithPullSecrets(imagePullSecrets []v1.LocalObjectRefer
 }
 
 // WithChaosSpec sets the chaos-specific pod spec.
-func (b *ChaosPodBuilder) WithChaosSpec(targetNodeName string, terminationGracePeriod, activeDeadlineSeconds int64, args []string, hostPathDirectory, pathFile v1.HostPathType, serviceAccountName string, image string) *ChaosPodBuilder {
+func (b *ChaosPodBuilder) WithChaosSpec(targetNodeName string, terminationGracePeriod, activeDeadlineSeconds int64, args []string, hostPathDirectory, pathFile v1.HostPathType, serviceAccountName string, image string, logLevel string) *ChaosPodBuilder {
 	b.modifiers = append(
 		b.modifiers,
 		func() {
@@ -259,6 +259,10 @@ func (b *ChaosPodBuilder) WithChaosSpec(targetNodeName string, terminationGraceP
 							{
 								Name:  env.InjectorMountCgroup,
 								Value: "/mnt/cgroup/",
+							},
+							{
+								Name:  env.InjectorLogLevel,
+								Value: logLevel,
 							},
 						},
 						VolumeMounts: []v1.VolumeMount{ // define volume mounts required for disruptions to work
