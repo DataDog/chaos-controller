@@ -288,15 +288,6 @@ func (r *DisruptionCronReconciler) getNextSchedule(instance *chaosv1beta1.Disrup
 		earliestTime = instance.ObjectMeta.CreationTimestamp.Time
 	}
 
-	if instance.Spec.DelayedStartTolerance.Duration() > 0 {
-		// controller is not going to schedule anything below this point
-		schedulingDeadline := now.Add(-instance.Spec.DelayedStartTolerance.Duration())
-
-		if schedulingDeadline.After(earliestTime) {
-			earliestTime = schedulingDeadline
-		}
-	}
-
 	if earliestTime.After(now) {
 		return time.Time{}, sched.Next(now), nil
 	}
