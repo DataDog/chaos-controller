@@ -44,6 +44,7 @@ type controllerConfig struct {
 	DisruptionCronEnabled     bool                            `json:"disruptionCronEnabled"`
 	DisruptionRolloutEnabled  bool                            `json:"disruptionRolloutEnabled"`
 	DisruptionDeletionTimeout time.Duration                   `json:"disruptionDeletionTimeout"`
+	DisabledDisruptions       []string                        `json:"disabledDisruptions"`
 }
 
 type controllerWebhookConfig struct {
@@ -367,6 +368,12 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 	mainFS.BoolVar(&cfg.Controller.UserInfoHook, "user-info-webhook", true, "Enable the mutating webhook to inject user info into disruption status")
 
 	if err := viper.BindPFlag("controller.userInfoHook", mainFS.Lookup("user-info-webhook")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.StringSliceVar(&cfg.Controller.DisabledDisruptions, "disabled-disruptions", []string{}, "List of Disruption Kinds to disable. These should match their kind names from types.go: e.g., `dns-disruption`, `container-failure`, etc. ")
+
+	if err := viper.BindPFlag("controller.disabledDisruptions", mainFS.Lookup("disabled-disruptions")); err != nil {
 		return cfg, err
 	}
 
