@@ -536,14 +536,13 @@ var _ = Describe("Disruption Webhook", func() {
 
 			When("controller has network-disruptions disabled", func() {
 				It("should return an error which denies the creation of a new disruption", func() {
-					ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})
+					ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{}).Once()
 					disabledDisruptions = []string{"network-disruption"}
 
 					_, err := newDisruption.ValidateCreate()
 
 					Expect(err).Should(HaveOccurred())
 					Expect(err.Error()).Should(HavePrefix("disruption kind network-disruption is currently disabled"))
-					Expect(ddmarkMock.AssertNumberOfCalls(GinkgoT(), "ValidateStructMultierror", 1)).To(BeTrue())
 				})
 			})
 		})
