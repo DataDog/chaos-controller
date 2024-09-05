@@ -289,6 +289,8 @@ func (r *DisruptionCronReconciler) getNextSchedule(instance *chaosv1beta1.Disrup
 	}
 
 	if earliestTime.After(now) {
+		r.log.Warnw("getNextSchedule has found itself in the past", "earliestTime", earliestTime.GoString(), "now", now.GoString())
+
 		return time.Time{}, sched.Next(now), nil
 	}
 
