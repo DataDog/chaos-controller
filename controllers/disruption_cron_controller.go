@@ -288,8 +288,10 @@ func (r *DisruptionCronReconciler) getNextSchedule(instance *chaosv1beta1.Disrup
 		earliestTime = instance.ObjectMeta.CreationTimestamp.Time
 	}
 
+	// I suspect this is problematic? TODO wont we always gets missedRuns as zero if we have this "after" check?
+	// okay apprently not
 	if instance.Spec.DelayedStartTolerance.Duration() > 0 {
-		// controller is not going to schedule anything below this point
+		// controller is not going to schedule anything before this point
 		schedulingDeadline := now.Add(-instance.Spec.DelayedStartTolerance.Duration())
 
 		if schedulingDeadline.After(earliestTime) {
@@ -298,21 +300,16 @@ func (r *DisruptionCronReconciler) getNextSchedule(instance *chaosv1beta1.Disrup
 	}
 
 	if earliestTime.After(now) {
+		r.log.Warnw("we've found ourselves in the past", "earliestTime", earliestTime.GoString(), "now", now.GoString())
 		return time.Time{}, sched.Next(now), nil
 	}
 
-	//for t := sched.Next(earliestTime); !t.After(now); t = sched.Next(t) {
-	//	lastMissed = t
-	//	starts++
-	//
-	//	if starts > 100 {
-	//		// We can't get the most recent times so just return an empty slice
-	//		return time.Time{}, time.Time{}, fmt.Errorf("too many missed start times (> 100)")
-	//	}
-	//}
+	for t := sched.Next(earliestTime); !t.After(now); t = sched.Next(t) {
+		lastMissed = t
+	}
+
 	r.handleMetricSinkError(r.MetricsSink.MetricNextScheduledTime(time.Until(sched.Next(now)), DisruptionCronTags))
 
-	// TODO define lastMissed
 	return lastMissed, sched.Next(now), nil
 }
 

@@ -9,7 +9,8 @@ metadata:
   name: network-drop
   namespace: chaos-demo
 spec:
-  schedule: "*/15 * * * *"
+  schedule: "* * * * *"
+  delayedStartTolerance: 1s
   targetResource:
     kind: deployment
     name: demo-curl

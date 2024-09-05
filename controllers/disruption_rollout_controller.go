@@ -120,13 +120,13 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return scheduledResult, nil
 	}
 
-	tooLate := false
+	tooLate := time.Duration(0)
 	if instance.Spec.DelayedStartTolerance.Duration() > 0 && !instance.Status.LastContainerChangeTime.IsZero() {
-		tooLate = instance.Status.LastContainerChangeTime.Add(instance.Spec.DelayedStartTolerance.Duration()).Before(time.Now())
+		tooLate = time.Now().Sub(instance.Status.LastContainerChangeTime.Add(instance.Spec.DelayedStartTolerance.Duration()))
 	}
 
-	if tooLate {
-		r.handleMetricSinkError(r.MetricsSink.MetricTooLate(DisruptionRolloutTags))
+	if tooLate > 0 {
+		r.handleMetricSinkError(r.MetricsSink.MetricTooLate(tooLate, DisruptionRolloutTags))
 		r.log.Infow("missed schedule to start a disruption, sleeping",
 			"LastContainerChangeTime", instance.Status.LastContainerChangeTime,
 			"DelayedStartTolerance", instance.Spec.DelayedStartTolerance)
