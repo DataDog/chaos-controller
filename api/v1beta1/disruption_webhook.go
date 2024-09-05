@@ -10,6 +10,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
+	"slices"
 	"strings"
 	"time"
 
@@ -47,6 +49,7 @@ var (
 	defaultClusterThreshold         float64
 	allowNodeLevel                  bool
 	allowNodeFailure                bool
+	disabledDisruptions             []string
 	handlerEnabled                  bool
 	maxDuration                     time.Duration
 	defaultDuration                 time.Duration
@@ -80,6 +83,7 @@ func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebho
 	deleteOnly = setupWebhookConfig.DeleteOnlyFlag
 	allowNodeFailure = setupWebhookConfig.AllowNodeFailure
 	allowNodeLevel = setupWebhookConfig.AllowNodeLevel
+	disabledDisruptions = setupWebhookConfig.DisabledDisruptions
 	enableSafemode = setupWebhookConfig.EnableSafemodeFlag
 	defaultNamespaceThreshold = float64(setupWebhookConfig.NamespaceThresholdFlag) / 100.0
 	defaultClusterThreshold = float64(setupWebhookConfig.ClusterThresholdFlag) / 100.0
@@ -230,6 +234,10 @@ func (r *Disruption) ValidateCreate() (admission.Warnings, error) {
 	multiErr := ddmarkClient.ValidateStructMultierror(r.Spec, "validation_webhook")
 	if multiErr.ErrorOrNil() != nil {
 		return nil, multierror.Prefix(multiErr, "ddmark: ")
+	}
+
+	if err = checkForDisabledDisruptions(r); err != nil {
+		return nil, err
 	}
 
 	// handle initial safety nets
@@ -662,4 +670,19 @@ func safetyNetAttemptsNodeRootDiskFailure(r *Disruption) bool {
 	}
 
 	return false
+}
+
+// checkForDisabledDisruptions returns an error if `r` specifies any of the disruption kinds in setupWebhookConfig.DisabledDisruptions
+func checkForDisabledDisruptions(r *Disruption) error {
+	for _, disKind := range chaostypes.DisruptionKindNames {
+		if subspec := r.Spec.DisruptionKindPicker(disKind); reflect.ValueOf(subspec).IsNil() {
+			continue
+		}
+
+		if slices.Contains(disabledDisruptions, string(disKind)) {
+			return fmt.Errorf("disruption kind %s is currently disabled", disKind)
+		}
+	}
+
+	return nil
 }
