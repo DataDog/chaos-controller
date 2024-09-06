@@ -274,7 +274,6 @@ func (r *DisruptionCronReconciler) handleTargetResourceNowPresent(ctx context.Co
 // getNextSchedule calculates the next scheduled time for a DisruptionCron instance based on its cron schedule and the current time.
 // It returns the last missed schedule time, the next scheduled time, and any error encountered during parsing the schedule.
 func (r *DisruptionCronReconciler) getNextSchedule(instance *chaosv1beta1.DisruptionCron, now time.Time) (lastMissed time.Time, next time.Time, err error) {
-	starts := 0
 	sched, err := cron.ParseStandard(instance.Spec.Schedule)
 
 	if err != nil {
@@ -289,27 +288,14 @@ func (r *DisruptionCronReconciler) getNextSchedule(instance *chaosv1beta1.Disrup
 		earliestTime = instance.ObjectMeta.CreationTimestamp.Time
 	}
 
-	if instance.Spec.DelayedStartTolerance.Duration() > 0 {
-		// controller is not going to schedule anything below this point
-		schedulingDeadline := now.Add(-instance.Spec.DelayedStartTolerance.Duration())
-
-		if schedulingDeadline.After(earliestTime) {
-			earliestTime = schedulingDeadline
-		}
-	}
-
 	if earliestTime.After(now) {
+		r.log.Warnw("getNextSchedule has found itself in the past", "earliestTime", earliestTime.GoString(), "now", now.GoString())
+
 		return time.Time{}, sched.Next(now), nil
 	}
 
 	for t := sched.Next(earliestTime); !t.After(now); t = sched.Next(t) {
 		lastMissed = t
-		starts++
-
-		if starts > 100 {
-			// We can't get the most recent times so just return an empty slice
-			return time.Time{}, time.Time{}, fmt.Errorf("too many missed start times (> 100)")
-		}
 	}
 	r.handleMetricSinkError(r.MetricsSink.MetricNextScheduledTime(time.Until(sched.Next(now)), DisruptionCronTags))
 
