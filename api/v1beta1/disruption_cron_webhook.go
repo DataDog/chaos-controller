@@ -36,6 +36,7 @@ var (
 	disruptionCronWebhookDeleteOnly        bool
 	disruptionCronPermittedUserGroups      map[string]struct{}
 	disruptionCronPermittedUserGroupString string
+	defaultCronDelayedStartTolerance       time.Duration
 )
 
 func (d *DisruptionCron) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebhookWithManagerConfig) error {
@@ -53,10 +54,23 @@ func (d *DisruptionCron) SetupWebhookWithManager(setupWebhookConfig utils.SetupW
 	}
 
 	disruptionCronPermittedUserGroupString = strings.Join(setupWebhookConfig.PermittedUserGroups, ",")
+	defaultCronDelayedStartTolerance = setupWebhookConfig.DefaultCronDelayedStartTolerance
 
 	return ctrl.NewWebhookManagedBy(setupWebhookConfig.Manager).
 		For(d).
 		Complete()
+}
+
+//+kubebuilder:webhook:webhookVersions={v1},path=/mutate-chaos-datadoghq-com-v1beta1-disruptioncron,mutating=true,failurePolicy=fail,sideEffects=None,groups=chaos.datadoghq.com,resources=disruptioncrons,verbs=create;update,versions=v1beta1,name=mdisruptioncron.kb.io,admissionReviewVersions={v1,v1beta1}
+
+var _ webhook.Defaulter = &DisruptionCron{}
+
+// Default implements webhook.Defaulter so a webhook will be registered for the type
+func (d *DisruptionCron) Default() {
+	if d.Spec.DelayedStartTolerance.Duration() == 0 {
+		logger.Infow(fmt.Sprintf("setting default delayedStartTolerance of %s in disruptionCron", defaultCronDelayedStartTolerance), "instance", d.Name, "namespace", d.Namespace)
+		d.Spec.DelayedStartTolerance = DisruptionDuration(defaultCronDelayedStartTolerance.String())
+	}
 }
 
 //+kubebuilder:webhook:webhookVersions={v1},path=/validate-chaos-datadoghq-com-v1beta1-disruptioncron,mutating=false,failurePolicy=fail,sideEffects=None,groups=chaos.datadoghq.com,resources=disruptioncrons,verbs=create;update;delete,versions=v1beta1,name=vdisruptioncron.kb.io,admissionReviewVersions={v1,v1beta1}
