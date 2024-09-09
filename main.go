@@ -377,11 +377,12 @@ func main() {
 		}
 
 		disruptionCronSetupWebhookConfig := utils.SetupWebhookWithManagerConfig{
-			Manager:             mgr,
-			Logger:              logger,
-			Recorder:            disruptionCronRecorder,
-			DeleteOnlyFlag:      cfg.Controller.DeleteOnly,
-			PermittedUserGroups: cfg.Controller.SafeMode.PermittedUserGroups,
+			Manager:                          mgr,
+			Logger:                           logger,
+			Recorder:                         disruptionCronRecorder,
+			DeleteOnlyFlag:                   cfg.Controller.DeleteOnly,
+			PermittedUserGroups:              cfg.Controller.SafeMode.PermittedUserGroups,
+			DefaultCronDelayedStartTolerance: cfg.Controller.DefaultCronDelayedStartTolerance,
 		}
 
 		if err = (&chaosv1beta1.DisruptionCron{}).SetupWebhookWithManager(disruptionCronSetupWebhookConfig); err != nil {
