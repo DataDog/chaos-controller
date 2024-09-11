@@ -260,6 +260,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 		// the injection is being created or modified, apply needed actions
 		controllerutil.AddFinalizer(instance, chaostypes.DisruptionFinalizer)
+
 		if err := r.Client.Update(ctx, instance); err != nil {
 			return ctrl.Result{}, fmt.Errorf("error adding disruption finalizer: %w", err)
 		}
@@ -328,6 +329,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		} else if instance.Status.InjectionStatus.NotFullyInjected() {
 			// requeue after 15-20 seconds, as default 1ms is too quick here
 			requeueAfter := time.Duration(randSource.Intn(5)+15) * time.Second //nolint:gosec
+
 			r.log.Infow("disruption is not fully injected yet, requeuing", "injectionStatus", instance.Status.InjectionStatus)
 
 			return ctrl.Result{

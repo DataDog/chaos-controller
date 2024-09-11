@@ -320,7 +320,9 @@ func main() {
 			if !ok {
 				return []string{""}
 			}
+
 			targetResource := fmt.Sprintf("%s-%s-%s", dr.Spec.TargetResource.Kind, dr.GetNamespace(), dr.Spec.TargetResource.Name)
+
 			return []string{targetResource}
 		})
 		if err != nil {

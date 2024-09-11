@@ -297,6 +297,7 @@ func (r *DisruptionCronReconciler) getNextSchedule(instance *chaosv1beta1.Disrup
 	for t := sched.Next(earliestTime); !t.After(now); t = sched.Next(t) {
 		lastMissed = t
 	}
+
 	r.handleMetricSinkError(r.MetricsSink.MetricNextScheduledTime(time.Until(sched.Next(now)), DisruptionCronTags))
 
 	return lastMissed, sched.Next(now), nil
