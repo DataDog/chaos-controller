@@ -6,8 +6,6 @@
 run:
   timeout: 5m
   tests: false
-  skip-files:
-    - api/v1beta1/zz_generated.deepcopy.go
 linters:
   # disable all linters by default
   disable-all: true
@@ -22,7 +20,7 @@ linters:
     - unused
     # extra linters
     - bodyclose
-    #    - depguard # TODO https://github.com/golangci/golangci-lint/issues/3906 re-enable after next golangci-lint release
+    - depguard
     - dogsled
     - godox
     - gofmt
