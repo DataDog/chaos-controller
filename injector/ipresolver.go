@@ -51,9 +51,12 @@ func resolveHost(client network.DNSClient, host string) ([]*net.IPNet, error) {
 			// of an IPv6 address:
 			// var v4InV6Prefix = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff}
 			var a, b [12]byte
+
 			copy(a[:], ip[0:12])
+
 			b[10] = 0xff
 			b[11] = 0xff
+
 			if a != b {
 				return nil, fmt.Errorf("the given IP (%s) seems to be an IPv6, aborting", host)
 			}

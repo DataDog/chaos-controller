@@ -7,6 +7,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -79,7 +80,7 @@ func contextTargetsSize(disruption v1beta1.Disruption) ([]v1.Pod, []v1.Node, err
 			errorString = fmt.Sprintf("\nWe noticed that your target size is 0 for level %s given your label selectors. We checked to see if the %s level would give you results and we found %d %ss. Is this the level you wanted to use?", spec.Level, disruption.Spec.Level, size, disruption.Spec.Level)
 		}
 
-		return nil, nil, fmt.Errorf(errorString)
+		return nil, nil, errors.New(errorString)
 	}
 
 	if spec.Level == types.DisruptionLevelPod {

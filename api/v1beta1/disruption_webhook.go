@@ -249,6 +249,7 @@ func (r *Disruption) ValidateCreate() (admission.Warnings, error) {
 			for _, response := range responses {
 				retErr = multierror.Append(retErr, errors.New(response))
 			}
+
 			return nil, retErr
 		}
 	}
@@ -332,6 +333,7 @@ You first need to remove those chaos pods (and potentially their finalizers) to 
 		if err != nil {
 			return nil, fmt.Errorf("error getting old disruption hash: %w", err)
 		}
+
 		newHash, err = r.Spec.HashNoCount()
 		if err != nil {
 			return nil, fmt.Errorf("error getting new disruption hash: %w", err)
