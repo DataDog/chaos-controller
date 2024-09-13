@@ -257,9 +257,10 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				r.log.Infow(fmt.Sprintf("all chaos pods are cleaned up; requeuing to remove finalizer after %s", requeueAfter))
 
 				return ctrl.Result{Requeue: true, RequeueAfter: requeueAfter}, nil
-			} else {
-				return ctrl.Result{Requeue: true}, nil
 			}
+
+			// requeue until we can remove the finalizer
+			return ctrl.Result{Requeue: true}, nil
 		}
 	} else {
 		if r.DeleteOnly {
