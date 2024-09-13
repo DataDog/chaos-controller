@@ -214,6 +214,7 @@ func main() {
 		CloudService:               cloudProviderManager,
 		DisruptionsDeletionTimeout: cfg.Controller.DisruptionDeletionTimeout,
 		DeleteOnly:                 cfg.Controller.DeleteOnly,
+		FinalizerDeletionDelay:     cfg.Controller.FinalizerDeletionDelay,
 	}
 
 	informerClient := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())

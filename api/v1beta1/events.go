@@ -78,6 +78,7 @@ const (
 	EventInvalidSpecDisruption          EventReason = "InvalidSpec"
 	// Normal events
 	EventDisruptionChaosPodCreated EventReason = "ChaosPodCreated"
+	EventDisruptionCleaned         EventReason = "Cleaned"
 	EventDisruptionFinished        EventReason = "Finished"
 	EventDisruptionCreated         EventReason = "Created"
 	EventDisruptionDurationOver    EventReason = "DurationOver"
@@ -273,10 +274,16 @@ var Events = map[EventReason]Event{
 		OnDisruptionTemplateMessage: "DisruptionCron deleted",
 		Category:                    DisruptionCronEvent,
 	},
+	EventDisruptionCleaned: {
+		Type:                        corev1.EventTypeNormal,
+		Reason:                      EventDisruptionCleaned,
+		OnDisruptionTemplateMessage: "Disruption has been cleaned and should be deleted shortly after",
+		Category:                    DisruptionEvent,
+	},
 	EventDisruptionFinished: {
 		Type:                        corev1.EventTypeNormal,
 		Reason:                      EventDisruptionFinished,
-		OnDisruptionTemplateMessage: "DisruptionEvent finished",
+		OnDisruptionTemplateMessage: "Disruption finished",
 		Category:                    DisruptionEvent,
 	},
 	EventDisrupted: {

@@ -275,6 +275,10 @@ type DisruptionStatus struct {
 	InjectedTargetsCount int `json:"injectedTargetsCount"`
 	// Number of targets we want to target (count)
 	DesiredTargetsCount int `json:"desiredTargetsCount"`
+
+	// timestamp of when a disruption has been cleaned last.
+	// +nullable
+	CleanedAt *metav1.Time `json:"cleanedAt,omitempty"`
 }
 
 type DisruptionFilter struct {
@@ -437,6 +441,11 @@ func (r *Disruption) IsDeletionExpired(deletionTimeout time.Duration) bool {
 	}
 
 	return time.Now().After(r.DeletionTimestamp.Add(deletionTimeout))
+}
+
+// IsReadyToRemoveFinalizer checks if a disruption has been cleaned and has waited for finalizerDelay duration before removing finalizer
+func (r *Disruption) IsReadyToRemoveFinalizer(finalizerDelay time.Duration) bool {
+	return r.Status.CleanedAt != nil && time.Now().After(r.Status.CleanedAt.Time.Add(finalizerDelay))
 }
 
 // +kubebuilder:object:root=true
