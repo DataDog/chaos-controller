@@ -186,6 +186,24 @@ var _ = Describe("Disruption Controller", func() {
 					ExpectDisruptionStatus(ctx, disruption, chaostypes.DisruptionInjectionStatusPreviouslyInjected)
 				},
 				func(ctx SpecContext) {
+					By("CleanedAt being set on deletion")
+					Eventually(func(ctx SpecContext) error {
+						// retrieve the disruption until cleanedAt is defined
+						if err := k8sClient.Get(ctx, types.NamespacedName{
+							Namespace: disruption.Namespace,
+							Name:      disruption.Name,
+						}, &disruption); err != nil {
+							return StopTryingNotRetryableKubernetesError(err, false, false)
+						}
+
+						if disruption.Status.CleanedAt != nil {
+							return nil
+						}
+
+						return fmt.Errorf("cleanedAt is not defined")
+					}).WithContext(ctx).Should(Succeed())
+				},
+				func(ctx SpecContext) {
 					By("Waiting for disruption to be removed")
 					Eventually(k8sClient.Get).
 						WithContext(ctx).WithArguments(

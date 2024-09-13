@@ -34,6 +34,7 @@ const (
 
 type lightConfig struct {
 	Controller struct {
+		FinalizerDeletionDelay   time.Duration `json:"finalizerDeletionDelay"`
 		ExpiredDisruptionGCDelay time.Duration `yaml:"expiredDisruptionGCDelay"`
 		DefaultDuration          time.Duration `yaml:"defaultDuration"`
 	} `yaml:"controller"`

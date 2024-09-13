@@ -45,7 +45,7 @@ type controllerConfig struct {
 	DisruptionCronEnabled            bool                            `json:"disruptionCronEnabled"`
 	DisruptionRolloutEnabled         bool                            `json:"disruptionRolloutEnabled"`
 	DisruptionDeletionTimeout        time.Duration                   `json:"disruptionDeletionTimeout"`
-	FinalizerDeletionDelay           time.Duration                   `json:"disruptionFinalizerDeletionDelay"`
+	FinalizerDeletionDelay           time.Duration                   `json:"finalizerDeletionDelay"`
 	DisabledDisruptions              []string                        `json:"disabledDisruptions"`
 }
 

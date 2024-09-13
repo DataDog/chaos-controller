@@ -194,37 +194,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionStuckOnRemoval, "", "")
 			}
 
-			if instance.Status.CleanedAt == nil {
-				isCleaned, err := r.cleanDisruption(ctx, instance)
-				if err != nil {
-					return ctrl.Result{}, fmt.Errorf("error cleaning disruption: %w", err)
-				}
-
-				// if not cleaned yet, requeue and reconcile again in 15s-20s
-				// the reason why we don't rely on the exponential backoff here is that it retries too fast at the beginning
-				if !isCleaned {
-					requeueAfter := time.Duration(randSource.Intn(5)+15) * time.Second //nolint:gosec
-
-					r.log.Infow(fmt.Sprintf("disruption has not been fully cleaned yet, re-queuing in %v", requeueAfter))
-
-					return ctrl.Result{
-						Requeue:      true,
-						RequeueAfter: requeueAfter,
-					}, r.Client.Update(ctx, instance)
-				}
-
-				// set cleanedAt
-				now := metav1.Now()
-				instance.Status.CleanedAt = &now
-
-				// we wait FinalizerDeletionDelay before removing the finalizer
-				r.log.Infof("all chaos pods are cleaned up; removing disruption finalizer in %s", r.FinalizerDeletionDelay.String())
-				r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionCleaned, "", "")
-
-				if err := r.Client.Update(ctx, instance); err != nil {
-					return ctrl.Result{}, fmt.Errorf("error cleaning disruption: %w", err)
-				}
-			} else if instance.IsReadyToRemoveFinalizer(r.FinalizerDeletionDelay) {
+			if instance.IsReadyToRemoveFinalizer(r.FinalizerDeletionDelay) {
 				// we reach this code when all the cleanup pods have succeeded and we waited for finalizerDeletionDelay
 				// we can remove the finalizer and let the resource being garbage collected
 				r.log.Infow("all chaos pods are cleaned up; removing disruption finalizer")
@@ -252,9 +222,44 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 					disruptionStopSpan.End()
 				}()
-			}
 
-			return ctrl.Result{}, nil
+				return ctrl.Result{}, nil
+			} else if instance.Status.CleanedAt == nil {
+				isCleaned, err := r.cleanDisruption(ctx, instance)
+				if err != nil {
+					return ctrl.Result{}, fmt.Errorf("error cleaning disruption: %w", err)
+				}
+
+				// if not cleaned yet, requeue and reconcile again in 15s-20s
+				// the reason why we don't rely on the exponential backoff here is that it retries too fast at the beginning
+				if !isCleaned {
+					requeueAfter := time.Duration(randSource.Intn(5)+15) * time.Second //nolint:gosec
+
+					r.log.Infow(fmt.Sprintf("disruption has not been fully cleaned yet, re-queuing in %v", requeueAfter))
+
+					return ctrl.Result{
+						Requeue:      true,
+						RequeueAfter: requeueAfter,
+					}, r.Client.Update(ctx, instance)
+				}
+
+				// set cleanedAt
+				now := metav1.Now()
+				instance.Status.CleanedAt = &now
+
+				if err := r.Client.Status().Update(ctx, instance); err != nil {
+					return ctrl.Result{}, fmt.Errorf("error updating disruption's status: %w", err)
+				}
+
+				r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionCleaned, "", "")
+
+				requeueAfter := r.FinalizerDeletionDelay
+				r.log.Infow(fmt.Sprintf("all chaos pods are cleaned up; requeuing to remove finalizer after %s", requeueAfter))
+
+				return ctrl.Result{Requeue: true, RequeueAfter: requeueAfter}, nil
+			} else {
+				return ctrl.Result{Requeue: true}, nil
+			}
 		}
 	} else {
 		if r.DeleteOnly {

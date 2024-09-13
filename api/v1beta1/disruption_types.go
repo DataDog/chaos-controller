@@ -445,7 +445,7 @@ func (r *Disruption) IsDeletionExpired(deletionTimeout time.Duration) bool {
 
 // IsReadyToRemoveFinalizer checks if a disruption has been cleaned and has waited for finalizerDelay duration before removing finalizer
 func (r *Disruption) IsReadyToRemoveFinalizer(finalizerDelay time.Duration) bool {
-	return r.Status.CleanedAt != nil && time.Now().After(r.Status.CleanedAt.Time.Add(finalizerDelay))
+	return r.Status.CleanedAt != nil && time.Now().After(r.Status.CleanedAt.Add(finalizerDelay))
 }
 
 // +kubebuilder:object:root=true
