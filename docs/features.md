@@ -31,6 +31,8 @@ If a `duration` is not specified, then a disruption will receive the default dur
 After a disruption's duration expires, the disruption resource will live in k8s for a default of 10 minutes. This can be configured by altering
 `controller.expiredDisruptionGCDelay` in the controller's config map.
 
+During the deletion process, we will wait for `controller.finalizerDeletionDelay` duration before removing the finalizer.
+
 If any of the options in `spec.triggers` are set, the `duration` will not "begin" until _after_ the injection starts. See [below for details.](#Triggers-aka-controlling-the-timing-of-chaos-pod-creation-and-injection)
 
 ## Triggers, aka, Controlling the timing of chaos pod creation and injection
@@ -110,7 +112,7 @@ Note that in this mode, only pending pods with a running `chaos-handler` init co
 
 ## Notifier
 
-When creating a disruption or a disruption cron, you may wish to be alerted of important lifecycle warnings (e.g., disruption found no target, chaos pod is stuck on removal, target is failing, target is recovering, etc.) through the Notifier module of the chaos-controller. On each occurrence, these events will be propagated through the different set up notifiers (currently `noop/console`, `slack`, `http`,  and `datadog` are implemented).
+When creating a disruption or a disruption cron, you may wish to be alerted of important lifecycle warnings (e.g., disruption found no target, chaos pod is stuck on removal, target is failing, target is recovering, etc.) through the Notifier module of the chaos-controller. On each occurrence, these events will be propagated through the different set up notifiers (currently `noop/console`, `slack`, `http`, and `datadog` are implemented).
 
 You can find the complete list of the events sent out by the controller [here](/api/v1beta1/events.go#L97).
 
@@ -130,7 +132,7 @@ The `datadog` notifier requires the `STATSD_URL` environment variable to be set 
 
 ### HTTP
 
-The HTTP Notifier allows you to send notifications via HTTP POST requests to a specified `URL`. 
+The HTTP Notifier allows you to send notifications via HTTP POST requests to a specified `URL`.
 This can be useful for integrating with custom APIs, webhooks, or other HTTP-based notification systems.
 
 :warning: **Note** that the list of headers from the configmap will take prevalence over the list of headers found in the file: if there are conflicting headers in both of those lists, the one from the configmap will be kept.
