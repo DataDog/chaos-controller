@@ -7,6 +7,7 @@ controller:
   defaultDuration: 3m
   enableSafeguards: false
   enableObserver: false
+  finalizerDeletionDelay: 2s
   expiredDisruptionGCDelay: 10m
   metricsBindAddr: 127.0.0.1:8080
   leaderElection: true
