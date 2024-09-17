@@ -175,8 +175,9 @@ nodeLoop:
 
 // TargetIsHealthy returns an error if the given target is unhealthy or does not exist
 func (r runningTargetSelector) TargetIsHealthy(target string, c client.Client, instance *chaosv1beta1.Disruption) error {
-	switch instance.Spec.Level {
-	case chaostypes.DisruptionLevelPod:
+	nodeName := ""
+
+	if instance.Spec.Level == chaostypes.DisruptionLevelPod {
 		var p corev1.Pod
 
 		// check if target still exists
@@ -189,32 +190,30 @@ func (r runningTargetSelector) TargetIsHealthy(target string, c client.Client, i
 			return errors.New("pod is not Running")
 		}
 
-		// check if pod's node is gone in the case that this was a node failure
-		if instance.Spec.NodeFailure != nil {
-			var n corev1.Node
-			if err := c.Get(context.Background(), client.ObjectKey{Name: p.Spec.NodeName}, &n); err != nil {
-				return err
-			}
-		}
-	case chaostypes.DisruptionLevelNode:
-		var n corev1.Node
-		if err := c.Get(context.Background(), client.ObjectKey{Name: target}, &n); err != nil {
-			return err
-		}
+		// if the target pod's node is gone or unhealthy, we may be dealing with an orphaned pod, that only exists in etcd
+		// If the node isn't healthy, it can't report up to date pod status, so we have to assume the pods may be unhealthy
+		nodeName = p.Spec.NodeName
+	} else {
+		nodeName = target
+	}
 
-		// check if node is ready
-		ready := false
+	var n corev1.Node
+	if err := c.Get(context.Background(), client.ObjectKey{Name: nodeName}, &n); err != nil {
+		return err
+	}
 
-		for _, condition := range n.Status.Conditions {
-			if condition.Type == corev1.NodeReady && condition.Status == corev1.ConditionTrue {
-				ready = true
-				break
-			}
-		}
+	// check if node is ready
+	ready := false
 
-		if !ready {
-			return errors.New("node is not Ready")
+	for _, condition := range n.Status.Conditions {
+		if condition.Type == corev1.NodeReady && condition.Status == corev1.ConditionTrue {
+			ready = true
+			break
 		}
+	}
+
+	if !ready {
+		return errors.New("node is not Ready")
 	}
 
 	return nil
