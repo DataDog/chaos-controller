@@ -74,6 +74,7 @@ type DisruptionReconciler struct {
 	ChaosPodService            services.ChaosPodService
 	CloudService               cloudservice.CloudServicesProvidersManager
 	DisruptionsDeletionTimeout time.Duration
+	DeleteOnly                 bool
 }
 
 type CtxTuple struct {

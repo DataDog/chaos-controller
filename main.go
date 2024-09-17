@@ -213,6 +213,7 @@ func main() {
 		ChaosPodService:            chaosPodService,
 		CloudService:               cloudProviderManager,
 		DisruptionsDeletionTimeout: cfg.Controller.DisruptionDeletionTimeout,
+		DeleteOnly:                 cfg.Controller.DeleteOnly,
 	}
 
 	informerClient := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
