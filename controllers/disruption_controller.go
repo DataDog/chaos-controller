@@ -241,10 +241,6 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			return ctrl.Result{}, nil
 		}
 	} else {
-		if err := r.validateDisruptionSpec(instance); err != nil {
-			return ctrl.Result{Requeue: false}, err
-		}
-
 		// initialize all safety nets for future use
 		if instance.Spec.Unsafemode == nil || !instance.Spec.Unsafemode.DisableAll {
 			// initialize all relevant safety nets for the first time
@@ -906,17 +902,6 @@ func (r *DisruptionReconciler) emitKindCountMetrics(instance *chaosv1beta1.Disru
 	for _, kind := range instance.Spec.KindNames() {
 		r.handleMetricSinkError(r.MetricsSink.MetricDisruptionsCount(kind, []string{"disruptionName:" + instance.Name, "namespace:" + instance.Namespace}))
 	}
-}
-
-func (r *DisruptionReconciler) validateDisruptionSpec(instance *chaosv1beta1.Disruption) error {
-	err := instance.Spec.Validate()
-	if err != nil {
-		r.recordEventOnDisruption(instance, chaosv1beta1.EventInvalidSpecDisruption, err.Error(), "")
-
-		return err
-	}
-
-	return nil
 }
 
 // recordEventOnTarget records an event on the given target which can be either a pod or a node depending on the given disruption level
