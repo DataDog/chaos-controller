@@ -287,7 +287,9 @@ workflows:
           name: verify-mocks
           target: generate-mocks
           diff-fails: true
-          requires: [prepare-env]
+          requires:
+            - prepare-env
+            - prepare-verify-mocks
       - go-make:
           name: vet
           target: vet
