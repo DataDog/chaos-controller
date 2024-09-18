@@ -118,6 +118,10 @@ jobs:
           name: Install protoc
           command: make install-protobuf PROTOC_OS=linux
       - go_save_cache
+  prepare-verify-mocks:
+    executor: golang
+    steps:
+      - python_install_requirements
   # docker build image
   docker-build:
     executor: golang
@@ -164,7 +168,6 @@ jobs:
         default: golang
     steps:
       - go_restore_cache
-      - ubuntu_install_python
       - run:
           name: run make <<parameters.target>>
           command: make <<parameters.target>>
@@ -284,7 +287,9 @@ workflows:
           name: verify-mocks
           target: generate-mocks
           diff-fails: true
-          requires: [prepare-env]
+          requires:
+            - prepare-env
+            - ubuntu_install_python
       - go-make:
           name: vet
           target: vet
