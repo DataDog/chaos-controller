@@ -91,7 +91,7 @@ func calcDisruptionGoneTimeout(disruption chaosv1beta1.Disruption) time.Duration
 		}
 	}
 
-	disruptionGoneDuration := disruptionDuration + lightCfg.Controller.ExpiredDisruptionGCDelay + 5*time.Second
+	disruptionGoneDuration := disruptionDuration + lightCfg.Controller.ExpiredDisruptionGCDelay + 5*time.Second + lightCfg.Controller.FinalizerDeletionDelay
 
 	AddReportEntry(fmt.Sprintf("disruption %s will be gone at %v (in %v)", disruption.Name, time.Now().Add(disruptionGoneDuration), disruptionGoneDuration))
 
