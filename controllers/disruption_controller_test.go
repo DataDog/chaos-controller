@@ -201,7 +201,10 @@ var _ = Describe("Disruption Controller", func() {
 						}
 
 						return fmt.Errorf("cleanedAt is not defined")
-					}).WithContext(ctx).Should(Succeed())
+					}).WithContext(ctx).
+						Within(calcDisruptionGoneTimeout(disruption)).
+						ProbeEvery(disruptionPotentialChangesEvery).
+						Should(Succeed())
 				},
 				func(ctx SpecContext) {
 					By("Waiting for disruption to be removed")
