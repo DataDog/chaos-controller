@@ -30,6 +30,12 @@ commands:
       - run:
           name: Install Python requirements
           command: pip3 install -r tasks/requirements.txt
+  ubuntu_install_python:
+    description: Install python3.10
+    steps:
+      - run:
+          name: Install python 3.10
+          command: sudo apt update && sudo apt install python3.10 python3.10-venv
   alpine_install_git:
     description: Install required dependencies
     steps:
@@ -156,8 +162,15 @@ jobs:
       executor:
         type: string
         default: golang
+      with-python:
+        type: boolean
+        default: false
     steps:
       - go_restore_cache
+      - when:
+          condition: <<parameters.with-python>>  # if the job needs python, we install it
+          steps:
+            - ubuntu_install_python
       - run:
           name: run make <<parameters.target>>
           command: make <<parameters.target>>
@@ -277,6 +290,7 @@ workflows:
           name: verify-mocks
           target: generate-mocks
           diff-fails: true
+          with-python: true
           requires: [prepare-env]
       - go-make:
           name: vet
