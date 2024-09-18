@@ -6,6 +6,7 @@
 package cloudservice
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -173,7 +174,7 @@ func (s *cloudServicesProvidersManager) PullIPRanges() error {
 	s.log.Infow("finished pull and parse of the cloud provider ip ranges")
 
 	if errorMessage != "" {
-		return fmt.Errorf(errorMessage)
+		return errors.New(errorMessage)
 	}
 
 	return nil

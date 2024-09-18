@@ -15,4 +15,5 @@ const (
 	InjectorTargetPodHostIP   = "TARGET_POD_HOST_IP"
 	InjectorChaosPodIP        = "CHAOS_POD_IP"
 	InjectorPodName           = "INJECTOR_POD_NAME"
+	InjectorLogLevel          = "LOG_LEVEL"
 )

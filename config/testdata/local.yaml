@@ -26,7 +26,12 @@ controller:
       enabled: true
       headers: [a, b, c]
       headersFilepath: /header-file-path/below/me
-      url: https://example.com/webhook
+      disruption:
+        enabled: true
+        url: https://example.com/webhook/disruption
+      disruptioncron:
+        enabled: true
+        url: https://example.com/webhook/disruptioncron
     datadog:
       enabled: true
   cloudProviders:

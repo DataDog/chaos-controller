@@ -21,6 +21,7 @@ import (
 	"github.com/DataDog/chaos-controller/controllers"
 	"github.com/DataDog/chaos-controller/ddmark"
 	"github.com/DataDog/chaos-controller/eventbroadcaster"
+	"github.com/DataDog/chaos-controller/eventnotifier"
 	"github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/o11y/metrics"
 	metricstypes "github.com/DataDog/chaos-controller/o11y/metrics/types"
@@ -111,10 +112,12 @@ func main() {
 	broadcaster := eventbroadcaster.EventBroadcaster()
 
 	// event notifiers
-	err = eventbroadcaster.RegisterNotifierSinks(mgr, broadcaster, cfg.Controller.Notifiers, logger)
+	notifiers, err := eventnotifier.CreateNotifiers(cfg.Controller.Notifiers, logger)
 	if err != nil {
 		logger.Errorw("error(s) while creating notifiers", "error", err)
 	}
+
+	eventbroadcaster.RegisterNotifierSinks(mgr, broadcaster, notifiers, logger)
 
 	metricsSink := initMetricsSink(cfg.Controller.MetricsSink, logger, metricstypes.SinkAppController)
 
@@ -156,7 +159,7 @@ func main() {
 	}
 
 	// target selector
-	targetSelector := targetselector.NewRunningTargetSelector(cfg.Controller.EnableSafeguards, controllerNodeName, logger)
+	targetSelector := targetselector.NewRunningTargetSelector(cfg.Controller.EnableSafeguards, controllerNodeName)
 
 	var gcPtr *time.Duration
 	if cfg.Controller.ExpiredDisruptionGCDelay >= 0 {
@@ -186,6 +189,7 @@ func main() {
 			DNSDisruptionDNSServer:        cfg.Injector.DNSDisruption.DNSServer,
 			DNSDisruptionKubeDNS:          cfg.Injector.DNSDisruption.KubeDNS,
 			ImagePullSecrets:              cfg.Injector.ImagePullSecrets,
+			LogLevel:                      cfg.Injector.LogLevel,
 		},
 		ImagePullSecrets: cfg.Injector.ImagePullSecrets,
 		MetricsSink:      metricsSink,
@@ -316,7 +320,9 @@ func main() {
 			if !ok {
 				return []string{""}
 			}
+
 			targetResource := fmt.Sprintf("%s-%s-%s", dr.Spec.TargetResource.Kind, dr.GetNamespace(), dr.Spec.TargetResource.Name)
+
 			return []string{targetResource}
 		})
 		if err != nil {
@@ -324,7 +330,38 @@ func main() {
 		}
 	}
 
+	// register disruption validating webhook
+	setupWebhookConfig := utils.SetupWebhookWithManagerConfig{
+		Manager:                       mgr,
+		Logger:                        logger,
+		MetricsSink:                   metricsSink,
+		TracerSink:                    tracerSink,
+		Recorder:                      disruptionReconciler.Recorder,
+		NamespaceThresholdFlag:        cfg.Controller.SafeMode.NamespaceThreshold,
+		ClusterThresholdFlag:          cfg.Controller.SafeMode.ClusterThreshold,
+		EnableSafemodeFlag:            cfg.Controller.SafeMode.Enable,
+		AllowNodeFailure:              cfg.Controller.SafeMode.AllowNodeFailure,
+		AllowNodeLevel:                cfg.Controller.SafeMode.AllowNodeLevel,
+		DisabledDisruptions:           cfg.Controller.DisabledDisruptions,
+		DeleteOnlyFlag:                cfg.Controller.DeleteOnly,
+		HandlerEnabledFlag:            cfg.Handler.Enabled,
+		DefaultDurationFlag:           cfg.Controller.DefaultDuration,
+		MaxDurationFlag:               cfg.Controller.MaxDuration,
+		ChaosNamespace:                cfg.Injector.ChaosNamespace,
+		CloudServicesProvidersManager: cloudProviderManager,
+		Environment:                   cfg.Controller.SafeMode.Environment,
+		PermittedUserGroups:           cfg.Controller.SafeMode.PermittedUserGroups,
+	}
+
+	logger.Debug("setup webhook for disruption")
+
+	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(setupWebhookConfig); err != nil {
+		logger.Fatalw("unable to create webhook for disruption", "webhook", chaosv1beta1.DisruptionKind, "error", err)
+	}
+
 	if cfg.Controller.DisruptionCronEnabled {
+		disruptionCronRecorder := broadcaster.NewRecorder(mgr.GetScheme(), corev1.EventSource{Component: chaosv1beta1.SourceDisruptionCronComponent})
+
 		// create disruption cron reconciler
 		disruptionCronReconciler := &controllers.DisruptionCronReconciler{
 			Client:  mgr.GetClient(),
@@ -340,29 +377,19 @@ func main() {
 			logger.Errorw("unable to create controller", "controller", "DisruptionCron", "error", err)
 			os.Exit(1) //nolint:gocritic
 		}
-	}
 
-	// register disruption validating webhook
-	setupWebhookConfig := utils.SetupWebhookWithManagerConfig{
-		Manager:                       mgr,
-		Logger:                        logger,
-		MetricsSink:                   metricsSink,
-		TracerSink:                    tracerSink,
-		Recorder:                      disruptionReconciler.Recorder,
-		NamespaceThresholdFlag:        cfg.Controller.SafeMode.NamespaceThreshold,
-		ClusterThresholdFlag:          cfg.Controller.SafeMode.ClusterThreshold,
-		EnableSafemodeFlag:            cfg.Controller.SafeMode.Enable,
-		DeleteOnlyFlag:                cfg.Controller.DeleteOnly,
-		HandlerEnabledFlag:            cfg.Handler.Enabled,
-		DefaultDurationFlag:           cfg.Controller.DefaultDuration,
-		MaxDurationFlag:               cfg.Controller.MaxDuration,
-		ChaosNamespace:                cfg.Injector.ChaosNamespace,
-		CloudServicesProvidersManager: cloudProviderManager,
-		Environment:                   cfg.Controller.SafeMode.Environment,
-		PermittedUserGroups:           cfg.Controller.SafeMode.PermittedUserGroups,
-	}
-	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(setupWebhookConfig); err != nil {
-		logger.Fatalw("unable to create webhook", "webhook", chaosv1beta1.DisruptionKind, "error", err)
+		disruptionCronSetupWebhookConfig := utils.SetupWebhookWithManagerConfig{
+			Manager:                          mgr,
+			Logger:                           logger,
+			Recorder:                         disruptionCronRecorder,
+			DeleteOnlyFlag:                   cfg.Controller.DeleteOnly,
+			PermittedUserGroups:              cfg.Controller.SafeMode.PermittedUserGroups,
+			DefaultCronDelayedStartTolerance: cfg.Controller.DefaultCronDelayedStartTolerance,
+		}
+
+		if err = (&chaosv1beta1.DisruptionCron{}).SetupWebhookWithManager(disruptionCronSetupWebhookConfig); err != nil {
+			logger.Fatalw("unable to create webhook for disruption cron", "webhook", chaosv1beta1.DisruptionCronKind, "error", err)
+		}
 	}
 
 	webhookDecoder := admission.NewDecoder(scheme)
@@ -383,7 +410,7 @@ func main() {
 
 	if cfg.Controller.UserInfoHook {
 		// register user info mutating webhook
-		mgr.GetWebhookServer().Register("/mutate-chaos-datadoghq-com-v1beta1-disruption-user-info", &webhook.Admission{
+		mgr.GetWebhookServer().Register("/mutate-chaos-datadoghq-com-v1beta1-user-info", &webhook.Admission{
 			Handler: &chaoswebhook.UserInfoMutator{
 				Client:  mgr.GetClient(),
 				Log:     logger,

@@ -6,7 +6,6 @@
 package eventnotifier
 
 import (
-	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier/datadog"
 	"github.com/DataDog/chaos-controller/eventnotifier/http"
 	"github.com/DataDog/chaos-controller/eventnotifier/noop"
@@ -14,6 +13,7 @@ import (
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type NotifiersConfig struct {
@@ -21,16 +21,16 @@ type NotifiersConfig struct {
 	Noop    noop.NotifierNoopConfig       `json:"notifierNoopConfig"`
 	Slack   slack.NotifierSlackConfig     `json:"notifierSlackConfig"`
 	Datadog datadog.NotifierDatadogConfig `json:"notifierDatadogConfig"`
-	HTTP    http.NotifierHTTPConfig       `json:"notifierHTTPConfig"`
+	HTTP    http.Config                   `json:"notifierHTTPConfig"`
 }
 
 type Notifier interface {
 	GetNotifierName() string
-	Notify(v1beta1.Disruption, corev1.Event, types.NotificationType) error
+	Notify(client.Object, corev1.Event, types.NotificationType) error
 }
 
-// GetNotifier returns an initiated Notifier instance
-func GetNotifiers(config NotifiersConfig, logger *zap.SugaredLogger) (notifiers []Notifier, err error) {
+// CreateNotifiers creates and returns a list of Notifier instances
+func CreateNotifiers(config NotifiersConfig, logger *zap.SugaredLogger) (notifiers []Notifier, err error) {
 	err = nil
 
 	if config.Noop.Enabled {
@@ -48,7 +48,7 @@ func GetNotifiers(config NotifiersConfig, logger *zap.SugaredLogger) (notifiers 
 	}
 
 	if config.Datadog.Enabled {
-		not, ddogErr := datadog.New(config.Common, config.Datadog, logger)
+		not, ddogErr := datadog.New(config.Common, config.Datadog, logger, nil)
 		if ddogErr != nil {
 			err = ddogErr
 		} else {
@@ -56,7 +56,7 @@ func GetNotifiers(config NotifiersConfig, logger *zap.SugaredLogger) (notifiers 
 		}
 	}
 
-	if config.HTTP.Enabled {
+	if config.HTTP.IsEnabled() {
 		not, httpErr := http.New(config.Common, config.HTTP, logger)
 		if httpErr != nil {
 			err = httpErr

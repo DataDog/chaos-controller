@@ -6,8 +6,6 @@
 run:
   timeout: 5m
   tests: false
-  skip-files:
-    - api/v1beta1/zz_generated.deepcopy.go
 linters:
   # disable all linters by default
   disable-all: true
@@ -22,7 +20,6 @@ linters:
     - unused
     # extra linters
     - bodyclose
-    #    - depguard # TODO https://github.com/golangci/golangci-lint/issues/3906 re-enable after next golangci-lint release
     - dogsled
     - godox
     - gofmt
@@ -51,6 +48,7 @@ issues:
     - weak random number generator
     - memory aliasing in for loop
     - file inclusion via variable
+    - integer overflow conversion # revisit this. existing usages are safe
     # golint
     - (comment on exported (method|function|type|const)|should have( a package)? comment|comment should be of the form)
 

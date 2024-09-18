@@ -27,8 +27,12 @@ data:
           tokenFilepath: {{ .Values.controller.notifiers.slack.tokenFilepath | quote }}
           mirrorSlackChannelId: {{ .Values.controller.notifiers.slack.mirrorSlackChannelId | quote }}
         http:
-          enabled: {{ .Values.controller.notifiers.http.enabled }}
-          url: {{ .Values.controller.notifiers.http.url | quote }}
+          disruption:
+            enabled: {{ .Values.controller.notifiers.http.disruption.enabled }}
+            url: {{ .Values.controller.notifiers.http.disruption.url | quote }}
+          disruptioncron:
+            enabled: {{ .Values.controller.notifiers.http.disruptioncron.enabled }}
+            url: {{ .Values.controller.notifiers.http.disruptioncron.url | quote }}
           headers: {{ .Values.controller.notifiers.http.headers | toJson }}
           headersFilepath: {{ .Values.controller.notifiers.http.headersFilepath | quote }}
           authURL: {{ .Values.controller.notifiers.http.authURL | quote }}
@@ -50,6 +54,7 @@ data:
           ipRangesURL: {{ .Values.controller.cloudProviders.datadog.ipRangesURL }}
       deleteOnly: {{ .Values.controller.deleteOnly }}
       defaultDuration: {{ .Values.controller.defaultDuration }}
+      defaultCronDelayedStartTolerance: {{ .Values.controller.defaultCronDelayedStartTolerance }}
       maxDuration: {{ .Values.controller.maxDuration }}
       expiredDisruptionGCDelay: {{ .Values.controller.expiredDisruptionGCDelay }}
       userInfoHook: {{ .Values.controller.userInfoHook }}
@@ -66,9 +71,15 @@ data:
         environment: {{ tpl .Values.controller.safeMode.environment . }}
         namespaceThreshold: {{ .Values.controller.safeMode.namespaceThreshold }}
         clusterThreshold: {{ .Values.controller.safeMode.clusterThreshold }}
+        allowNodeLevel: {{ .Values.controller.safeMode.allowNodeLevel }}
+        allowNodeFailure: {{ .Values.controller.safeMode.allowNodeFailure }}
       disruptionCronEnabled: {{ .Values.controller.disruptionCronEnabled }}
       disruptionRolloutEnabled: {{ .Values.controller.disruptionRolloutEnabled }}
       disruptionDeletionTimeout: {{ .Values.controller.disruptionDeletionTimeout }}
+      disabledDisruptions:
+      {{- range $index, $kind := .Values.controller.disabledDisruptions }}
+        {{ $kind }}
+      {{- end }}
     injector:
       image: {{ template "chaos-controller.format-image" deepCopy .Values.global.chaos.defaultImage | merge .Values.global.oci | merge .Values.injector.image }}
       imagePullSecrets: {{ .Values.injector.image.pullSecrets }}
@@ -101,6 +112,9 @@ data:
             tolerationSeconds: {{ .tolerationSeconds }}
             {{- end }}
         {{- end }}
+      {{- end }}
+      {{- if .Values.injector.logLevel }}
+      logLevel: {{ .Values.injector.logLevel }}
       {{- end }}
       serviceAccount: {{ .Values.injector.serviceAccount | quote }}
       chaosNamespace: {{ .Values.chaosNamespace | quote }}

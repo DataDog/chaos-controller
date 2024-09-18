@@ -6,10 +6,12 @@
 package v1beta1
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/DataDog/chaos-controller/ddmark"
+	"github.com/DataDog/chaos-controller/mocks"
 	metricsnoop "github.com/DataDog/chaos-controller/o11y/metrics/noop"
 	tracernoop "github.com/DataDog/chaos-controller/o11y/tracer/noop"
 	chaostypes "github.com/DataDog/chaos-controller/types"
@@ -23,7 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -35,15 +36,22 @@ const (
 
 var oldDisruption, newDisruption *Disruption
 
-var _ = Describe("Disruption", func() {
-	var ddmarkMock *ddmark.ClientMock
+var _ = Describe("Disruption Webhook", func() {
+	var (
+		ddmarkMock   *ddmark.ClientMock
+		recorderMock *mocks.EventRecorderMock
+	)
 
 	BeforeEach(func() {
 		ddmarkMock = ddmark.NewClientMock(GinkgoT())
 		ddmarkClient = ddmarkMock
+		allowNodeLevel = true
+		allowNodeFailure = true
+		recorderMock = mocks.NewEventRecorderMock(GinkgoT())
+		recorder = recorderMock
 	})
 
-	Context("ValidateUpdate", func() {
+	Describe("ValidateUpdate", func() {
 		BeforeEach(func() {
 			oldDisruption = makeValidNetworkDisruption()
 			newDisruption = oldDisruption.DeepCopy()
@@ -260,11 +268,10 @@ var _ = Describe("Disruption", func() {
 		})
 	})
 
-	Context("ValidateCreate", func() {
+	Describe("ValidateCreate", func() {
 		Describe("general errors expectations", func() {
 			BeforeEach(func() {
 				k8sClient = makek8sClientWithDisruptionPod()
-				recorder = record.NewFakeRecorder(1)
 				tracerSink = tracernoop.New(logger)
 				deleteOnly = false
 			})
@@ -278,6 +285,7 @@ var _ = Describe("Disruption", func() {
 				k8sClient = nil
 				newDisruption = nil
 				permittedUserGroups = map[string]struct{}{}
+				disabledDisruptions = []string{}
 			})
 
 			When("disruption has delete-only mode enable", func() {
@@ -444,7 +452,9 @@ var _ = Describe("Disruption", func() {
 
 			When("triggers.*.notBefore is in the future", func() {
 				It("should not return an error", func() {
+					// Arrange
 					ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})
+
 					newDisruption.Spec.Duration = "30m"
 					newDisruption.Spec.Triggers = &DisruptionTriggers{
 						Inject: DisruptionTrigger{
@@ -452,7 +462,19 @@ var _ = Describe("Disruption", func() {
 						},
 					}
 
-					_, err := newDisruption.ValidateCreate()
+					disruptionJSON, err := json.Marshal(newDisruption)
+					Expect(err).ShouldNot(HaveOccurred())
+
+					expectedAnnotations := map[string]string{
+						EventDisruptionAnnotation: string(disruptionJSON),
+					}
+
+					recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+
+					// Action
+					_, err = newDisruption.ValidateCreate()
+
+					// Assert
 					Expect(err).ShouldNot(HaveOccurred())
 				})
 			})
@@ -483,29 +505,162 @@ var _ = Describe("Disruption", func() {
 					_, err := newDisruption.ValidateCreate()
 
 					Expect(err).Should(HaveOccurred())
-					Expect(err.Error()).Should(ContainSubstring("lacking sufficient authorization to create disruptions. your user groups are [some], but you must be in one of the following groups: system:nobody"))
+					Expect(err.Error()).Should(ContainSubstring("lacking sufficient authorization to create Disruption. your user groups are some, but you must be in one of the following groups: system:nobody"))
 				})
 
 				It("should not return an error if they are within a permitted group", func() {
+					// Arrange
 					ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})
 					permittedUserGroups = map[string]struct{}{}
 					permittedUserGroups["some"] = struct{}{}
 					permittedUserGroups["any"] = struct{}{}
 					permittedUserGroupWarningString = "some, any"
 
-					_, err := newDisruption.ValidateCreate()
+					disruptionJSON, err := json.Marshal(newDisruption)
+					Expect(err).ShouldNot(HaveOccurred())
 
+					expectedAnnotations := map[string]string{
+						EventDisruptionAnnotation: string(disruptionJSON),
+					}
+
+					recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+
+					// Action
+					_, err = newDisruption.ValidateCreate()
+
+					// Assert
 					Expect(err).ShouldNot(HaveOccurred())
 					Expect(ddmarkMock.AssertNumberOfCalls(GinkgoT(), "ValidateStructMultierror", 1)).To(BeTrue())
 				})
 			})
+
+			When("controller has network-disruptions disabled", func() {
+				It("should return an error which denies the creation of a new disruption", func() {
+					ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{}).Once()
+					disabledDisruptions = []string{"network-disruption"}
+
+					_, err := newDisruption.ValidateCreate()
+
+					Expect(err).Should(HaveOccurred())
+					Expect(err.Error()).Should(HavePrefix("disruption kind network-disruption is currently disabled"))
+				})
+			})
 		})
 
-		Describe("expectations with a disk failure disruption", func() {
+		Describe("expectations with node disruptions", func() {
 			BeforeEach(func() {
 				ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})
 				k8sClient = makek8sClientWithDisruptionPod()
-				recorder = record.NewFakeRecorder(1)
+				metricsSink = metricsnoop.New(logger)
+				tracerSink = tracernoop.New(logger)
+				deleteOnly = false
+				enableSafemode = true
+				allowNodeFailure = true
+				allowNodeLevel = true
+			})
+
+			JustBeforeEach(func() {
+				newDisruption = makeValidNetworkDisruption()
+			})
+
+			AfterEach(func() {
+				k8sClient = nil
+				newDisruption = nil
+			})
+
+			Context("allowNodeFailure is false", func() {
+				JustBeforeEach(func() {
+					newDisruption.Spec.NodeFailure = &NodeFailureSpec{}
+				})
+
+				It("should reject the disruption at node level", func() {
+					allowNodeFailure = false
+					newDisruption.Spec.Level = chaostypes.DisruptionLevelNode
+
+					_, err := newDisruption.ValidateCreate()
+
+					Expect(err).Should(HaveOccurred())
+					Expect(err).Should(MatchError(ContainSubstring("at least one of the initial safety nets caught an issue")))
+					Expect(err.Error()).Should(ContainSubstring("node failure disruptions are not allowed in this cluster"))
+
+				})
+
+				It("should reject the disruption at pod level", func() {
+					allowNodeFailure = false
+
+					_, err := newDisruption.ValidateCreate()
+
+					Expect(err).Should(HaveOccurred())
+					Expect(err.Error()).Should(ContainSubstring("at least one of the initial safety nets caught an issue"))
+					Expect(err.Error()).Should(ContainSubstring("node failure disruptions are not allowed in this cluster"))
+
+				})
+			})
+
+			Context("allowNodeLevel is false", func() {
+				It("should reject the disruption at node level", func() {
+					// Arrange
+					allowNodeLevel = false
+					newDisruption.Spec.Level = chaostypes.DisruptionLevelNode
+
+					// Action
+					_, err := newDisruption.ValidateCreate()
+
+					// Assert
+					Expect(err).Should(HaveOccurred())
+					Expect(err.Error()).Should(ContainSubstring("at least one of the initial safety nets caught an issue"))
+					Expect(err.Error()).Should(ContainSubstring("node level disruptions are not allowed in this cluster"))
+				})
+
+				It("should allow the disruption at pod level", func() {
+					// Arrange
+					disruptionJSON, err := json.Marshal(newDisruption)
+					Expect(err).ShouldNot(HaveOccurred())
+
+					expectedAnnotations := map[string]string{
+						EventDisruptionAnnotation: string(disruptionJSON),
+					}
+
+					recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+
+					// Action
+					_, err = newDisruption.ValidateCreate()
+
+					// Assert
+					Expect(err).ShouldNot(HaveOccurred())
+				})
+			})
+
+			Context("allowNodeFailure and allowNodeLevel are true", func() {
+				It("should allow a node level node failure disruption", func() {
+					// Arrange
+					allowNodeFailure = true
+					allowNodeLevel = true
+					newDisruption.Spec.Level = chaostypes.DisruptionLevelNode
+					newDisruption.Spec.NodeFailure = &NodeFailureSpec{}
+
+					disruptionJSON, err := json.Marshal(newDisruption)
+					Expect(err).ShouldNot(HaveOccurred())
+
+					expectedAnnotations := map[string]string{
+						EventDisruptionAnnotation: string(disruptionJSON),
+					}
+
+					recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+
+					// Action
+					_, err = newDisruption.ValidateCreate()
+
+					// Assert
+					Expect(err).ShouldNot(HaveOccurred())
+				})
+			})
+		})
+
+		Describe("safemode expectations with a disk failure disruption", func() {
+			BeforeEach(func() {
+				ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})
+				k8sClient = makek8sClientWithDisruptionPod()
 				metricsSink = metricsnoop.New(logger)
 				tracerSink = tracernoop.New(logger)
 				deleteOnly = false
@@ -514,7 +669,6 @@ var _ = Describe("Disruption", func() {
 
 			JustBeforeEach(func() {
 				newDisruption = makeValidDiskFailureDisruption()
-				controllerutil.AddFinalizer(newDisruption, chaostypes.DisruptionFinalizer)
 			})
 
 			AfterEach(func() {
@@ -537,7 +691,28 @@ var _ = Describe("Disruption", func() {
 						// Assert
 						Expect(err).Should(HaveOccurred())
 						Expect(err.Error()).Should(ContainSubstring("at least one of the initial safety nets caught an issue"))
-						Expect(err.Error()).Should(ContainSubstring("the specified path for the disk failure disruption targeting a node must not be \"/\"."))
+						Expect(err.Error()).Should(ContainSubstring("the specified path for the disk failure disruption targeting a node must not be \"/\""))
+					})
+				})
+				Context("with the '/test' path", func() {
+					It("should allow the usage", func() {
+						// Arrange
+						newDisruption.Spec.DiskFailure.Paths = []string{"/test"}
+
+						disruptionJSON, err := json.Marshal(newDisruption)
+						Expect(err).ShouldNot(HaveOccurred())
+
+						expectedAnnotations := map[string]string{
+							EventDisruptionAnnotation: string(disruptionJSON),
+						}
+
+						recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+
+						// Action
+						_, err = newDisruption.ValidateCreate()
+
+						// Assert
+						Expect(err).ShouldNot(HaveOccurred())
 					})
 				})
 				Context("with the '  /  ' path", func() {
@@ -551,7 +726,7 @@ var _ = Describe("Disruption", func() {
 						// Assert
 						Expect(err).Should(HaveOccurred())
 						Expect(err.Error()).Should(ContainSubstring("at least one of the initial safety nets caught an issue"))
-						Expect(err.Error()).Should(ContainSubstring("the specified path for the disk failure disruption targeting a node must not be \"/\"."))
+						Expect(err.Error()).Should(ContainSubstring("the specified path for the disk failure disruption targeting a node must not be \"/\""))
 					})
 				})
 				Context("safe-mode disabled", func() {
@@ -561,8 +736,17 @@ var _ = Describe("Disruption", func() {
 							AllowRootDiskFailure: true,
 						}
 
+						disruptionJSON, err := json.Marshal(newDisruption)
+						Expect(err).ShouldNot(HaveOccurred())
+
+						expectedAnnotations := map[string]string{
+							EventDisruptionAnnotation: string(disruptionJSON),
+						}
+
+						recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+
 						// Action
-						_, err := newDisruption.ValidateCreate()
+						_, err = newDisruption.ValidateCreate()
 
 						// Assert
 						Expect(err).ShouldNot(HaveOccurred())
@@ -579,8 +763,17 @@ var _ = Describe("Disruption", func() {
 						// Arrange
 						newDisruption.Spec.DiskFailure.Paths = []string{"/test", "/"}
 
+						disruptionJSON, err := json.Marshal(newDisruption)
+						Expect(err).ShouldNot(HaveOccurred())
+
+						expectedAnnotations := map[string]string{
+							EventDisruptionAnnotation: string(disruptionJSON),
+						}
+
+						recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+
 						// Action
-						_, err := newDisruption.ValidateCreate()
+						_, err = newDisruption.ValidateCreate()
 
 						// Assert
 						Expect(err).ShouldNot(HaveOccurred())
@@ -593,8 +786,17 @@ var _ = Describe("Disruption", func() {
 							AllowRootDiskFailure: true,
 						}
 
+						disruptionJSON, err := json.Marshal(newDisruption)
+						Expect(err).ShouldNot(HaveOccurred())
+
+						expectedAnnotations := map[string]string{
+							EventDisruptionAnnotation: string(disruptionJSON),
+						}
+
+						recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+
 						// Action
-						_, err := newDisruption.ValidateCreate()
+						_, err = newDisruption.ValidateCreate()
 
 						// Assert
 						Expect(err).ShouldNot(HaveOccurred())
@@ -602,12 +804,119 @@ var _ = Describe("Disruption", func() {
 				})
 			})
 		})
+
+		Describe("safemode expectations with a network failure disruption", func() {
+			BeforeEach(func() {
+				ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})
+				k8sClient = makek8sClientWithDisruptionPod()
+				metricsSink = metricsnoop.New(logger)
+				tracerSink = tracernoop.New(logger)
+				deleteOnly = false
+				enableSafemode = true
+			})
+
+			JustBeforeEach(func() {
+				newDisruption = makeValidNetworkDisruption()
+			})
+
+			AfterEach(func() {
+				k8sClient = nil
+				newDisruption = nil
+			})
+
+			When("only services are defined", func() {
+				It("should pass validation", func() {
+					// Arrange
+					newDisruption.Spec.Network.Hosts = nil
+					newDisruption.Spec.Network.Services = []NetworkDisruptionServiceSpec{{Name: "foo", Namespace: chaosNamespace}}
+
+					disruptionJSON, err := json.Marshal(newDisruption)
+					Expect(err).ShouldNot(HaveOccurred())
+
+					expectedAnnotations := map[string]string{
+						EventDisruptionAnnotation: string(disruptionJSON),
+					}
+
+					recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+
+					// Action
+					_, err = newDisruption.ValidateCreate()
+
+					// Assert
+					Expect(err).ShouldNot(HaveOccurred())
+				})
+			})
+
+			When("various host filters are defined", func() {
+				DescribeTable("should pass validation", func(hosts []NetworkDisruptionHostSpec) {
+					// Arrange
+					newDisruption.Spec.Network.Hosts = hosts
+
+					disruptionJSON, err := json.Marshal(newDisruption)
+					Expect(err).ShouldNot(HaveOccurred())
+
+					expectedAnnotations := map[string]string{
+						EventDisruptionAnnotation: string(disruptionJSON),
+					}
+
+					recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+
+					// Action
+					_, err = newDisruption.ValidateCreate()
+
+					// Assert
+					Expect(err).ShouldNot(HaveOccurred())
+				},
+					Entry("with just a port filter", []NetworkDisruptionHostSpec{{Port: 80}}),
+					Entry("with just a protocol filter", []NetworkDisruptionHostSpec{{Protocol: "tcp"}}),
+					Entry("with just a hostname filter", []NetworkDisruptionHostSpec{{Host: "localhost"}}),
+					Entry("with all possible host filters together", []NetworkDisruptionHostSpec{{Host: "localhost", Port: 443, Protocol: "udp"}}),
+				)
+			})
+
+			When("no filters are defined", func() {
+				It("should be rejected", func() {
+					newDisruption.Spec.Network.Hosts = nil
+
+					_, err := newDisruption.ValidateCreate()
+
+					Expect(err).Should(HaveOccurred())
+					Expect(err.Error()).Should(ContainSubstring("at least one of the initial safety nets caught an issue"))
+					Expect(err.Error()).Should(ContainSubstring("the specified disruption either contains no Host or Service filters. This will result in all network traffic being affected"))
+				})
+
+				It("should be allowed with DisableNeitherHostNorPort", func() {
+					// Arrange
+					newDisruption.Spec.Network.Hosts = nil
+					newDisruption.Spec.Unsafemode = &UnsafemodeSpec{DisableNeitherHostNorPort: true}
+
+					disruptionJSON, err := json.Marshal(newDisruption)
+					Expect(err).ShouldNot(HaveOccurred())
+
+					expectedAnnotations := map[string]string{
+						EventDisruptionAnnotation: string(disruptionJSON),
+					}
+
+					recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+
+					// Action
+					_, err = newDisruption.ValidateCreate()
+
+					// Assert
+					Expect(err).ShouldNot(HaveOccurred())
+				})
+			})
+
+		})
 	})
 })
 
 // makeValidNetworkDisruption is a helper that constructs a valid Disruption suited for basic webhook validation testing
 func makeValidNetworkDisruption() *Disruption {
 	disruption := Disruption{
+		TypeMeta: metav1.TypeMeta{
+			Kind: DisruptionKind,
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      testDisruptionName,
 			Namespace: chaosNamespace,
@@ -687,6 +996,17 @@ func makek8sClientWithDisruptionPod() client.Client {
 					},
 				},
 			},
-		}).
+		},
+			&v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: chaosNamespace,
+				},
+				Spec: v1.ServiceSpec{
+					ClusterIP: "localhost",
+					Type:      v1.ServiceTypeClusterIP,
+				},
+			},
+		).
 		Build()
 }

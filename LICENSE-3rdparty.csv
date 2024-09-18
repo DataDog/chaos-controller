@@ -147,11 +147,11 @@ github.com/coreos/go-iptables,github.com/coreos/go-iptables/iptables,Apache-2.0
 github.com/coreos/go-systemd/v22,github.com/coreos/go-systemd/v22/dbus,Apache-2.0
 github.com/cyphar/filepath-securejoin,github.com/cyphar/filepath-securejoin,BSD-3-Clause
 github.com/davecgh/go-spew,github.com/davecgh/go-spew/spew,ISC
-github.com/docker/distribution,github.com/docker/distribution/digestset,Apache-2.0
-github.com/docker/distribution,github.com/docker/distribution/reference,Apache-2.0
+github.com/distribution/reference,github.com/distribution/reference,Apache-2.0
 github.com/docker/docker,github.com/docker/docker/api,Apache-2.0
 github.com/docker/docker,github.com/docker/docker/api/types,Apache-2.0
 github.com/docker/docker,github.com/docker/docker/api/types/blkiodev,Apache-2.0
+github.com/docker/docker,github.com/docker/docker/api/types/checkpoint,Apache-2.0
 github.com/docker/docker,github.com/docker/docker/api/types/container,Apache-2.0
 github.com/docker/docker,github.com/docker/docker/api/types/events,Apache-2.0
 github.com/docker/docker,github.com/docker/docker/api/types/filters,Apache-2.0
@@ -162,11 +162,13 @@ github.com/docker/docker,github.com/docker/docker/api/types/registry,Apache-2.0
 github.com/docker/docker,github.com/docker/docker/api/types/strslice,Apache-2.0
 github.com/docker/docker,github.com/docker/docker/api/types/swarm,Apache-2.0
 github.com/docker/docker,github.com/docker/docker/api/types/swarm/runtime,Apache-2.0
+github.com/docker/docker,github.com/docker/docker/api/types/system,Apache-2.0
 github.com/docker/docker,github.com/docker/docker/api/types/time,Apache-2.0
 github.com/docker/docker,github.com/docker/docker/api/types/versions,Apache-2.0
 github.com/docker/docker,github.com/docker/docker/api/types/volume,Apache-2.0
 github.com/docker/docker,github.com/docker/docker/client,Apache-2.0
 github.com/docker/docker,github.com/docker/docker/errdefs,Apache-2.0
+github.com/docker/docker,github.com/docker/docker/internal/multierror,Apache-2.0
 github.com/docker/go-connections,github.com/docker/go-connections/nat,Apache-2.0
 github.com/docker/go-connections,github.com/docker/go-connections/sockets,Apache-2.0
 github.com/docker/go-connections,github.com/docker/go-connections/tlsconfig,Apache-2.0
@@ -178,6 +180,7 @@ github.com/emicklei/go-restful/v3,github.com/emicklei/go-restful/v3/log,MIT
 github.com/evanphx/json-patch,github.com/evanphx/json-patch,BSD-3-Clause
 github.com/evanphx/json-patch/v5,github.com/evanphx/json-patch/v5,BSD-3-Clause
 github.com/evanphx/json-patch/v5,github.com/evanphx/json-patch/v5/internal/json,BSD-3-Clause
+github.com/felixge/httpsnoop,github.com/felixge/httpsnoop,MIT
 github.com/fsnotify/fsnotify,github.com/fsnotify/fsnotify,BSD-3-Clause
 github.com/go-logr/logr,github.com/go-logr/logr,Apache-2.0
 github.com/go-logr/logr,github.com/go-logr/logr/funcr,Apache-2.0
@@ -253,6 +256,7 @@ github.com/mgutz/ansi,github.com/mgutz/ansi,MIT
 github.com/miekg/dns,github.com/miekg/dns,BSD-3-Clause
 github.com/mitchellh/go-homedir,github.com/mitchellh/go-homedir,MIT
 github.com/mitchellh/mapstructure,github.com/mitchellh/mapstructure,MIT
+github.com/moby/docker-image-spec,github.com/moby/docker-image-spec/specs-go/v1,Apache-2.0
 github.com/moby/locker,github.com/moby/locker,Apache-2.0
 github.com/moby/spdystream,github.com/moby/spdystream,Apache-2.0
 github.com/moby/spdystream,github.com/moby/spdystream/spdy,Apache-2.0
@@ -284,6 +288,8 @@ github.com/onsi/ginkgo/v2,github.com/onsi/ginkgo/v2/reporters,MIT
 github.com/onsi/ginkgo/v2,github.com/onsi/ginkgo/v2/types,MIT
 github.com/onsi/gomega,github.com/onsi/gomega,MIT
 github.com/onsi/gomega,github.com/onsi/gomega/format,MIT
+github.com/onsi/gomega,github.com/onsi/gomega/gstruct,MIT
+github.com/onsi/gomega,github.com/onsi/gomega/gstruct/errors,MIT
 github.com/onsi/gomega,github.com/onsi/gomega/internal,MIT
 github.com/onsi/gomega,github.com/onsi/gomega/internal/gutil,MIT
 github.com/onsi/gomega,github.com/onsi/gomega/matchers,MIT
@@ -305,6 +311,7 @@ github.com/opencontainers/runc,github.com/opencontainers/runc/libcontainer/cgrou
 github.com/opencontainers/runc,github.com/opencontainers/runc/libcontainer/cgroups/fscommon,Apache-2.0
 github.com/opencontainers/runc,github.com/opencontainers/runc/libcontainer/configs,Apache-2.0
 github.com/opencontainers/runc,github.com/opencontainers/runc/libcontainer/devices,Apache-2.0
+github.com/opencontainers/runc,github.com/opencontainers/runc/libcontainer/system,Apache-2.0
 github.com/opencontainers/runc,github.com/opencontainers/runc/libcontainer/user,Apache-2.0
 github.com/opencontainers/runc,github.com/opencontainers/runc/libcontainer/userns,Apache-2.0
 github.com/opencontainers/runc,github.com/opencontainers/runc/libcontainer/utils,Apache-2.0
@@ -379,6 +386,8 @@ go.opencensus.io,go.opencensus.io/internal,Apache-2.0
 go.opencensus.io,go.opencensus.io/trace,Apache-2.0
 go.opencensus.io,go.opencensus.io/trace/internal,Apache-2.0
 go.opencensus.io,go.opencensus.io/trace/tracestate,Apache-2.0
+go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp,go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp,Apache-2.0
+go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp,go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp/internal/semconvutil,Apache-2.0
 go.opentelemetry.io/otel,go.opentelemetry.io/otel,Apache-2.0
 go.opentelemetry.io/otel,go.opentelemetry.io/otel/attribute,Apache-2.0
 go.opentelemetry.io/otel,go.opentelemetry.io/otel/baggage,Apache-2.0
@@ -388,6 +397,7 @@ go.opentelemetry.io/otel,go.opentelemetry.io/otel/internal/attribute,Apache-2.0
 go.opentelemetry.io/otel,go.opentelemetry.io/otel/internal/baggage,Apache-2.0
 go.opentelemetry.io/otel,go.opentelemetry.io/otel/internal/global,Apache-2.0
 go.opentelemetry.io/otel,go.opentelemetry.io/otel/propagation,Apache-2.0
+go.opentelemetry.io/otel,go.opentelemetry.io/otel/semconv/v1.17.0,Apache-2.0
 go.opentelemetry.io/otel/metric,go.opentelemetry.io/otel/metric,Apache-2.0
 go.opentelemetry.io/otel/metric,go.opentelemetry.io/otel/metric/embedded,Apache-2.0
 go.opentelemetry.io/otel/trace,go.opentelemetry.io/otel/trace,Apache-2.0

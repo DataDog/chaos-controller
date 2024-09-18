@@ -40,20 +40,24 @@ func Contains(s []string, str string) bool {
 }
 
 type SetupWebhookWithManagerConfig struct {
-	Manager                       ctrl.Manager
-	Logger                        *zap.SugaredLogger
-	MetricsSink                   metrics.Sink
-	TracerSink                    tracer.Sink
-	Recorder                      record.EventRecorder
-	NamespaceThresholdFlag        int
-	ClusterThresholdFlag          int
-	EnableSafemodeFlag            bool
-	DeleteOnlyFlag                bool
-	HandlerEnabledFlag            bool
-	DefaultDurationFlag           time.Duration
-	MaxDurationFlag               time.Duration
-	ChaosNamespace                string
-	CloudServicesProvidersManager cloudservice.CloudServicesProvidersManager
-	Environment                   string
-	PermittedUserGroups           []string
+	Manager                          ctrl.Manager
+	Logger                           *zap.SugaredLogger
+	MetricsSink                      metrics.Sink
+	TracerSink                       tracer.Sink
+	Recorder                         record.EventRecorder
+	NamespaceThresholdFlag           int
+	ClusterThresholdFlag             int
+	EnableSafemodeFlag               bool
+	AllowNodeLevel                   bool
+	AllowNodeFailure                 bool
+	DisabledDisruptions              []string
+	DeleteOnlyFlag                   bool
+	HandlerEnabledFlag               bool
+	DefaultDurationFlag              time.Duration
+	MaxDurationFlag                  time.Duration
+	DefaultCronDelayedStartTolerance time.Duration
+	ChaosNamespace                   string
+	CloudServicesProvidersManager    cloudservice.CloudServicesProvidersManager
+	Environment                      string
+	PermittedUserGroups              []string
 }

@@ -2,33 +2,50 @@
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2024 Datadog, Inc.
+
 package utils
 
 import (
-	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"fmt"
+
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
 	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// BuildBodyMessageFromDisruptionEvent Templated body text to send to notifiers
-func BuildBodyMessageFromDisruptionEvent(dis v1beta1.Disruption, event corev1.Event, isMarkdown bool) string {
+// BuildBodyMessageFromObjectEvent Templated body text to send to notifiers
+func BuildBodyMessageFromObjectEvent(obj client.Object, event corev1.Event, isMarkdown bool) string {
+	messagePrefix := formatMessagePrefix(obj, event, isMarkdown)
+
 	if isMarkdown {
-		return "> Disruption `" + dis.Name + "` emitted the event `" + event.Reason + "`: " + event.Message
+		return messagePrefix + " emitted the event `" + event.Reason + "`: " + event.Message
 	}
 
-	return "Disruption '" + dis.Name + "' emitted the event " + event.Reason + ": " + event.Message
+	return messagePrefix + " emitted the event " + event.Reason + ": " + event.Message
 }
 
-// BuildHeaderMessageFromDisruptionEvent Templated header text to send to notifiers
-func BuildHeaderMessageFromDisruptionEvent(dis v1beta1.Disruption, notifType types.NotificationType) string {
+// BuildHeaderMessageFromObjectEvent Templated header text to send to notifiers
+func BuildHeaderMessageFromObjectEvent(obj client.Object, event corev1.Event, notifType types.NotificationType) string {
+	messagePrefix := formatMessagePrefix(obj, event, false)
+
 	switch notifType {
 	case types.NotificationCompletion:
-		return "Disruption '" + dis.Name + "' is finished or terminating."
+		return messagePrefix + " is finished or terminating."
 	case types.NotificationSuccess:
-		return "Disruption '" + dis.Name + "' received a recovery notification."
+		return messagePrefix + " received a recovery notification."
 	case types.NotificationInfo:
-		return "Disruption '" + dis.Name + "' received a notification."
+		return messagePrefix + " received a notification."
 	default:
-		return "Disruption '" + dis.Name + "' encountered an issue."
+		return messagePrefix + " encountered an issue."
 	}
+}
+
+func formatMessagePrefix(obj client.Object, event corev1.Event, isMarkdown bool) string {
+	template := "%s '%s'"
+
+	if isMarkdown {
+		template = "> %s `%s`"
+	}
+
+	return fmt.Sprintf(template, event.InvolvedObject.Kind, obj.GetName())
 }

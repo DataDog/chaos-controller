@@ -80,7 +80,7 @@ executors:
     docker:
       # This is circle ci images, provides default tool installed (like docker) to ease step definition and avoid apt-get/update things
       # https://circleci.com/docs/circleci-images/#next-gen-language-images
-      - image: cimg/go:1.22.1
+      - image: cimg/go:1.23.1
     resource_class: 2xlarge
   python:
     <<: *working_directory
@@ -93,7 +93,7 @@ executors:
   ubuntu:
     <<: *working_directory
     machine:
-      image: ubuntu-2204:2024.01.2
+      image: ubuntu-2404:2024.05.1
     resource_class: xlarge # if you change the resource_class here, please adapt Makefile/minikube start cpu/memory accordingly
 jobs:
   # prepares the CI environment by checking out the code,

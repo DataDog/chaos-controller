@@ -5,7 +5,9 @@
 
 package v1beta1
 
-import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
 
 func init() {
 	SchemeBuilder.Register(&DisruptionCron{}, &DisruptionCronList{})
@@ -58,9 +60,12 @@ type DisruptionCronSpec struct {
 	// +ddmark:validation:Required=true
 	// Specifies the Disruption that will be created when executing a disruptioncron.
 	DisruptionTemplate DisruptionSpec `json:"disruptionTemplate"`
+
+	// +nullable
+	Reporting *Reporting `json:"reporting,omitempty"`
 }
 
-// TargetResource specifies the long-lived resource to be targeted for disruptions.
+// TargetResourceSpec specifies the long-lived resource to be targeted for disruptions.
 // DisruptionCrons are intended to exist semi-permanently, and thus appropriate targets can only be other long-lived resources,
 // such as statefulsets or deployment.
 type TargetResourceSpec struct {

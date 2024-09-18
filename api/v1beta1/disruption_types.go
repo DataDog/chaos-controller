@@ -493,9 +493,16 @@ func (s DisruptionSpec) HashNoCount() (string, error) {
 	return s.Hash()
 }
 
-// Validate applies rules for disruption global scope and all subsequent disruption specifications
+// Validate applies rules for disruption global scope and all subsequent disruption specifications, requiring selectors
+// intended to be called when DisruptionSpec belongs directly to a Disruption
+// also exists for backwards compatibility
 func (s DisruptionSpec) Validate() (retErr error) {
-	if err := s.validateGlobalDisruptionScope(); err != nil {
+	return s.ValidateSelectorsOptional(true)
+}
+
+// ValidateSelectorsOptional applies rules for disruption global scope and all subsequent disruption specifications
+func (s DisruptionSpec) ValidateSelectorsOptional(requireSelectors bool) (retErr error) {
+	if err := s.validateGlobalDisruptionScope(requireSelectors); err != nil {
 		retErr = multierror.Append(retErr, err)
 	}
 
@@ -548,25 +555,27 @@ func AdvancedSelectorsToRequirements(advancedSelectors []metav1.LabelSelectorReq
 	return reqs, nil
 }
 
-// Validate applies rules for disruption global scope
-func (s DisruptionSpec) validateGlobalDisruptionScope() (retErr error) {
-	// Rule: at least one kind of selector is set
-	if s.Selector.AsSelector().Empty() && len(s.AdvancedSelector) == 0 {
-		retErr = multierror.Append(retErr, errors.New("either selector or advancedSelector field must be set"))
-	}
-
-	// Rule: selectors must be valid
-	if !s.Selector.AsSelector().Empty() {
-		_, err := labels.ParseToRequirements(s.Selector.AsSelector().String())
-		if err != nil {
-			retErr = multierror.Append(retErr, err)
+// validateGlobalDisruptionScope applies rules for disruption global scope, leaving selectors optional
+func (s DisruptionSpec) validateGlobalDisruptionScope(requireSelectors bool) (retErr error) {
+	if requireSelectors {
+		// Rule: at least one kind of selector is set
+		if s.Selector.AsSelector().Empty() && len(s.AdvancedSelector) == 0 {
+			retErr = multierror.Append(retErr, errors.New("either selector or advancedSelector field must be set"))
 		}
-	}
 
-	if len(s.AdvancedSelector) > 0 {
-		_, err := AdvancedSelectorsToRequirements(s.AdvancedSelector)
-		if err != nil {
-			retErr = multierror.Append(retErr, err)
+		// Rule: selectors must be valid
+		if !s.Selector.AsSelector().Empty() {
+			_, err := labels.ParseToRequirements(s.Selector.AsSelector().String())
+			if err != nil {
+				retErr = multierror.Append(retErr, err)
+			}
+		}
+
+		if len(s.AdvancedSelector) > 0 {
+			_, err := AdvancedSelectorsToRequirements(s.AdvancedSelector)
+			if err != nil {
+				retErr = multierror.Append(retErr, err)
+			}
 		}
 	}
 

@@ -94,7 +94,7 @@ func (c client) CleanupLibraries() error {
 		folderPath := thisLibPath(markedLib.APIName)
 
 		if os.RemoveAll(folderPath) != nil {
-			return fmt.Errorf("ddmark: couldn't clean up API located at " + folderPath)
+			return fmt.Errorf("ddmark: couldn't clean up API located at %s", folderPath)
 		}
 	}
 

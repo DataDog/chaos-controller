@@ -25,25 +25,27 @@ type config struct {
 }
 
 type controllerConfig struct {
-	MetricsBindAddr           string                          `json:"metricsBindAddr"`
-	MetricsSink               string                          `json:"metricsSink"`
-	ExpiredDisruptionGCDelay  time.Duration                   `json:"expiredDisruptionGCDelay"`
-	MaxDuration               time.Duration                   `json:"maxDuration,omitempty"`
-	DefaultDuration           time.Duration                   `json:"defaultDuration"`
-	DeleteOnly                bool                            `json:"deleteOnly"`
-	EnableSafeguards          bool                            `json:"enableSafeguards"`
-	EnableObserver            bool                            `json:"enableObserver"`
-	LeaderElection            bool                            `json:"leaderElection"`
-	Webhook                   controllerWebhookConfig         `json:"webhook"`
-	Notifiers                 eventnotifier.NotifiersConfig   `json:"notifiersConfig"`
-	CloudProviders            cloudtypes.CloudProviderConfigs `json:"cloudProviders"`
-	UserInfoHook              bool                            `json:"userInfoHook"`
-	SafeMode                  safeModeConfig                  `json:"safeMode"`
-	ProfilerSink              string                          `json:"profilerSink"`
-	TracerSink                string                          `json:"tracerSink"`
-	DisruptionCronEnabled     bool                            `json:"disruptionCronEnabled"`
-	DisruptionRolloutEnabled  bool                            `json:"disruptionRolloutEnabled"`
-	DisruptionDeletionTimeout time.Duration                   `json:"disruptionDeletionTimeout"`
+	MetricsBindAddr                  string                          `json:"metricsBindAddr"`
+	MetricsSink                      string                          `json:"metricsSink"`
+	ExpiredDisruptionGCDelay         time.Duration                   `json:"expiredDisruptionGCDelay"`
+	MaxDuration                      time.Duration                   `json:"maxDuration,omitempty"`
+	DefaultDuration                  time.Duration                   `json:"defaultDuration"`
+	DefaultCronDelayedStartTolerance time.Duration                   `json:"defaultCronDelayedStartTolerance"`
+	DeleteOnly                       bool                            `json:"deleteOnly"`
+	EnableSafeguards                 bool                            `json:"enableSafeguards"`
+	EnableObserver                   bool                            `json:"enableObserver"`
+	LeaderElection                   bool                            `json:"leaderElection"`
+	Webhook                          controllerWebhookConfig         `json:"webhook"`
+	Notifiers                        eventnotifier.NotifiersConfig   `json:"notifiersConfig"`
+	CloudProviders                   cloudtypes.CloudProviderConfigs `json:"cloudProviders"`
+	UserInfoHook                     bool                            `json:"userInfoHook"`
+	SafeMode                         safeModeConfig                  `json:"safeMode"`
+	ProfilerSink                     string                          `json:"profilerSink"`
+	TracerSink                       string                          `json:"tracerSink"`
+	DisruptionCronEnabled            bool                            `json:"disruptionCronEnabled"`
+	DisruptionRolloutEnabled         bool                            `json:"disruptionRolloutEnabled"`
+	DisruptionDeletionTimeout        time.Duration                   `json:"disruptionDeletionTimeout"`
+	DisabledDisruptions              []string                        `json:"disabledDisruptions"`
 }
 
 type controllerWebhookConfig struct {
@@ -58,6 +60,8 @@ type safeModeConfig struct {
 	Enable              bool     `json:"enable"`
 	NamespaceThreshold  int      `json:"namespaceThreshold"`
 	ClusterThreshold    int      `json:"clusterThreshold"`
+	AllowNodeFailure    bool     `json:"allowNodeFailure"`
+	AllowNodeLevel      bool     `json:"allowNodeLevel"`
 }
 
 type injectorConfig struct {
@@ -70,6 +74,7 @@ type injectorConfig struct {
 	NetworkDisruption injectorNetworkDisruptionConfig `json:"networkDisruption"`
 	ImagePullSecrets  string                          `json:"imagePullSecrets"`
 	Tolerations       []Toleration                    `json:"tolerations"`
+	LogLevel          string                          `json:"logLevel"`
 }
 
 type Toleration struct {
@@ -163,6 +168,12 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 		return cfg, err
 	}
 
+	mainFS.DurationVar(&cfg.Controller.DefaultCronDelayedStartTolerance, "default-cron-delayed-start-tolerance", time.Minute*5, "Default deadline for starting a new disruption after the disruption cron's scheduled time")
+
+	if err := viper.BindPFlag("controller.defaultCronDelayedStartTolerance", mainFS.Lookup("default-cron-delayed-start-tolerance")); err != nil {
+		return cfg, err
+	}
+
 	mainFS.StringVar(&cfg.Controller.Notifiers.Common.ClusterName, "notifiers-common-clustername", "", "Cluster Name for notifiers output")
 
 	if err := viper.BindPFlag("controller.notifiers.common.clusterName", mainFS.Lookup("notifiers-common-clustername")); err != nil {
@@ -199,18 +210,6 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 		return cfg, err
 	}
 
-	mainFS.BoolVar(&cfg.Controller.Notifiers.HTTP.Enabled, "notifiers-http-enabled", false, "Enabler toggle for the HTTP notifier (defaulted to false)")
-
-	if err := viper.BindPFlag("controller.notifiers.http.enabled", mainFS.Lookup("notifiers-http-enabled")); err != nil {
-		return cfg, err
-	}
-
-	mainFS.StringVar(&cfg.Controller.Notifiers.HTTP.URL, "notifiers-http-url", "", "URL to send the notification using the HTTP notifier(defaulted to \"\")")
-
-	if err := viper.BindPFlag("controller.notifiers.http.url", mainFS.Lookup("notifiers-http-url")); err != nil {
-		return cfg, err
-	}
-
 	mainFS.StringArrayVar(&cfg.Controller.Notifiers.HTTP.Headers, "notifiers-http-headers", []string{}, "Additional headers to add to the request when sending the notification (defaulted to empty list)")
 
 	if err := viper.BindPFlag("controller.notifiers.http.headers", mainFS.Lookup("notifiers-http-headers")); err != nil {
@@ -238,6 +237,30 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 	mainFS.StringVar(&cfg.Controller.Notifiers.HTTP.AuthTokenPath, "notifiers-http-auth-token-path", "", "WARNING/ALPHA: Extract bearer token from provided JSON path (using GJSON)")
 
 	if err := viper.BindPFlag("controller.notifiers.http.authTokenPath", mainFS.Lookup("notifiers-http-auth-token-path")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.BoolVar(&cfg.Controller.Notifiers.HTTP.Disruption.Enabled, "notifiers-http-disruption-enabled", false, "Enabler toggle to send disruption notifications using the HTTP notifier (defaulted to false)")
+
+	if err := viper.BindPFlag("controller.notifiers.http.disruption.enabled", mainFS.Lookup("notifiers-http-disruption-enabled")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.StringVar(&cfg.Controller.Notifiers.HTTP.Disruption.URL, "notifiers-http-disruption-url", "", "URL to send disruption notifications using the HTTP notifier(defaulted to \"\")")
+
+	if err := viper.BindPFlag("controller.notifiers.http.disruption.url", mainFS.Lookup("notifiers-http-disruption-url")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.BoolVar(&cfg.Controller.Notifiers.HTTP.DisruptionCron.Enabled, "notifiers-http-disruptioncron-enabled", false, "Enabler toggle to send disruption cron notifications using the HTTP notifier (defaulted to false)")
+
+	if err := viper.BindPFlag("controller.notifiers.http.disruptioncron.enabled", mainFS.Lookup("notifiers-http-disruptioncron-enabled")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.StringVar(&cfg.Controller.Notifiers.HTTP.Disruption.URL, "notifiers-http-disruptioncron-url", "", "URL to send disruption cron notifications using the HTTP notifier(defaulted to \"\")")
+
+	if err := viper.BindPFlag("controller.notifiers.http.disruptioncron.url", mainFS.Lookup("notifiers-http-disruptioncron-url")); err != nil {
 		return cfg, err
 	}
 
@@ -274,6 +297,12 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 	mainFS.StringVar(&cfg.Injector.ImagePullSecrets, "image-pull-secrets", "", "Secrets used for pulling the Docker image from a private registry")
 
 	if err := viper.BindPFlag("controller.imagePullSecrets", mainFS.Lookup("image-pull-secrets")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.StringVar(&cfg.Injector.LogLevel, "injector-log-level", "DEBUG", "The LOG_LEVEL used for the injector pods")
+
+	if err := viper.BindPFlag("injector.logLevel", mainFS.Lookup("injector-log-level")); err != nil {
 		return cfg, err
 	}
 
@@ -349,6 +378,12 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 		return cfg, err
 	}
 
+	mainFS.StringSliceVar(&cfg.Controller.DisabledDisruptions, "disabled-disruptions", []string{}, "List of Disruption Kinds to disable. These should match their kind names from types.go: e.g., `dns-disruption`, `container-failure`, etc. ")
+
+	if err := viper.BindPFlag("controller.disabledDisruptions", mainFS.Lookup("disabled-disruptions")); err != nil {
+		return cfg, err
+	}
+
 	mainFS.StringVar(&cfg.Controller.SafeMode.Environment, "safemode-environment", "", "Specify the 'location' this controller is run in. All disruptions must have an annotation of chaos.datadoghq.com/environment configured with this location to be allowed to create")
 
 	if err := viper.BindPFlag("controller.safeMode.environment", mainFS.Lookup("safemode-environment")); err != nil {
@@ -379,6 +414,18 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 		"Threshold which safemode checks against to see if the number of targets is over safety measures within a cluster")
 
 	if err := viper.BindPFlag("controller.safeMode.clusterThreshold", mainFS.Lookup("safemode-cluster-threshold")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.BoolVar(&cfg.Controller.SafeMode.AllowNodeFailure, "safemode-allow-node-failure", true, "Boolean to determine if validation should prevent disruptions with node failure from being created. Relies on safemode-enable to be true.")
+
+	if err := viper.BindPFlag("controller.safeMode.allowNodeFailure", mainFS.Lookup("safemode-allow-node-failure")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.BoolVar(&cfg.Controller.SafeMode.AllowNodeLevel, "safemode-allow-node-level", true, "Boolean to determine if validation should prevent disruptions with at the node level from being created. Relies on safemode-enable to be true.")
+
+	if err := viper.BindPFlag("controller.safeMode.allowNodeLevel", mainFS.Lookup("safemode-allow-node-level")); err != nil {
 		return cfg, err
 	}
 

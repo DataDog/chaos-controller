@@ -35,3 +35,11 @@ type CountTooLargeConfig struct {
 	// +ddmark:validation:Maximum=100
 	ClusterThreshold *int `json:"clusterThreshold,omitempty"`
 }
+
+// MaxClusterThreshold is the float64 of 1.0, representing 100%. clusterThreshold is passed into the config
+// as integer percentage values from 1-100, and then divided by 100.0 for working with in safetyNetCountNotTooLarge
+const MaxClusterThreshold = float64(1)
+
+// MaxNamespaceThreshold is the float64 of 1.0, representing 100%.  namespaceThreshold is passed into the config
+// as integer percentage values from 1-100, and then divided by 100.0 for working with in safetyNetCountNotTooLarge
+const MaxNamespaceThreshold = float64(1)

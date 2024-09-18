@@ -39,8 +39,12 @@ controller:
     datadog:
       enabled: false
     http:
-      enabled: false
-      url: ""
+      disruption:
+        enabled: false
+        url: "http://localhost:8082/disruptions"
+      disruptioncron:
+        enabled: false
+        url: "http://localhost:8082/disruptioncrons"
       headersFilepath: ""
       headers: []
       authURL: ""
@@ -60,6 +64,7 @@ controller:
       ipRangesURL: "https://ip-ranges.datadoghq.com/" # URL to the IP ranges file (format must be the expected one, defaults is the public file provided by the cloud provider)
   defaultDuration: 1h # default spec.duration for a disruption with none specified
   maxDuration: 2h # maximum spec.duration for a disruption
+  defaultCronDelayedStartTolerance: 15m
   expiredDisruptionGCDelay: 10m # time after a disruption expires before deleting it
   userInfoHook: true
   webhook: # admission webhook configuration
@@ -74,6 +79,9 @@ controller:
     enable: false
     namespaceThreshold: 80
     clusterThreshold: 66
+    allowNodeFailure: true # if set to false, will prevent the creation of any disruption that applies a nodeFailure, but only if safeMode.enable is true
+    allowNodeLevel: true # if set to false, will prevent the creation of any disruption at the node level, but only if safeMode.enable is true
+  logLevel: DEBUG # sets the log level for the chaos controller
   resources: # resources assigned to the controller pod. may need to be increased when deploying to larger scale clusters
     cpu: 100m
     memory: 300Mi
@@ -82,6 +90,9 @@ controller:
   disruptionRolloutEnabled: false
   disruptionDeletionTimeout: 15m # The duration after which a disruption will be marked as "stuck on removal" if its removal process exceeds this duration.
   aggregateToClusterRole: false # If this is true two aggregated cluster roles are created for viewing and editing (https://kubernetes.io/docs/reference/access-authn-authz/rbac/#aggregated-clusterroles)
+# disabledDisruptions: # List of disruption kinds to disable at admission
+#   - dns-disruption
+#   - node-failure
 injector:
   image:
     repo: chaos-injector
@@ -100,6 +111,7 @@ injector:
     #     value: "value1"
     #     effect: "NoExecute"
   serviceAccount: chaos-injector # service account to use for the chaos injector pods
+  logLevel: DEBUG # sets the log level for the chaos injector pods
   dnsDisruption: # dns disruption configuration
     dnsServer: "" # IP address of the upstream dns server
     kubeDns:

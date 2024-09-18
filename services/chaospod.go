@@ -72,6 +72,7 @@ type ChaosPodServiceInjectorConfig struct {
 	DNSDisruptionKubeDNS          string              // KubeDNS server to be used for DNS disruption.
 	ImagePullSecrets              string              // Image pull secrets for the injector.
 	Tolerations                   []config.Toleration // Tolerations to be applied to injected pods.
+	LogLevel                      string
 }
 
 // ChaosPodServiceConfig contains configuration options for the chaosPodService.
@@ -516,6 +517,10 @@ func (m *chaosPodService) generateChaosPodSpec(targetNodeName string, terminatio
 					{
 						Name:  env.InjectorMountCgroup,
 						Value: "/mnt/cgroup/",
+					},
+					{
+						Name:  env.InjectorLogLevel,
+						Value: m.config.Injector.LogLevel,
 					},
 				},
 				VolumeMounts: []corev1.VolumeMount{ // define volume mounts required for disruptions to work

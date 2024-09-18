@@ -10,83 +10,91 @@ import (
 )
 
 const (
-	EventOnTargetTemplate     string = "Failing probably caused by disruption %s: "
-	SourceDisruptionComponent string = "disruption-controller"
+	EventOnTargetTemplate         string = "Failing probably caused by disruption %s: "
+	SourceDisruptionComponent     string = "disruption-controller"
+	SourceDisruptionCronComponent string = "disruptioncron-controller"
 )
 
-type DisruptionEventCategory string
+type EventCategory string
 
 const (
-	// Event only attached to a target
-	TargetEvent DisruptionEventCategory = "TargetEvent"
-	// Event only attached to the disruption
-	DisruptEvent DisruptionEventCategory = "DisruptionEvent"
-	// Event only attached to a chaos pod
-	ChaosPodEvent DisruptionEventCategory = "ChaosPodEvent"
+	// TargetEvent only attached to a target
+	TargetEvent EventCategory = "TargetEvent"
+	// DisruptionEvent only attached to the disruption
+	DisruptionEvent EventCategory = "DisruptionEvent"
+	// DisruptionCronEvent only attached to the disruption cron
+	DisruptionCronEvent EventCategory = "DisruptionCronEvent"
+	// ChaosPodEvent only attached to a chaos pod
+	ChaosPodEvent EventCategory = "ChaosPodEvent"
 )
 
-// DisruptionEventReason is the string that uniquely identify a disruption event
-type DisruptionEventReason string
+// EventReason is the string that identify an event
+type EventReason string
 
 // MatchEventReason check if provided Kubernetes event match actual reason
-func (r DisruptionEventReason) MatchEventReason(e corev1.Event) bool {
+func (r EventReason) MatchEventReason(e corev1.Event) bool {
 	return string(r) == e.Reason
 }
 
-type DisruptionEvent struct {
-	Type                           string                  // Warning or Normal
-	Reason                         DisruptionEventReason   // Short description of the event
-	OnTargetTemplateMessage        string                  // Template message to attach to the target resource (pod or node). Empty if the event should not be sent to a target (DisruptEvent only)
-	OnDisruptionTemplateMessage    string                  // We want to separate the aggregated message from the single message to include more info in the single message
-	OnDisruptionTemplateAggMessage string                  // Template message to attach to the disruption. Empty if the event should not be sent on a disruption
-	Category                       DisruptionEventCategory // Either TargetEvent, DisruptionEvent or ChaosPodEvent
+type Event struct {
+	Type                           string        // Warning or Normal
+	Reason                         EventReason   // Short description of the event
+	OnTargetTemplateMessage        string        // Template message to attach to the target resource (pod or node). Empty if the event should not be sent to a target (DisruptionEvent only)
+	OnDisruptionTemplateMessage    string        // We want to separate the aggregated message from the single message to include more info in the single message
+	OnDisruptionTemplateAggMessage string        // Template message to attach to the disruption. Empty if the event should not be sent on a disruption
+	Category                       EventCategory // Either TargetEvent, Event or ChaosPodEvent
 }
 
 // Complete list of events sent out by the controller
 const (
 	// Targeted pods related
 	// Warning events
-	EventTargetPodWarningState                      DisruptionEventReason = "TargetPodInWarningState"
-	EventTargetContainerWarningState                DisruptionEventReason = "TargetPodContainersInWarningState"
-	EventTargetLivenessProbeChange                  DisruptionEventReason = "TargetPodLivenessProbe"
-	EventTargetTooManyRestarts                      DisruptionEventReason = "TargetPodTooManyRestarts"
-	EventTargetReadinessProbeChangeBeforeDisruption DisruptionEventReason = "TargetReadinessProbeChangeBeforeDisruption"
+	EventTargetPodWarningState                      EventReason = "TargetPodInWarningState"
+	EventTargetContainerWarningState                EventReason = "TargetPodContainersInWarningState"
+	EventTargetLivenessProbeChange                  EventReason = "TargetPodLivenessProbe"
+	EventTargetTooManyRestarts                      EventReason = "TargetPodTooManyRestarts"
+	EventTargetReadinessProbeChangeBeforeDisruption EventReason = "TargetReadinessProbeChangeBeforeDisruption"
 	// Normal events
-	EventTargetPodRecoveredState                    DisruptionEventReason = "RecoveredWarningStateInTargetPod"
-	EventTargetReadinessProbeChangeDuringDisruption DisruptionEventReason = "ReadinessProbeChangeDuringDisruption"
+	EventTargetPodRecoveredState                    EventReason = "RecoveredWarningStateInTargetPod"
+	EventTargetReadinessProbeChangeDuringDisruption EventReason = "ReadinessProbeChangeDuringDisruption"
 
 	// Targeted nodes related
 	// Warning events
-	EventTargetNodeMemPressureState        DisruptionEventReason = "TargetNodeUnderMemoryPressure"
-	EventTargetNodeDiskPressureState       DisruptionEventReason = "TargetNodeUnderDiskPressure"
-	EventTargetNodeUnavailableNetworkState DisruptionEventReason = "TargetNodeUnavailableNetwork"
-	EventTargetNodeWarningState            DisruptionEventReason = "TargetNodeInWarningState"
+	EventTargetNodeMemPressureState        EventReason = "TargetNodeUnderMemoryPressure"
+	EventTargetNodeDiskPressureState       EventReason = "TargetNodeUnderDiskPressure"
+	EventTargetNodeUnavailableNetworkState EventReason = "TargetNodeUnavailableNetwork"
+	EventTargetNodeWarningState            EventReason = "TargetNodeInWarningState"
 	// Normal events
-	EventTargetNodeRecoveredState DisruptionEventReason = "RecoveredWarningStateInTargetNode"
+	EventTargetNodeRecoveredState EventReason = "RecoveredWarningStateInTargetNode"
 
 	// Disruption related events
 	// Warning events
-	EventEmptyDisruption                DisruptionEventReason = "EmptyDisruption"
-	EventDisruptionCreationFailed       DisruptionEventReason = "CreateFailed"
-	EventDisruptionStuckOnRemoval       DisruptionEventReason = "StuckOnRemoval"
-	EventInvalidDisruptionLabelSelector DisruptionEventReason = "InvalidLabelSelector"
-	EventDisruptionNoMoreValidTargets   DisruptionEventReason = "NoMoreTargets"
-	EventDisruptionNoTargetsFound       DisruptionEventReason = "NoTargetsFound"
-	EventInvalidSpecDisruption          DisruptionEventReason = "InvalidSpec"
+	EventEmptyDisruption                EventReason = "EmptyDisruption"
+	EventDisruptionCreationFailed       EventReason = "CreateFailed"
+	EventDisruptionStuckOnRemoval       EventReason = "StuckOnRemoval"
+	EventInvalidDisruptionLabelSelector EventReason = "InvalidLabelSelector"
+	EventDisruptionNoMoreValidTargets   EventReason = "NoMoreTargets"
+	EventDisruptionNoTargetsFound       EventReason = "NoTargetsFound"
+	EventInvalidSpecDisruption          EventReason = "InvalidSpec"
 	// Normal events
-	EventDisruptionChaosPodCreated DisruptionEventReason = "ChaosPodCreated"
-	EventDisruptionFinished        DisruptionEventReason = "Finished"
-	EventDisruptionCreated         DisruptionEventReason = "Created"
-	EventDisruptionDurationOver    DisruptionEventReason = "DurationOver"
-	EventDisruptionGCOver          DisruptionEventReason = "GCOver"
-	EventDisrupted                 DisruptionEventReason = "Disrupted"
+	EventDisruptionChaosPodCreated EventReason = "ChaosPodCreated"
+	EventDisruptionFinished        EventReason = "Finished"
+	EventDisruptionCreated         EventReason = "Created"
+	EventDisruptionDurationOver    EventReason = "DurationOver"
+	EventDisruptionGCOver          EventReason = "GCOver"
+	EventDisrupted                 EventReason = "Disrupted"
+
+	// DisruptionCron related events
+	EventDisruptionCronCreated EventReason = "DisruptionCronCreated"
+	EventDisruptionCronUpdated EventReason = "DisruptionCronUpdated"
+	EventDisruptionCronDeleted EventReason = "DisruptionCronDeleted"
 
 	// Injection related events
 	// Warning events
-	EventChaosPodFailedState DisruptionEventReason = "ChaosPodWarningState"
+	EventChaosPodFailedState EventReason = "ChaosPodWarningState"
 )
 
-var Events = map[DisruptionEventReason]DisruptionEvent{
+var Events = map[EventReason]Event{
 	EventTargetPodWarningState: {
 		Type:                           corev1.EventTypeWarning,
 		Reason:                         EventTargetPodWarningState,
@@ -185,79 +193,97 @@ var Events = map[DisruptionEventReason]DisruptionEvent{
 		Type:                        corev1.EventTypeNormal,
 		Reason:                      EventDisruptionDurationOver,
 		OnDisruptionTemplateMessage: "The disruption has lived longer than its specified duration, and will be deleted in %s.",
-		Category:                    DisruptEvent,
+		Category:                    DisruptionEvent,
 	},
 	EventDisruptionGCOver: {
 		Type:                        corev1.EventTypeNormal,
 		Reason:                      EventDisruptionGCOver,
 		OnDisruptionTemplateMessage: "The disruption has lived %s longer than its specified duration, and will now be deleted.",
-		Category:                    DisruptEvent,
+		Category:                    DisruptionEvent,
 	},
 	EventEmptyDisruption: {
 		Type:                        corev1.EventTypeWarning,
 		Reason:                      EventEmptyDisruption,
 		OnDisruptionTemplateMessage: "No disruption recognized for \"%s\" therefore no disruption applied.",
-		Category:                    DisruptEvent,
+		Category:                    DisruptionEvent,
 	},
 	EventDisruptionCreationFailed: {
 		Type:                        corev1.EventTypeWarning,
 		Reason:                      EventDisruptionCreationFailed,
 		OnDisruptionTemplateMessage: "Injection pod for disruption \"%s\" failed to be created",
-		Category:                    DisruptEvent,
+		Category:                    DisruptionEvent,
 	},
 	EventDisruptionStuckOnRemoval: {
 		Type:                        corev1.EventTypeWarning,
 		Reason:                      EventDisruptionStuckOnRemoval,
 		OnDisruptionTemplateMessage: "Instance is stuck on removal because of chaos pods not being able to terminate correctly, please check pods logs before manually removing their finalizer. https://github.com/DataDog/chaos-controller/blob/main/docs/faq.md",
-		Category:                    DisruptEvent,
+		Category:                    DisruptionEvent,
 	},
 	EventInvalidDisruptionLabelSelector: {
 		Type:                        corev1.EventTypeWarning,
 		Reason:                      EventInvalidDisruptionLabelSelector,
 		OnDisruptionTemplateMessage: "%s. No targets will be selected.",
-		Category:                    DisruptEvent,
+		Category:                    DisruptionEvent,
 	},
 	EventDisruptionNoMoreValidTargets: {
 		Type:                        corev1.EventTypeNormal,
 		Reason:                      EventDisruptionNoMoreValidTargets,
 		OnDisruptionTemplateMessage: "No more targets found for injection for this disruption (either ignored or already targeted by another disruption)",
-		Category:                    DisruptEvent,
+		Category:                    DisruptionEvent,
 	},
 	EventDisruptionNoTargetsFound: {
 		Type:                        corev1.EventTypeWarning,
 		Reason:                      EventDisruptionNoTargetsFound,
 		OnDisruptionTemplateMessage: "The given label selector did not return any targets. Please ensure that both the selector and the count are correct (should be either a percentage or an integer greater than 0).",
-		Category:                    DisruptEvent,
+		Category:                    DisruptionEvent,
 	},
 	EventInvalidSpecDisruption: {
 		Type:                        corev1.EventTypeWarning,
 		Reason:                      EventInvalidSpecDisruption,
 		OnDisruptionTemplateMessage: "%s",
-		Category:                    DisruptEvent,
+		Category:                    DisruptionEvent,
 	},
 	EventDisruptionChaosPodCreated: {
 		Type:                        corev1.EventTypeNormal,
 		Reason:                      EventDisruptionChaosPodCreated,
 		OnDisruptionTemplateMessage: "Created disruption injection pod for \"%s\"",
-		Category:                    DisruptEvent,
+		Category:                    DisruptionEvent,
 	},
 	EventDisruptionCreated: {
 		Type:                        corev1.EventTypeNormal,
 		Reason:                      EventDisruptionCreated,
 		OnDisruptionTemplateMessage: "Disruption created",
-		Category:                    DisruptEvent,
+		Category:                    DisruptionEvent,
+	},
+	EventDisruptionCronCreated: {
+		Type:                        corev1.EventTypeNormal,
+		Reason:                      EventDisruptionCronCreated,
+		OnDisruptionTemplateMessage: "DisruptionCron created",
+		Category:                    DisruptionCronEvent,
+	},
+	EventDisruptionCronUpdated: {
+		Type:                        corev1.EventTypeNormal,
+		Reason:                      EventDisruptionCronUpdated,
+		OnDisruptionTemplateMessage: "DisruptionCron updated",
+		Category:                    DisruptionCronEvent,
+	},
+	EventDisruptionCronDeleted: {
+		Type:                        corev1.EventTypeNormal,
+		Reason:                      EventDisruptionCronDeleted,
+		OnDisruptionTemplateMessage: "DisruptionCron deleted",
+		Category:                    DisruptionCronEvent,
 	},
 	EventDisruptionFinished: {
 		Type:                        corev1.EventTypeNormal,
 		Reason:                      EventDisruptionFinished,
-		OnDisruptionTemplateMessage: "Disruption finished",
-		Category:                    DisruptEvent,
+		OnDisruptionTemplateMessage: "DisruptionEvent finished",
+		Category:                    DisruptionEvent,
 	},
 	EventDisrupted: {
 		Type:                    corev1.EventTypeNormal,
 		Reason:                  EventDisrupted,
 		OnTargetTemplateMessage: "Pod %s from disruption %s targeted this resource for injection",
-		Category:                DisruptEvent,
+		Category:                DisruptionEvent,
 	},
 	EventChaosPodFailedState: {
 		Type:                           corev1.EventTypeWarning,
@@ -270,23 +296,27 @@ var Events = map[DisruptionEventReason]DisruptionEvent{
 
 // IsNotifiableEvent this event can be broadcasted to our notifiers
 func IsNotifiableEvent(event corev1.Event) bool {
-	return event.Source.Component == SourceDisruptionComponent
+	return event.Source.Component == SourceDisruptionComponent || event.Source.Component == SourceDisruptionCronComponent
 }
 
 func IsRecoveryEvent(event corev1.Event) bool {
 	return EventTargetNodeRecoveredState.MatchEventReason(event) || EventTargetPodRecoveredState.MatchEventReason(event)
 }
 
-func IsCompletionEvent(event corev1.Event) bool {
+func IsDisruptionCompletionEvent(event corev1.Event) bool {
 	return EventDisruptionFinished.MatchEventReason(event) || EventDisruptionDurationOver.MatchEventReason(event) || EventDisruptionGCOver.MatchEventReason(event)
 }
 
 func IsTargetEvent(event corev1.Event) bool {
-	targetEvent, ok := Events[DisruptionEventReason(event.Reason)]
+	targetEvent, ok := Events[EventReason(event.Reason)]
 	if !ok {
 		return false
 	}
 
 	return event.Source.Component == SourceDisruptionComponent &&
 		targetEvent.Category == TargetEvent
+}
+
+func GetEventReason(event corev1.Event) EventReason {
+	return EventReason(event.Reason)
 }

@@ -260,6 +260,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 		// the injection is being created or modified, apply needed actions
 		controllerutil.AddFinalizer(instance, chaostypes.DisruptionFinalizer)
+
 		if err := r.Client.Update(ctx, instance); err != nil {
 			return ctrl.Result{}, fmt.Errorf("error adding disruption finalizer: %w", err)
 		}
@@ -328,6 +329,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		} else if instance.Status.InjectionStatus.NotFullyInjected() {
 			// requeue after 15-20 seconds, as default 1ms is too quick here
 			requeueAfter := time.Duration(randSource.Intn(5)+15) * time.Second //nolint:gosec
+
 			r.log.Infow("disruption is not fully injected yet, requeuing", "injectionStatus", instance.Status.InjectionStatus)
 
 			return ctrl.Result{
@@ -870,7 +872,7 @@ func (r *DisruptionReconciler) handleMetricSinkError(err error) {
 	}
 }
 
-func (r *DisruptionReconciler) recordEventOnDisruption(instance *chaosv1beta1.Disruption, eventReason chaosv1beta1.DisruptionEventReason, optionalMessage string, targetName string) {
+func (r *DisruptionReconciler) recordEventOnDisruption(instance *chaosv1beta1.Disruption, eventReason chaosv1beta1.EventReason, optionalMessage string, targetName string) {
 	disEvent := chaosv1beta1.Events[eventReason]
 	message := disEvent.OnDisruptionTemplateMessage
 
@@ -918,7 +920,7 @@ func (r *DisruptionReconciler) validateDisruptionSpec(instance *chaosv1beta1.Dis
 }
 
 // recordEventOnTarget records an event on the given target which can be either a pod or a node depending on the given disruption level
-func (r *DisruptionReconciler) recordEventOnTarget(ctx context.Context, instance *chaosv1beta1.Disruption, target string, disruptionEventReason chaosv1beta1.DisruptionEventReason, chaosPod, optionalMessage string) {
+func (r *DisruptionReconciler) recordEventOnTarget(ctx context.Context, instance *chaosv1beta1.Disruption, target string, disruptionEventReason chaosv1beta1.EventReason, chaosPod, optionalMessage string) {
 	var o runtime.Object
 
 	switch instance.Spec.Level {

@@ -306,6 +306,7 @@ func Parse(s string) (CPUSet, error) {
 			if err != nil {
 				return NewCPUSet(), err
 			}
+
 			end, err := strconv.Atoi(boundaries[1])
 			if err != nil {
 				return NewCPUSet(), err
