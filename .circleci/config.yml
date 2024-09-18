@@ -35,7 +35,7 @@ commands:
     steps:
       - run:
           name: Install python
-          command: sudo apt update && sudo apt install python3.10
+          command: sudo apt update && sudo apt install python3.10 python3.10-venv
   alpine_install_git:
     description: Install required dependencies
     steps:
