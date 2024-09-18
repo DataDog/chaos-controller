@@ -46,6 +46,8 @@ type Watcher interface {
 	// Start starts the watcher by creating an informer from the watcher's cache and adding a resource event handler to the informer.
 	Start() error
 
+	Noop() error
+
 	// GetConfig return the current config of the Watcher instance.
 	GetConfig() WatcherConfig
 }
@@ -99,6 +101,10 @@ type watcher struct {
 
 	// The context tuple that contains the context and cancellation function used to cancel the watcher
 	ctxTuple CtxTuple
+}
+
+func (w *watcher) Noop() error {
+	return nil
 }
 
 // NewWatcher is a function that creates a new watcher instance based on the given configuration values.
