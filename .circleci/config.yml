@@ -34,7 +34,7 @@ commands:
     description: Install python3
     steps:
       - run:
-          name: Install python
+          name: Install python 3
           command: sudo apt update && sudo apt install python3.10 python3.10-venv
   alpine_install_git:
     description: Install required dependencies
@@ -117,11 +117,8 @@ jobs:
       - run:
           name: Install protoc
           command: make install-protobuf PROTOC_OS=linux
-      - go_save_cache
-  prepare-verify-mocks:
-    executor: golang
-    steps:
       - ubuntu_install_python
+      - go_save_cache
   # docker build image
   docker-build:
     executor: golang
@@ -261,7 +258,6 @@ workflows:
   test_and_build:
     jobs:
       - prepare-env
-      - prepare-verify-mocks
       - docker-build:
           name: docker-build-injector
           target: injector
@@ -288,9 +284,7 @@ workflows:
           name: verify-mocks
           target: generate-mocks
           diff-fails: true
-          requires:
-            - prepare-env
-            - prepare-verify-mocks
+          requires: [prepare-env]
       - go-make:
           name: vet
           target: vet
