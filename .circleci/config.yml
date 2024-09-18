@@ -287,9 +287,7 @@ workflows:
           name: verify-mocks
           target: generate-mocks
           diff-fails: true
-          requires:
-            - prepare-env
-            - ubuntu_install_python
+          requires: [prepare-env]
       - go-make:
           name: vet
           target: vet
