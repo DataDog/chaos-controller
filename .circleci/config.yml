@@ -121,7 +121,7 @@ jobs:
   prepare-verify-mocks:
     executor: golang
     steps:
-      - python_install_requirements
+      - ubuntu_install_python
   # docker build image
   docker-build:
     executor: golang
