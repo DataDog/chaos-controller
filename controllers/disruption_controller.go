@@ -242,6 +242,16 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			return ctrl.Result{}, nil
 		}
 	} else {
+		if r.DeleteOnly {
+			r.log.Info("the chaos-controller is in deleteOnly mode, we're halting this disruption asap")
+
+			if err = r.Client.Delete(ctx, instance); err != nil {
+				r.log.Errorw("error deleting disruption while in deleteOnly", "error", err)
+			}
+
+			return ctrl.Result{Requeue: true}, nil
+		}
+
 		// initialize all safety nets for future use
 		if instance.Spec.Unsafemode == nil || !instance.Spec.Unsafemode.DisableAll {
 			// initialize all relevant safety nets for the first time
