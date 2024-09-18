@@ -261,6 +261,7 @@ workflows:
   test_and_build:
     jobs:
       - prepare-env
+      - prepare-verify-mocks
       - docker-build:
           name: docker-build-injector
           target: injector
