@@ -161,7 +161,7 @@ int cls_classifier_paths(struct __sk_buff *skb)
         p[i] = load_byte(skb, skb_info.data_off + i);
     }
 
-    char path[MAX_PATH_LEN] = {0};
+    char path[MAX_PATH_LEN] = "";
     int path_length = 0;
 
     // Extract the path from the response
