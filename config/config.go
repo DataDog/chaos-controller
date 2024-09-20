@@ -132,7 +132,7 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 	}
 
 	mainFS.BoolVar(&cfg.Controller.DeleteOnly, "delete-only", false,
-		"Enable delete only mode which will not allow new disruption to start and will only continue to clean up and remove existing disruptions.")
+		"Enable delete only mode which will not allow new disruption to start and will clean up and remove existing disruptions.")
 
 	if err := viper.BindPFlag("controller.deleteOnly", mainFS.Lookup("delete-only")); err != nil {
 		return cfg, err
