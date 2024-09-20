@@ -27,6 +27,7 @@ struct {
 
 
 static __always_inline bool  validate_path(char* path) {
+     #pragma unroll
      for (__u32 i = 0; i < MAX_PATHS_ENTRIES; i++) {
         // Get the expected path
         char expected_path[MAX_PATH_LEN];
@@ -37,17 +38,29 @@ static __always_inline bool  validate_path(char* path) {
             break;
         }
 
+        if (i == 0 && expected_path[0] == '\0') {
+            printt("no path found in the filter_paths map");
+            printt("allow all paths");
+            return true;
+        }
+
+        // Skip if the expected path is empty
+        // No need to compare the path if the expected path is empty
+        if (expected_path[0] == '\0')
+            break;
+
         char request_path[MAX_PATH_LEN];
         bpf_probe_read_kernel_str(&request_path, sizeof(request_path), path);
 
         // Check if the prefix match the method.
-        for (int i = 0; i < MAX_PATH_LEN; ++i) {
+        #pragma unroll
+        for (int ii = 0; ii < MAX_PATH_LEN; ++ii) {
             // Break the loop if the prefix is completed
-            if (expected_path[i] == NULL)
+            if (expected_path[ii] == '\0')
                 return true;
 
             // If the prefix does not match the str return false
-            if (expected_path[i] != request_path[i])
+            if (expected_path[ii] != request_path[ii])
                 break;
         }
      }
@@ -56,6 +69,7 @@ static __always_inline bool  validate_path(char* path) {
 }
 
 static __always_inline bool  validate_method(char* method) {
+     #pragma unroll
      for (__u32 i = 0; i < MAX_METHODS_ENTRIES; i++) {
         // Get the expected method
         char expected_method[MAX_METHOD_LEN];
@@ -66,14 +80,26 @@ static __always_inline bool  validate_method(char* method) {
             break;
         }
 
+        if (i == 0 && expected_method[0] == '\0') {
+            printt("no method found in the filter_methods map");
+            printt("allow all methods");
+            return true;
+        }
+
+        // No need to compare method if the expected method is empty
+        if (expected_method[0] == '\0')
+            break;
+
         // Check if the prefix match the method.
-        for (int i = 0; i < MAX_METHOD_LEN; ++i) {
+        #pragma unroll
+        for (int ii = 0; ii < MAX_METHOD_LEN; ++ii) {
             // Break the loop if the prefix is completed
-            if (expected_method[i] == NULL)
+            if (expected_method[ii] == '\0')
                 return true;
 
+
             // If the prefix does not match the str return false
-            if (expected_method[i] != method[i])
+            if (expected_method[ii] != method[ii])
                 break;
         }
      }
@@ -96,6 +122,7 @@ int cls_classifier_methods(struct __sk_buff *skb)
 
     char p[DEFAULT_HTTP_BUFFER_SIZE];
 
+    #pragma unroll
     for (int i = 0; i < DEFAULT_HTTP_BUFFER_SIZE; i++) {
         p[i] = load_byte(skb, skb_info.data_off + i);
     }
@@ -134,10 +161,11 @@ int cls_classifier_paths(struct __sk_buff *skb)
         p[i] = load_byte(skb, skb_info.data_off + i);
     }
 
-    char path[MAX_PATH_LEN];
+    char path[MAX_PATH_LEN] = {0};
     int path_length = 0;
 
     // Extract the path from the response
+    #pragma unroll
     for (int i = 0; i < LARGE_HTTP_BUFFER_SIZE; i++) {
         if (p[i] == ' ') {
             i++;

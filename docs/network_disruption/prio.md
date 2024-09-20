@@ -47,11 +47,14 @@ spec:
   count: 1
   network:
     hosts:
-      - 10.0.1.26/32
-      - 10.0.1.25/32
-    port: 80
-    protocol: tcp
-    flow: egress
+      - host: 10.0.1.26/32
+        port: 80
+        protocol: tcp
+        flow: egress
+      - host: 10.0.1.25/32
+        port: 80
+        protocol: tcp
+        flow: egress
     delay: 1000
     delayJitter: 5
     bandwidthLimit: 5000
@@ -106,10 +109,10 @@ spec:
   count: 1
   network:
     hosts:
-      - 10.0.1.254/31
-    port: 80
-    protocol: tcp
-    flow: egress
+      - host: 10.0.1.254/32
+        port: 80
+        protocol: tcp
+        flow: egress
     delay: 1000
     delayJitter: 5
 ```
@@ -206,15 +209,15 @@ spec:
   count: 1
   network:
     hosts:
-      - 10.0.1.254/31
-    port: 80
-    protocol: tcp
+      - host: 10.0.1.254/32
+        port: 80
+        protocol: tcp
+        flow: egress
     http:
         methods:
-          - get <-- eBPF filter
+          - GET # <-- eBPF filter
         paths:
-          - /test <-- eBPF filter
-    flow: egress
+          - /test # <-- eBPF filter
     delay: 1000
     delayJitter: 5
 ```
@@ -246,15 +249,15 @@ spec:
   count: 1
   network:
     hosts:
-      - 10.0.1.254/31
-    port: 80
-    protocol: tcp
+      - host: 10.0.1.254/32
+        port: 80
+        protocol: tcp
+        flow: egress
     http:
       methods: 
-        - get <-- eBPF filter
+        - GET # <-- eBPF filter
       paths: 
-        - /test <-- eBPF filter
-    flow: egress
+        - /test # <-- eBPF filter
     delay: 1000
     delayJitter: 5
 ```
