@@ -71,6 +71,10 @@ CONTROLLER_GEN_VERSION = v0.14.0
 CONTROLLER_GEN_INSTALLED_VERSION = $(shell (controller-gen --version || echo "") | awk '{ print $$2 }')
 
 MOCKERY_VERSION = 2.43.2
+MOCKERY_ARCH = $(GOARCH)
+ifeq (amd64,$(GOARCH))
+MOCKERY_ARCH = x86_64
+endif
 MOCKERY_INSTALLED_VERSION = $(shell mockery --version --quiet --config="" 2>/dev/null || echo "")
 
 # Additional args to provide to test runner (ginkgo)
@@ -383,10 +387,10 @@ lima-install-longhorn:
 
 venv:
 	test -d .venv || python3 -m venv .venv
-	source .venv/bin/activate; pip install -qr tasks/requirements.txt
+	. .venv/bin/activate; pip install -qr tasks/requirements.txt
 
 header: venv
-	source .venv/bin/activate; inv header-check
+	. .venv/bin/activate; inv header-check
 
 header-fix:
 # First re-generate header, it should complain as just (re)generated mocks does not contains them
@@ -395,7 +399,7 @@ header-fix:
 	$(MAKE) header
 
 license: venv
-	source .venv/bin/activate; inv license-check
+	. .venv/bin/activate; inv license-check
 
 godeps:
 	go mod tidy; go mod vendor
@@ -415,7 +419,7 @@ generate-chaosdogfood-protobuf:
 	protoc --proto_path=. --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative chaosdogfood.proto
 
 clean-mocks:
-	find . -type file -name "*mock*.go" -not -path "./vendor/*" -exec rm {} \;
+	find . -type f -name "*mock*.go" -not -path "./vendor/*" -exec rm {} \;
 	rm -rf mocks/
 
 generate-mocks: clean-mocks install-mockery
@@ -500,7 +504,7 @@ install-mockery:
 ifneq ($(MOCKERY_INSTALLED_VERSION),v$(MOCKERY_VERSION))
 	$(info mockery version $(MOCKERY_VERSION) is not installed or version differ (v$(MOCKERY_VERSION) != $(MOCKERY_INSTALLED_VERSION)))
 	$(info installing mockery v$(MOCKERY_VERSION)...)
-	curl -sSLo /tmp/mockery.tar.gz https://github.com/vektra/mockery/releases/download/v$(MOCKERY_VERSION)/mockery_$(MOCKERY_VERSION)_$(GOOS)_$(GOARCH).tar.gz
+	curl -sSLo /tmp/mockery.tar.gz https://github.com/vektra/mockery/releases/download/v$(MOCKERY_VERSION)/mockery_$(MOCKERY_VERSION)_$(GOOS)_$(MOCKERY_ARCH).tar.gz
 	tar -xvzf /tmp/mockery.tar.gz --directory=$(GOBIN) mockery
 	rm /tmp/mockery.tar.gz
 endif
