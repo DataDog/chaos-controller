@@ -54,13 +54,13 @@ static __always_inline bool  validate_path(char* path) {
 
         // Check if the prefix match the method.
         #pragma unroll
-        for (int ii = 0; ii < MAX_PATH_LEN; ++ii) {
+        for (int jj = 0; jj < MAX_PATH_LEN; ++jj) {
             // Break the loop if the prefix is completed
-            if (expected_path[ii] == '\0')
+            if (expected_path[jj] == '\0')
                 return true;
 
             // If the prefix does not match the str return false
-            if (expected_path[ii] != request_path[ii])
+            if (expected_path[jj] != request_path[jj])
                 break;
         }
      }
@@ -92,14 +92,14 @@ static __always_inline bool  validate_method(char* method) {
 
         // Check if the prefix match the method.
         #pragma unroll
-        for (int ii = 0; ii < MAX_METHOD_LEN; ++ii) {
+        for (int jj = 0; jj < MAX_METHOD_LEN; ++jj) {
             // Break the loop if the prefix is completed
-            if (expected_method[ii] == '\0')
+            if (expected_method[jj] == '\0')
                 return true;
 
 
             // If the prefix does not match the str return false
-            if (expected_method[ii] != method[ii])
+            if (expected_method[jj] != method[jj])
                 break;
         }
      }
