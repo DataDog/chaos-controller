@@ -65,32 +65,19 @@ func populateBPFMap(mapName string, fields []string, fieldSize int) error {
 		return fmt.Errorf("could not get maps ids of %s maps: %w", mapName, err)
 	}
 
-	var errs []error
+	bpfMap, err := libbpfgo.GetMapByID(bpfMapIds[0])
+	if err != nil {
+		return fmt.Errorf("could not get the %s map: %w", mapName, err)
+	}
 
-	for _, id := range bpfMapIds {
-		bpfMap, err := libbpfgo.GetMapByID(id)
-		if err != nil {
-			return fmt.Errorf("could not get the %s map with %d id: %w", mapName, id, err)
-		}
-
-		for i, field := range fields {
-			if err := updateMap(uint32(i), []byte(field), fieldSize, bpfMap); err != nil {
-				closeMap(bpfMap)
-				return fmt.Errorf("could not update the %d field with %s value %s map with %d id: %w", i, field, mapName, id, err)
-			}
-		}
-
-		err = closeMap(bpfMap)
-		if err != nil {
-			errs = append(errs, err)
+	for i, field := range fields {
+		if err := updateMap(uint32(i), []byte(field), fieldSize, bpfMap); err != nil {
+			closeMap(bpfMap)
+			return fmt.Errorf("could not update the %d field with %s value %s map: %w", i, field, mapName, err)
 		}
 	}
 
-	if len(errs) > 0 {
-		return fmt.Errorf("failed to close the file descriptors of the %s maps: %w", mapName, errs)
-	}
-
-	return nil
+	return closeMap(bpfMap)
 }
 
 func updateMap(key uint32, value []byte, valueSize int, bpfMap *libbpfgo.BPFMapLow) error {
