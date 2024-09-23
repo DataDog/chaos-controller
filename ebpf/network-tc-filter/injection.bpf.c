@@ -92,14 +92,14 @@ static __always_inline bool  validate_method(char* method) {
 
         // Check if the prefix match the method.
         #pragma unroll
-        for (int jj = 0; jj < MAX_METHOD_LEN; ++jj) {
+        for (int j = 0; j < MAX_METHOD_LEN; ++j) {
             // Break the loop if the prefix is completed
-            if (expected_method[jj] == '\0')
+            if (expected_method[j] == '\0')
                 return true;
 
 
             // If the prefix does not match the str return false
-            if (expected_method[jj] != method[jj])
+            if (expected_method[j] != method[j])
                 break;
         }
      }
