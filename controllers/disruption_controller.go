@@ -74,6 +74,7 @@ type DisruptionReconciler struct {
 	ChaosPodService            services.ChaosPodService
 	CloudService               cloudservice.CloudServicesProvidersManager
 	DisruptionsDeletionTimeout time.Duration
+	DeleteOnly                 bool
 }
 
 type CtxTuple struct {
@@ -241,8 +242,14 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			return ctrl.Result{}, nil
 		}
 	} else {
-		if err := r.validateDisruptionSpec(instance); err != nil {
-			return ctrl.Result{Requeue: false}, err
+		if r.DeleteOnly {
+			r.log.Info("the chaos-controller is in deleteOnly mode, we're halting this disruption asap")
+
+			if err = r.Client.Delete(ctx, instance); err != nil {
+				r.log.Errorw("error deleting disruption while in deleteOnly", "error", err)
+			}
+
+			return ctrl.Result{Requeue: true}, nil
 		}
 
 		// initialize all safety nets for future use
@@ -906,17 +913,6 @@ func (r *DisruptionReconciler) emitKindCountMetrics(instance *chaosv1beta1.Disru
 	for _, kind := range instance.Spec.KindNames() {
 		r.handleMetricSinkError(r.MetricsSink.MetricDisruptionsCount(kind, []string{"disruptionName:" + instance.Name, "namespace:" + instance.Namespace}))
 	}
-}
-
-func (r *DisruptionReconciler) validateDisruptionSpec(instance *chaosv1beta1.Disruption) error {
-	err := instance.Spec.Validate()
-	if err != nil {
-		r.recordEventOnDisruption(instance, chaosv1beta1.EventInvalidSpecDisruption, err.Error(), "")
-
-		return err
-	}
-
-	return nil
 }
 
 // recordEventOnTarget records an event on the given target which can be either a pod or a node depending on the given disruption level
