@@ -120,9 +120,10 @@ const (
 	// DisruptionNamespaceLabel is the label used to identify the disruption namespace for a chaos pod. This is used to determine pod ownership.
 	DisruptionNamespaceLabel = GroupName + "/disruption-namespace"
 
-	finalizerPrefix     = "finalizer." + GroupName
-	DisruptionFinalizer = finalizerPrefix
-	ChaosPodFinalizer   = finalizerPrefix + "/chaos-pod"
+	finalizerPrefix         = "finalizer." + GroupName
+	DisruptionFinalizer     = finalizerPrefix
+	DisruptionCronFinalizer = finalizerPrefix
+	ChaosPodFinalizer       = finalizerPrefix + "/chaos-pod"
 
 	PulsingDisruptionMinimumDuration = 500 * time.Millisecond
 	// InjectorPadDuration is the length of time we extend the injector's duration on top of the disruption's duration,

@@ -12,6 +12,7 @@ import (
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/o11y/metrics"
+	chaostypes "github.com/DataDog/chaos-controller/types"
 
 	"github.com/robfig/cron"
 	"go.uber.org/zap"
@@ -19,16 +20,18 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 var DisruptionCronTags = []string{}
 
 type DisruptionCronReconciler struct {
-	Client      client.Client
-	Scheme      *runtime.Scheme
-	BaseLog     *zap.SugaredLogger
-	log         *zap.SugaredLogger
-	MetricsSink metrics.Sink
+	Client                 client.Client
+	Scheme                 *runtime.Scheme
+	BaseLog                *zap.SugaredLogger
+	log                    *zap.SugaredLogger
+	MetricsSink            metrics.Sink
+	FinalizerDeletionDelay time.Duration
 }
 
 func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
@@ -58,8 +61,37 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	DisruptionCronTags = []string{"disruptionCronName:" + instance.Name, "disruptionCronNamespace:" + instance.Namespace, "targetName:" + instance.Spec.TargetResource.Name}
 
 	if !instance.DeletionTimestamp.IsZero() {
-		// Add finalizer here if required
-		return ctrl.Result{}, nil
+		// the instance is being deleted, clean it if the finalizer is still present
+		if controllerutil.ContainsFinalizer(instance, chaostypes.DisruptionCronFinalizer) {
+			if instance.IsReadyToRemoveFinalizer(r.FinalizerDeletionDelay) {
+				// we reach this code when all the cleanup pods have succeeded and we waited for finalizerDeletionDelay
+				// we can remove the finalizer and let the resource being garbage collected
+				r.log.Infow("removing disruptioncron finalizer")
+
+				controllerutil.RemoveFinalizer(instance, chaostypes.DisruptionCronFinalizer)
+
+				if err := r.Client.Update(ctx, instance); err != nil {
+					return ctrl.Result{}, fmt.Errorf("error removing disruptioncron finalizer: %w", err)
+				}
+
+				return ctrl.Result{}, nil
+			} else if instance.Status.CleanedAt == nil {
+				// set cleanedAt
+				now := metav1.Now()
+				instance.Status.CleanedAt = &now
+
+				if err := r.Client.Status().Update(ctx, instance); err != nil {
+					return ctrl.Result{}, fmt.Errorf("error updating disruptioncron's status: %w", err)
+				}
+
+				requeueAfter := r.FinalizerDeletionDelay
+				r.log.Infow(fmt.Sprintf("requeuing to remove finalizer after %s", requeueAfter))
+
+				return ctrl.Result{Requeue: true, RequeueAfter: requeueAfter}, nil
+			}
+		}
+
+		return ctrl.Result{Requeue: true}, nil
 	}
 
 	// Update the DisruptionCron status based on the presence of the target resource

@@ -370,7 +370,8 @@ func main() {
 			BaseLog: logger,
 			Scheme:  mgr.GetScheme(),
 			// new metrics sink for cron controller
-			MetricsSink: initMetricsSink(cfg.Controller.MetricsSink, logger, metricstypes.SinkAppCronController),
+			MetricsSink:            initMetricsSink(cfg.Controller.MetricsSink, logger, metricstypes.SinkAppCronController),
+			FinalizerDeletionDelay: cfg.Controller.FinalizerDeletionDelay,
 		}
 
 		defer closeMetricsSink(logger, disruptionCronReconciler.MetricsSink)
