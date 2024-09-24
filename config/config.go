@@ -45,6 +45,7 @@ type controllerConfig struct {
 	DisruptionCronEnabled            bool                            `json:"disruptionCronEnabled"`
 	DisruptionRolloutEnabled         bool                            `json:"disruptionRolloutEnabled"`
 	DisruptionDeletionTimeout        time.Duration                   `json:"disruptionDeletionTimeout"`
+	FinalizerDeletionDelay           time.Duration                   `json:"finalizerDeletionDelay"`
 	DisabledDisruptions              []string                        `json:"disabledDisruptions"`
 }
 
@@ -103,6 +104,7 @@ type handlerConfig struct {
 }
 
 const DefaultDisruptionDeletionTimeout = time.Minute * 15
+const DefaultFinalizerDeletionDelay = time.Second * 20
 
 func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 	var (
@@ -510,6 +512,12 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 	mainFS.DurationVar(&cfg.Controller.DisruptionDeletionTimeout, "disruption-deletion-timeout", DefaultDisruptionDeletionTimeout, "If the deletion time of the disruption is greater than the delete timeout, the disruption is marked as stuck on removal")
 
 	if err := viper.BindPFlag("controller.disruptionDeletionTimeout", mainFS.Lookup("disruption-deletion-timeout")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.DurationVar(&cfg.Controller.FinalizerDeletionDelay, "finalizer-deletion-delay", DefaultFinalizerDeletionDelay, "Define a delay before we attempt at removing the finalizers (on disruption only)")
+
+	if err := viper.BindPFlag("controller.finalizerDeletionDelay", mainFS.Lookup("finalizer-deletion-delay")); err != nil {
 		return cfg, err
 	}
 

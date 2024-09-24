@@ -65,6 +65,7 @@ controller:
   defaultDuration: 1h # default spec.duration for a disruption with none specified
   maxDuration: 2h # maximum spec.duration for a disruption
   defaultCronDelayedStartTolerance: 15m
+  finalizerDeletionDelay: 20s
   expiredDisruptionGCDelay: 10m # time after a disruption expires before deleting it
   userInfoHook: true
   webhook: # admission webhook configuration
@@ -100,16 +101,16 @@ injector:
   labels: {} # extra labels passed to the chaos injector pods
   tolerations: [] # extra tolerations passed to the chaos injector pods
   # (here's the expected format, key/effect are required, all other fields are optional)
-    # tolerations:
-    #   - key: "key1"
-    #     operator: "Equal"
-    #     value: "value1"
-    #     effect: "NoExecute"
-    #     tolerationSeconds: 3600
-    #   - key: "key1"
-    #     operator: "Equal"
-    #     value: "value1"
-    #     effect: "NoExecute"
+  # tolerations:
+  #   - key: "key1"
+  #     operator: "Equal"
+  #     value: "value1"
+  #     effect: "NoExecute"
+  #     tolerationSeconds: 3600
+  #   - key: "key1"
+  #     operator: "Equal"
+  #     value: "value1"
+  #     effect: "NoExecute"
   serviceAccount: chaos-injector # service account to use for the chaos injector pods
   logLevel: DEBUG # sets the log level for the chaos injector pods
   dnsDisruption: # dns disruption configuration

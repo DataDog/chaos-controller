@@ -34,6 +34,7 @@ const (
 
 type lightConfig struct {
 	Controller struct {
+		FinalizerDeletionDelay   time.Duration `json:"finalizerDeletionDelay"`
 		ExpiredDisruptionGCDelay time.Duration `yaml:"expiredDisruptionGCDelay"`
 		DefaultDuration          time.Duration `yaml:"defaultDuration"`
 	} `yaml:"controller"`
@@ -90,7 +91,7 @@ func calcDisruptionGoneTimeout(disruption chaosv1beta1.Disruption) time.Duration
 		}
 	}
 
-	disruptionGoneDuration := disruptionDuration + lightCfg.Controller.ExpiredDisruptionGCDelay + 5*time.Second
+	disruptionGoneDuration := disruptionDuration + lightCfg.Controller.ExpiredDisruptionGCDelay + 5*time.Second + lightCfg.Controller.FinalizerDeletionDelay
 
 	AddReportEntry(fmt.Sprintf("disruption %s will be gone at %v (in %v)", disruption.Name, time.Now().Add(disruptionGoneDuration), disruptionGoneDuration))
 
@@ -516,7 +517,7 @@ func expectChaosPod(ctx SpecContext, disruption chaosv1beta1.Disruption, count i
 
 	l, err := listChaosPods(ctx, disruption)
 	if err != nil {
-		return fmt.Errorf("an error occured while retrieving chaos pods: %w", err)
+		return fmt.Errorf("an error occurred while retrieving chaos pods: %w", err)
 	}
 
 	AddReportEntry(fmt.Sprintf("chaos pods count: %d/%d", len(l.Items), count))

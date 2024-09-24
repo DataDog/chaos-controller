@@ -624,6 +624,11 @@ spec:
             status:
               description: DisruptionStatus defines the observed state of Disruption
               properties:
+                cleanedAt:
+                  description: timestamp of when a disruption has been cleaned last.
+                  format: date-time
+                  nullable: true
+                  type: string
                 desiredTargetsCount:
                   description: Number of targets we want to target (count)
                   type: integer

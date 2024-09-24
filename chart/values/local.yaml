@@ -41,6 +41,7 @@ controller:
   deleteOnly: false
   imagePullSecrets: ""
   defaultDuration: 3m
+  finalizerDeletionDelay: 2s
   expiredDisruptionGCDelay: 15s
   webhook:
     certDir: chart/certs

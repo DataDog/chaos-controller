@@ -186,6 +186,27 @@ var _ = Describe("Disruption Controller", func() {
 					ExpectDisruptionStatus(ctx, disruption, chaostypes.DisruptionInjectionStatusPreviouslyInjected)
 				},
 				func(ctx SpecContext) {
+					By("CleanedAt being set on deletion")
+					Eventually(func(ctx SpecContext) error {
+						// retrieve the disruption until cleanedAt is defined
+						if err := k8sClient.Get(ctx, types.NamespacedName{
+							Namespace: disruption.Namespace,
+							Name:      disruption.Name,
+						}, &disruption); err != nil {
+							return StopTryingNotRetryableKubernetesError(err, false, false)
+						}
+
+						if disruption.Status.CleanedAt != nil {
+							return nil
+						}
+
+						return fmt.Errorf("cleanedAt is not defined")
+					}).WithContext(ctx).
+						Within(calcDisruptionGoneTimeout(disruption)).
+						ProbeEvery(disruptionPotentialChangesEvery).
+						Should(Succeed())
+				},
+				func(ctx SpecContext) {
 					By("Waiting for disruption to be removed")
 					Eventually(k8sClient.Get).
 						WithContext(ctx).WithArguments(
@@ -495,8 +516,8 @@ var _ = Describe("Disruption Controller", func() {
 		BeforeEach(func() {
 			disruption.Spec = chaosv1beta1.DisruptionSpec{
 				DryRun:   true,
-				Duration: shortDisruptionDuration,
-				Count:    &intstr.IntOrString{Type: intstr.String, StrVal: "100%"},
+				Duration: "4m",
+				Count:    &intstr.IntOrString{Type: intstr.Int, IntVal: 1},
 				Unsafemode: &chaosv1beta1.UnsafemodeSpec{
 					DisableAll: true,
 				},
@@ -506,10 +527,10 @@ var _ = Describe("Disruption Controller", func() {
 			}
 		})
 
-		When("chaos pods doesn't exist for injected targets", func() {
+		When("chaos pods don't exist for injected targets", func() {
 			It("should not recreate those chaos pods", func(ctx SpecContext) {
 				By("Initially targeting both pods")
-				ExpectChaosPods(ctx, disruption, 2)
+				ExpectChaosPods(ctx, disruption, 1)
 
 				By("Listing chaos pods to pick one to delete")
 				chaosPod := PickFirstChaodPod(ctx, disruption)
@@ -517,11 +538,11 @@ var _ = Describe("Disruption Controller", func() {
 				By("Deleting one of the chaos pod")
 				DeleteRunningPod(ctx, chaosPod)
 
-				By("Waiting to only have one chaos pod")
-				ExpectChaosPods(ctx, disruption, 1)
+				By("Waiting to have 0 chaos pod")
+				ExpectChaosPods(ctx, disruption, 0)
 
 				By("Waiting to see the second chaos pod is not re-created")
-				Consistently(expectChaosPod).WithContext(ctx).WithArguments(disruption, 2).Within(calcDisruptionGoneTimeout(disruption)).ProbeEvery(disruptionPotentialChangesEvery).ShouldNot(Succeed())
+				Consistently(expectChaosPod).WithContext(ctx).WithArguments(disruption, 1).Within(calcDisruptionGoneTimeout(disruption)).ProbeEvery(disruptionPotentialChangesEvery).ShouldNot(Succeed())
 			})
 		})
 	})
