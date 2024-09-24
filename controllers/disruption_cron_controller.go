@@ -61,6 +61,8 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	DisruptionCronTags = []string{"disruptionCronName:" + instance.Name, "disruptionCronNamespace:" + instance.Namespace, "targetName:" + instance.Spec.TargetResource.Name}
 
 	if !instance.DeletionTimestamp.IsZero() {
+		r.log.Info("HERE")
+
 		// the instance is being deleted, clean it if the finalizer is still present
 		if controllerutil.ContainsFinalizer(instance, chaostypes.DisruptionCronFinalizer) {
 			if instance.IsReadyToRemoveFinalizer(r.FinalizerDeletionDelay) {
@@ -92,6 +94,13 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 
 		return ctrl.Result{Requeue: true}, nil
+	}
+
+	updated := controllerutil.AddFinalizer(instance, chaostypes.DisruptionCronFinalizer)
+	if updated {
+		if err := r.Client.Update(ctx, instance); err != nil {
+			return ctrl.Result{}, fmt.Errorf("error adding disruptioncron finalizer: %w", err)
+		}
 	}
 
 	// Update the DisruptionCron status based on the presence of the target resource
