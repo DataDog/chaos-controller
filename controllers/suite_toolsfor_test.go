@@ -517,7 +517,7 @@ func expectChaosPod(ctx SpecContext, disruption chaosv1beta1.Disruption, count i
 
 	l, err := listChaosPods(ctx, disruption)
 	if err != nil {
-		return fmt.Errorf("an error occured while retrieving chaos pods: %w", err)
+		return fmt.Errorf("an error occurred while retrieving chaos pods: %w", err)
 	}
 
 	AddReportEntry(fmt.Sprintf("chaos pods count: %d/%d", len(l.Items), count))
