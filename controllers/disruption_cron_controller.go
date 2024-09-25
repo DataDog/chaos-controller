@@ -60,10 +60,9 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	r.log.Infow("fetched last known history", "history", instance.Status.History)
 	DisruptionCronTags = []string{"disruptionCronName:" + instance.Name, "disruptionCronNamespace:" + instance.Namespace, "targetName:" + instance.Spec.TargetResource.Name}
 
+	// DisruptionCron being deleted
 	if !instance.DeletionTimestamp.IsZero() {
-		r.log.Info("HERE")
-
-		// the instance is being deleted, clean it if the finalizer is still present
+		// the instance is being deleted, remove finalizer avec finalizerDeletionDelay
 		if controllerutil.ContainsFinalizer(instance, chaostypes.DisruptionCronFinalizer) {
 			if instance.IsReadyToRemoveFinalizer(r.FinalizerDeletionDelay) {
 				// we reach this code when all the cleanup pods have succeeded and we waited for finalizerDeletionDelay
@@ -77,23 +76,16 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 				}
 
 				return ctrl.Result{}, nil
-			} else if instance.Status.CleanedAt == nil {
-				// set cleanedAt
-				now := metav1.Now()
-				instance.Status.CleanedAt = &now
-
-				if err := r.Client.Status().Update(ctx, instance); err != nil {
-					return ctrl.Result{}, fmt.Errorf("error updating disruptioncron's status: %w", err)
-				}
-
-				requeueAfter := r.FinalizerDeletionDelay
-				r.log.Infow(fmt.Sprintf("requeuing to remove finalizer after %s", requeueAfter))
-
-				return ctrl.Result{Requeue: true, RequeueAfter: requeueAfter}, nil
 			}
+
+			// waiting for finalizerDeletionDelay before removing finalizer
+			requeueAfter := r.FinalizerDeletionDelay
+			r.log.Infow(fmt.Sprintf("requeuing to remove finalizer after %s", requeueAfter))
+
+			return ctrl.Result{Requeue: true, RequeueAfter: requeueAfter}, nil
 		}
 
-		return ctrl.Result{Requeue: true}, nil
+		return ctrl.Result{}, nil
 	}
 
 	updated := controllerutil.AddFinalizer(instance, chaostypes.DisruptionCronFinalizer)

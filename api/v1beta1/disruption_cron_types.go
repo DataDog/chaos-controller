@@ -95,10 +95,6 @@ type DisruptionCronStatus struct {
 	TargetResourcePreviouslyMissing *metav1.Time `json:"targetResourcePreviouslyMissing,omitempty"`
 
 	History []DisruptionCronTrigger `json:"history,omitempty"`
-
-	// timestamp of when a disruptioncron has been cleaned last.
-	// +nullable
-	CleanedAt *metav1.Time `json:"cleanedAt,omitempty"`
 }
 
 const MaxHistoryLen = 5
@@ -109,7 +105,7 @@ type DisruptionCronTrigger struct {
 	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }
 
-// IsReadyToRemoveFinalizer checks if a disruption has been cleaned and has waited for finalizerDelay duration before removing finalizer
+// IsReadyToRemoveFinalizer checks if adisruptioncron has been deleting for > finalizerDelay
 func (r *DisruptionCron) IsReadyToRemoveFinalizer(finalizerDelay time.Duration) bool {
-	return r.Status.CleanedAt != nil && time.Now().After(r.Status.CleanedAt.Add(finalizerDelay))
+	return r.DeletionTimestamp != nil && time.Now().After(r.DeletionTimestamp.Add(finalizerDelay))
 }

@@ -693,11 +693,6 @@ spec:
             status:
               description: DisruptionCronStatus defines the observed state of DisruptionCron
               properties:
-                cleanedAt:
-                  description: timestamp of when a disruptioncron has been cleaned last.
-                  format: date-time
-                  nullable: true
-                  type: string
                 history:
                   items:
                     properties:
