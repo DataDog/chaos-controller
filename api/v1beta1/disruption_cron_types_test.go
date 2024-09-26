@@ -26,7 +26,7 @@ var _ = Describe("DisruptionCron Types", func() {
 
 					disruptionCron := DisruptionCron{
 						ObjectMeta: metav1.ObjectMeta{
-							DeletionTimestamp: &metav1.Time{readyTime},
+							DeletionTimestamp: &metav1.Time{Time: readyTime},
 						},
 					}
 
@@ -50,7 +50,7 @@ var _ = Describe("DisruptionCron Types", func() {
 				Entry("no deletion timestamp set", DisruptionCron{}),
 				Entry("deletion timestamp is < than required", DisruptionCron{
 					ObjectMeta: metav1.ObjectMeta{
-						DeletionTimestamp: &metav1.Time{time.Now()},
+						DeletionTimestamp: &metav1.Time{Time: time.Now()},
 					},
 				}))
 		})
