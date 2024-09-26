@@ -417,6 +417,8 @@ func (r *Disruption) getMetricsTags() []string {
 		tags = append(tags, "kind:"+string(kind))
 	}
 
+	tags = append(tags, "level:"+string(r.Spec.Level))
+
 	return tags
 }
 
