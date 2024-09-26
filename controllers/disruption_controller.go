@@ -736,6 +736,7 @@ func (r *DisruptionReconciler) handleChaosPodTermination(ctx context.Context, in
 		} else {
 			r.log.Errorw("could not handle the chaos pod termination", "error", err, "chaosPod", chaosPod.Name)
 		}
+
 		return
 	}
 
