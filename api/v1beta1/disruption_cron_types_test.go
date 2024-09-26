@@ -22,7 +22,7 @@ var _ = Describe("DisruptionCron Types", func() {
 			When("deletedAt is set and we are ready to remove the finalizer", func() {
 				It("should return true", func() {
 					// Arrange
-					readyTime := time.Now().Add(time.Duration(21 * time.Second))
+					readyTime := time.Now().Add(-1 * time.Duration(21*time.Second))
 
 					disruptionCron := DisruptionCron{
 						ObjectMeta: metav1.ObjectMeta{
