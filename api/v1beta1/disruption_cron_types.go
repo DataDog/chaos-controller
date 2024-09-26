@@ -106,6 +106,6 @@ type DisruptionCronTrigger struct {
 }
 
 // IsReadyToRemoveFinalizer checks if adisruptioncron has been deleting for > finalizerDelay
-func (r *DisruptionCron) IsReadyToRemoveFinalizer(finalizerDelay time.Duration) bool {
-	return r.DeletionTimestamp != nil && time.Now().After(r.DeletionTimestamp.Add(finalizerDelay))
+func (d *DisruptionCron) IsReadyToRemoveFinalizer(finalizerDelay time.Duration) bool {
+	return d.DeletionTimestamp != nil && time.Now().After(d.DeletionTimestamp.Add(finalizerDelay))
 }
