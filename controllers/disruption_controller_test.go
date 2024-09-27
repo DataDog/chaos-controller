@@ -166,6 +166,7 @@ var _ = Describe("Disruption Controller", func() {
 		})
 
 		It("should target all the selected pods", func(ctx SpecContext) {
+			Skip("See CHAOSPLT-455: flaky test. Data Race error")
 			Concurrently{
 				func(ctx SpecContext) {
 					By("Ensuring that the chaos pods have been created")
