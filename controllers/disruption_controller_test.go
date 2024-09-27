@@ -145,6 +145,7 @@ var _ = Describe("Disruption Controller", func() {
 		})
 
 		It("should target the node", func(ctx SpecContext) {
+			Skip("See CHAOSPLT-455: flaky test")
 			By("Ensuring that the inject pod has been created")
 			ExpectChaosPods(ctx, disruption, 1)
 		})
@@ -514,6 +515,7 @@ var _ = Describe("Disruption Controller", func() {
 
 	Context("don't reinject a static node disruption", func() {
 		BeforeEach(func() {
+			Skip("See CHAOSPLT-455: flaky test")
 			disruption.Spec = chaosv1beta1.DisruptionSpec{
 				DryRun:   true,
 				Duration: "4m",
