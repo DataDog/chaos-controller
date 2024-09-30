@@ -731,7 +731,11 @@ func (r *DisruptionReconciler) handleChaosPodTermination(ctx context.Context, in
 
 	isStuckOnRemoval, err := r.ChaosPodService.HandleChaosPodTermination(ctx, instance, &chaosPod)
 	if err != nil {
-		r.log.Errorw("could not handle the chaos pod termination", "error", err, "chaosPod", chaosPod.Name)
+		if chaosv1beta1.IsUpdateConflictError(err) {
+			r.log.Infow("need to retry the chaos pod termination", "error", err, "chaosPod", chaosPod.Name)
+		} else {
+			r.log.Errorw("could not handle the chaos pod termination", "error", err, "chaosPod", chaosPod.Name)
+		}
 
 		return
 	}

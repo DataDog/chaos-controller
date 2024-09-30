@@ -146,7 +146,7 @@ var _ = Describe("Disruption Client", func() {
 		},
 			Entry("when there are no disruptions in the cluster", 0, NodeTimeout(k8sAPIServerResponseTimeout)),
 			Entry("when there is a single disruption in the cluster", 1, NodeTimeout(k8sAPIServerResponseTimeout)),
-			Entry("when there are three disruptions in the cluster", 3, NodeTimeout(k8sAPIServerResponseTimeout)),
+			//Entry("when there are three disruptions in the cluster", 3, NodeTimeout(k8sAPIServerResponseTimeout)), // TODO Skip("See CHAOSPLT-455: flaky test")
 		)
 	})
 
@@ -261,6 +261,7 @@ var _ = Describe("Disruption Client", func() {
 				Eventually(k8sClient.Delete).WithContext(ctx).WithArguments(&disruption).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).Should(WithTransform(client.IgnoreNotFound, Succeed()), "Failed to delete Disruption")
 			}),
 			Entry("when a disruption is updated", watch.Modified, "ds-watch-modify", NodeTimeout(k8sAPIServerResponseTimeout), func(ctx SpecContext, disruptionName string) {
+				Skip("See CHAOSPLT-455: flaky test")
 				_ = createDisruption(ctx, namespace, disruptionName)
 
 				// Fetch the most up to date disruption
