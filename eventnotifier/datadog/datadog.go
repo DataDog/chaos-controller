@@ -19,7 +19,7 @@ import (
 )
 
 type NotifierDatadogConfig struct {
-	Enabled bool
+	Enabled bool `yaml:"enabled"`
 }
 
 // Notifier describes a Datadog notifier
