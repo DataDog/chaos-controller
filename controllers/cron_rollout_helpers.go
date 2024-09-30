@@ -14,7 +14,6 @@ import (
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"go.uber.org/zap"
 	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -81,26 +80,24 @@ func CheckTargetResourceExists(ctx context.Context, cl client.Client, targetReso
 
 // GetSelectors retrieves the labels of the specified target resource (Deployment or StatefulSet).
 // Returns a set of labels to be used as Disruption selectors and an error if retrieval fails.
-func GetSelectors(ctx context.Context, cl client.Client, targetResource *chaosv1beta1.TargetResourceSpec, namespace string) (labels.Set, error) {
+func GetSelectors(ctx context.Context, cl client.Client, targetResource *chaosv1beta1.TargetResourceSpec, namespace string) (labels *metav1.LabelSelector, err error) {
 	targetObj, err := GetTargetResource(ctx, cl, targetResource, namespace)
 	if err != nil {
 		return nil, err
 	}
 
 	// retrieve pod template spec from targeted resource
-	podSpec := corev1.PodTemplateSpec{}
 	switch o := targetObj.(type) {
 	case *appsv1.Deployment:
-		podSpec = o.Spec.Template
+		labels = o.Spec.Selector
 	case *appsv1.StatefulSet:
-		podSpec = o.Spec.Template
+		labels = o.Spec.Selector
 	default:
 		return nil, errors.New("error getting target resource pod template labels")
 	}
 
-	labels := podSpec.GetLabels()
 	if labels == nil {
-		labels = make(map[string]string)
+		labels = metav1.SetAsLabelSelector(make(map[string]string))
 	}
 
 	return labels, nil
@@ -145,8 +142,12 @@ func overwriteDisruptionSelectors(ctx context.Context, cl client.Client, disrupt
 		disruption.Spec.Selector = make(map[string]string)
 	}
 
-	for k, v := range selectors {
+	for k, v := range selectors.MatchLabels {
 		disruption.Spec.Selector[k] = v
+	}
+
+	if len(selectors.MatchExpressions) > 0 {
+		disruption.Spec.AdvancedSelector = selectors.MatchExpressions
 	}
 
 	return nil
