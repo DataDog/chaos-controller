@@ -77,6 +77,54 @@ func (_c *TrafficControllerMock_AddBPFFilter_Call) RunAndReturn(run func([]strin
 	return _c
 }
 
+// AddCgroupFilter provides a mock function with given fields: ifaces, parent, handle
+func (_m *TrafficControllerMock) AddCgroupFilter(ifaces []string, parent string, handle uint32) error {
+	ret := _m.Called(ifaces, parent, handle)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddCgroupFilter")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func([]string, string, uint32) error); ok {
+		r0 = rf(ifaces, parent, handle)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// TrafficControllerMock_AddCgroupFilter_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddCgroupFilter'
+type TrafficControllerMock_AddCgroupFilter_Call struct {
+	*mock.Call
+}
+
+// AddCgroupFilter is a helper method to define mock.On call
+//   - ifaces []string
+//   - parent string
+//   - handle uint32
+func (_e *TrafficControllerMock_Expecter) AddCgroupFilter(ifaces interface{}, parent interface{}, handle interface{}) *TrafficControllerMock_AddCgroupFilter_Call {
+	return &TrafficControllerMock_AddCgroupFilter_Call{Call: _e.mock.On("AddCgroupFilter", ifaces, parent, handle)}
+}
+
+func (_c *TrafficControllerMock_AddCgroupFilter_Call) Run(run func(ifaces []string, parent string, handle uint32)) *TrafficControllerMock_AddCgroupFilter_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]string), args[1].(string), args[2].(uint32))
+	})
+	return _c
+}
+
+func (_c *TrafficControllerMock_AddCgroupFilter_Call) Return(_a0 error) *TrafficControllerMock_AddCgroupFilter_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *TrafficControllerMock_AddCgroupFilter_Call) RunAndReturn(run func([]string, string, uint32) error) *TrafficControllerMock_AddCgroupFilter_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // AddFilter provides a mock function with given fields: ifaces, parent, handle, srcIP, dstIP, srcPort, dstPort, prot, state, flowid
 func (_m *TrafficControllerMock) AddFilter(ifaces []string, parent string, handle string, srcIP *net.IPNet, dstIP *net.IPNet, srcPort int, dstPort int, prot protocol, state connState, flowid string) (uint32, error) {
 	ret := _m.Called(ifaces, parent, handle, srcIP, dstIP, srcPort, dstPort, prot, state, flowid)

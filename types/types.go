@@ -134,6 +134,9 @@ const (
 	// This value should NEVER be changed without changing the Network Disruption TC tree.
 	InjectorCgroupClassID = "0x00020002"
 
+	// This should be used specifically for eBPF disruptions
+	InjectorBPFCgroupClassID = "0x00040002"
+
 	// DDMarkChaoslibPrefix allows to consistently name the chaos-imported API in ddmark.
 	// It's arbitrary but needs to be consistent across multiple files.
 	DDMarkChaoslibPrefix = "chaos-api"
