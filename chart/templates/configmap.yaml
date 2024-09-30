@@ -79,7 +79,7 @@ data:
       disruptionDeletionTimeout: {{ .Values.controller.disruptionDeletionTimeout }}
       disabledDisruptions:
       {{- range $index, $kind := .Values.controller.disabledDisruptions }}
-        {{ $kind }}
+        - {{ $kind }}
       {{- end }}
     injector:
       image: {{ template "chaos-controller.format-image" deepCopy .Values.global.chaos.defaultImage | merge .Values.global.oci | merge .Values.injector.image }}
