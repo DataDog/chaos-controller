@@ -6,7 +6,7 @@
 package types
 
 type NotifiersCommonConfig struct {
-	ClusterName string
+	ClusterName string `yaml:"clusterName"`
 }
 
 type NotifierDriver string

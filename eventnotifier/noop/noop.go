@@ -16,7 +16,7 @@ import (
 )
 
 type NotifierNoopConfig struct {
-	Enabled bool
+	Enabled bool `yaml:"enabled"`
 }
 
 // Notifier describes a NOOP notifier

@@ -44,9 +44,9 @@ type slackMessage struct {
 }
 
 type NotifierSlackConfig struct {
-	Enabled              bool
-	TokenFilepath        string
-	MirrorSlackChannelID string // To remove when we stop testing observer feature
+	Enabled              bool   `yaml:"enabled"`
+	TokenFilepath        string `yaml:"tokenFilepath"`
+	MirrorSlackChannelID string `yaml:"mirrorSlackChannelId"`
 }
 
 // Notifier describes a Slack notifier
