@@ -50,7 +50,7 @@ This Disruption...
 	ℹ️  will be run on the Pod level, so everything in this disruption is scoped at this level.
 	ℹ️  has the following selectors which will be used to target pods
 		🎯  app=demo-curl
-	ℹ️  is going to target 1 pod(s) (either described as a percentage of total pods or actual number of them).
+	ℹ️  is going to target 1 pod(s) (described as a discrete number of pods).
 =======================================================================================================================================
 💉 injects a network disruption ...
 	💥 applies network failures on outgoing traffic.

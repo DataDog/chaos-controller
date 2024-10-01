@@ -15,6 +15,7 @@ import (
 	grpccalc "github.com/DataDog/chaos-controller/grpc/calculations"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/spf13/cobra"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 func explainMetaSpec(spec v1beta1.DisruptionSpec) {
@@ -65,7 +66,14 @@ func explainMetaSpec(spec v1beta1.DisruptionSpec) {
 		fmt.Printf("\tℹ️  has the onInit mode activated meaning the disruptions will be launched at the initialization of the targeted pods.\n")
 	}
 
-	fmt.Printf("\tℹ️  is going to target %s %s(s) (either described as a percentage of total %ss or actual number of them).\n", spec.Count, spec.Level, spec.Level)
+	countSuffix := ""
+	if spec.Count.Type == intstr.Int {
+		countSuffix = fmt.Sprintf("(described as a discrete number of %ss)", spec.Level)
+	} else {
+		countSuffix = fmt.Sprintf("(described as a percentage of total %ss)", spec.Level)
+	}
+
+	fmt.Printf("\tℹ️  is going to target %s %s(s) (%s).\n", spec.Count, spec.Level, countSuffix)
 
 	if spec.StaticTargeting {
 		fmt.Printf("\tℹ️  has StaticTargeting activated, so new pods/nodes will be NOT be targeted \n")

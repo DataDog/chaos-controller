@@ -41,7 +41,7 @@ metadata:
 spec:
   selector: # a label selector used to target resources
     app: demo-curl
-  count: 1 # the number of resources to target, can be a percentage
+  count: 1 # the number of resources to target, can be a percentage if you suffix with "%", e.g. `count: 50%`
   duration: 1h # the amount of time before your disruption automatically terminates itself, for safety
   nodeFailure: # trigger a kernel panic on the target node
     shutdown: false # do not force the node to be kept down
