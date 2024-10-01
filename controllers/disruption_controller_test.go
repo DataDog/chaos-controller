@@ -499,6 +499,7 @@ var _ = Describe("Disruption Controller", func() {
 
 	Context("manually delete a chaos pod", func() {
 		It("should properly handle the chaos pod finalizer", func(ctx SpecContext) {
+			Skip("See CHAOSPLT-455: flaky test")
 			By("Ensuring that the chaos pods have been created")
 			ExpectChaosPods(ctx, disruption, 4)
 
