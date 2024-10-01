@@ -36,7 +36,7 @@ A hash of the disruption resource spec is computed and stored in the resource st
 
 #### Step 3: select targets
 
-A list of targets is created from the given selector and level. It first lists the targets (pods if the given level is `pod`, nodes if it is `node`) matching the given label selector. Then, it randomly selects a certain amount of targets in the list depending on the given count. If the count is a percentage, it rounds up the amount.
+A list of targets is created from the given selector and level. It first lists the targets (pods if the given level is `pod`, nodes if it is `node`) matching the given label selector. Then, it randomly selects a certain amount of targets in the list depending on the given count. If the count is a percentage, e.g. `count: 25%`, it rounds up the amount.
 
 Some targets can be ignored and removed from the list depending on if they were:
 * already targeted by the same disruption but the associated chaos pod was terminated
