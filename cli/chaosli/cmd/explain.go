@@ -72,6 +72,7 @@ func explainMetaSpec(spec v1beta1.DisruptionSpec) {
 	} else {
 		countSuffix = fmt.Sprintf("(described as a percentage of total %ss)", spec.Level)
 	}
+
 	fmt.Printf("\tℹ️  is going to target %s %s(s) (%s).\n", spec.Count, spec.Level, countSuffix)
 
 	if spec.StaticTargeting {
