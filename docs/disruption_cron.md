@@ -23,7 +23,7 @@ spec:
     kind: deployment # a resource name to target
     name: demo-curl # can be either deployment or statefulset
   disruptionTemplate:
-    count: 1 # the number of resources to target, can be a percentage
+    count: 1 # the number of resources to target, can be a percentage if you suffix with "%", e.g. `count: 100%`
     duration: 1h # the amount of time before your disruption automatically terminates itself, for safety
     nodeFailure: # trigger a kernel panic on the target node
       shutdown: false # do not force the node to be kept down
