@@ -93,7 +93,9 @@ func (a netlinkAdapter) LinkList(useLocalhost bool, log *zap.SugaredLogger) ([]N
 			!strings.HasPrefix(link.Attrs().Name, "enp") &&
 			!strings.HasPrefix(link.Attrs().Name, "enx") &&
 			!strings.HasPrefix(link.Attrs().Name, "eth") &&
-			!strings.HasPrefix(link.Attrs().Name, "lo") {
+			!strings.HasPrefix(link.Attrs().Name, "lo") &&
+			!strings.HasPrefix(link.Attrs().Name, "cilium_host") &&
+			!strings.HasPrefix(link.Attrs().Name, "cilium_net") {
 			continue
 		}
 
