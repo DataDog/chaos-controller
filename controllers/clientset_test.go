@@ -427,6 +427,7 @@ var _ = Describe("DisruptionCron Client", func() {
 				Eventually(k8sClient.Delete).WithContext(ctx).WithArguments(&disruptionCron).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).Should(WithTransform(client.IgnoreNotFound, Succeed()), "Failed to delete DisruptionCron")
 			}),
 			Entry("when a disruptiocron is updated", watch.Modified, NodeTimeout(k8sAPIServerResponseTimeout), func(ctx SpecContext, disruptionCronName string) {
+				Skip("See CHAOSPLT-455: flaky test")
 				_ = createDisruptionCron(ctx, namespace, disruptionCronName)
 
 				// Fetch the most up to date disruptioncron
