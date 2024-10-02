@@ -17,11 +17,11 @@ import (
 )
 
 type NotifiersConfig struct {
-	Common  types.NotifiersCommonConfig   `json:"notifiersCommonConfig"`
-	Noop    noop.NotifierNoopConfig       `json:"notifierNoopConfig"`
-	Slack   slack.NotifierSlackConfig     `json:"notifierSlackConfig"`
-	Datadog datadog.NotifierDatadogConfig `json:"notifierDatadogConfig"`
-	HTTP    http.Config                   `json:"notifierHTTPConfig"`
+	Common  types.NotifiersCommonConfig   `json:"common" yaml:"common"`
+	Noop    noop.NotifierNoopConfig       `json:"noop" yaml:"noop"`
+	Slack   slack.NotifierSlackConfig     `json:"slack" yaml:"slack"`
+	Datadog datadog.NotifierDatadogConfig `json:"datadog" yaml:"datadog"`
+	HTTP    http.Config                   `json:"http" yaml:"http"`
 }
 
 type Notifier interface {

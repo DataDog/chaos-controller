@@ -28,15 +28,15 @@ type CloudProviderIPRangeInfo struct {
 
 // CloudProviderConfig Single configuration for any cloud provider
 type CloudProviderConfig struct {
-	Enabled     bool   `json:"enabled"`
-	IPRangesURL string `json:"ipRangesURL"`
+	Enabled     bool   `json:"enabled" yaml:"enabled"`
+	IPRangesURL string `json:"ipRangesURL" yaml:"ipRangesURL"`
 }
 
 // CloudProviderConfigs all cloud provider configurations for the manager
 type CloudProviderConfigs struct {
-	DisableAll   bool                `json:"disableAll"`
-	PullInterval time.Duration       `json:"pullInterval"`
-	AWS          CloudProviderConfig `json:"aws"`
-	GCP          CloudProviderConfig `json:"gcp"`
-	Datadog      CloudProviderConfig `json:"datadog"`
+	DisableAll   bool                `json:"disableAll" yaml:"disableAll"`
+	PullInterval time.Duration       `json:"pullInterval" yaml:"pullInterval"`
+	AWS          CloudProviderConfig `json:"aws" yaml:"aws"`
+	GCP          CloudProviderConfig `json:"gcp" yaml:"gcp"`
+	Datadog      CloudProviderConfig `json:"datadog" yaml:"datadog"`
 }

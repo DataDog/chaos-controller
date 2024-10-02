@@ -29,23 +29,23 @@ import (
 )
 
 type DisruptionConfig struct {
-	Enabled bool
-	URL     string
+	Enabled bool   `yaml:"enabled"`
+	URL     string `yaml:"url"`
 }
 
 type DisruptionCronConfig struct {
-	Enabled bool
-	URL     string
+	Enabled bool   `yaml:"enabled"`
+	URL     string `yaml:"url"`
 }
 
 type Config struct {
-	Headers         []string
-	HeadersFilepath string
-	AuthURL         string
-	AuthHeaders     []string
-	AuthTokenPath   string
-	Disruption      DisruptionConfig
-	DisruptionCron  DisruptionCronConfig
+	Headers         []string             `yaml:"headers"`
+	HeadersFilepath string               `yaml:"headersFilepath"`
+	AuthURL         string               `yaml:"authURL"`
+	AuthHeaders     []string             `yaml:"authHeaders"`
+	AuthTokenPath   string               `yaml:"authTokenPath"`
+	Disruption      DisruptionConfig     `yaml:"disruption"`
+	DisruptionCron  DisruptionCronConfig `yaml:"disruptioncron"`
 }
 
 func (c Config) IsEnabled() bool {

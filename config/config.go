@@ -19,88 +19,88 @@ import (
 )
 
 type config struct {
-	Controller controllerConfig `json:"controller"`
-	Injector   injectorConfig   `json:"injector"`
-	Handler    handlerConfig    `json:"handler"`
+	Controller controllerConfig `json:"controller" yaml:"controller"`
+	Injector   injectorConfig   `json:"injector" yaml:"injector"`
+	Handler    handlerConfig    `json:"handler" yaml:"handler"`
 }
 
 type controllerConfig struct {
-	MetricsBindAddr                  string                          `json:"metricsBindAddr"`
-	MetricsSink                      string                          `json:"metricsSink"`
-	ExpiredDisruptionGCDelay         time.Duration                   `json:"expiredDisruptionGCDelay"`
-	MaxDuration                      time.Duration                   `json:"maxDuration,omitempty"`
-	DefaultDuration                  time.Duration                   `json:"defaultDuration"`
-	DefaultCronDelayedStartTolerance time.Duration                   `json:"defaultCronDelayedStartTolerance"`
-	DeleteOnly                       bool                            `json:"deleteOnly"`
-	EnableSafeguards                 bool                            `json:"enableSafeguards"`
-	EnableObserver                   bool                            `json:"enableObserver"`
-	LeaderElection                   bool                            `json:"leaderElection"`
-	Webhook                          controllerWebhookConfig         `json:"webhook"`
-	Notifiers                        eventnotifier.NotifiersConfig   `json:"notifiersConfig"`
-	CloudProviders                   cloudtypes.CloudProviderConfigs `json:"cloudProviders"`
-	UserInfoHook                     bool                            `json:"userInfoHook"`
-	SafeMode                         safeModeConfig                  `json:"safeMode"`
-	ProfilerSink                     string                          `json:"profilerSink"`
-	TracerSink                       string                          `json:"tracerSink"`
-	DisruptionCronEnabled            bool                            `json:"disruptionCronEnabled"`
-	DisruptionRolloutEnabled         bool                            `json:"disruptionRolloutEnabled"`
-	DisruptionDeletionTimeout        time.Duration                   `json:"disruptionDeletionTimeout"`
-	FinalizerDeletionDelay           time.Duration                   `json:"finalizerDeletionDelay"`
-	DisabledDisruptions              []string                        `json:"disabledDisruptions"`
+	MetricsBindAddr                  string                          `json:"metricsBindAddr" yaml:"metricsBindAddr"`
+	MetricsSink                      string                          `json:"metricsSink" yaml:"metricsSink"`
+	ExpiredDisruptionGCDelay         time.Duration                   `json:"expiredDisruptionGCDelay" yaml:"expiredDisruptionGCDelay"`
+	MaxDuration                      time.Duration                   `json:"maxDuration,omitempty" yaml:"maxDuration,omitempty"`
+	DefaultDuration                  time.Duration                   `json:"defaultDuration" yaml:"defaultDuration"`
+	DefaultCronDelayedStartTolerance time.Duration                   `json:"defaultCronDelayedStartTolerance" yaml:"defaultCronDelayedStartTolerance"`
+	DeleteOnly                       bool                            `json:"deleteOnly" yaml:"deleteOnly"`
+	EnableSafeguards                 bool                            `json:"enableSafeguards" yaml:"enableSafeguards"`
+	EnableObserver                   bool                            `json:"enableObserver" yaml:"enableObserver"`
+	LeaderElection                   bool                            `json:"leaderElection" yaml:"leaderElection"`
+	Webhook                          controllerWebhookConfig         `json:"webhook" yaml:"webhook"`
+	Notifiers                        eventnotifier.NotifiersConfig   `json:"notifiers" yaml:"notifiers"`
+	CloudProviders                   cloudtypes.CloudProviderConfigs `json:"cloudProviders" yaml:"cloudProviders"`
+	UserInfoHook                     bool                            `json:"userInfoHook" yaml:"userInfoHook"`
+	SafeMode                         safeModeConfig                  `json:"safeMode" yaml:"safeMode"`
+	ProfilerSink                     string                          `json:"profilerSink" yaml:"profilerSink"`
+	TracerSink                       string                          `json:"tracerSink" yaml:"tracerSink"`
+	DisruptionCronEnabled            bool                            `json:"disruptionCronEnabled" yaml:"disruptionCronEnabled"`
+	DisruptionRolloutEnabled         bool                            `json:"disruptionRolloutEnabled" yaml:"disruptionRolloutEnabled"`
+	DisruptionDeletionTimeout        time.Duration                   `json:"disruptionDeletionTimeout" yaml:"disruptionDeletionTimeout"`
+	FinalizerDeletionDelay           time.Duration                   `json:"finalizerDeletionDelay" yaml:"finalizerDeletionDelay"`
+	DisabledDisruptions              []string                        `json:"disabledDisruptions" yaml:"disabledDisruptions"`
 }
 
 type controllerWebhookConfig struct {
-	CertDir string `json:"certDir"`
-	Host    string `json:"host"`
-	Port    int    `json:"port"`
+	CertDir string `json:"certDir" yaml:"certDir"`
+	Host    string `json:"host" yaml:"host"`
+	Port    int    `json:"port" yaml:"port"`
 }
 
 type safeModeConfig struct {
-	Environment         string   `json:"environment"`
-	PermittedUserGroups []string `json:"permittedUserGroups"`
-	Enable              bool     `json:"enable"`
-	NamespaceThreshold  int      `json:"namespaceThreshold"`
-	ClusterThreshold    int      `json:"clusterThreshold"`
-	AllowNodeFailure    bool     `json:"allowNodeFailure"`
-	AllowNodeLevel      bool     `json:"allowNodeLevel"`
+	Environment         string   `json:"environment" yaml:"environment"`
+	PermittedUserGroups []string `json:"permittedUserGroups" yaml:"permittedUserGroups"`
+	Enable              bool     `json:"enable" yaml:"enable"`
+	NamespaceThreshold  int      `json:"namespaceThreshold" yaml:"namespaceThreshold"`
+	ClusterThreshold    int      `json:"clusterThreshold" yaml:"clusterThreshold"`
+	AllowNodeFailure    bool     `json:"allowNodeFailure" yaml:"allowNodeFailure"`
+	AllowNodeLevel      bool     `json:"allowNodeLevel" yaml:"allowNodeLevel"`
 }
 
 type injectorConfig struct {
-	Image             string                          `json:"image"`
-	Annotations       map[string]string               `json:"annotations"`
-	Labels            map[string]string               `json:"labels"`
-	ChaosNamespace    string                          `json:"namespace"`
-	ServiceAccount    string                          `json:"serviceAccount"`
-	DNSDisruption     injectorDNSDisruptionConfig     `json:"dnsDisruption"`
-	NetworkDisruption injectorNetworkDisruptionConfig `json:"networkDisruption"`
-	ImagePullSecrets  string                          `json:"imagePullSecrets"`
-	Tolerations       []Toleration                    `json:"tolerations"`
-	LogLevel          string                          `json:"logLevel"`
+	Image             string                          `json:"image" yaml:"image"`
+	Annotations       map[string]string               `json:"annotations" yaml:"annotations"`
+	Labels            map[string]string               `json:"labels" yaml:"labels"`
+	ChaosNamespace    string                          `json:"chaosNamespace" yaml:"chaosNamespace"`
+	ServiceAccount    string                          `json:"serviceAccount" yaml:"serviceAccount"`
+	DNSDisruption     injectorDNSDisruptionConfig     `json:"dnsDisruption" yaml:"dnsDisruption"`
+	NetworkDisruption injectorNetworkDisruptionConfig `json:"networkDisruption" yaml:"networkDisruption"`
+	ImagePullSecrets  string                          `json:"imagePullSecrets" yaml:"imagePullSecrets"`
+	Tolerations       []Toleration                    `json:"tolerations" yaml:"tolerations,omitempty"`
+	LogLevel          string                          `json:"logLevel" yaml:"logLevel"`
 }
 
 type Toleration struct {
-	Key               string `json:"key"`
-	Operator          string `json:"operator"`
-	Value             string `json:"value"`
-	Effect            string `json:"effect"`
-	TolerationSeconds *int64 `json:"tolerationSeconds,omitempty"`
+	Key               string `json:"key" yaml:"key"`
+	Operator          string `json:"operator" yaml:"operator"`
+	Value             string `json:"value" yaml:"value"`
+	Effect            string `json:"effect" yaml:"effect"`
+	TolerationSeconds *int64 `json:"tolerationSeconds,omitempty" yaml:"tolerationSeconds,omitempty"`
 }
 
 type injectorDNSDisruptionConfig struct {
-	DNSServer string `json:"dnsServer"`
-	KubeDNS   string `json:"kubeDns"`
+	DNSServer string `json:"dnsServer" yaml:"dnsServer"`
+	KubeDNS   string `json:"kubeDns" yaml:"kubeDns"`
 }
 
 type injectorNetworkDisruptionConfig struct {
-	AllowedHosts        []string      `json:"allowedHosts"`
-	HostResolveInterval time.Duration `json:"hostResolveInterval"`
+	AllowedHosts        []string      `json:"allowedHosts" yaml:"allowedHosts"`
+	HostResolveInterval time.Duration `json:"hostResolveInterval" yaml:"hostResolveInterval"`
 }
 
 type handlerConfig struct {
-	Enabled    bool          `json:"enabled"`
-	Image      string        `json:"image"`
-	Timeout    time.Duration `json:"timeout"`
-	MaxTimeout time.Duration `json:"maxTimeout"`
+	Enabled    bool          `json:"enabled" yaml:"enabled"`
+	Image      string        `json:"image" yaml:"image"`
+	Timeout    time.Duration `json:"timeout" yaml:"timeout"`
+	MaxTimeout time.Duration `json:"maxTimeout" yaml:"maxTimeout"`
 }
 
 const DefaultDisruptionDeletionTimeout = time.Minute * 15
