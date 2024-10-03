@@ -6,6 +6,8 @@
 package v1beta1
 
 import (
+	"time"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -101,4 +103,9 @@ type DisruptionCronTrigger struct {
 	Name      string      `json:"name,omitempty"`
 	Kind      string      `json:"kind,omitempty"`
 	CreatedAt metav1.Time `json:"createdAt,omitempty"`
+}
+
+// IsReadyToRemoveFinalizer checks if adisruptioncron has been deleting for > finalizerDelay
+func (d *DisruptionCron) IsReadyToRemoveFinalizer(finalizerDelay time.Duration) bool {
+	return d.DeletionTimestamp != nil && time.Now().After(d.DeletionTimestamp.Add(finalizerDelay))
 }

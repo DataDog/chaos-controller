@@ -515,7 +515,7 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 		return cfg, err
 	}
 
-	mainFS.DurationVar(&cfg.Controller.FinalizerDeletionDelay, "finalizer-deletion-delay", DefaultFinalizerDeletionDelay, "Define a delay before we attempt at removing the finalizers (on disruption only)")
+	mainFS.DurationVar(&cfg.Controller.FinalizerDeletionDelay, "finalizer-deletion-delay", DefaultFinalizerDeletionDelay, "Define a delay before we attempt at removing the finalizers (on disruption and disruptioncron only)")
 
 	if err := viper.BindPFlag("controller.finalizerDeletionDelay", mainFS.Lookup("finalizer-deletion-delay")); err != nil {
 		return cfg, err
