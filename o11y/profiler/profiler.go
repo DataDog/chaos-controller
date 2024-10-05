@@ -24,7 +24,7 @@ type Sink interface {
 func GetSink(log *zap.SugaredLogger, driver types.SinkDriver) (Sink, error) {
 	switch driver {
 	case types.SinkDriverDatadog:
-		return datadog.New()
+		return datadog.New(log)
 	case types.SinkDriverNoop:
 		return noop.New(log), nil
 	default:
