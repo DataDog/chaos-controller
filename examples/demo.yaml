@@ -39,7 +39,7 @@ spec:
     spec:
       containers:
         - name: nginx
-          image: nginx:1.21.6
+          image: nginx:1.27
           livenessProbe:
             httpGet:
               path: /
@@ -76,10 +76,11 @@ spec:
         app.kubernetes.io/component: client
       labels:
         app: demo-curl
+        chaos.datadoghq.com/disrupt-on-init: yesplease
     spec:
       containers:
         - name: cpu-stress # jump into pod and run `kill -s TERM 7` to confirm re-start apply cpu reinjection
-          image: alpine/curl:3.14
+          image: alpine/curl:8.9.1
           command: [/bin/sh, -c]
           args:
             - ee(){exit 1}; trap 'ee' TERM; tail -f /dev/null
@@ -92,7 +93,7 @@ spec:
               memory: 32Mi
               cpu: 1500m
         - name: curl
-          image: alpine/curl:3.14
+          image: alpine/curl:8.9.1
           command: [/bin/sh]
           args:
             - -c
@@ -105,7 +106,7 @@ spec:
               memory: 32Mi
               cpu: 10m
         - name: curl-remote
-          image: alpine/curl:3.14
+          image: alpine/curl:8.9.1
           command: [/bin/sh]
           args:
             - -c
@@ -118,7 +119,7 @@ spec:
               memory: 32Mi
               cpu: 10m
         - name: read-file
-          image: ubuntu:bionic-20220128
+          image: ubuntu:focal-20240918
           command: ["/bin/bash"]
           args:
             - -c
@@ -134,7 +135,7 @@ spec:
               memory: 32Mi
               cpu: 100m
         - name: write-file
-          image: ubuntu:bionic-20220128
+          image: ubuntu:focal-20240918
           command: ["/bin/bash"]
           args:
             - -c
