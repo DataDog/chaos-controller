@@ -142,7 +142,7 @@ handler:
   maxTimeout: 2h # maximum amount of time to allow users to configure for their handler timeout
   resources:
     cpu: 10m
-    memory: 1Mi
+    memory: 5Mi
 
 proxy:
   image:
