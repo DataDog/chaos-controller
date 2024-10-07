@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
@@ -407,6 +408,10 @@ func main() {
 				Timeout:    cfg.Handler.Timeout,
 				MaxTimeout: cfg.Handler.MaxTimeout,
 				Decoder:    webhookDecoder,
+				ResourceList: &corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse(cfg.Handler.CPU),
+					corev1.ResourceMemory: resource.MustParse(cfg.Handler.Memory),
+				},
 			},
 		})
 	}

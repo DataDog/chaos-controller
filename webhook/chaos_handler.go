@@ -14,18 +14,18 @@ import (
 
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 type ChaosHandlerMutator struct {
-	Client     client.Client
-	Log        *zap.SugaredLogger
-	Image      string
-	Timeout    time.Duration
-	MaxTimeout time.Duration
-	Decoder    *admission.Decoder
+	Client       client.Client
+	Log          *zap.SugaredLogger
+	Image        string
+	Timeout      time.Duration
+	MaxTimeout   time.Duration
+	Decoder      *admission.Decoder
+	ResourceList *corev1.ResourceList
 }
 
 func (m *ChaosHandlerMutator) Handle(ctx context.Context, req admission.Request) admission.Response {
@@ -92,8 +92,8 @@ func (m *ChaosHandlerMutator) Handle(ctx context.Context, req admission.Request)
 			succeedOnTimeout,
 		},
 		Resources: corev1.ResourceRequirements{
-			Limits:   corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("10m"), corev1.ResourceMemory: resource.MustParse("10Mi")},
-			Requests: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("10m"), corev1.ResourceMemory: resource.MustParse("10Mi")},
+			Limits:   *m.ResourceList,
+			Requests: *m.ResourceList,
 		},
 	}
 
