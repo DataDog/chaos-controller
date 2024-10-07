@@ -76,7 +76,7 @@ spec:
         app.kubernetes.io/component: client
       labels:
         app: demo-curl
-        chaos.datadoghq.com/disrupt-on-init: yesplease
+#        chaos.datadoghq.com/disrupt-on-init: true # uncomment this and run `make lima-install-demo` again, for testing the examples/on_init.yaml disruption
     spec:
       containers:
         - name: cpu-stress # jump into pod and run `kill -s TERM 7` to confirm re-start apply cpu reinjection
