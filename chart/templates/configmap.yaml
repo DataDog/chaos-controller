@@ -136,6 +136,5 @@ data:
       enabled: {{ .Values.handler.enabled }}
       timeout: {{ .Values.handler.timeout | quote }}
       maxTimeout: {{ .Values.handler.maxTimeout | quote }}
-      resources:
-        cpu: {{ .Values.handler.resources.cpu | default "" }}
-        memory: {{ .Values.handler.resources.memory | default "" }}
+      resources.cpu: {{ .Values.handler.resources.cpu | quote | default "" }}
+      resources.memory: {{ .Values.handler.resources.memory | quote | default "" }}
