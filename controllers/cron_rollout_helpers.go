@@ -163,7 +163,7 @@ func CreateDisruptionFromTemplate(ctx context.Context, cl client.Client, scheme 
 	disruption.Labels[ownerNameLabel] = owner.GetName()
 
 	if err := setDisruptionAnnotations(disruption, owner, scheduledTime); err != nil {
-		log.Warnw("unable to set annotations for child disruption", "err", err, "disruptionName", disruption.Name)
+		log.Errorw("unable to set annotations for child disruption", "err", err, "disruptionName", disruption.Name)
 	}
 
 	if err := overwriteDisruptionSelectors(ctx, cl, disruption, targetResource, owner.GetNamespace()); err != nil {
