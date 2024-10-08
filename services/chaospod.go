@@ -188,7 +188,7 @@ func (m *chaosPodService) HandleChaosPodTermination(ctx context.Context, disrupt
 			}
 
 			// if the injector container definitively did not start, we can remove the finalizer
-			if !(*cs.Started) {
+			if cs.Started != nil && !(*cs.Started) {
 				shouldRemoveFinalizer = true
 			}
 
