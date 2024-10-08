@@ -126,11 +126,7 @@ func setDisruptionAnnotations(disruption *chaosv1beta1.Disruption, owner metav1.
 
 	disruption.SetScheduledAtAnnotation(scheduledTime)
 
-	if err := disruption.CopyUserInfoToAnnotations(owner); err != nil {
-		return err
-	}
-
-	return nil
+	return disruption.CopyUserInfoToAnnotations(owner)
 }
 
 // overwriteDisruptionSelectors updates the selectors of a given Disruption object based on the provided targetResource.
