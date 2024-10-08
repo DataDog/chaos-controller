@@ -9,11 +9,15 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
+
+	"encoding/json"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"go.uber.org/zap"
 	appsv1 "k8s.io/api/apps/v1"
+	authv1beta1 "k8s.io/api/authentication/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -25,6 +29,8 @@ import (
 
 const (
 	ScheduledAtAnnotation          = chaosv1beta1.GroupName + "/scheduled-at"
+	UserAnnotation                 = chaosv1beta1.GroupName + "/user"
+	UserGroupsAnnotation           = chaosv1beta1.GroupName + "/user-groups"
 	DisruptionCronNameLabel        = chaosv1beta1.GroupName + "/disruption-cron-name"
 	DisruptionRolloutNameLabel     = chaosv1beta1.GroupName + "/disruption-rollout-name"
 	TargetResourceMissingThreshold = time.Hour * 24
@@ -120,13 +126,29 @@ func createBaseDisruption(owner metav1.Object, disruptionSpec *chaosv1beta1.Disr
 }
 
 // setDisruptionAnnotations updates the annotations of a given Disruption object with those of its owner.
-// Additionally, it sets a scheduled time annotation using the provided scheduledTime.
-func setDisruptionAnnotations(disruption *chaosv1beta1.Disruption, owner metav1.Object, scheduledTime time.Time) {
-	for k, v := range owner.GetAnnotations() {
+// It sets a scheduled time annotation using the provided scheduledTime.
+// It parses the UserInfo annotation if it exists and sets user-related annotations.
+func setDisruptionAnnotations(disruption *chaosv1beta1.Disruption, owner metav1.Object, scheduledTime time.Time, log *zap.SugaredLogger) {
+	// Copy owner annotations to Disruption
+	ownerAnnotations := owner.GetAnnotations()
+	for k, v := range ownerAnnotations {
 		disruption.Annotations[k] = v
 	}
 
+	// Set scheduled time annotation
 	disruption.Annotations[ScheduledAtAnnotation] = scheduledTime.Format(time.RFC3339)
+
+	// Check if the UserInfo annotation exists and set user-related annotations
+	if userInfoJSON, exists := ownerAnnotations["UserInfo"]; exists {
+		var userInfo authv1beta1.UserInfo
+		if err := json.Unmarshal([]byte(userInfoJSON), &userInfo); err != nil {
+			log.Errorw("unable to parse UserInfo annotation", "err", err, "disruptionName", disruption.Name)
+		}
+
+		// Set user-related annotations using the parsed UserInfo struct
+		disruption.Annotations[UserAnnotation] = userInfo.Username
+		disruption.Annotations[UserGroupsAnnotation] = strings.Join(userInfo.Groups, ",")
+	}
 }
 
 // overwriteDisruptionSelectors updates the selectors of a given Disruption object based on the provided targetResource.
@@ -156,13 +178,13 @@ func overwriteDisruptionSelectors(ctx context.Context, cl client.Client, disrupt
 // CreateDisruptionFromTemplate constructs a Disruption object based on the provided owner, disruptionSpec, and targetResource.
 // The function sets annotations, overwrites selectors, and associates the Disruption with its owner.
 // It returns the constructed Disruption or an error if any step fails.
-func CreateDisruptionFromTemplate(ctx context.Context, cl client.Client, scheme *runtime.Scheme, owner metav1.Object, targetResource *chaosv1beta1.TargetResourceSpec, disruptionSpec *chaosv1beta1.DisruptionSpec, scheduledTime time.Time) (*chaosv1beta1.Disruption, error) {
+func CreateDisruptionFromTemplate(ctx context.Context, cl client.Client, scheme *runtime.Scheme, owner metav1.Object, targetResource *chaosv1beta1.TargetResourceSpec, disruptionSpec *chaosv1beta1.DisruptionSpec, scheduledTime time.Time, log *zap.SugaredLogger) (*chaosv1beta1.Disruption, error) {
 	disruption := createBaseDisruption(owner, disruptionSpec)
 
 	ownerNameLabel := getOwnerNameLabel(owner)
 	disruption.Labels[ownerNameLabel] = owner.GetName()
 
-	setDisruptionAnnotations(disruption, owner, scheduledTime)
+	setDisruptionAnnotations(disruption, owner, scheduledTime, log)
 
 	if err := overwriteDisruptionSelectors(ctx, cl, disruption, targetResource, owner.GetNamespace()); err != nil {
 		return nil, err
