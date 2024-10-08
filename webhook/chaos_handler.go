@@ -19,12 +19,13 @@ import (
 )
 
 type ChaosHandlerMutator struct {
-	Client     client.Client
-	Log        *zap.SugaredLogger
-	Image      string
-	Timeout    time.Duration
-	MaxTimeout time.Duration
-	Decoder    *admission.Decoder
+	Client       client.Client
+	Log          *zap.SugaredLogger
+	Image        string
+	Timeout      time.Duration
+	MaxTimeout   time.Duration
+	Decoder      *admission.Decoder
+	ResourceList *corev1.ResourceList
 }
 
 func (m *ChaosHandlerMutator) Handle(ctx context.Context, req admission.Request) admission.Response {
@@ -89,6 +90,10 @@ func (m *ChaosHandlerMutator) Handle(ctx context.Context, req admission.Request)
 			"--timeout",
 			handlerTimeout,
 			succeedOnTimeout,
+		},
+		Resources: corev1.ResourceRequirements{
+			Limits:   *m.ResourceList,
+			Requests: *m.ResourceList,
 		},
 	}
 
