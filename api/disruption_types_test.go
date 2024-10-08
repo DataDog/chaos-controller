@@ -14,6 +14,7 @@ import (
 	"github.com/DataDog/chaos-controller/types"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var _ = Describe("DisruptionStatus.RemoveDeadTargets Test", func() {
@@ -288,6 +289,130 @@ var _ = Describe("DisruptionStatus.RemoveTargets Test", func() {
 		It("expects to remove all the targets", func() {
 			status.RemoveTargets(toRemoveTargetsCount)
 			Expect(status.TargetInjections).To(BeEmpty())
+		})
+	})
+})
+
+var _ = Describe("Disruption Annotations Tests", func() {
+	var disruption *v1beta1.Disruption
+	var owner metav1.Object
+
+	BeforeEach(func() {
+		disruption = &v1beta1.Disruption{
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: make(map[string]string),
+			},
+		}
+		owner = &metav1.ObjectMeta{
+			Annotations: map[string]string{
+				"key1": "value1",
+				"key2": "value2",
+			},
+		}
+	})
+
+	Describe("CopyOwnerAnnotations", func() {
+		It("copies annotations from the owner to the disruption", func() {
+			disruption.CopyOwnerAnnotations(owner)
+			Expect(disruption.Annotations).To(HaveKeyWithValue("key1", "value1"))
+			Expect(disruption.Annotations).To(HaveKeyWithValue("key2", "value2"))
+		})
+
+		It("creates a new annotations map if it's nil", func() {
+			disruption.Annotations = nil
+			disruption.CopyOwnerAnnotations(owner)
+			Expect(disruption.Annotations).NotTo(BeNil())
+			Expect(disruption.Annotations).To(HaveKeyWithValue("key1", "value1"))
+		})
+	})
+
+	Describe("SetScheduledAtAnnotation", func() {
+		It("sets the scheduled time annotation", func() {
+			scheduledTime := time.Now()
+			disruption.SetScheduledAtAnnotation(scheduledTime)
+
+			Expect(disruption.Annotations).To(HaveKey(types.ScheduledAtAnnotation))
+
+			parsedTime, err := time.Parse(time.RFC3339, disruption.Annotations[types.ScheduledAtAnnotation])
+			Expect(err).NotTo(HaveOccurred())
+			Expect(parsedTime).To(BeTemporally("~", scheduledTime, time.Second))
+		})
+
+		It("creates a new annotations map if it's nil", func() {
+			disruption.Annotations = nil
+			scheduledTime := time.Now()
+			disruption.SetScheduledAtAnnotation(scheduledTime)
+
+			Expect(disruption.Annotations).NotTo(BeNil())
+			Expect(disruption.Annotations).To(HaveKey(types.ScheduledAtAnnotation))
+		})
+	})
+
+	Describe("GetScheduledAtAnnotation", func() {
+		Describe("success cases", func() {
+			It("retrieves the scheduled time annotation", func() {
+				scheduledTime := time.Now().Format(time.RFC3339)
+				disruption.Annotations[types.ScheduledAtAnnotation] = scheduledTime
+
+				retrievedTime, err := disruption.GetScheduledAtAnnotation()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(retrievedTime.Format(time.RFC3339)).To(Equal(scheduledTime))
+			})
+		})
+
+		Describe("error cases", func() {
+			It("returns and error when the annotation is missing", func() {
+				_, err := disruption.GetScheduledAtAnnotation()
+				Expect(err).To(MatchError("scheduledAt annotation not found"))
+			})
+
+			It("return and error when the annotation cannot be parsed", func() {
+				disruption.Annotations[types.ScheduledAtAnnotation] = "invalid-time"
+				_, err := disruption.GetScheduledAtAnnotation()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("unable to parse scheduledAt annotation"))
+			})
+		})
+	})
+
+	Describe("CopyUserInfoToAnnotations", func() {
+		var userInfoJSON string
+
+		BeforeEach(func() {
+			userInfoJSON = `{
+				"username": "test-user",
+				"groups": ["group1", "group2"]
+			}`
+			owner.SetAnnotations(map[string]string{
+				"UserInfo": userInfoJSON,
+			})
+		})
+
+		Describe("success cases", func() {
+			It("copies user-related annotations from the owner", func() {
+				err := disruption.CopyUserInfoToAnnotations(owner)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(disruption.Annotations).To(HaveKeyWithValue(types.UserAnnotation, "test-user"))
+				Expect(disruption.Annotations).To(HaveKeyWithValue(types.UserGroupsAnnotation, "group1,group2"))
+			})
+		})
+
+		Describe("error cases", func() {
+			It("returns an error if the UserInfo annotation is invalid JSON", func() {
+				owner.SetAnnotations(map[string]string{
+					"UserInfo": "invalid-json",
+				})
+				err := disruption.CopyUserInfoToAnnotations(owner)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("unable to parse UserInfo annotation"))
+			})
+
+			It("does nothing if the UserInfo annotation does not exist", func() {
+				owner.SetAnnotations(map[string]string{})
+				err := disruption.CopyUserInfoToAnnotations(owner)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(disruption.Annotations).To(BeEmpty())
+			})
 		})
 	})
 })
