@@ -613,4 +613,172 @@ var _ = Describe("Disruption", func() {
 		Entry("with a disruption marked to be deleted not exceeding the timeout limit", builderstest.NewDisruptionBuilder().WithDeletion(), time.Minute*10, false),
 		Entry("with a disruption marked to be deleted exceeding the timeout limit", builderstest.NewDisruptionBuilder().WithDeletion(), time.Minute*(-1), true),
 	)
+
+	DescribeTable("CopyOwnerAnnotations", func(disruptionBuilder *builderstest.DisruptionBuilder, ownerAnnotations map[string]string, expectedAnnotations map[string]string) {
+		// Arrange
+		disruption := disruptionBuilder.Build()
+		owner := &metav1.ObjectMeta{
+			Annotations: ownerAnnotations,
+		}
+
+		// Act
+		disruption.CopyOwnerAnnotations(owner)
+
+		// Assert
+		Expect(disruption.Annotations).NotTo(BeNil())
+		Expect(disruption.Annotations).To(Equal(expectedAnnotations))
+	},
+		Entry("should copy annotations from the owner to the disruption",
+			builderstest.NewDisruptionBuilder().WithAnnotations(map[string]string{
+				"key3": "value3",
+			}),
+			map[string]string{"key1": "value1", "key2": "value2"},
+			map[string]string{"key1": "value1", "key2": "value2", "key3": "value3"}),
+		Entry("should create a new annotations map if it's nil",
+			builderstest.NewDisruptionBuilder(),
+			map[string]string{"key1": "value1", "key2": "value2"},
+			map[string]string{"key1": "value1", "key2": "value2"}),
+	)
+
+	Describe("SetScheduledAtAnnotation", func() {
+		var scheduledTime time.Time
+
+		BeforeEach(func() {
+			scheduledTime = time.Now()
+		})
+
+		It("sets the scheduled time annotation", func() {
+			// Arrange
+			disruption := builderstest.NewDisruptionBuilder().Build()
+
+			// Act
+			disruption.SetScheduledAtAnnotation(scheduledTime)
+
+			// Assert
+			Expect(disruption.Annotations).To(HaveKey(chaostypes.ScheduledAtAnnotation))
+
+			parsedTime, err := time.Parse(time.RFC3339, disruption.Annotations[chaostypes.ScheduledAtAnnotation])
+			Expect(err).NotTo(HaveOccurred())
+			Expect(parsedTime).To(BeTemporally("~", scheduledTime, time.Second))
+		})
+
+		It("creates a new annotations map if it's nil", func() {
+			// Arrange
+			disruption := builderstest.NewDisruptionBuilder().Build()
+
+			// Act
+			disruption.SetScheduledAtAnnotation(scheduledTime)
+
+			// Act
+			Expect(disruption.Annotations).NotTo(BeNil())
+			Expect(disruption.Annotations).To(HaveKey(chaostypes.ScheduledAtAnnotation))
+		})
+	})
+
+	Describe("GetScheduledAtAnnotation", func() {
+		Describe("success cases", func() {
+			It("retrieves the scheduled time annotation", func() {
+				// Arrange
+				scheduledTime := time.Now().Format(time.RFC3339)
+				disruption := builderstest.NewDisruptionBuilder().WithAnnotations(map[string]string{
+					chaostypes.ScheduledAtAnnotation: scheduledTime,
+				}).Build()
+
+				// Act
+				retrievedTime, err := disruption.GetScheduledAtAnnotation()
+
+				// Assert
+				Expect(err).NotTo(HaveOccurred())
+				Expect(retrievedTime.Format(time.RFC3339)).To(Equal(scheduledTime))
+			})
+		})
+
+		Describe("error cases", func() {
+			It("returns and error when the annotation is missing", func() {
+				// Arrange
+				disruption := builderstest.NewDisruptionBuilder().Build()
+
+				// Act
+				_, err := disruption.GetScheduledAtAnnotation()
+
+				// Assert
+				Expect(err).To(MatchError("scheduledAt annotation not found"))
+			})
+
+			It("return and error when the annotation cannot be parsed", func() {
+				// Arrange
+				disruption := builderstest.NewDisruptionBuilder().WithAnnotations(map[string]string{
+					chaostypes.ScheduledAtAnnotation: "invalid-time",
+				}).Build()
+				// Act
+				_, err := disruption.GetScheduledAtAnnotation()
+
+				// Assert
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("unable to parse scheduledAt annotation"))
+			})
+		})
+	})
+
+	Describe("CopyUserInfoToAnnotations", func() {
+		var owner *metav1.ObjectMeta
+
+		BeforeEach(func() {
+			owner = &metav1.ObjectMeta{
+				Annotations: map[string]string{
+					"UserInfo": `{
+						"username": "test-user",
+						"groups": ["group1", "group2"]
+					}`,
+					"key1": "value1",
+					"key2": "value2",
+				},
+			}
+		})
+
+		Describe("success cases", func() {
+			It("copies user-related annotations from the owner", func() {
+				// Arrange
+				disruption := builderstest.NewDisruptionBuilder().Build()
+
+				// Act
+				err := disruption.CopyUserInfoToAnnotations(owner)
+
+				// Assert
+				Expect(err).NotTo(HaveOccurred())
+				Expect(disruption.Annotations).To(HaveKeyWithValue(chaostypes.UserAnnotation, "test-user"))
+				Expect(disruption.Annotations).To(HaveKeyWithValue(chaostypes.UserGroupsAnnotation, "group1,group2"))
+			})
+		})
+
+		Describe("error cases", func() {
+			It("returns an error if the UserInfo annotation is invalid JSON", func() {
+				// Arrange
+				disruption := builderstest.NewDisruptionBuilder().Build()
+				owner.SetAnnotations(map[string]string{
+					"UserInfo": "invalid-json",
+				})
+
+				// Act
+				err := disruption.CopyUserInfoToAnnotations(owner)
+
+				// Assert
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("unable to parse UserInfo annotation"))
+			})
+
+			It("does nothing if the UserInfo annotation does not exist", func() {
+				// Arrange
+				disruption := builderstest.NewDisruptionBuilder().Build()
+				owner.SetAnnotations(map[string]string{})
+
+				// Act
+				err := disruption.CopyUserInfoToAnnotations(owner)
+
+				// Assert
+				Expect(err).NotTo(HaveOccurred())
+				Expect(disruption.Annotations).To(BeEmpty())
+			})
+		})
+	})
 })
