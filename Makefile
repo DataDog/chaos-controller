@@ -334,7 +334,7 @@ lima-install: manifests
 		--set=controller.profilerSink=$(LIMA_INSTALL_SINK) \
 		--set=controller.tracerSink=$(LIMA_INSTALL_SINK) \
 		--values ./chart/values/$(HELM_VALUES) \
-		./chart | $(KUBECTL) apply -f -
+		./chart | $(KUBECTL) apply --v=5 -f -
 ifneq (local.yaml,$(HELM_VALUES)) # we can only wait for a controller if it exists, local.yaml does not deploy the controller
 	$(KUBECTL) -n chaos-engineering rollout status deployment/chaos-controller --timeout=60s
 endif

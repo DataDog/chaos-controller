@@ -9,111 +9,113 @@ metadata:
   namespace: "{{ .Values.chaosNamespace }}"
 data:
   controller.metricsBindAddr: 127.0.0.1:8080
-  controller.leaderElection: {{ .Values.controller.leaderElection }}
+  controller.leaderElection: {{ .Values.controller.leaderElection | quote }}
   controller.metricsSink: {{ .Values.controller.metricsSink | quote }}
   controller.profilerSink: {{ .Values.controller.profilerSink | quote }}
   controller.tracerSink: {{ .Values.controller.tracerSink | quote }}
-  controller.enableSafeguards: {{ .Values.controller.enableSafeguards }}
-  controller.enableObserver: {{ .Values.controller.enableObserver }}
+  controller.enableSafeguards: {{ .Values.controller.enableSafeguards | quote }}
+  controller.enableObserver: {{ .Values.controller.enableObserver | quote }}
 
   controller.notifiers.common.clusterName: {{ tpl .Values.controller.notifiers.common.clusterName . }}
 
-  controller.notifiers.noop.enabled: {{ .Values.controller.notifiers.noop.enabled }}
+  controller.notifiers.noop.enabled: {{ .Values.controller.notifiers.noop.enabled | quote }}
 
-  controller.notifiers.slack.enabled: {{ .Values.controller.notifiers.slack.enabled }}
+  controller.notifiers.slack.enabled: {{ .Values.controller.notifiers.slack.enabled | quote }}
   controller.notifiers.slack.tokenFilepath: {{ .Values.controller.notifiers.slack.tokenFilepath | quote }}
   controller.notifiers.slack.mirrorSlackChannelId: {{ .Values.controller.notifiers.slack.mirrorSlackChannelId | quote }}
 
-  controller.notifiers.http.disruption.enabled: {{ .Values.controller.notifiers.http.disruption.enabled }}
+  controller.notifiers.http.disruption.enabled: {{ .Values.controller.notifiers.http.disruption.enabled | quote }}
   controller.notifiers.http.disruption.url: {{ .Values.controller.notifiers.http.disruption.url | quote }}
 
-  controller.notifiers.http.disruptioncron.enabled: {{ .Values.controller.notifiers.http.disruptioncron.enabled }}
+  controller.notifiers.http.disruptioncron.enabled: {{ .Values.controller.notifiers.http.disruptioncron.enabled | quote }}
   controller.notifiers.http.disruptioncron.url: {{ .Values.controller.notifiers.http.disruptioncron.url | quote }}
 
-  controller.notifiers.http.headers: {{ .Values.controller.notifiers.http.headers | toJson }}
+  controller.notifiers.http.headers: |
+    {{ .Values.controller.notifiers.http.headers | toJson }}
   controller.notifiers.http.headersFilepath: {{ .Values.controller.notifiers.http.headersFilepath | quote }}
   controller.notifiers.http.authURL: {{ .Values.controller.notifiers.http.authURL | quote }}
-  controller.notifiers.http.authHeaders: {{ .Values.controller.notifiers.http.authHeaders | toJson }}
+  controller.notifiers.http.authHeaders: |
+    {{ .Values.controller.notifiers.http.authHeaders | toJson }}
   controller.notifiers.http.authTokenPath: {{ .Values.controller.notifiers.http.authTokenPath | quote }}
 
-  controller.notifiers.datadog.enabled: {{ .Values.controller.notifiers.datadog.enabled }}
+  controller.notifiers.datadog.enabled: {{ .Values.controller.notifiers.datadog.enabled | quote }}
 
-  controller.cloudProviders.disableAll: {{ .Values.controller.cloudProviders.disableAll }}
+  controller.cloudProviders.disableAll: {{ .Values.controller.cloudProviders.disableAll | quote }}
   controller.cloudProviders.pullInterval: {{ .Values.controller.cloudProviders.pullInterval }}
 
-  controller.cloudProviders.aws.enabled: {{ .Values.controller.cloudProviders.aws.enabled }}
+  controller.cloudProviders.aws.enabled: {{ .Values.controller.cloudProviders.aws.enabled | quote }}
   controller.cloudProviders.aws.ipRangesURL: {{ .Values.controller.cloudProviders.aws.ipRangesURL }}
 
-  controller.cloudProviders.gcp.enabled: {{ .Values.controller.cloudProviders.gcp.enabled }}
+  controller.cloudProviders.gcp.enabled: {{ .Values.controller.cloudProviders.gcp.enabled | quote }}
   controller.cloudProviders.gcp.ipRangesURL: {{ .Values.controller.cloudProviders.gcp.ipRangesURL }}
 
-  controller.cloudProviders.datadog.enabled: {{ .Values.controller.cloudProviders.datadog.enabled }}
+  controller.cloudProviders.datadog.enabled: {{ .Values.controller.cloudProviders.datadog.enabled | quote }}
   controller.cloudProviders.datadog.ipRangesURL: {{ .Values.controller.cloudProviders.datadog.ipRangesURL }}
 
-  controller.deleteOnly: {{ .Values.controller.deleteOnly }}
+  controller.deleteOnly: {{ .Values.controller.deleteOnly | quote }}
   controller.defaultDuration: {{ .Values.controller.defaultDuration }}
   controller.defaultCronDelayedStartTolerance: {{ .Values.controller.defaultCronDelayedStartTolerance }}
   controller.maxDuration: {{ .Values.controller.maxDuration }}
   controller.finalizerDeletionDelay: {{ .Values.controller.finalizerDeletionDelay }}
   controller.expiredDisruptionGCDelay: {{ .Values.controller.expiredDisruptionGCDelay }}
-  controller.userInfoHook: {{ .Values.controller.userInfoHook }}
+  controller.userInfoHook: {{ .Values.controller.userInfoHook | quote }}
 
   controller.webhook.certDir: {{ .Values.controller.webhook.generateCert | ternary "/tmp/k8s-webhook-server/serving-certs" (.Values.controller.webhook.certDir | quote)  }}
   controller.webhook.host: {{ .Values.controller.webhook.host | quote }}
-  controller.webhook.port: {{ .Values.controller.webhook.port }}
+  controller.webhook.port: {{ .Values.controller.webhook.port | quote }}
 
-  controller.safeMode.enable: {{ .Values.controller.safeMode.enable }}
-  controller.safeMode.permittedUserGroups: |
-    {{- range $index, $group := .Values.controller.safeMode.permittedUserGroups }}
-    - {{ $group | quote }}
-    {{- end }}
+  controller.safeMode.enable: {{ .Values.controller.safeMode.enable | quote }}
+{{/*  controller.safeMode.permittedUserGroups: |*/}}
+{{/*    {{- range $index, $group := .Values.controller.safeMode.permittedUserGroups }}*/}}
+{{/*    - {{ $group | quote }}*/}}
+{{/*    {{- end }}*/}}
   controller.safeMode.environment: {{ tpl .Values.controller.safeMode.environment . }}
-  controller.safeMode.namespaceThreshold: {{ .Values.controller.safeMode.namespaceThreshold }}
-  controller.safeMode.clusterThreshold: {{ .Values.controller.safeMode.clusterThreshold }}
-  controller.safeMode.allowNodeLevel: {{ .Values.controller.safeMode.allowNodeLevel }}
-  controller.safeMode.allowNodeFailure: {{ .Values.controller.safeMode.allowNodeFailure }}
+  controller.safeMode.namespaceThreshold: {{ .Values.controller.safeMode.namespaceThreshold | quote }}
+  controller.safeMode.clusterThreshold: {{ .Values.controller.safeMode.clusterThreshold | quote }}
+  controller.safeMode.allowNodeLevel: {{ .Values.controller.safeMode.allowNodeLevel | quote }}
+  controller.safeMode.allowNodeFailure: {{ .Values.controller.safeMode.allowNodeFailure | quote }}
 
-  controller.disruptionCronEnabled: {{ .Values.controller.disruptionCronEnabled }}
-  controller.disruptionRolloutEnabled: {{ .Values.controller.disruptionRolloutEnabled }}
+  controller.disruptionCronEnabled: {{ .Values.controller.disruptionCronEnabled | quote }}
+  controller.disruptionRolloutEnabled: {{ .Values.controller.disruptionRolloutEnabled | quote }}
   controller.disruptionDeletionTimeout: {{ .Values.controller.disruptionDeletionTimeout }}
-  controller.disabledDisruptions: |
-    {{- range $index, $kind := .Values.controller.disabledDisruptions }}
-      - {{ $kind }}
-    {{- end }}
+{{/*  controller.disabledDisruptions: |*/}}
+{{/*    {{- range $index, $kind := .Values.controller.disabledDisruptions }}*/}}
+{{/*      - {{ $kind }}*/}}
+{{/*    {{- end }}*/}}
 
 
   injector.image: {{ template "chaos-controller.format-image" deepCopy .Values.global.chaos.defaultImage | merge .Values.global.oci | merge .Values.injector.image }}
-  injector.imagePullSecrets: {{ .Values.injector.image.pullSecrets }}
-  {{- if .Values.injector.annotations }}
-  injector.annotations: |
-    {{- range $key, $val := .Values.injector.annotations }}
-    {{ $key }}: {{ $val | quote }}
-    {{- end }}
-  {{- end }}
-  {{- if .Values.injector.labels }}
-  injector.labels: |
-    {{- range $key, $val := .Values.injector.labels }}
-    {{ $key }}: {{ $val | quote }}
-    {{- end }}
-  {{- end }}
-  {{- if .Values.injector.tolerations }}
-  injector.tolerations: |
-    {{- range .Values.injector.tolerations }}
-    - key: {{ .key | quote }}
-      {{- if .operator }}
-      operator: {{ .operator | default "Equal" | quote }}
-      {{- end }}
-      {{- if .value }}
-      value: {{ .value | quote }}
-      {{- end }}
-      {{- if .effect }}
-      effect: {{ .effect | quote }}
-      {{- end }}
-      {{- if .tolerationSeconds }}
-      tolerationSeconds: {{ .tolerationSeconds }}
-      {{- end }}
-    {{- end }}
-  {{- end }}
+  injector.imagePullSecrets: {{ .Values.injector.image.pullSecrets | quote }}
+{{/*  {{- if .Values.injector.annotations }}*/}}
+{{/*  injector.annotations: |*/}}
+{{/*    {{- range $key, $val := .Values.injector.annotations }}*/}}
+{{/*    {{ $key }}: {{ $val | quote }}*/}}
+{{/*    {{- end }}*/}}
+{{/*  {{- end }}*/}}
+{{/*  {{- if .Values.injector.labels }}*/}}
+{{/*  injector.labels: |*/}}
+{{/*    {{- range $key, $val := .Values.injector.labels }}*/}}
+{{/*    {{ $key }}: {{ $val | quote }}*/}}
+{{/*    {{- end }}*/}}
+{{/*  {{- end }}*/}}
+{{/*  {{- if .Values.injector.tolerations }}*/}}
+{{/*  injector.tolerations: |*/}}
+{{/*    {{- range .Values.injector.tolerations }}*/}}
+{{/*    - key: {{ .key | quote }}*/}}
+{{/*      {{- if .operator }}*/}}
+{{/*      operator: {{ .operator | default "Equal" | quote }}*/}}
+{{/*      {{- end }}*/}}
+{{/*      {{- if .value }}*/}}
+{{/*      value: {{ .value | quote }}*/}}
+{{/*      {{- end }}*/}}
+{{/*      {{- if .effect }}*/}}
+{{/*      effect: {{ .effect | quote }}*/}}
+{{/*      {{- end }}*/}}
+{{/*      {{- if .tolerationSeconds }}*/}}
+{{/*      tolerationSeconds: {{ .tolerationSeconds }}*/}}
+{{/*      {{- end }}*/}}
+{{/*    {{- end }}*/}}
+{{/*  {{- end }}*/}}
 
   {{- if .Values.injector.logLevel }}
   injector.logLevel: {{ .Values.injector.logLevel }}
@@ -123,17 +125,17 @@ data:
   injector.dnsDisruption.dnsServer: {{ .Values.injector.dnsDisruption.dnsServer | quote }}
   injector.dnsDisruption.kubeDns: {{ .Values.injector.dnsDisruption.kubeDns | quote }}
 
-  {{- if .Values.injector.networkDisruption.allowedHosts }}
+{{/*  {{- if .Values.injector.networkDisruption.allowedHosts }}*/}}
   injector.networkDisruption.hostResolveInterval: {{ .Values.injector.networkDisruption.hostResolveInterval | quote }}
-  injector.networkDisruption.allowedHosts: |
-    {{- range $index, $allowedHost := .Values.injector.networkDisruption.allowedHosts }}
-    {{ $v := printf "%s;%v;%s;%s" ($allowedHost.host | default "") ($allowedHost.port | default "") ($allowedHost.protocol | default "") ($allowedHost.flow | default "") -}}
-    - {{ tpl $v $ }}
-    {{- end }}
-  {{- end }}
+{{/*  injector.networkDisruption.allowedHosts: |*/}}
+{{/*    {{- range $index, $allowedHost := .Values.injector.networkDisruption.allowedHosts }}*/}}
+{{/*    {{ $v := printf "%s;%v;%s;%s" ($allowedHost.host | default "") ($allowedHost.port | default "") ($allowedHost.protocol | default "") ($allowedHost.flow | default "") -}}*/}}
+{{/*    - {{ tpl $v $ }}*/}}
+{{/*    {{- end }}*/}}
+{{/*  {{- end }}*/}}
 
   handler.image: {{ template "chaos-controller.format-image" deepCopy .Values.global.chaos.defaultImage | merge .Values.global.oci | merge .Values.handler.image }}
-  handler.enabled: {{ .Values.handler.enabled }}
+  handler.enabled: {{ .Values.handler.enabled | quote }}
   handler.timeout: {{ .Values.handler.timeout | quote }}
   handler.maxTimeout: {{ .Values.handler.maxTimeout | quote }}
   handler.resources.cpu: {{ .Values.handler.resources.cpu | quote | default "" }}

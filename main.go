@@ -98,7 +98,8 @@ func main() {
 	}
 	configMapClient := clientset.CoreV1().ConfigMaps(os.Getenv("POD_NAMESPACE")) // TODO, get this value from an env var?
 
-	cfg, err := config.New(configMapClient, logger)
+	time.Sleep(time.Hour)
+	cfg, err := config.New(configMapClient, logger, os.Args[1:])
 	if err != nil {
 		logger.Fatalw("unable to create a valid configuration", "error", err)
 	}

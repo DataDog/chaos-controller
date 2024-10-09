@@ -112,7 +112,7 @@ type handlerConfig struct {
 const DefaultDisruptionDeletionTimeout = time.Minute * 15
 const DefaultFinalizerDeletionDelay = time.Second * 20
 
-func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger) (config, error) {
+func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osArgs []string) (config, error) {
 	configMap, err := client.Get(context.Background(), "chaos-controller", metav1.GetOptions{}) // TODO get the name
 	if err != nil {
 		logger.Fatalw("failed to get chaos-controller configMap", "error", err) // TODO, poll instead of dying?
@@ -558,7 +558,7 @@ func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger) (con
 		return cfg, err
 	}
 
-	err := preConfigFS.Parse(osArgs)
+	err = preConfigFS.Parse(osArgs)
 	if err != nil {
 		return cfg, fmt.Errorf("unable to retrieve configuration parse from provided flag: %w", err)
 	}
