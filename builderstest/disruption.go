@@ -234,3 +234,20 @@ func (b *DisruptionBuilder) WithInjectionStatus(status types.DisruptionInjection
 
 	return b
 }
+
+// WithAnnotations sets the specified annotations.
+func (b *DisruptionBuilder) WithAnnotations(annotations map[string]string) *DisruptionBuilder {
+	b.modifiers = append(
+		b.modifiers,
+		func() {
+			if b.ObjectMeta.Annotations == nil {
+				b.ObjectMeta.Annotations = make(map[string]string)
+			}
+
+			for k, v := range annotations {
+				b.ObjectMeta.Annotations[k] = v
+			}
+		})
+
+	return b
+}
