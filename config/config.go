@@ -16,6 +16,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 type config struct {
@@ -101,6 +102,8 @@ type handlerConfig struct {
 	Image      string        `json:"image" yaml:"image"`
 	Timeout    time.Duration `json:"timeout" yaml:"timeout"`
 	MaxTimeout time.Duration `json:"maxTimeout" yaml:"maxTimeout"`
+	CPU        string        `json:"cpu" yaml:"cpu"`
+	Memory     string        `json:"memory" yaml:"memory"`
 }
 
 const DefaultDisruptionDeletionTimeout = time.Minute * 15
@@ -353,6 +356,26 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 	mainFS.DurationVar(&cfg.Handler.MaxTimeout, "handler-max-timeout", time.Hour, "Handler init container maximum timeout")
 
 	if err := viper.BindPFlag("handler.maxTimeout", mainFS.Lookup("handler-max-timeout")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.StringVar(&cfg.Handler.CPU, "handler-cpu", "100m", "CPU limit/requests for handler init container")
+
+	if err := viper.BindPFlag("handler.cpu", mainFS.Lookup("handler-cpu")); err != nil {
+		return cfg, err
+	}
+
+	if _, err := resource.ParseQuantity(cfg.Handler.CPU); err != nil {
+		return cfg, err
+	}
+
+	mainFS.StringVar(&cfg.Handler.Memory, "handler-memory", "100Mi", "Memory limit/requests for handler init container")
+
+	if err := viper.BindPFlag("handler.memory", mainFS.Lookup("handler-memory")); err != nil {
+		return cfg, err
+	}
+
+	if _, err := resource.ParseQuantity(cfg.Handler.Memory); err != nil {
 		return cfg, err
 	}
 

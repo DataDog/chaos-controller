@@ -19,6 +19,7 @@ import (
 	"github.com/DataDog/chaos-controller/services"
 	"github.com/DataDog/chaos-controller/targetselector"
 	chaostypes "github.com/DataDog/chaos-controller/types"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -243,6 +244,7 @@ var _ = Describe("Chaos Pod Service", func() {
 
 		var (
 			isStuckOnRemoval bool
+			falseStarted     bool
 			cpBuilder        *builderstest.ChaosPodBuilder
 		)
 
@@ -250,6 +252,7 @@ var _ = Describe("Chaos Pod Service", func() {
 			// Arrange
 			cpBuilder = builderstest.NewPodBuilder("test-1", DefaultChaosNamespace)
 			targetSelectorMock.EXPECT().TargetIsHealthy(mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+			falseStarted = false
 		})
 
 		JustBeforeEach(func() {
@@ -304,6 +307,27 @@ var _ = Describe("Chaos Pod Service", func() {
 					"test",
 					DefaultNamespace,
 				).WithStatusPhase(v1.PodFailed)),
+			Entry(
+				"with a failed pod that never started",
+				builderstest.NewPodBuilder(
+					"test",
+					DefaultNamespace,
+				).WithStatus(v1.PodStatus{
+					Phase:  v1.PodFailed,
+					Reason: "PodFailed",
+					ContainerStatuses: []v1.ContainerStatus{
+						{
+							Name: "injector",
+							State: v1.ContainerState{
+								Terminated: &v1.ContainerStateTerminated{
+									Reason:   "ContainerStatusUnknown",
+									ExitCode: 137,
+								},
+							},
+							Started: &falseStarted,
+						},
+					},
+				})),
 			Entry(
 				"with failed a pod exceeding its activeDeadlineSeconds",
 				builderstest.NewPodBuilder(
