@@ -120,6 +120,14 @@ const (
 	// DisruptionNamespaceLabel is the label used to identify the disruption namespace for a chaos pod. This is used to determine pod ownership.
 	DisruptionNamespaceLabel = GroupName + "/disruption-namespace"
 
+	// ScheduledAtAnnotation is the annotation key for the scheduled time of the disruption when it is created from DisruptionCron or DisruptionRollout.
+	ScheduledAtAnnotation = GroupName + "/scheduled-at"
+
+	// UserAnnotation is the annotation key that stores the username of the user who created the parent resource (DisruptionCron or DisruptionRollout).
+	UserAnnotation = GroupName + "/user"
+	// UserGroupsAnnotation is the annotation key that stores the user groups of the individual who created the parent resource (DisruptionCron or DisruptionRollout).
+	UserGroupsAnnotation = GroupName + "/user-groups"
+
 	finalizerPrefix         = "finalizer." + GroupName
 	DisruptionFinalizer     = finalizerPrefix
 	DisruptionCronFinalizer = finalizerPrefix

@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"time"
 
 	chaosapi "github.com/DataDog/chaos-controller/api"
@@ -23,6 +24,7 @@ import (
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/DataDog/chaos-controller/utils"
 	"github.com/hashicorp/go-multierror"
+	authv1beta1 "k8s.io/api/authentication/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -446,6 +448,69 @@ func (r *Disruption) IsDeletionExpired(deletionTimeout time.Duration) bool {
 // IsReadyToRemoveFinalizer checks if a disruption has been cleaned and has waited for finalizerDelay duration before removing finalizer
 func (r *Disruption) IsReadyToRemoveFinalizer(finalizerDelay time.Duration) bool {
 	return r.Status.CleanedAt != nil && time.Now().After(r.Status.CleanedAt.Add(finalizerDelay))
+}
+
+// CopyOwnerAnnotations copies the annotations from the owner object to the disruption.
+// This ensures that any important metadata from the owner, such as custom annotations,
+// is preserved in the newly created disruption.
+func (r *Disruption) CopyOwnerAnnotations(owner metav1.Object) {
+	if r.Annotations == nil {
+		r.Annotations = make(map[string]string)
+	}
+
+	ownerAnnotations := owner.GetAnnotations()
+	for k, v := range ownerAnnotations {
+		r.Annotations[k] = v
+	}
+}
+
+// SetScheduledAtAnnotation sets the scheduled time of the disruption in the annotations.
+func (r *Disruption) SetScheduledAtAnnotation(scheduledTime time.Time) {
+	if r.Annotations == nil {
+		r.Annotations = make(map[string]string)
+	}
+
+	scheduledAt := scheduledTime.Format(time.RFC3339)
+	r.Annotations[chaostypes.ScheduledAtAnnotation] = scheduledAt
+}
+
+// GetScheduledAtAnnotation retrieves the scheduled time from the disruption's annotations.
+// Returns an error if the annotation is not found or cannot be parsed.
+func (r *Disruption) GetScheduledAtAnnotation() (time.Time, error) {
+	scheduledAt, exists := r.Annotations[chaostypes.ScheduledAtAnnotation]
+	if !exists {
+		return time.Time{}, errors.New("scheduledAt annotation not found")
+	}
+
+	scheduledTime, err := time.Parse(time.RFC3339, scheduledAt)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("unable to parse scheduledAt annotation: %w", err)
+	}
+
+	return scheduledTime, nil
+}
+
+// CopyUserInfoToAnnotations copies the user-related annotations from the owner object to the disruption.
+// Any UserInfo annotations will be overwritten when the Disruption is created, so this function ensures
+// that the parent resource's user information is preserved by storing it in separate annotations.
+func (r *Disruption) CopyUserInfoToAnnotations(owner metav1.Object) error {
+	if r.Annotations == nil {
+		r.Annotations = make(map[string]string)
+	}
+
+	ownerAnnotations := owner.GetAnnotations()
+	if userInfoJSON, exists := ownerAnnotations["UserInfo"]; exists {
+		var userInfo authv1beta1.UserInfo
+		if err := json.Unmarshal([]byte(userInfoJSON), &userInfo); err != nil {
+			return fmt.Errorf("unable to parse UserInfo annotation: %w", err)
+		}
+
+		// Set user-related annotations using the parsed UserInfo struct
+		r.Annotations[chaostypes.UserAnnotation] = userInfo.Username
+		r.Annotations[chaostypes.UserGroupsAnnotation] = strings.Join(userInfo.Groups, ",")
+	}
+
+	return nil
 }
 
 // +kubebuilder:object:root=true

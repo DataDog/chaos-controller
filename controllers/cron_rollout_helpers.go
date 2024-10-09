@@ -24,7 +24,6 @@ import (
 )
 
 const (
-	ScheduledAtAnnotation          = chaosv1beta1.GroupName + "/scheduled-at"
 	DisruptionCronNameLabel        = chaosv1beta1.GroupName + "/disruption-cron-name"
 	DisruptionRolloutNameLabel     = chaosv1beta1.GroupName + "/disruption-rollout-name"
 	TargetResourceMissingThreshold = time.Hour * 24
@@ -120,13 +119,14 @@ func createBaseDisruption(owner metav1.Object, disruptionSpec *chaosv1beta1.Disr
 }
 
 // setDisruptionAnnotations updates the annotations of a given Disruption object with those of its owner.
-// Additionally, it sets a scheduled time annotation using the provided scheduledTime.
-func setDisruptionAnnotations(disruption *chaosv1beta1.Disruption, owner metav1.Object, scheduledTime time.Time) {
-	for k, v := range owner.GetAnnotations() {
-		disruption.Annotations[k] = v
-	}
+// It sets a scheduled time annotation using the provided scheduledTime.
+// It parses the UserInfo annotation if it exists and sets user-related annotations.
+func setDisruptionAnnotations(disruption *chaosv1beta1.Disruption, owner metav1.Object, scheduledTime time.Time) error {
+	disruption.CopyOwnerAnnotations(owner)
 
-	disruption.Annotations[ScheduledAtAnnotation] = scheduledTime.Format(time.RFC3339)
+	disruption.SetScheduledAtAnnotation(scheduledTime)
+
+	return disruption.CopyUserInfoToAnnotations(owner)
 }
 
 // overwriteDisruptionSelectors updates the selectors of a given Disruption object based on the provided targetResource.
@@ -156,13 +156,15 @@ func overwriteDisruptionSelectors(ctx context.Context, cl client.Client, disrupt
 // CreateDisruptionFromTemplate constructs a Disruption object based on the provided owner, disruptionSpec, and targetResource.
 // The function sets annotations, overwrites selectors, and associates the Disruption with its owner.
 // It returns the constructed Disruption or an error if any step fails.
-func CreateDisruptionFromTemplate(ctx context.Context, cl client.Client, scheme *runtime.Scheme, owner metav1.Object, targetResource *chaosv1beta1.TargetResourceSpec, disruptionSpec *chaosv1beta1.DisruptionSpec, scheduledTime time.Time) (*chaosv1beta1.Disruption, error) {
+func CreateDisruptionFromTemplate(ctx context.Context, cl client.Client, scheme *runtime.Scheme, owner metav1.Object, targetResource *chaosv1beta1.TargetResourceSpec, disruptionSpec *chaosv1beta1.DisruptionSpec, scheduledTime time.Time, log *zap.SugaredLogger) (*chaosv1beta1.Disruption, error) {
 	disruption := createBaseDisruption(owner, disruptionSpec)
 
 	ownerNameLabel := getOwnerNameLabel(owner)
 	disruption.Labels[ownerNameLabel] = owner.GetName()
 
-	setDisruptionAnnotations(disruption, owner, scheduledTime)
+	if err := setDisruptionAnnotations(disruption, owner, scheduledTime); err != nil {
+		log.Errorw("unable to set annotations for child disruption", "err", err, "disruptionName", disruption.Name)
+	}
 
 	if err := overwriteDisruptionSelectors(ctx, cl, disruption, targetResource, owner.GetNamespace()); err != nil {
 		return nil, err
@@ -177,18 +179,13 @@ func CreateDisruptionFromTemplate(ctx context.Context, cl client.Client, scheme 
 
 // getScheduledTimeForDisruption returns the scheduled time for a particular disruption.
 func getScheduledTimeForDisruption(log *zap.SugaredLogger, disruption *chaosv1beta1.Disruption) time.Time {
-	timeRaw := disruption.Annotations[ScheduledAtAnnotation]
-	if len(timeRaw) == 0 {
-		return time.Time{}
-	}
-
-	timeParsed, err := time.Parse(time.RFC3339, timeRaw)
+	parsedTime, err := disruption.GetScheduledAtAnnotation()
 	if err != nil {
 		log.Errorw("unable to parse schedule time for child disruption", "err", err, "disruptionName", disruption.Name)
 		return time.Time{}
 	}
 
-	return timeParsed
+	return parsedTime
 }
 
 // GetMostRecentScheduleTime returns the most recent scheduled time from a list of disruptions.
