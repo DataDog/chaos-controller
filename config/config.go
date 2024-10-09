@@ -5,6 +5,7 @@
 package config
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -12,6 +13,8 @@ import (
 	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
 	"github.com/DataDog/chaos-controller/eventnotifier"
 	"go.uber.org/zap"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/pflag"
@@ -109,11 +112,22 @@ type handlerConfig struct {
 const DefaultDisruptionDeletionTimeout = time.Minute * 15
 const DefaultFinalizerDeletionDelay = time.Second * 20
 
-func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
+func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger) (config, error) {
+	configMap, err := client.Get(context.Background(), "chaos-controller", metav1.GetOptions{}) // TODO get the name
+	if err != nil {
+		logger.Fatalw("failed to get chaos-controller configMap", "error", err) // TODO, poll instead of dying?
+		return config{}, err
+	}
+
 	var (
 		configPath string
 		cfg        config
 	)
+
+	cfg.Controller.MetricsBindAddr = configMap.Data["controller.metricsBindAddr"]
+	if cfg.Controller.MetricsBindAddr == "" {
+		cfg.Controller.MetricsBindAddr = ":8080"
+	}
 
 	preConfigFS := pflag.NewFlagSet("pre-config", pflag.ContinueOnError)
 	mainFS := pflag.NewFlagSet("main-config", pflag.ContinueOnError)
