@@ -61,6 +61,7 @@ type TrafficController interface {
 	AddPrio(ifaces []string, parent string, handle string, bands uint32, priomap [16]uint32) error
 	AddFilter(ifaces []string, parent string, handle string, srcIP, dstIP *net.IPNet, srcPort, dstPort int, prot protocol, state connState, flowid string) (uint32, error)
 	DeleteFilter(iface string, priority uint32) error
+	AddCgroupFilter(ifaces []string, parent string, handle uint32) error
 	AddFwFilter(ifaces []string, parent string, handle string, flowid string) error
 	AddBPFFilter(ifaces []string, parent string, obj string, flowid string, section string) error
 	ConfigBPFFilter(cmd executor, args ...string) error
@@ -246,6 +247,16 @@ func (t *tc) AddBPFFilter(ifaces []string, parent string, obj string, flowid str
 func (t *tc) DeleteFilter(iface string, priority uint32) error {
 	if _, _, err := t.executer.Run([]string{"filter", "delete", "dev", iface, "priority", fmt.Sprintf("%d", priority)}); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (t *tc) AddCgroupFilter(ifaces []string, parent string, handle uint32) error {
+	for _, iface := range ifaces {
+		if _, _, err := t.executer.Run(buildCmd("filter", iface, parent, "", 0, fmt.Sprintf("%d", handle), "cgroup", "")); err != nil {
+			return err
+		}
 	}
 
 	return nil
