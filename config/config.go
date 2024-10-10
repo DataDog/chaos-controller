@@ -297,7 +297,7 @@ func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osAr
 
 	mainFS.StringVar(&cfg.Injector.ServiceAccount, "injector-service-account", "chaos-injector", "Service account to use for the generated injector pods")
 
-	if err := viper.BindPFlag("injector.serviceAccount.name", mainFS.Lookup("injector-service-account")); err != nil {
+	if err := viper.BindPFlag("injector.serviceAccount", mainFS.Lookup("injector-service-account")); err != nil {
 		return cfg, err
 	}
 

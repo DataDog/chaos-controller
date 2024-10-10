@@ -127,7 +127,7 @@ data:
   injector.dnsDisruption.kubeDns: {{ .Values.injector.dnsDisruption.kubeDns | quote }}
 
 {{/*  {{- if .Values.injector.networkDisruption.allowedHosts }}*/}}
-  injector.networkDisruption.hostResolveInterval: {{ .Values.injector.networkDisruption.hostResolveInterval | quote }}
+{{/*  injector.networkDisruption.hostResolveInterval: {{ .Values.injector.networkDisruption.hostResolveInterval | quote }}*/}}
 {{/*  injector.networkDisruption.allowedHosts: |*/}}
 {{/*    {{- range $index, $allowedHost := .Values.injector.networkDisruption.allowedHosts }}*/}}
 {{/*    {{ $v := printf "%s;%v;%s;%s" ($allowedHost.host | default "") ($allowedHost.port | default "") ($allowedHost.protocol | default "") ($allowedHost.flow | default "") -}}*/}}
