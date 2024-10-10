@@ -45,13 +45,13 @@ data:
   controller.cloudProviders.pullInterval: {{ .Values.controller.cloudProviders.pullInterval }}
 
   controller.cloudProviders.aws.enabled: {{ .Values.controller.cloudProviders.aws.enabled | quote }}
-  controller.cloudProviders.aws.ipRangesURL: {{ .Values.controller.cloudProviders.aws.ipRangesURL }}
+  controller.cloudProviders.aws.ipRangesURL: {{ .Values.controller.cloudProviders.aws.ipRangesURL | quote }}
 
   controller.cloudProviders.gcp.enabled: {{ .Values.controller.cloudProviders.gcp.enabled | quote }}
-  controller.cloudProviders.gcp.ipRangesURL: {{ .Values.controller.cloudProviders.gcp.ipRangesURL }}
+  controller.cloudProviders.gcp.ipRangesURL: {{ .Values.controller.cloudProviders.gcp.ipRangesURL | quote }}
 
   controller.cloudProviders.datadog.enabled: {{ .Values.controller.cloudProviders.datadog.enabled | quote }}
-  controller.cloudProviders.datadog.ipRangesURL: {{ .Values.controller.cloudProviders.datadog.ipRangesURL }}
+  controller.cloudProviders.datadog.ipRangesURL: {{ .Values.controller.cloudProviders.datadog.ipRangesURL | quote }}
 
   controller.deleteOnly: {{ .Values.controller.deleteOnly | quote }}
   controller.defaultDuration: {{ .Values.controller.defaultDuration }}

@@ -574,12 +574,13 @@ func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osAr
 		}
 
 		viper.SetConfigFile(configPath)
-		if err := viper.MergeConfigMap(interfacedMap); err != nil {
-			return cfg, fmt.Errorf("unable to merge config map: %w", err)
-		}
 
 		if err := viper.ReadInConfig(); err != nil {
 			return cfg, fmt.Errorf("error loading configuration file: %w", err)
+		}
+
+		if err := viper.MergeConfigMap(interfacedMap); err != nil {
+			return cfg, fmt.Errorf("unable to merge config map: %w", err)
 		}
 
 		if err := viper.Unmarshal(&cfg); err != nil {
