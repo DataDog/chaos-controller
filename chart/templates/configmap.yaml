@@ -8,7 +8,70 @@ metadata:
   name: chaos-controller
   namespace: "{{ .Values.chaosNamespace }}"
 data:
-  config.yaml: ""
+  config.yaml: |
+
+    controller:
+      safeMode:
+        permittedUserGroups:
+          {{- range $index, $group := .Values.controller.safeMode.permittedUserGroups }}
+          - {{ $group | quote }}
+          {{- end }}
+
+      notifiers:
+        http:
+          headers:
+            {{ .Values.controller.notifiers.http.headers | toJson }}
+          authHeaders:
+            {{ .Values.controller.notifiers.http.authHeaders | toJson }}
+
+
+      disabledDisruptions:
+        {{- range $index, $kind := .Values.controller.disabledDisruptions }}
+        - {{ $kind }}
+        {{- end }}
+
+    injector:
+      {{- if .Values.injector.networkDisruption.allowedHosts }}
+      networkDisruption:
+        hostResolveInterval: {{ .Values.injector.networkDisruption.hostResolveInterval | quote }}
+        allowedHosts:
+          {{- range $index, $allowedHost := .Values.injector.networkDisruption.allowedHosts }}
+          {{ $v := printf "%s;%v;%s;%s" ($allowedHost.host | default "") ($allowedHost.port | default "") ($allowedHost.protocol | default "") ($allowedHost.flow | default "") -}}
+          - {{ tpl $v $ }}
+          {{- end }}
+      {{- end }}
+
+      {{- if .Values.injector.annotations }}
+      annotations:
+        {{- range $key, $val := .Values.injector.annotations }}
+        {{ $key }}: {{ $val | quote }}
+        {{- end }}
+      {{- end }}
+      {{- if .Values.injector.labels }}
+      labels:
+        {{- range $key, $val := .Values.injector.labels }}
+        {{ $key }}: {{ $val | quote }}
+        {{- end }}
+      {{- end }}
+      {{- if .Values.injector.tolerations }}
+      tolerations:
+        {{- range .Values.injector.tolerations }}
+        - key: {{ .key | quote }}
+          {{- if .operator }}
+          operator: {{ .operator | default "Equal" | quote }}
+          {{- end }}
+          {{- if .value }}
+          value: {{ .value | quote }}
+          {{- end }}
+          {{- if .effect }}
+          effect: {{ .effect | quote }}
+          {{- end }}
+          {{- if .tolerationSeconds }}
+          tolerationSeconds: {{ .tolerationSeconds }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+
   controller.metricsBindAddr: 127.0.0.1:8080
   controller.leaderElection: {{ .Values.controller.leaderElection | quote }}
   controller.metricsSink: {{ .Values.controller.metricsSink | quote }}
@@ -31,12 +94,8 @@ data:
   controller.notifiers.http.disruptioncron.enabled: {{ .Values.controller.notifiers.http.disruptioncron.enabled | quote }}
   controller.notifiers.http.disruptioncron.url: {{ .Values.controller.notifiers.http.disruptioncron.url | quote }}
 
-  controller.notifiers.http.headers: |
-    {{ .Values.controller.notifiers.http.headers | toJson }}
   controller.notifiers.http.headersFilepath: {{ .Values.controller.notifiers.http.headersFilepath | quote }}
   controller.notifiers.http.authURL: {{ .Values.controller.notifiers.http.authURL | quote }}
-  controller.notifiers.http.authHeaders: |
-    {{ .Values.controller.notifiers.http.authHeaders | toJson }}
   controller.notifiers.http.authTokenPath: {{ .Values.controller.notifiers.http.authTokenPath | quote }}
 
   controller.notifiers.datadog.enabled: {{ .Values.controller.notifiers.datadog.enabled | quote }}
@@ -66,10 +125,6 @@ data:
   controller.webhook.port: {{ .Values.controller.webhook.port | quote }}
 
   controller.safeMode.enable: {{ .Values.controller.safeMode.enable | quote }}
-{{/*  controller.safeMode.permittedUserGroups: |*/}}
-{{/*    {{- range $index, $group := .Values.controller.safeMode.permittedUserGroups }}*/}}
-{{/*    - {{ $group | quote }}*/}}
-{{/*    {{- end }}*/}}
   controller.safeMode.environment: {{ tpl .Values.controller.safeMode.environment . }}
   controller.safeMode.namespaceThreshold: {{ .Values.controller.safeMode.namespaceThreshold | quote }}
   controller.safeMode.clusterThreshold: {{ .Values.controller.safeMode.clusterThreshold | quote }}
@@ -79,44 +134,10 @@ data:
   controller.disruptionCronEnabled: {{ .Values.controller.disruptionCronEnabled | quote }}
   controller.disruptionRolloutEnabled: {{ .Values.controller.disruptionRolloutEnabled | quote }}
   controller.disruptionDeletionTimeout: {{ .Values.controller.disruptionDeletionTimeout }}
-{{/*  controller.disabledDisruptions: |*/}}
-{{/*    {{- range $index, $kind := .Values.controller.disabledDisruptions }}*/}}
-{{/*      - {{ $kind }}*/}}
-{{/*    {{- end }}*/}}
 
 
   injector.image: {{ template "chaos-controller.format-image" deepCopy .Values.global.chaos.defaultImage | merge .Values.global.oci | merge .Values.injector.image }}
   injector.imagePullSecrets: {{ .Values.injector.image.pullSecrets | quote }}
-{{/*  {{- if .Values.injector.annotations }}*/}}
-{{/*  injector.annotations: |*/}}
-{{/*    {{- range $key, $val := .Values.injector.annotations }}*/}}
-{{/*    {{ $key }}: {{ $val | quote }}*/}}
-{{/*    {{- end }}*/}}
-{{/*  {{- end }}*/}}
-{{/*  {{- if .Values.injector.labels }}*/}}
-{{/*  injector.labels: |*/}}
-{{/*    {{- range $key, $val := .Values.injector.labels }}*/}}
-{{/*    {{ $key }}: {{ $val | quote }}*/}}
-{{/*    {{- end }}*/}}
-{{/*  {{- end }}*/}}
-{{/*  {{- if .Values.injector.tolerations }}*/}}
-{{/*  injector.tolerations: |*/}}
-{{/*    {{- range .Values.injector.tolerations }}*/}}
-{{/*    - key: {{ .key | quote }}*/}}
-{{/*      {{- if .operator }}*/}}
-{{/*      operator: {{ .operator | default "Equal" | quote }}*/}}
-{{/*      {{- end }}*/}}
-{{/*      {{- if .value }}*/}}
-{{/*      value: {{ .value | quote }}*/}}
-{{/*      {{- end }}*/}}
-{{/*      {{- if .effect }}*/}}
-{{/*      effect: {{ .effect | quote }}*/}}
-{{/*      {{- end }}*/}}
-{{/*      {{- if .tolerationSeconds }}*/}}
-{{/*      tolerationSeconds: {{ .tolerationSeconds }}*/}}
-{{/*      {{- end }}*/}}
-{{/*    {{- end }}*/}}
-{{/*  {{- end }}*/}}
 
   {{- if .Values.injector.logLevel }}
   injector.logLevel: {{ .Values.injector.logLevel }}
@@ -125,15 +146,6 @@ data:
   injector.chaosNamespace: {{ .Values.chaosNamespace | quote }}
   injector.dnsDisruption.dnsServer: {{ .Values.injector.dnsDisruption.dnsServer | quote }}
   injector.dnsDisruption.kubeDns: {{ .Values.injector.dnsDisruption.kubeDns | quote }}
-
-{{/*  {{- if .Values.injector.networkDisruption.allowedHosts }}*/}}
-{{/*  injector.networkDisruption.hostResolveInterval: {{ .Values.injector.networkDisruption.hostResolveInterval | quote }}*/}}
-{{/*  injector.networkDisruption.allowedHosts: |*/}}
-{{/*    {{- range $index, $allowedHost := .Values.injector.networkDisruption.allowedHosts }}*/}}
-{{/*    {{ $v := printf "%s;%v;%s;%s" ($allowedHost.host | default "") ($allowedHost.port | default "") ($allowedHost.protocol | default "") ($allowedHost.flow | default "") -}}*/}}
-{{/*    - {{ tpl $v $ }}*/}}
-{{/*    {{- end }}*/}}
-{{/*  {{- end }}*/}}
 
   handler.image: {{ template "chaos-controller.format-image" deepCopy .Values.global.chaos.defaultImage | merge .Values.global.oci | merge .Values.handler.image }}
   handler.enabled: {{ .Values.handler.enabled | quote }}
