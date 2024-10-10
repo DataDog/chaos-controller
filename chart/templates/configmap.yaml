@@ -8,6 +8,7 @@ metadata:
   name: chaos-controller
   namespace: "{{ .Values.chaosNamespace }}"
 data:
+  config.yaml: ""
   controller.metricsBindAddr: 127.0.0.1:8080
   controller.leaderElection: {{ .Values.controller.leaderElection | quote }}
   controller.metricsSink: {{ .Values.controller.metricsSink | quote }}

@@ -567,7 +567,16 @@ func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osAr
 	if configPath != "" {
 		logger.Infow("loading configuration file", "config", configPath)
 
+		interfacedMap := make(map[string]interface{}, len(configMap.Data))
+		for k, v := range configMap.Data {
+			logger.Warnw("IM READING CONFIGMAP", "k", k, "v", v)
+			interfacedMap[k] = v
+		}
+
 		viper.SetConfigFile(configPath)
+		if err := viper.MergeConfigMap(interfacedMap); err != nil {
+			return cfg, fmt.Errorf("unable to merge config map: %w", err)
+		}
 
 		if err := viper.ReadInConfig(); err != nil {
 			return cfg, fmt.Errorf("error loading configuration file: %w", err)
