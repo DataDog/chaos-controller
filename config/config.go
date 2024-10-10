@@ -5,18 +5,22 @@
 package config
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
 
 	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
 	"github.com/DataDog/chaos-controller/eventnotifier"
-	"go.uber.org/zap"
-
+	"github.com/cenkalti/backoff"
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
 type config struct {
@@ -109,10 +113,11 @@ type handlerConfig struct {
 const DefaultDisruptionDeletionTimeout = time.Minute * 15
 const DefaultFinalizerDeletionDelay = time.Second * 20
 
-func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
+func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osArgs []string) (config, error) {
 	var (
-		configPath string
-		cfg        config
+		configPath         string
+		configMapOverrides string
+		cfg                config
 	)
 
 	preConfigFS := pflag.NewFlagSet("pre-config", pflag.ContinueOnError)
@@ -120,9 +125,11 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 
 	preConfigFS.ParseErrorsWhitelist.UnknownFlags = true
 	preConfigFS.StringVar(&configPath, "config", "", "Configuration file path")
+	preConfigFS.StringVar(&configMapOverrides, "config-overrides", "", "Name of ConfigMap to provide config overrides")
 	// we redefine configuration flag into main flag to avoid removing it manually from provided args
 	// we also define it to avoid activating "UnknownFlags" for main flags so we'll return an error in case a flag is unknown
 	mainFS.StringVar(&configPath, "config", "", "Configuration file path")
+	mainFS.StringVar(&configMapOverrides, "config-overrides", "", "Name of ConfigMap to provide config overrides")
 
 	mainFS.StringVar(&cfg.Controller.MetricsBindAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 
@@ -544,8 +551,7 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 		return cfg, err
 	}
 
-	err := preConfigFS.Parse(osArgs)
-	if err != nil {
+	if err := preConfigFS.Parse(osArgs); err != nil {
 		return cfg, fmt.Errorf("unable to retrieve configuration parse from provided flag: %w", err)
 	}
 
@@ -557,6 +563,32 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 
 		if err := viper.ReadInConfig(); err != nil {
 			return cfg, fmt.Errorf("error loading configuration file: %w", err)
+		}
+
+		if configMapOverrides != "" {
+			var configMap *corev1.ConfigMap
+			if backOffErr := backoff.Retry(func() error {
+				var err error
+				ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+				defer cancel()
+				configMap, err = client.Get(ctx, configMapOverrides, metav1.GetOptions{})
+				if err != nil {
+					logger.Debugw(fmt.Sprintf("failed to get %s configMap", configMapOverrides), "error", err)
+				}
+				return err
+			},
+				backoff.NewConstantBackOff(time.Second*5)); backOffErr != nil {
+				return cfg, fmt.Errorf("unable to retry fetching %s: %w", configMapOverrides, backOffErr)
+			}
+
+			interfacedMap := make(map[string]interface{}, len(configMap.Data))
+			for k, v := range configMap.Data {
+				interfacedMap[k] = v
+			}
+
+			if err := viper.MergeConfigMap(interfacedMap); err != nil {
+				return cfg, fmt.Errorf("unable to merge config map: %w", err)
+			}
 		}
 
 		if err := viper.Unmarshal(&cfg); err != nil {
