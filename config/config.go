@@ -5,6 +5,7 @@
 package config
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -12,6 +13,8 @@ import (
 	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
 	"github.com/DataDog/chaos-controller/eventnotifier"
 	"go.uber.org/zap"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/pflag"
@@ -109,7 +112,13 @@ type handlerConfig struct {
 const DefaultDisruptionDeletionTimeout = time.Minute * 15
 const DefaultFinalizerDeletionDelay = time.Second * 20
 
-func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
+func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osArgs []string) (config, error) {
+	configMap, err := client.Get(context.Background(), "chaos-controller-overrides", metav1.GetOptions{}) // TODO get the name
+	if err != nil {
+		logger.Fatalw("failed to get chaos-controller configMap", "error", err) // TODO, poll instead of dying?
+		return config{}, err
+	}
+
 	var (
 		configPath string
 		cfg        config
@@ -544,7 +553,7 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 		return cfg, err
 	}
 
-	err := preConfigFS.Parse(osArgs)
+	err = preConfigFS.Parse(osArgs)
 	if err != nil {
 		return cfg, fmt.Errorf("unable to retrieve configuration parse from provided flag: %w", err)
 	}
@@ -553,10 +562,20 @@ func New(logger *zap.SugaredLogger, osArgs []string) (config, error) {
 	if configPath != "" {
 		logger.Infow("loading configuration file", "config", configPath)
 
+		interfacedMap := make(map[string]interface{}, len(configMap.Data))
+		for k, v := range configMap.Data {
+			logger.Warnw("IM READING CONFIGMAP", "k", k, "v", v)
+			interfacedMap[k] = v
+		}
+
 		viper.SetConfigFile(configPath)
 
 		if err := viper.ReadInConfig(); err != nil {
 			return cfg, fmt.Errorf("error loading configuration file: %w", err)
+		}
+
+		if err := viper.MergeConfigMap(interfacedMap); err != nil {
+			return cfg, fmt.Errorf("unable to merge config map: %w", err)
 		}
 
 		if err := viper.Unmarshal(&cfg); err != nil {
