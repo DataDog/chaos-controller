@@ -10,4 +10,7 @@ metadata:
   namespace: "{{ .Values.chaosNamespace }}"
 data:
   controller.deleteOnly: "true"
+  # Include any key from the chaos-controller config map's config.yaml
+  # Keys must be flattened and values must be strings, e.g., `controller:\n\tdeleteOnly: true` becomes `controller.deleteOnly: "true"`
+  # This configMap is strictly optional, and primarily used for dynamically altering config from external systems
 {{- end }}
