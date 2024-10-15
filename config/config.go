@@ -567,6 +567,7 @@ func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osAr
 
 		if configMapOverrides != "" {
 			var configMap *corev1.ConfigMap
+
 			if backOffErr := backoff.Retry(func() error {
 				var err error
 				ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)

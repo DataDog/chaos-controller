@@ -96,6 +96,7 @@ func main() {
 	if err != nil {
 		logger.Fatalw("error creating kubernetes clientset", "error", err)
 	}
+
 	configMapClient := clientset.CoreV1().ConfigMaps(os.Getenv("POD_NAMESPACE"))
 
 	cfg, err := config.New(configMapClient, logger, os.Args[1:])
