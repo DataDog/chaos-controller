@@ -145,7 +145,7 @@ func validateUserInfoGroup(object client.Object, permittedGroups map[string]stru
 		return nil
 	}
 
-	logger.Warnw(fmt.Sprintf("rejecting user from creating this %s", objectKind), "permittedUserGroups", permittedGroups, "userGroups", userInfo.Groups)
+	logger.Warnw(fmt.Sprintf("rejecting user from creating this %s", objectKind), "permittedUserGroups", permittedGroupsString, "userGroups", userInfo.Groups)
 
 	return fmt.Errorf(
 		"lacking sufficient authorization to create %s. your user groups are %s, but you must be in one of the following groups: %s",
