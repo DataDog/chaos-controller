@@ -1151,25 +1151,28 @@ func (r *DisruptionReconciler) getEligibleTargets(ctx context.Context, instance 
 
 		// skip targets already targeted by a chaos pod from another disruption with the same kind if any
 		if len(chaosPods) != 0 {
-			if !instance.Spec.AllowDisruptedTargets {
-				alreadyDisrupted := false
+			anyChaosPodsRunning := false
 
-				// chaosPods might all be in a Completed state. If any of these injectors aren't terminated, or terminated in an unready state, we set alreadyDisrupted
-				// because if all chaosPods for this target _are_ Completed, then this target is not already injected, and the current instance can proceed
-				for _, chaosPod := range chaosPods {
-					for _, containerStatuses := range chaosPod.Status.ContainerStatuses {
-						if containerStatuses.State.Terminated == nil || containerStatuses.State.Terminated.ExitCode != 0 {
-							alreadyDisrupted = true
-						}
+			// chaosPods might all be in a Completed state. If any of these injectors aren't terminated, or terminated in an unready state, we set alreadyDisrupted
+			// because if all chaosPods for this target _are_ Completed, then this target is not already injected, and the current instance can proceed
+			for _, chaosPod := range chaosPods {
+				for _, containerStatuses := range chaosPod.Status.ContainerStatuses {
+					if containerStatuses.State.Terminated == nil || containerStatuses.State.Terminated.ExitCode != 0 {
+						anyChaosPodsRunning = true
 					}
 				}
+			}
 
-				if alreadyDisrupted {
-					r.log.Infow(`disruption spec does not allow to use already disrupted targets with ANY kind of existing disruption, skipping...
+			allChaosPodsCompleted := !anyChaosPodsRunning
+			if allChaosPodsCompleted {
+				continue
+			}
+
+			if !instance.Spec.AllowDisruptedTargets {
+				r.log.Infow(`disruption spec does not allow to use already disrupted targets with ANY kind of existing disruption, skipping...
 NB: you can specify "spec.allowDisruptedTargets: true" to allow a new disruption without any disruption kind intersection to target the same pod`, "target", target, "targetLabels", targetLabels)
 
-					continue
-				}
+				continue
 			}
 
 			targetDisruptedByKinds := map[chaostypes.DisruptionKindName]string{}
