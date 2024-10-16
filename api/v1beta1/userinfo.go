@@ -124,8 +124,8 @@ func validateUserInfoImmutable(oldObject, newObject client.Object) error {
 	return nil
 }
 
-// validateUserInfoGroup checks that if permittedUserGroups is set, which is controlled in controller.safeMode.permittedUserGroups in the configmap,
-// then we will return an error if the user in r.UserInfo does not belong to any of the permitted. If permittedUserGroups is unset, or if the user belongs to one of those
+// validateUserInfoGroup checks that if permittedGroups is set, which is controlled in controller.safeMode.permittedUserGroups in the configmap,
+// then we will return an error if the user in r.UserInfo does not belong to any of the permitted. If permittedGroups is unset, or if the user belongs to one of those
 // groups, then we will return nil
 func validateUserInfoGroup(object client.Object, permittedGroups map[string]struct{}, permittedGroupsString string) error {
 	if len(permittedGroups) == 0 {
@@ -145,7 +145,7 @@ func validateUserInfoGroup(object client.Object, permittedGroups map[string]stru
 		return nil
 	}
 
-	logger.Warnw(fmt.Sprintf("rejecting user from creating this %s", objectKind), "permittedUserGroups", permittedUserGroups, "userGroups", userInfo.Groups)
+	logger.Warnw(fmt.Sprintf("rejecting user from creating this %s", objectKind), "permittedUserGroups", permittedGroups, "userGroups", userInfo.Groups)
 
 	return fmt.Errorf(
 		"lacking sufficient authorization to create %s. your user groups are %s, but you must be in one of the following groups: %s",
