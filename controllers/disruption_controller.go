@@ -1150,8 +1150,8 @@ func (r *DisruptionReconciler) getEligibleTargets(ctx context.Context, instance 
 		}
 
 		// skip targets already targeted by a chaos pod from another disruption with the same kind if any
-
 		anyChaosPodsRunning := false
+
 		if len(chaosPods) != 0 {
 			// chaosPods might all be in a Completed state. If any of these injectors aren't terminated, or terminated in an unready state, we set alreadyDisrupted
 			// because if all chaosPods for this target _are_ Completed, then this target is not already injected, and the current instance can proceed
