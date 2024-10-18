@@ -247,6 +247,23 @@ var _ = Describe("Disruption Controller", func() {
 		})
 	})
 
+	Context("dont duplicate targets across disruptions", func() {
+		BeforeEach(func() {
+			disruption.Spec.Count = &intstr.IntOrString{Type: intstr.String, StrVal: "100%"}
+		})
+
+		It("should target all the selected pods", func(ctx SpecContext) {
+			disruptionTwo := disruption.DeepCopy()
+			InjectPodsAndDisruption(ctx, *disruptionTwo, skipSecondPod)
+
+			By("Ensuring that no extra chaos pods have been created")
+			ExpectChaosPods(ctx, disruption, 8)
+
+			By("Ensuring that the chaos pods have correct number of targeted containers")
+			ExpectChaosInjectors(ctx, disruption, 8)
+		})
+	})
+
 	Context("target 30% of pods (1 pod out of 2) and one container", func() {
 		BeforeEach(func() {
 			disruption.Spec.Count = &intstr.IntOrString{Type: intstr.String, StrVal: "30%"}
