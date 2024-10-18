@@ -592,19 +592,22 @@ func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osAr
 			}
 
 			go func(resourceVersion string) {
+				ticker := time.NewTicker(time.Second * 30)
 				for {
-					time.Sleep(time.Second * 30)
+					select {
+					case <-ticker.C:
+						logger.Debugw("ticking")
+						configMap, err := client.Get(context.Background(), configMapOverrides, metav1.GetOptions{})
 
-					configMap, err := client.Get(context.Background(), configMapOverrides, metav1.GetOptions{})
+						if err != nil {
+							logger.Errorw(fmt.Sprintf("error getting %s configMap", configMapOverrides), "error", err)
+							continue
+						}
 
-					if err != nil {
-						logger.Errorw(fmt.Sprintf("error getting %s configMap", configMapOverrides), "error", err)
-						continue
-					}
-
-					if configMap.ResourceVersion != resourceVersion {
-						logger.Info("override configmap has changed, restarting")
-						os.Exit(0)
+						if configMap.ResourceVersion != resourceVersion {
+							logger.Info("override configmap has changed, restarting")
+							os.Exit(0)
+						}
 					}
 				}
 			}(configMap.ResourceVersion)
