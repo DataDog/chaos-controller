@@ -567,6 +567,7 @@ func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osAr
 
 		if configMapOverrides != "" {
 			var configMap *corev1.ConfigMap
+			var resourceVersion string
 
 			if backOffErr := backoff.Retry(func() error {
 				var err error
@@ -590,6 +591,31 @@ func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osAr
 			if err := viper.MergeConfigMap(interfacedMap); err != nil {
 				return cfg, fmt.Errorf("unable to merge config map: %w", err)
 			}
+
+			go func() {
+				for {
+					time.Sleep(time.Second * 30)
+
+					configMap, err := client.Get(context.Background(), configMapOverrides, metav1.GetOptions{})
+
+					if err != nil {
+						logger.Errorw(fmt.Sprintf("error getting %s configMap", configMapOverrides), "error", err)
+						continue
+					}
+
+					if configMap.ResourceVersion != resourceVersion {
+						interfacedMap := make(map[string]interface{}, len(configMap.Data))
+						for k, v := range configMap.Data {
+							interfacedMap[k] = v
+						}
+
+						if err := viper.MergeConfigMap(interfacedMap); err != nil {
+							logger.Errorf("unable to merge config map: %w", err)
+							continue
+						}
+					}
+				}
+			}()
 		}
 
 		if err := viper.Unmarshal(&cfg); err != nil {
