@@ -1159,6 +1159,7 @@ func (r *DisruptionReconciler) getEligibleTargets(ctx context.Context, instance 
 				for _, containerStatuses := range chaosPod.Status.ContainerStatuses {
 					if containerStatuses.State.Terminated == nil || containerStatuses.State.Terminated.ExitCode != 0 {
 						anyChaosPodsRunning = true
+						break
 					}
 				}
 			}
