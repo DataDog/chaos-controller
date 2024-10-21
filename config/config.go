@@ -596,7 +596,6 @@ func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osAr
 				for {
 					select {
 					case <-ticker.C:
-						logger.Debugw("ticking")
 						configMap, err := client.Get(context.Background(), configMapOverrides, metav1.GetOptions{})
 
 						if err != nil {
