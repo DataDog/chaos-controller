@@ -13,6 +13,7 @@ import (
 
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
@@ -86,7 +87,19 @@ func main() {
 		logger.Fatal("missing required CONTROLLER_NODE_NAME environment variable")
 	}
 
-	cfg, err := config.New(logger, os.Args[1:])
+	restConfig, err := rest.InClusterConfig()
+	if err != nil {
+		logger.Fatalw("error creating in-cluster rest config", "error", err)
+	}
+
+	clientset, err := kubernetes.NewForConfig(restConfig)
+	if err != nil {
+		logger.Fatalw("error creating kubernetes clientset", "error", err)
+	}
+
+	configMapClient := clientset.CoreV1().ConfigMaps(os.Getenv("POD_NAMESPACE"))
+
+	cfg, err := config.New(configMapClient, logger, os.Args[1:])
 	if err != nil {
 		logger.Fatalw("unable to create a valid configuration", "error", err)
 	}

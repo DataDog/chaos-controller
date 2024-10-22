@@ -16,6 +16,7 @@ global:
       pullSecrets: false # name of the secret object to use when pulling images
 
 controller:
+  configMapOverrides: false # deploy a second configmap, which overrides values from the first
   version: ""
   image:
     repo: chaos-controller

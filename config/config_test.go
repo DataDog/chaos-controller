@@ -25,29 +25,29 @@ var _ = Describe("Config", func() {
 
 		Context("invalid config", func() {
 			It("fails with a missing path", func() {
-				_, err := config.New(logger, []string{"--config"})
+				_, err := config.New(nil, logger, []string{"--config"})
 				Expect(err).Should(MatchError("unable to retrieve configuration parse from provided flag: flag needs an argument: --config"))
 			})
 
 			It("fails with an invalid path", func() {
-				_, err := config.New(logger, []string{"--config", "invalid-path/invalid-file.yaml"})
+				_, err := config.New(nil, logger, []string{"--config", "invalid-path/invalid-file.yaml"})
 				Expect(err).Should(MatchError("error loading configuration file: open invalid-path/invalid-file.yaml: no such file or directory"))
 			})
 
 			It("fails with an invalid config file", func() {
-				_, err := config.New(logger, []string{"--config", "testdata/invalid.yaml"})
+				_, err := config.New(nil, logger, []string{"--config", "testdata/invalid.yaml"})
 				Expect(err).Should(MatchError(ContainSubstring("error loading configuration file: While parsing config: yaml: unmarshal errors:")))
 			})
 
 			It("fails with a defaultDuration greater than the maxDuration", func() {
-				_, err := config.New(logger, []string{"--config", "testdata/default-duration-too-big.yaml"})
+				_, err := config.New(nil, logger, []string{"--config", "testdata/default-duration-too-big.yaml"})
 				Expect(err).Should(MatchError(fmt.Sprintf("defaultDuration of %s, must be less than or equal to the maxDuration %s", "3m0s", "2m0s")))
 			})
 		})
 
 		Context("without configuration", func() {
 			It("succeed with default values", func() {
-				v, err := config.New(logger, []string{})
+				v, err := config.New(nil, logger, []string{})
 				Expect(err).ToNot(HaveOccurred())
 
 				By("overriding controller values")
@@ -115,7 +115,7 @@ var _ = Describe("Config", func() {
 
 		Context("with configuration file", func() {
 			It("succeed with overriden values", func() {
-				v, err := config.New(logger, []string{"--config", "testdata/local.yaml"})
+				v, err := config.New(nil, logger, []string{"--config", "testdata/local.yaml"})
 				Expect(err).ToNot(HaveOccurred())
 
 				By("overriding controller values")
@@ -184,7 +184,7 @@ var _ = Describe("Config", func() {
 
 		Context("with configuration file and flag", func() {
 			It("succeed with values from flags", func() {
-				v, err := config.New(logger, []string{"--config", "testdata/local.yaml", "--notifiers-common-clustername", "provided-by-command-flag-cluster-name"})
+				v, err := config.New(nil, logger, []string{"--config", "testdata/local.yaml", "--notifiers-common-clustername", "provided-by-command-flag-cluster-name"})
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(v.Controller.Notifiers.Common.ClusterName).To(Equal("provided-by-command-flag-cluster-name"))

@@ -1,0 +1,16 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2024 Datadog, Inc.
+{{- if .Values.controller.configMapOverrides }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: chaos-controller-overrides
+  namespace: "{{ .Values.chaosNamespace }}"
+data:
+  controller.deleteOnly: "false"
+  # Include any key from the chaos-controller config map's config.yaml
+  # Keys must be flattened and values must be strings, e.g., `controller:\n\tdeleteOnly: true` becomes `controller.deleteOnly: "true"`
+  # This configMap is strictly optional, and primarily used for dynamically altering config from external systems
+{{- end }}

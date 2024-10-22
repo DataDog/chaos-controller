@@ -67,6 +67,9 @@ spec:
             - /usr/local/bin/manager
           args:
             - --config=/etc/chaos-controller/config.yaml
+            {{- if .Values.controller.configMapOverrides }}
+            - --config-overrides=chaos-controller-overrides
+            {{- end }}
           env:
             - name: POD_NAMESPACE
               valueFrom:
