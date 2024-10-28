@@ -69,7 +69,7 @@ build:make:
         CONTAINER_REGISTRY=registry.ddbuild.io \
         CONTAINER_TAG=${TAG} \
         CONTAINER_VERSION=${CI_COMMIT_SHA} \
-        CONTAINER_BUILD_EXTRA_ARGS="--platform=linux/amd64,linux/arm64 --label target=${TARGET_LABEL} --push" \
+        CONTAINER_BUILD_EXTRA_ARGS='-t $$(CONTAINER_NAME):$(CONTAINER_VERSION)'" --platform=linux/amd64,linux/arm64 --label target=${TARGET_LABEL} --push" \
         SIGN_IMAGE=true
   dependencies:
     - build:make
@@ -131,17 +131,18 @@ release-prod-tag:
   <<: *docker-hub-login
   stage: release-public
   tags: ["runner:docker"]
-  image: registry.ddbuild.io/docker-notary:0.6.1
   script:
-    - docker pull registry.ddbuild.io/${CONTROLLER_IMAGE_NAME}:${TAG}
-    - docker tag registry.ddbuild.io/${CONTROLLER_IMAGE_NAME}:${TAG} datadog/${CONTROLLER_IMAGE_NAME}:${TAG}
-    - docker push datadog/${CONTROLLER_IMAGE_NAME}:${TAG}
-    - docker pull registry.ddbuild.io/${INJECTOR_IMAGE_NAME}:${TAG}
-    - docker tag registry.ddbuild.io/${INJECTOR_IMAGE_NAME}:${TAG} datadog/${INJECTOR_IMAGE_NAME}:${TAG}
-    - docker push datadog/${INJECTOR_IMAGE_NAME}:${TAG}
-    - docker pull registry.ddbuild.io/${HANDLER_IMAGE_NAME}:${TAG}
-    - docker tag registry.ddbuild.io/${HANDLER_IMAGE_NAME}:${TAG} datadog/${HANDLER_IMAGE_NAME}:${TAG}
-    - docker push datadog/${HANDLER_IMAGE_NAME}:${TAG}
+    - docker buildx create --use
+    - *install-make
+    - >
+      make docker-build-only-all \
+        CONTAINER_REGISTRY=docker.io/datadog \
+        CONTAINER_TAG=${TAG} \
+        CONTAINER_VERSION=${CI_COMMIT_SHA} \
+        CONTAINER_BUILD_EXTRA_ARGS="--platform=linux/amd64,linux/arm64 --label target=${TARGET_LABEL} --push" \
+        SIGN_IMAGE=false
+  dependencies:
+    - build:make
 
 release-docker-hub-ref:
   <<: *release-docker-hub
@@ -149,6 +150,7 @@ release-docker-hub-ref:
   except:
     - tags
   variables:
+    TARGET_LABEL: "prod"
     TAG: "${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
 
 release-docker-hub-tag:
