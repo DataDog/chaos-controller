@@ -155,7 +155,6 @@ docker-build-only-$(1):
 		--build-arg BUILDGOVERSION=$(BUILDGOVERSION) \
 		--build-arg BUILDSTAMP=$(NOW_ISO8601) \
 		-t $$(CONTAINER_NAME):$(CONTAINER_TAG) \
-		-t $$(CONTAINER_NAME):$(CONTAINER_VERSION) \
 		--metadata-file ./bin/$(1)/docker-metadata.json \
 		$(CONTAINER_BUILD_EXTRA_ARGS) \
 		-f bin/$(1)/Dockerfile ./bin/$(1)/
