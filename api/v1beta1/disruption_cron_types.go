@@ -47,6 +47,11 @@ type DisruptionCronSpec struct {
 	// The schedule in Cron format, see https://en.wikipedia.org/wiki/Cron.
 	Schedule string `json:"schedule"`
 
+	// If set to true, no disruptions will be created from this DisruptionCron
+	// useful if there's a reason to temporarily stop injecting, but without
+	// deleting this DisruptionCron
+	Paused bool `json:"paused,omitempty"`
+
 	// Optional deadline for starting the disruption if it misses scheduled time
 	// for any reason.  Missed disruption executions will be counted as failed ones.
 	// +nullable
