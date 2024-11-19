@@ -121,7 +121,9 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	if instance.Spec.Paused {
+		r.handleMetricSinkError(r.MetricsSink.MetricPausedCron(DisruptionCronTags))
 		r.log.Debugw("disruptioncron has been paused, will not resume until spec.paused is false")
+
 		return ctrl.Result{}, nil
 	}
 
@@ -336,7 +338,6 @@ func (r *DisruptionCronReconciler) getNextSchedule(instance *chaosv1beta1.Disrup
 		lastMissed = t
 	}
 
-	// TODO do we want to emit this metric when suspended?
 	r.handleMetricSinkError(r.MetricsSink.MetricNextScheduledTime(time.Until(sched.Next(now)), DisruptionCronTags))
 
 	return lastMissed, sched.Next(now), nil

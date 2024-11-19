@@ -819,6 +819,52 @@ func (_c *SinkMock_MetricOrphanFound_Call) RunAndReturn(run func([]string) error
 	return _c
 }
 
+// MetricPausedCron provides a mock function with given fields: tags
+func (_m *SinkMock) MetricPausedCron(tags []string) error {
+	ret := _m.Called(tags)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MetricPausedCron")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func([]string) error); ok {
+		r0 = rf(tags)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SinkMock_MetricPausedCron_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MetricPausedCron'
+type SinkMock_MetricPausedCron_Call struct {
+	*mock.Call
+}
+
+// MetricPausedCron is a helper method to define mock.On call
+//   - tags []string
+func (_e *SinkMock_Expecter) MetricPausedCron(tags interface{}) *SinkMock_MetricPausedCron_Call {
+	return &SinkMock_MetricPausedCron_Call{Call: _e.mock.On("MetricPausedCron", tags)}
+}
+
+func (_c *SinkMock_MetricPausedCron_Call) Run(run func(tags []string)) *SinkMock_MetricPausedCron_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]string))
+	})
+	return _c
+}
+
+func (_c *SinkMock_MetricPausedCron_Call) Return(_a0 error) *SinkMock_MetricPausedCron_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *SinkMock_MetricPausedCron_Call) RunAndReturn(run func([]string) error) *SinkMock_MetricPausedCron_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // MetricPodsCreated provides a mock function with given fields: target, instanceName, namespace, succeed
 func (_m *SinkMock) MetricPodsCreated(target string, instanceName string, namespace string, succeed bool) error {
 	ret := _m.Called(target, instanceName, namespace, succeed)
