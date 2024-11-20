@@ -15,7 +15,7 @@ spec:
   count: 1
   network:
     drop: 100
-    services: # filter on Kubernetes services; this will correctly handle the port differences in node vs. pod-level disruptions
+    services: # filter on same cluster Kubernetes services; this will correctly handle the port differences in node vs. pod-level disruptions. this cannot resolve services from other k8s clusters
       - name: demo # service name
         namespace: chaos-demo # service namespace
         ports: # optional. List of affected ports. No list means all ports are affected
