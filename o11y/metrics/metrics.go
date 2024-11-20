@@ -51,6 +51,7 @@ type Sink interface {
 	MetricMissingTargetFound(tags []string) error
 	MetricNextScheduledTime(time time.Duration, tags []string) error
 	MetricDisruptionScheduled(tags []string) error
+	MetricPausedCron(tags []string) error
 }
 
 // GetSink returns an initiated sink

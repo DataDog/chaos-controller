@@ -120,6 +120,13 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, err
 	}
 
+	if instance.Spec.Paused {
+		r.handleMetricSinkError(r.MetricsSink.MetricPausedCron(DisruptionCronTags))
+		r.log.Debugw("disruptioncron has been paused, will not resume until spec.paused is false")
+
+		return ctrl.Result{}, nil
+	}
+
 	// Get next scheduled run or time of unprocessed run
 	// If multiple unmet start times exist, start the last one
 	missedRun, nextRun, err := r.getNextSchedule(instance, time.Now())

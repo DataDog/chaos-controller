@@ -19,6 +19,7 @@ metadata:
   namespace: chaos-demo # it must be in the same namespace as targeted resources
 spec:
   schedule: "*/15 * * * *" # cron syntax specifying that disruption occurs every 15 minutes
+  paused: false # set to true if you want to disable disruption creation temporarily (until set to false again)
   targetResource: # a resource to target
     kind: deployment # a resource name to target
     name: demo-curl # can be either deployment or statefulset

@@ -247,3 +247,10 @@ func (n Sink) MetricDisruptionScheduled(tags []string) error {
 
 	return nil
 }
+
+// MetricPausedCron reports when a disruption cron has reconciled in a paused state
+func (n Sink) MetricPausedCron(tags []string) error {
+	n.log.Debugf("NOOP: MetricPausedCron %s\n", tags)
+
+	return nil
+}

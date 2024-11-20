@@ -252,6 +252,11 @@ func (d Sink) MetricDisruptionScheduled(tags []string) error {
 	return d.metricWithStatus(d.prefix+"schedule.disruption_scheduled", tags)
 }
 
+// MetricPausedCron reports when a disruption cron has reconciled in a paused state
+func (d Sink) MetricPausedCron(tags []string) error {
+	return d.metricWithStatus(d.prefix+"schedule.paused", tags)
+}
+
 func boolToStatus(succeed bool) string {
 	var status string
 	if succeed {
