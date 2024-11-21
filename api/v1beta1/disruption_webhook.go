@@ -112,10 +112,6 @@ var _ webhook.Defaulter = &Disruption{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type
 func (r *Disruption) Default() {
-	if r.Spec.Duration.Duration() == 0 {
-		logger.Infow(fmt.Sprintf("setting default duration of %s in disruption", defaultDuration), "instance", r.Name, "namespace", r.Namespace)
-	}
-
 	r.Spec.SetDefaults()
 }
 
