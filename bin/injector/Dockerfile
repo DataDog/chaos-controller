@@ -9,12 +9,12 @@ RUN apt-get update && \
     # make copy from binaries unified and possible
     mkdir -p /lib64 && \
     curl -LO https://github.com/libbpf/bpftool/releases/download/v7.5.0/bpftool-v7.5.0-arm64.tar.gz && \
-    echo "7842789acac1c580b76c44437df791d1d2d07d5c282e1ef7034bd29a530ea8079478dfeb86ef7395ecae3127d3dcc3e9ebac4d5a77f421047a750b320bd25080  bpftool-v7.2.0-arm64.tar.gz" | sha512sum --check --status && \
+    echo "7842789acac1c580b76c44437df791d1d2d07d5c282e1ef7034bd29a530ea8079478dfeb86ef7395ecae3127d3dcc3e9ebac4d5a77f421047a750b320bd25080  bpftool-v7.5.0-arm64.tar.gz" | sha512sum --check --status && \
     tar -xvf bpftool-v7.5.0-arm64.tar.gz && \
     chmod +x bpftool && \
     mv bpftool /usr/bin/bpftool-arm64 && \
     curl -LO https://github.com/libbpf/bpftool/releases/download/v7.5.0/bpftool-v7.5.0-amd64.tar.gz && \
-    echo "742b05fff78d998b07a9c6c099ed6b7e8630072c98ae707c05fd8756327afc72cf7ed4afca5524a10544f28344020b056f54bd404f81e3c247b1ce4f8ba0e6c5  bpftool-v7.2.0-amd64.tar.gz" | sha512sum --check --status && \
+    echo "742b05fff78d998b07a9c6c099ed6b7e8630072c98ae707c05fd8756327afc72cf7ed4afca5524a10544f28344020b056f54bd404f81e3c247b1ce4f8ba0e6c5  bpftool-v7.5.0-amd64.tar.gz" | sha512sum --check --status && \
     tar -xvf bpftool-v7.5.0-amd64.tar.gz && \
     chmod +x bpftool && \
     mv bpftool /usr/bin/bpftool-amd64
