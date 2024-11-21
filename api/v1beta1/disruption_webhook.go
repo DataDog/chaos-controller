@@ -18,6 +18,7 @@ import (
 	"github.com/DataDog/chaos-controller/cloudservice"
 	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
 	"github.com/DataDog/chaos-controller/ddmark"
+	cLog "github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/o11y/metrics"
 	"github.com/DataDog/chaos-controller/o11y/tracer"
 	chaostypes "github.com/DataDog/chaos-controller/types"
@@ -113,7 +114,7 @@ var _ webhook.Defaulter = &Disruption{}
 // Default implements webhook.Defaulter so a webhook will be registered for the type
 func (r *Disruption) Default() {
 	if r.Spec.Duration.Duration() == 0 {
-		logger.Infow(fmt.Sprintf("setting default duration of %s in disruption", defaultDuration), "instance", r.Name, "namespace", r.Namespace)
+		logger.Infow(fmt.Sprintf("setting default duration of %s in disruption", defaultDuration), cLog.DisruptionNameKey, r.Name, cLog.DisruptionNamespaceKey, r.Namespace)
 		r.Spec.Duration = DisruptionDuration(defaultDuration.String())
 	}
 }
@@ -124,7 +125,7 @@ var _ webhook.Validator = &Disruption{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *Disruption) ValidateCreate() (admission.Warnings, error) {
-	log := logger.With("disruptionName", r.Name, "disruptionNamespace", r.Namespace)
+	log := logger.With(cLog.DisruptionNameKey, r.Name, cLog.DisruptionNamespaceKey, r.Namespace)
 
 	ctx, err := r.SpanContext(context.Background())
 	if err != nil {
@@ -277,7 +278,7 @@ func (r *Disruption) ValidateCreate() (admission.Warnings, error) {
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *Disruption) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
-	log := logger.With("disruptionName", r.Name, "disruptionNamespace", r.Namespace)
+	log := logger.With(cLog.DisruptionNameKey, r.Name, cLog.DisruptionNamespaceKey, r.Namespace)
 	log.Debugw("validating updated disruption", "spec", r.Spec)
 
 	var err error
@@ -387,7 +388,7 @@ func (r *Disruption) getMetricsTags() []string {
 
 	if userInfo, err := r.UserInfo(); !errors.Is(err, ErrNoUserInfo) {
 		if err != nil {
-			logger.Errorw("error retrieving user info from disruption, using empty user info", "error", err, "disruptionName", r.Name, "disruptionNamespace", r.Namespace)
+			logger.Errorw("error retrieving user info from disruption, using empty user info", "error", err, cLog.DisruptionNameKey, r.Name, cLog.DisruptionNamespaceKey, r.Namespace)
 		}
 
 		tags = append(tags, "username:"+userInfo.Username)
@@ -605,8 +606,8 @@ func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 	}
 
 	logger.Debugw("comparing estimated target count to total existing targets",
-		"disruptionName", r.Name,
-		"disruptionNamespace", r.Namespace,
+		cLog.DisruptionNameKey, r.Name,
+		cLog.DisruptionNamespaceKey, r.Namespace,
 		"namespaceThreshold", namespaceThreshold,
 		"clusterThreshold", clusterThreshold,
 		"estimatedEligibleTargetsCount", targetCount,

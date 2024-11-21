@@ -21,6 +21,7 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
 	"github.com/DataDog/chaos-controller/eventnotifier/utils"
+	cLog "github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/jsonapi"
 	"go.uber.org/zap"
 	authv1 "k8s.io/api/authentication/v1"
@@ -248,7 +249,7 @@ func (n *Notifier) marshalUserGroups(groups []string) (string, error) {
 func (n *Notifier) notifyDisruption(dis v1beta1.Disruption, event corev1.Event, notifType types.NotificationType) error {
 	logger := n.logger
 
-	logger.With("disruptionName", dis.Name, "disruptionNamespace", dis.Namespace)
+	logger.With(cLog.DisruptionNameKey, dis.Name, cLog.DisruptionNamespaceKey, dis.Namespace)
 
 	if !n.disruptionConfig.Enabled {
 		return nil
@@ -292,7 +293,7 @@ func (n *Notifier) notifyDisruption(dis v1beta1.Disruption, event corev1.Event, 
 func (n *Notifier) notifyDisruptionCron(disruptionCron v1beta1.DisruptionCron, event corev1.Event, notifType types.NotificationType) error {
 	logger := n.logger
 
-	logger.With("disruptionCronName", disruptionCron.Name, "disruptionCronNamespace", disruptionCron.Namespace)
+	logger.With(cLog.DisruptionCronNameKey, disruptionCron.Name, cLog.DisruptionCronNamespaceKey, disruptionCron.Namespace)
 
 	if !n.disruptionCronConfig.Enabled {
 		return nil

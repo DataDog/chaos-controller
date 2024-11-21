@@ -6,16 +6,16 @@
 apiVersion: chaos.datadoghq.com/v1beta1
 kind: DisruptionCron
 metadata:
-  name: network-drop
-  namespace: chaos-demo
+  name: network-drop-2
+  namespace: chaos-engineering
 spec:
-  schedule: "*/15 * * * *"
+  schedule: "*/20 * * * *"
   targetResource:
     kind: deployment
-    name: demo-curl
+    name: chaos-test-deployment
   disruptionTemplate:
     level: pod
     count: 1
     network:
       drop: 100 # percentage of outgoing packets to drop
-    duration: 10s # disruption will time out after 10 seconds
+    duration: 2m # disruption will time out after 10 seconds
