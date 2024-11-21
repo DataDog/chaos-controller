@@ -567,6 +567,14 @@ func (s DisruptionSpec) HashNoCount() (string, error) {
 	return s.Hash()
 }
 
+// SetDefaults finds any unset spec options, and sets the default values. Only operates on values that lack
+// kubebuilder struct default tags, which typically only includes complex types, such as spec.duration
+func (s *DisruptionSpec) SetDefaults() {
+	if s.Duration.Duration() == 0 {
+		s.Duration = DisruptionDuration(defaultDuration.String())
+	}
+}
+
 // Validate applies rules for disruption global scope and all subsequent disruption specifications, requiring selectors
 // intended to be called when DisruptionSpec belongs directly to a Disruption
 // also exists for backwards compatibility
