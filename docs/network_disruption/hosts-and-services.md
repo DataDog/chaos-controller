@@ -16,12 +16,14 @@ The `hosts` field takes a list of `host`/`port`/`protocol`/`connState` tuples. A
 
 ## Q: When should I specify services instead?
 
+Are you attempting to disrupt traffic to a service in the same kubernetes cluster?
+
 While the `network.hosts` field is meant for specifying only disrupting packets interacting with a particular IP, hostname, or CIDR range,
 a very common use case of network disruptions is to disrupt packets interacting with a particular kubernetes service. This can be tricky for users,
 as NAT rules are applied before `tc` rules, and thus the port that a pod uses to send packets to a service is not necessarily the same port used by the node in the root network namespace.
 It is not simple to detect that a hostname passed to `network.hosts` is a kubernetes service, and thus we include the `network.services` field.
 
-Whenever you want to disrupt traffic interacting with a kubernetes service[s], for correctness's sake, you _must_ specify the service under `network.services`, rather than `network.hosts`.
+Whenever you want to disrupt traffic interacting with a kubernetes service[s] in the same cluster as your target, for correctness's sake, you _must_ specify the service under `network.services`, rather than `network.hosts`.
 `network.services` takes a list of services, which are defined with each service's `name` and `namespace`, as well as a list of `ports` to be affected. 
 In this `ports` list, you can specify the `name` of the port and/or the `port` itself ([see kubernetes service definition for context](https://kubernetes.io/docs/concepts/services-networking/service/#defining-a-service)). Those fields (`name`, `port`) are **exclusively used to find the right service port to affect**. 
 
