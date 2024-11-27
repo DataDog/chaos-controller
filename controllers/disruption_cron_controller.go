@@ -260,7 +260,7 @@ func (r *DisruptionCronReconciler) updateTargetResourcePreviouslyMissing(ctx con
 		}
 
 		if time.Since(instance.Status.TargetResourcePreviouslyMissing.Time) > TargetResourceMissingThreshold {
-			r.log.Errorw("target has been missing for over one day, deleting this schedule",
+			r.log.Warnw("target has been missing for over one day, deleting this schedule",
 				"timeMissing", time.Since(instance.Status.TargetResourcePreviouslyMissing.Time))
 
 			disruptionCronDeleted = true
