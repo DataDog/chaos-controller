@@ -402,6 +402,7 @@ func main() {
 			DeleteOnlyFlag:                   cfg.Controller.DeleteOnly,
 			PermittedUserGroups:              cfg.Controller.SafeMode.PermittedUserGroups,
 			DefaultCronDelayedStartTolerance: cfg.Controller.DefaultCronDelayedStartTolerance,
+			MinimumCronFrequency:             cfg.Controller.MinimumCronFrequency,
 		}
 
 		if err = (&chaosv1beta1.DisruptionCron{}).SetupWebhookWithManager(disruptionCronSetupWebhookConfig); err != nil {

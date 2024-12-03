@@ -56,6 +56,7 @@ type SetupWebhookWithManagerConfig struct {
 	DefaultDurationFlag              time.Duration
 	MaxDurationFlag                  time.Duration
 	DefaultCronDelayedStartTolerance time.Duration
+	MinimumCronFrequency             time.Duration
 	ChaosNamespace                   string
 	CloudServicesProvidersManager    cloudservice.CloudServicesProvidersManager
 	Environment                      string

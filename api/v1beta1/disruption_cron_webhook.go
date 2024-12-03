@@ -37,6 +37,7 @@ var (
 	disruptionCronPermittedUserGroups      map[string]struct{}
 	disruptionCronPermittedUserGroupString string
 	defaultCronDelayedStartTolerance       time.Duration
+	minimumCronFrequency                   time.Duration
 )
 
 func (d *DisruptionCron) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebhookWithManagerConfig) error {
@@ -55,6 +56,7 @@ func (d *DisruptionCron) SetupWebhookWithManager(setupWebhookConfig utils.SetupW
 
 	disruptionCronPermittedUserGroupString = strings.Join(setupWebhookConfig.PermittedUserGroups, ",")
 	defaultCronDelayedStartTolerance = setupWebhookConfig.DefaultCronDelayedStartTolerance
+	minimumCronFrequency = setupWebhookConfig.MinimumCronFrequency
 
 	return ctrl.NewWebhookManagedBy(setupWebhookConfig.Manager).
 		For(d).
