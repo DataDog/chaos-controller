@@ -102,6 +102,10 @@ func (d *DisruptionCron) ValidateCreate() (admission.Warnings, error) {
 		return nil, err
 	}
 
+	if err := d.validateMinimumFrequency(minimumCronFrequency); err != nil {
+		return nil, err
+	}
+
 	// send informative event to disruption cron to broadcast
 	d.emitEvent(EventDisruptionCronCreated)
 
@@ -194,6 +198,21 @@ func (d *DisruptionCron) validateDisruptionCronSpec() error {
 
 	if err := d.Spec.DisruptionTemplate.ValidateSelectorsOptional(false); err != nil {
 		return fmt.Errorf("spec.disruptionTemplate validation failed: %w", err)
+	}
+
+	return nil
+}
+
+func (d *DisruptionCron) validateMinimumFrequency(minFrequency time.Duration) error {
+	schedule, err := cron.ParseStandard(d.Spec.Schedule)
+	if err != nil {
+		return fmt.Errorf("spec.Schedule must follow the standard cron syntax: %w", err)
+	}
+
+	now := time.Now()
+	frequency := schedule.Next(now).Sub(now)
+	if frequency < minFrequency {
+		return fmt.Errorf("this cron's spec.Schedule is \"%s\", which runs every %s, but the minimum tolerated frequency is %s", d.Spec.Schedule, frequency.String(), minFrequency.String())
 	}
 
 	return nil
