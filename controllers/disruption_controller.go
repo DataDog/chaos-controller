@@ -26,6 +26,7 @@ import (
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/cloudservice"
+	cLog "github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/o11y/metrics"
 	"github.com/DataDog/chaos-controller/o11y/tracer"
 	"github.com/DataDog/chaos-controller/safemode"
@@ -96,7 +97,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	// because the logger instance is pointer, concurrent reconciling would create a race condition
 	// where the logger context would change for all ongoing reconcile loops
 	// in the case we enable concurrent reconciling, we should create one logger instance per reconciling call
-	r.log = r.BaseLog.With("disruptionName", req.Name, "disruptionNamespace", req.Namespace)
+	r.log = r.BaseLog.With(cLog.DisruptionNameKey, req.Name, cLog.DisruptionNamespaceKey, req.Namespace)
 
 	// reconcile metrics
 	r.handleMetricSinkError(r.MetricsSink.MetricReconcile())

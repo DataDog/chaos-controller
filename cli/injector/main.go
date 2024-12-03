@@ -148,14 +148,14 @@ func initLogger() {
 	}
 
 	log = log.With(
-		"disruptionName", disruptionArgs.DisruptionName,
-		"disruptionNamespace", disruptionArgs.DisruptionNamespace,
+		logger.DisruptionNameKey, disruptionArgs.DisruptionName,
+		logger.DisruptionNamespaceKey, disruptionArgs.DisruptionNamespace,
 		"targetName", disruptionArgs.TargetName,
 		"targetNodeName", disruptionArgs.TargetNodeName,
 	)
 
 	if parentPID != 0 {
-		log = log.With("parent_pid", parentPID)
+		log = log.With("parentPid", parentPID)
 	}
 }
 

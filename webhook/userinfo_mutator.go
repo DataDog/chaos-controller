@@ -12,6 +12,7 @@ import (
 	"net/http"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	cLog "github.com/DataDog/chaos-controller/log"
 	"go.uber.org/zap"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -88,9 +89,9 @@ func (m UserInfoMutator) getObject(request admission.Request) (client.Object, er
 func (m UserInfoMutator) getLogger(request admission.Request) (*zap.SugaredLogger, error) {
 	switch request.Kind.Kind {
 	case v1beta1.DisruptionKind:
-		return m.Log.With("disruptionName", request.Name, "disruptionNamespace", request.Namespace), nil
+		return m.Log.With(cLog.DisruptionNameKey, request.Name, cLog.DisruptionNamespaceKey, request.Namespace), nil
 	case v1beta1.DisruptionCronKind:
-		return m.Log.With("disruptionCronName", request.Name, "disruptionCronNamespace", request.Namespace), nil
+		return m.Log.With(cLog.DisruptionCronNameKey, request.Name, cLog.DisruptionCronNamespaceKey, request.Namespace), nil
 	}
 
 	return nil, fmt.Errorf("not a valid kind: %s", request.Kind.Kind)

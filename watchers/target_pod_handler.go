@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	cLog "github.com/DataDog/chaos-controller/log"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -42,8 +43,8 @@ func (d DisruptionTargetHandler) OnAdd(obj interface{}, _ bool) {
 	targetName, targetKind := getTargetNameAndKind(obj)
 
 	d.log.Debugw("DisruptionTargetHandler ADD",
-		"disruptionName", d.disruption.Name,
-		"disruptionNamespace", d.disruption.Namespace,
+		cLog.DisruptionNameKey, d.disruption.Name,
+		cLog.DisruptionNamespaceKey, d.disruption.Namespace,
 		"targetName", targetName,
 		"targetKind", targetKind,
 	)
@@ -59,8 +60,8 @@ func (d DisruptionTargetHandler) OnDelete(obj interface{}) {
 	targetName, targetKind := getTargetNameAndKind(obj)
 
 	d.log.Debugw("DisruptionTargetHandler DELETE",
-		"disruptionName", d.disruption.Name,
-		"disruptionNamespace", d.disruption.Namespace,
+		cLog.DisruptionNameKey, d.disruption.Name,
+		cLog.DisruptionNamespaceKey, d.disruption.Namespace,
 		"targetName", targetName,
 		"targetKind", targetKind,
 	)
@@ -79,8 +80,8 @@ func (d DisruptionTargetHandler) OnUpdate(oldObj, newObj interface{}) {
 	newTargetName, newTargetKind := getTargetNameAndKind(newObj)
 
 	d.log.Debugw("DisruptionTargetHandler UPDATE",
-		"disruptionName", d.disruption.Name,
-		"disruptionNamespace", d.disruption.Namespace,
+		cLog.DisruptionNameKey, d.disruption.Name,
+		cLog.DisruptionNamespaceKey, d.disruption.Namespace,
 		"oldTargetName", oldTargetName,
 		"oldTargetKind", oldTargetKind,
 		"newTargetName", newTargetName,

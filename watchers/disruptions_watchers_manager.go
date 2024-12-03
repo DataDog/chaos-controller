@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	cLog "github.com/DataDog/chaos-controller/log"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/types"
 	k8scontrollercache "sigs.k8s.io/controller-runtime/pkg/cache"
@@ -99,7 +100,7 @@ func (d disruptionsWatchersManager) CreateAllWatchers(disruption *v1beta1.Disrup
 			return err
 		}
 
-		d.log.Debugw("Watcher created", "watcherName", watcherName, "disruptionName", disruption.Name, "disruptionNamespace", disruption.Namespace)
+		d.log.Debugw("Watcher created", "watcherName", watcherName, cLog.DisruptionNameKey, disruption.Name, cLog.DisruptionNamespaceKey, disruption.Namespace)
 	}
 
 	return nil
@@ -114,7 +115,7 @@ func (d disruptionsWatchersManager) RemoveAllWatchers(disruption *v1beta1.Disrup
 
 	// If the Watcher Manager does not exist just do nothing.
 	if watcherManager == nil {
-		d.log.Debugw("could not remove all watchers", "disruptionName", disruption.Name, "disruptionNamespace", disruption.Namespace)
+		d.log.Debugw("could not remove all watchers", cLog.DisruptionNameKey, disruption.Name, cLog.DisruptionNamespaceKey, disruption.Namespace)
 		return
 	}
 
@@ -123,7 +124,7 @@ func (d disruptionsWatchersManager) RemoveAllWatchers(disruption *v1beta1.Disrup
 	// Remove the Watcher Manager from the map.
 	delete(d.watchersManagers, namespacedName)
 
-	d.log.Infow("all watchers have been removed", "disruptionName", disruption.Name, "disruptionNamespace", disruption.Namespace)
+	d.log.Infow("all watchers have been removed", cLog.DisruptionNameKey, disruption.Name, cLog.DisruptionNamespaceKey, disruption.Namespace)
 }
 
 // RemoveAllOrphanWatchers removes all Watchers associated with a none existing Disruption.
@@ -143,7 +144,7 @@ func (d disruptionsWatchersManager) RemoveAllOrphanWatchers() error {
 			// Remove the watcher manager from the stored managers
 			delete(d.watchersManagers, namespacedName)
 
-			d.log.Infow("all watchers have been removed", "disruptionName", namespacedName.Name, "disruptionNamespace", namespacedName.Namespace)
+			d.log.Infow("all watchers have been removed", cLog.DisruptionNameKey, namespacedName.Name, cLog.DisruptionNamespaceKey, namespacedName.Namespace)
 		}
 	}
 
@@ -206,12 +207,12 @@ func getDisruptionNamespacedName(disruption *v1beta1.Disruption) types.Namespace
 func (d disruptionsWatchersManager) getWatcherManager(disruptionNamespacedName types.NamespacedName) Manager {
 	// If we have already created a watcher manager for this disruption, use it
 	if cachedWatcherManager := d.watchersManagers[disruptionNamespacedName]; cachedWatcherManager != nil {
-		d.log.Debugw("Load watcher manager from the cache", "disruptionName", disruptionNamespacedName.Name, "disruptionNamespace", disruptionNamespacedName.Namespace)
+		d.log.Debugw("Load watcher manager from the cache", cLog.DisruptionNameKey, disruptionNamespacedName.Name, cLog.DisruptionNamespaceKey, disruptionNamespacedName.Namespace)
 
 		return cachedWatcherManager
 	}
 
-	d.log.Debugw("Creating a new watcher manager", "disruptionName", disruptionNamespacedName.Name, "disruptionNamespace", disruptionNamespacedName.Namespace)
+	d.log.Debugw("Creating a new watcher manager", cLog.DisruptionNameKey, disruptionNamespacedName.Name, cLog.DisruptionNamespaceKey, disruptionNamespacedName.Namespace)
 
 	// Otherwise, create a new watcher manager
 	return NewManager(d.reader, d.controller)

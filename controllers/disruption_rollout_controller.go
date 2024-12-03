@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"time"
 
+	cLog "github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/o11y/metrics"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
@@ -150,7 +151,7 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 	r.handleMetricSinkError(r.MetricsSink.MetricDisruptionScheduled(append(DisruptionRolloutTags, "disruptionName:"+disruption.Name)))
 
-	r.log.Infow("created Disruption for DisruptionRollout run", "disruptionName", disruption.Name)
+	r.log.Infow("created Disruption for DisruptionRollout run", cLog.DisruptionNameKey, disruption.Name)
 
 	// ------------------------------------------------------------------ //
 	// If this process restarts at this point (after posting a disruption, but

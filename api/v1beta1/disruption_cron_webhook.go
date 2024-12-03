@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	cLog "github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/utils"
 	"github.com/robfig/cron"
 	"go.uber.org/zap"
@@ -68,7 +69,7 @@ var _ webhook.Defaulter = &DisruptionCron{}
 // Default implements webhook.Defaulter so a webhook will be registered for the type
 func (d *DisruptionCron) Default() {
 	if d.Spec.DelayedStartTolerance.Duration() == 0 {
-		logger.Infow(fmt.Sprintf("setting default delayedStartTolerance of %s in disruptionCron", defaultCronDelayedStartTolerance), "instance", d.Name, "namespace", d.Namespace)
+		logger.Infow(fmt.Sprintf("setting default delayedStartTolerance of %s in disruptionCron", defaultCronDelayedStartTolerance), cLog.DisruptionCronNameKey, d.Name, cLog.DisruptionCronNamespaceKey, d.Namespace)
 		d.Spec.DelayedStartTolerance = DisruptionDuration(defaultCronDelayedStartTolerance.String())
 	}
 }
@@ -79,7 +80,7 @@ var _ webhook.Validator = &DisruptionCron{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (d *DisruptionCron) ValidateCreate() (admission.Warnings, error) {
-	log := disruptionCronWebhookLogger.With("disruptionCronName", d.Name, "disruptionCronNamespace", d.Namespace)
+	log := disruptionCronWebhookLogger.With(cLog.DisruptionCronNameKey, d.Name, cLog.DisruptionCronNamespaceKey, d.Namespace)
 
 	log.Infow("validating created disruption cron", "spec", d.Spec)
 
@@ -107,7 +108,7 @@ func (d *DisruptionCron) ValidateCreate() (admission.Warnings, error) {
 }
 
 func (d *DisruptionCron) ValidateUpdate(oldObject runtime.Object) (admission.Warnings, error) {
-	log := logger.With("disruptionCronName", d.Name, "disruptionCronNamespace", d.Namespace)
+	log := logger.With(cLog.DisruptionCronNameKey, d.Name, cLog.DisruptionCronNamespaceKey, d.Namespace)
 
 	log.Infow("validating updated disruption cron", "spec", d.Spec)
 
@@ -130,7 +131,7 @@ func (d *DisruptionCron) ValidateUpdate(oldObject runtime.Object) (admission.War
 }
 
 func (d *DisruptionCron) ValidateDelete() (warnings admission.Warnings, err error) {
-	log := disruptionCronWebhookLogger.With("disruptionCronName", d.Name, "disruptionCronNamespace", d.Namespace)
+	log := disruptionCronWebhookLogger.With(cLog.DisruptionCronNameKey, d.Name, cLog.DisruptionCronNamespaceKey, d.Namespace)
 
 	log.Infow("validating deleted disruption cron", "spec", d.Spec)
 

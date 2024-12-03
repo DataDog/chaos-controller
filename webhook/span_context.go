@@ -11,6 +11,7 @@ import (
 	"net/http"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	cLog "github.com/DataDog/chaos-controller/log"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -38,7 +39,7 @@ func (m *SpanContextMutator) Handle(ctx context.Context, req admission.Request) 
 
 	// decode object
 	if err := m.Decoder.Decode(req, dis); err != nil {
-		m.Log.Errorw("error decoding disruption object", "error", err, "disruptionName", req.Name, "disruptionNamespace", req.Namespace)
+		m.Log.Errorw("error decoding disruption object", "error", err, cLog.DisruptionNameKey, req.Name, cLog.DisruptionNamespaceKey, req.Namespace)
 
 		return admission.Errored(http.StatusBadRequest, err)
 	}
@@ -51,7 +52,7 @@ func (m *SpanContextMutator) Handle(ctx context.Context, req admission.Request) 
 	defer disruptionSpan.End()
 
 	// retrieve span context
-	m.Log.Infow("storing span context in annotations", "disruptionName", dis.Name, "disruptionNamespace", dis.Namespace)
+	m.Log.Infow("storing span context in annotations", cLog.DisruptionNameKey, dis.Name, cLog.DisruptionNamespaceKey, dis.Namespace)
 
 	annotations := make(map[string]string)
 
@@ -64,12 +65,12 @@ func (m *SpanContextMutator) Handle(ctx context.Context, req admission.Request) 
 	// writes the traceID and spanID in the annotations of the disruption
 	err := dis.SetSpanContext(ctx)
 	if err != nil {
-		m.Log.Errorw("error defining SpanContext", "error", err, "disruptionName", dis.Name, "disruptionNamespace", dis.Namespace)
+		m.Log.Errorw("error defining SpanContext", "error", err, cLog.DisruptionNameKey, dis.Name, cLog.DisruptionNamespaceKey, dis.Namespace)
 	}
 
 	marshaled, err := json.Marshal(dis)
 	if err != nil {
-		m.Log.Errorw("error encoding modified annotations", "error", err, "disruptionName", dis.Name, "disruptionNamespace", dis.Namespace)
+		m.Log.Errorw("error encoding modified annotations", "error", err, cLog.DisruptionNameKey, dis.Name, cLog.DisruptionNamespaceKey, dis.Namespace)
 
 		return admission.Errored(http.StatusInternalServerError, err)
 	}

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
+	cLog "github.com/DataDog/chaos-controller/log"
 	"go.uber.org/zap"
 	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -163,7 +164,7 @@ func CreateDisruptionFromTemplate(ctx context.Context, cl client.Client, scheme 
 	disruption.Labels[ownerNameLabel] = owner.GetName()
 
 	if err := setDisruptionAnnotations(disruption, owner, scheduledTime); err != nil {
-		log.Errorw("unable to set annotations for child disruption", "err", err, "disruptionName", disruption.Name)
+		log.Errorw("unable to set annotations for child disruption", "err", err, cLog.DisruptionNameKey, disruption.Name)
 	}
 
 	if err := overwriteDisruptionSelectors(ctx, cl, disruption, targetResource, owner.GetNamespace()); err != nil {
@@ -181,7 +182,7 @@ func CreateDisruptionFromTemplate(ctx context.Context, cl client.Client, scheme 
 func getScheduledTimeForDisruption(log *zap.SugaredLogger, disruption *chaosv1beta1.Disruption) time.Time {
 	parsedTime, err := disruption.GetScheduledAtAnnotation()
 	if err != nil {
-		log.Errorw("unable to parse schedule time for child disruption", "err", err, "disruptionName", disruption.Name)
+		log.Errorw("unable to parse schedule time for child disruption", "err", err, cLog.DisruptionNameKey, disruption.Name)
 		return time.Time{}
 	}
 

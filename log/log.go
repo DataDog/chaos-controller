@@ -12,6 +12,19 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+// logger's keys
+const (
+	// Disruption
+	DisruptionPrefixKey    = "disruption"
+	DisruptionNameKey      = DisruptionPrefixKey + "Name"
+	DisruptionNamespaceKey = DisruptionPrefixKey + "Namespace"
+
+	// DisruptionCron
+	DisruptionCronPrefixKey    = "disruptionCron"
+	DisruptionCronNameKey      = DisruptionCronPrefixKey + "Name"
+	DisruptionCronNamespaceKey = DisruptionCronPrefixKey + "Namespace"
+)
+
 // NewZapLogger returns a zap production sugared logger with pre-configured encoder settings
 func NewZapLogger() (*zap.SugaredLogger, error) {
 	// configure logger
