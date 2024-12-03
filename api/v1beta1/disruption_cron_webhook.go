@@ -210,7 +210,8 @@ func (d *DisruptionCron) validateMinimumFrequency(minFrequency time.Duration) er
 	}
 
 	now := time.Now()
-	frequency := schedule.Next(now).Sub(now)
+	next := schedule.Next(now)
+	frequency := schedule.Next(next).Sub(next)
 	if frequency < minFrequency {
 		return fmt.Errorf("this cron's spec.Schedule is \"%s\", which runs every %s, but the minimum tolerated frequency is %s", d.Spec.Schedule, frequency.String(), minFrequency.String())
 	}
