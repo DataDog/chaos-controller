@@ -57,6 +57,7 @@ func (d *DisruptionCron) SetupWebhookWithManager(setupWebhookConfig utils.SetupW
 	disruptionCronPermittedUserGroupString = strings.Join(setupWebhookConfig.PermittedUserGroups, ",")
 	defaultCronDelayedStartTolerance = setupWebhookConfig.DefaultCronDelayedStartTolerance
 	minimumCronFrequency = setupWebhookConfig.MinimumCronFrequency
+	defaultDuration = setupWebhookConfig.DefaultDurationFlag
 
 	return ctrl.NewWebhookManagedBy(setupWebhookConfig.Manager).
 		For(d).
@@ -209,11 +210,17 @@ func (d *DisruptionCron) validateMinimumFrequency(minFrequency time.Duration) er
 		return fmt.Errorf("spec.Schedule must follow the standard cron syntax: %w", err)
 	}
 
+	specDuration := defaultDuration
+	if d.Spec.DisruptionTemplate.Duration.Duration() > 0 {
+		specDuration = d.Spec.DisruptionTemplate.Duration.Duration()
+	}
+
 	now := time.Now()
 	next := schedule.Next(now)
-	frequency := schedule.Next(next).Sub(next)
+	frequency := schedule.Next(next).Add(specDuration).Sub(next)
 	if frequency < minFrequency {
-		return fmt.Errorf("this cron's spec.Schedule is \"%s\", which runs every %s, but the minimum tolerated frequency is %s", d.Spec.Schedule, frequency.String(), minFrequency.String())
+		return fmt.Errorf("this cron's spec.Schedule is \"%s\", which will create disruptions that last %s every %s, but the minimum tolerated frequency is %s",
+			d.Spec.Schedule, specDuration.String(), frequency.String(), minFrequency.String())
 	}
 
 	return nil
