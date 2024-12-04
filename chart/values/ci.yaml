@@ -10,6 +10,7 @@ controller:
   defaultDuration: 5m
   finalizerDeletionDelay: 2s
   expiredDisruptionGCDelay: 30s
+  minimumCronFrequency: 1m
   resources: # resources assigned to the controller pod. may need to be increased when deploying to larger scale clusters
     cpu: 1
     memory: 2Gi
