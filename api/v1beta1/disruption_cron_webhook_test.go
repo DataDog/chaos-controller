@@ -7,6 +7,7 @@ package v1beta1
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/DataDog/chaos-controller/mocks"
 	"github.com/stretchr/testify/mock"
@@ -42,6 +43,7 @@ var _ = Describe("DisruptionCron Webhook", func() {
 		disruptionCronPermittedUserGroups = nil
 		defaultUserGroups = nil
 		defaultUserGroupsStr = ""
+		minimumCronFrequency = time.Second
 	})
 
 	Describe("ValidateCreate", func() {
@@ -198,6 +200,19 @@ var _ = Describe("DisruptionCron Webhook", func() {
 					Expect(warnings).To(BeNil())
 					Expect(err).Should(HaveOccurred())
 					Expect(err).To(MatchError(ContainSubstring("spec.Schedule must follow the standard cron syntax")))
+				})
+			})
+
+			When("disruption cron schedule is too brief", func() {
+				It("should return an error", func() {
+					minimumCronFrequency = time.Hour * 24 * 365
+
+					disruptionCron := makeValidDisruptionCron()
+					warnings, err := disruptionCron.ValidateCreate()
+
+					Expect(warnings).To(BeNil())
+					Expect(err).Should(HaveOccurred())
+					Expect(err).To(MatchError(ContainSubstring("between disruptions, but the minimum tolerated frequency is 8760h")))
 				})
 			})
 

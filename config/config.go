@@ -2,6 +2,7 @@
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2024 Datadog, Inc.
+
 package config
 
 import (
@@ -36,6 +37,7 @@ type controllerConfig struct {
 	MaxDuration                      time.Duration                   `json:"maxDuration,omitempty" yaml:"maxDuration,omitempty"`
 	DefaultDuration                  time.Duration                   `json:"defaultDuration" yaml:"defaultDuration"`
 	DefaultCronDelayedStartTolerance time.Duration                   `json:"defaultCronDelayedStartTolerance" yaml:"defaultCronDelayedStartTolerance"`
+	MinimumCronFrequency             time.Duration                   `json:"minimumCronFrequency" yaml:"minimumCronFrequency"`
 	DeleteOnly                       bool                            `json:"deleteOnly" yaml:"deleteOnly"`
 	EnableSafeguards                 bool                            `json:"enableSafeguards" yaml:"enableSafeguards"`
 	EnableObserver                   bool                            `json:"enableObserver" yaml:"enableObserver"`
@@ -183,6 +185,12 @@ func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osAr
 	mainFS.DurationVar(&cfg.Controller.DefaultCronDelayedStartTolerance, "default-cron-delayed-start-tolerance", time.Minute*5, "Default deadline for starting a new disruption after the disruption cron's scheduled time")
 
 	if err := viper.BindPFlag("controller.defaultCronDelayedStartTolerance", mainFS.Lookup("default-cron-delayed-start-tolerance")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.DurationVar(&cfg.Controller.MinimumCronFrequency, "minimum-cron-frequency", time.Minute, "Minimum frequency for a disruption cron schedule")
+
+	if err := viper.BindPFlag("controller.minimumCronFrequency", mainFS.Lookup("minimum-cron-frequency")); err != nil {
 		return cfg, err
 	}
 
