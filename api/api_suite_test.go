@@ -8,25 +8,11 @@ package api_test
 import (
 	"testing"
 
-	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/ddmark"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
-
-var ddMarkClient ddmark.Client
 
 func TestApi(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Api Suite")
 }
-
-var _ = BeforeSuite(func() {
-	var err error
-	ddMarkClient, err = ddmark.NewClient(v1beta1.EmbeddedChaosAPI)
-	Expect(err).ToNot(HaveOccurred())
-})
-
-var _ = AfterSuite(func() {
-	Expect(ddMarkClient.CleanupLibraries()).ToNot(HaveOccurred())
-})

@@ -35,14 +35,8 @@ import (
 )
 
 // DisruptionSpec defines the desired state of Disruption
-// +ddmark:validation:ExclusiveFields={ContainerFailure,CPUPressure,DiskPressure,NodeFailure,Network,DNS,DiskFailure}
-// +ddmark:validation:ExclusiveFields={NodeFailure,CPUPressure,DiskPressure,ContainerFailure,Network,DNS,DiskFailure}
-// +ddmark:validation:LinkedFieldsValueWithTrigger={NodeFailure,Level}
-// +ddmark:validation:AtLeastOneOf={DNS,CPUPressure,Network,NodeFailure,ContainerFailure,DiskPressure,GRPC,DiskFailure}
-// +ddmark:validation:AtLeastOneOf={Selector,AdvancedSelector}
 type DisruptionSpec struct {
 	// +kubebuilder:validation:Required
-	// +ddmark:validation:Required=true
 	Count *intstr.IntOrString `json:"count"` // number of pods to target in either integer form or percent form appended with a %
 	// AllowDisruptedTargets allow pods with one or several other active disruptions, with disruption kinds that does not intersect
 	// with this disruption kinds, to be returned as part of eligible targets for this disruption
@@ -67,7 +61,6 @@ type DisruptionSpec struct {
 	// Level defines what the disruption will target, either a pod or a node
 	// +kubebuilder:default=pod
 	// +kubebuilder:validation:Enum=pod;node
-	// +ddmark:validation:Enum=pod;node
 	Level      chaostypes.DisruptionLevel `json:"level,omitempty"`
 	Containers []string                   `json:"containers,omitempty"`
 	// +nullable
@@ -108,7 +101,6 @@ func (dt DisruptionTriggers) IsZero() bool {
 	return dt.Inject.IsZero() && dt.CreatePods.IsZero()
 }
 
-// +ddmark:validation:ExclusiveFields={NotBefore,Offset}
 type DisruptionTrigger struct {
 	// inject.notBefore: Normal reconciliation and chaos pod creation will occur, but chaos pods will wait to inject until NotInjectedBefore. Must be after NoPodsBefore if both are specified
 	// createPods.notBefore: Will skip reconciliation until this time, no chaos pods will be created until after NoPodsBefore
@@ -133,13 +125,11 @@ type Reporting struct {
 	// +kubebuilder:validation:MaxLength=80
 	// +kubebuilder:validation:Pattern=(^[a-z0-9-_]+$)|(^C[A-Z0-9]+$)
 	// +kubebuilder:validation:Required
-	// +ddmark:validation:Required=true
 	SlackChannel string `json:"slackChannel,omitempty"`
 	// Purpose determines contextual informations about the disruption
 	// a brief context to determines disruption goal
 	// +kubebuilder:validation:MinLength=10
 	// +kubebuilder:validation:Required
-	// +ddmark:validation:Required=true
 	Purpose string `json:"purpose,omitempty"`
 	// MinNotificationType is the minimal notification type we want to receive informations for
 	// In order of importance it's Info, Success, Warning, Error
@@ -202,7 +192,6 @@ func (dd DisruptionDuration) Duration() time.Duration {
 type TargetInjection struct {
 	InjectorPodName string `json:"injectorPodName,omitempty"`
 	// +kubebuilder:validation:Enum=NotInjected;Injected;IsStuckOnRemoval
-	// +ddmark:validation:Enum=NotInjected;Injected;IsStuckOnRemoval
 	InjectionStatus chaostypes.DisruptionTargetInjectionStatus `json:"injectionStatus,omitempty"`
 	// since when this status is in place
 	Since metav1.Time `json:"since,omitempty"`
@@ -264,7 +253,6 @@ type DisruptionStatus struct {
 	IsStuckOnRemoval bool `json:"isStuckOnRemoval,omitempty"`
 	IsInjected       bool `json:"isInjected,omitempty"`
 	// +kubebuilder:validation:Enum=NotInjected;PartiallyInjected;PausedPartiallyInjected;Injected;PausedInjected;PreviouslyNotInjected;PreviouslyPartiallyInjected;PreviouslyInjected
-	// +ddmark:validation:Enum=NotInjected;PartiallyInjected;PausedPartiallyInjected;Injected;PausedInjected;PreviouslyNotInjected;PreviouslyPartiallyInjected;PreviouslyInjected
 	// +kubebuilder:default=NotInjected
 	InjectionStatus chaostypes.DisruptionInjectionStatus `json:"injectionStatus,omitempty"`
 	// +nullable
@@ -523,7 +511,6 @@ type DisruptionList struct {
 }
 
 // DisruptionPulse contains the active disruption duration and the dormant disruption duration
-// +ddmark:validation:LinkedFields={ActiveDuration,DormantDuration}
 type DisruptionPulse struct {
 	ActiveDuration  DisruptionDuration `json:"activeDuration,omitempty"`
 	DormantDuration DisruptionDuration `json:"dormantDuration,omitempty"`
