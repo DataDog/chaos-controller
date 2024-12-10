@@ -145,6 +145,40 @@ var _ = Describe("DisruptionCron Webhook", func() {
 				})
 			})
 
+			When("the disruption template duration is greater than 0", func() {
+				It("should validate the disruption cron successfully", func() {
+					// Arrange
+					disruptionCron := makeValidDisruptionCron()
+					disruptionCron.Spec.DisruptionTemplate.Duration = "1s"
+
+					disruptionCronJSON, err := json.Marshal(disruptionCron)
+					Expect(err).ShouldNot(HaveOccurred())
+
+					expectedAnnotation := map[string]string{
+						EventDisruptionCronAnnotation: string(disruptionCronJSON),
+					}
+
+					By("sending the EventDisruptionCronCreated event to the broadcast")
+					mockEventRecorder := mocks.NewEventRecorderMock(GinkgoT())
+					mockEventRecorder.EXPECT().
+						AnnotatedEventf(
+							disruptionCron,
+							expectedAnnotation,
+							Events[EventDisruptionCronCreated].Type,
+							string(EventDisruptionCronCreated),
+							Events[EventDisruptionCronCreated].OnDisruptionTemplateMessage,
+						)
+
+					disruptionCronWebhookRecorder = mockEventRecorder
+
+					// Act
+					warnings, err := disruptionCron.ValidateCreate()
+
+					// Assert
+					Expect(warnings).To(BeNil())
+					Expect(err).ShouldNot(HaveOccurred())
+				})
+			})
 		})
 
 		Describe("error cases", func() {
