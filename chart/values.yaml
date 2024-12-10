@@ -66,6 +66,7 @@ controller:
   defaultDuration: 5m # default spec.duration for a disruption with none specified
   maxDuration: 2h # maximum spec.duration for a disruption
   defaultCronDelayedStartTolerance: 15m
+  minimumCronFrequency: 15m # a disruption cron with a spec.schedule that runs more often than this will be rejected.
   finalizerDeletionDelay: 20s
   expiredDisruptionGCDelay: 10m # time after a disruption expires before deleting it
   userInfoHook: true
