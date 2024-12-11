@@ -722,6 +722,12 @@ func (s DisruptionSpec) validateGlobalDisruptionScope(requireSelectors bool) (re
 		retErr = multierror.Append(retErr, err)
 	}
 
+	if s.Unsafemode != nil {
+		if err := s.Unsafemode.Validate(); err != nil {
+			retErr = multierror.Append(retErr, err)
+		}
+	}
+
 	return retErr
 }
 
