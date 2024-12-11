@@ -601,6 +601,7 @@ var _ = Describe("Disruption Webhook", func() {
 					allowNodeLevel = true
 					newDisruption.Spec.Level = chaostypes.DisruptionLevelNode
 					newDisruption.Spec.NodeFailure = &NodeFailureSpec{}
+					newDisruption.Spec.Network = nil
 
 					disruptionJSON, err := json.Marshal(newDisruption)
 					Expect(err).ShouldNot(HaveOccurred())

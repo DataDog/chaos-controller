@@ -187,6 +187,7 @@ var _ = Describe("NetworkDisruptionSpec", func() {
 						HTTP: &NetworkHTTPFilters{
 							Paths: paths,
 						},
+						Drop: 100,
 					}
 
 					// Action
@@ -222,6 +223,7 @@ var _ = Describe("NetworkDisruptionSpec", func() {
 							HTTP: &NetworkHTTPFilters{
 								Paths: invalidPaths,
 							},
+							Drop: 100,
 						}
 
 						// Action
