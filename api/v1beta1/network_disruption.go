@@ -304,6 +304,10 @@ func (s *NetworkDisruptionSpec) Validate() (retErr error) {
 		}
 	}
 
+	if s.Drop == 0 && s.Delay == 0 && s.BandwidthLimit == 0 && s.Corrupt == 0 && s.Duplicate == 0 {
+		retErr = multierror.Append(retErr, fmt.Errorf("when applying a network disruption, at least one of network.drop, network.delay, network.corrupt, network.duplicate, or network.bandwidthLimit must be set"))
+	}
+
 	// ensure deprecated fields are not used
 	if s.DeprecatedPort != nil {
 		retErr = multierror.Append(retErr, fmt.Errorf("the port specification at the network disruption level is deprecated; apply to network disruption hosts instead"))
@@ -321,6 +325,12 @@ func (s *NetworkDisruptionSpec) Validate() (retErr error) {
 
 	if s.BandwidthLimit > 0 && s.BandwidthLimit < 32 {
 		retErr = multierror.Append(retErr, fmt.Errorf("bandwidthLimits below 32 bytes are not supported"))
+	}
+
+	if s.Cloud != nil {
+		if err := s.Cloud.Validate(); err != nil {
+			retErr = multierror.Append(retErr, err)
+		}
 	}
 
 	return multierror.Prefix(retErr, "Network:")
@@ -510,6 +520,14 @@ func (s *NetworkDisruptionSpec) Format() string {
 // HasHTTPFilters return true if a custom method or path is defined, else return false
 func (s *NetworkDisruptionSpec) HasHTTPFilters() bool {
 	return s.HTTP != nil && (s.HTTP.Methods.isNotEmpty() || s.HTTP.Paths.isNotDefault())
+}
+
+func (s *NetworkDisruptionCloudSpec) Validate() error {
+	if s.GCPServiceList == nil && s.DatadogServiceList == nil && s.AWSServiceList == nil {
+		return fmt.Errorf("if network.cloud is specified, at least one of cloud.aws, cloud.gcp, or cloud.datadog must be set")
+	}
+
+	return nil
 }
 
 // TransformToCloudMap for ease of computing when transforming the cloud services ip ranges to a list of hosts to disrupt
