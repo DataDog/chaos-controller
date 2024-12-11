@@ -534,6 +534,7 @@ var _ = Describe("Disruption Webhook", func() {
 			Context("allowNodeFailure is false", func() {
 				JustBeforeEach(func() {
 					newDisruption.Spec.NodeFailure = &NodeFailureSpec{}
+					newDisruption.Spec.Network = nil
 				})
 
 				It("should reject the disruption at node level", func() {

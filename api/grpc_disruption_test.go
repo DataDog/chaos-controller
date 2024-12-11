@@ -35,7 +35,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 			}
 			err := spec.Validate().(*multierror.Error)
 			Expect(err.Len()).To(Equal(1))
-			Expect(err.Errors[0].Error()).To(Equal("GRPC: the gRPC disruption must have either ErrorToReturn or OverrideToReturn specified for endpoint /chaosdogfood.ChaosDogfood/order"))
+			Expect(err.Errors[0].Error()).To(Equal("GRPC: the gRPC disruption must have exactly one of ErrorToReturn or OverrideToReturn specified for endpoint /chaosdogfood.ChaosDogfood/order"))
 		})
 	})
 
