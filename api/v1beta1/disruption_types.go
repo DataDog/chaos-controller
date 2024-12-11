@@ -312,7 +312,7 @@ func (r *Disruption) TimeToInject() time.Time {
 	}
 
 	if triggers.Inject.Offset.Duration() > 0 {
-		// We measure the offset from the latter of two timestamps: creationTimestamp of the disruption, and spec.trigger.createPods
+		// We measure the offset from the latter of two timestamps: creationTimestamp of the disruption, and spec.triggers.createPods
 		notInjectedBefore = r.TimeToCreatePods().Add(triggers.Inject.Offset.Duration())
 	}
 
@@ -658,6 +658,24 @@ func (s DisruptionSpec) validateGlobalDisruptionScope(requireSelectors bool) (re
 		retErr = multierror.Append(retErr, errors.New("cannot execute a container failure because the level configuration is set to node"))
 	}
 
+	// Rule: At least one disruption kind must be applied
+	if s.CPUPressure == nil && s.DiskPressure == nil && s.DiskFailure == nil && s.Network == nil && s.GRPC == nil && s.ContainerFailure == nil && s.NodeFailure == nil && len(s.DNS) == 0 {
+		retErr = multierror.Append(retErr, errors.New("at least one disruption kind must be specified, please read the docs to see your options"))
+	}
+
+	// Rule: ContainerFailure and NodeFailure disruptions are not compatible with other failure types
+	if s.ContainerFailure != nil {
+		if s.CPUPressure != nil || s.DiskPressure != nil || s.DiskFailure != nil || s.Network != nil || s.GRPC != nil || s.NodeFailure != nil || len(s.DNS) > 0 {
+			retErr = multierror.Append(retErr, errors.New("container failure disruptions are not compatible with other disruption kinds. The container failure will remove the impact of the other disruption types"))
+		}
+	}
+
+	if s.NodeFailure != nil {
+		if s.CPUPressure != nil || s.DiskPressure != nil || s.DiskFailure != nil || s.Network != nil || s.GRPC != nil || s.ContainerFailure != nil || len(s.DNS) > 0 {
+			retErr = multierror.Append(retErr, errors.New("node failure disruptions are not compatible with other disruption kinds. The node failure will remove the impact of the other disruption types"))
+		}
+	}
+
 	// Rule: on init compatibility
 	if s.OnInit {
 		if s.CPUPressure != nil ||
@@ -691,7 +709,19 @@ func (s DisruptionSpec) validateGlobalDisruptionScope(requireSelectors bool) (re
 	if s.Triggers != nil && !s.Triggers.IsZero() {
 		if !s.Triggers.Inject.IsZero() && !s.Triggers.CreatePods.IsZero() {
 			if !s.Triggers.Inject.NotBefore.IsZero() && !s.Triggers.CreatePods.NotBefore.IsZero() && s.Triggers.Inject.NotBefore.Before(&s.Triggers.CreatePods.NotBefore) {
-				retErr = multierror.Append(retErr, fmt.Errorf("spec.trigger.inject.notBefore is %s, which is before your spec.trigger.createPods.notBefore of %s. inject.notBefore must come after createPods.notBefore if both are specified", s.Triggers.Inject.NotBefore, s.Triggers.CreatePods.NotBefore))
+				retErr = multierror.Append(retErr, fmt.Errorf("spec.triggers.inject.notBefore is %s, which is before your spec.triggers.createPods.notBefore of %s. inject.notBefore must come after createPods.notBefore if both are specified", s.Triggers.Inject.NotBefore, s.Triggers.CreatePods.NotBefore))
+			}
+		}
+
+		if !s.Triggers.Inject.IsZero() {
+			if !s.Triggers.Inject.NotBefore.IsZero() && s.Triggers.Inject.Offset.Duration() != 0 {
+				retErr = multierror.Append(retErr, errors.New("its not possible to set spec.triggers.inject.notBefore and spec.triggers.inject.offset"))
+			}
+		}
+
+		if !s.Triggers.CreatePods.IsZero() {
+			if !s.Triggers.CreatePods.NotBefore.IsZero() && s.Triggers.CreatePods.Offset.Duration() != 0 {
+				retErr = multierror.Append(retErr, errors.New("its not possible to set spec.triggers.createPods.notBefore and spec.triggers.createPods.offset"))
 			}
 		}
 	}
@@ -702,6 +732,10 @@ func (s DisruptionSpec) validateGlobalDisruptionScope(requireSelectors bool) (re
 			if s.NodeFailure != nil || s.ContainerFailure != nil {
 				retErr = multierror.Append(retErr, errors.New("pulse is only compatible with network, cpu pressure, disk pressure, dns and grpc disruptions"))
 			}
+		}
+
+		if (s.Pulse.ActiveDuration.Duration() > 0 && s.Pulse.DormantDuration.Duration() == 0) || (s.Pulse.ActiveDuration.Duration() == 0 && s.Pulse.DormantDuration.Duration() > 0) {
+			retErr = multierror.Append(retErr, errors.New("if spec.pulse.activeDuration or spec.pulse.dormantDuration are specified, then both options must be set"))
 		}
 
 		if s.Pulse.ActiveDuration.Duration() != 0 && s.Pulse.ActiveDuration.Duration() < chaostypes.PulsingDisruptionMinimumDuration {
