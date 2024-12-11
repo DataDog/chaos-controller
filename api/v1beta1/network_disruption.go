@@ -56,7 +56,6 @@ type HTTPPaths []HTTPPath
 type HTTPPath string
 
 // NetworkDisruptionSpec represents a network disruption injection
-// +ddmark:validation:AtLeastOneOf={BandwidthLimit,Drop,Delay,Corrupt,Duplicate}
 type NetworkDisruptionSpec struct {
 	// +nullable
 	Hosts []NetworkDisruptionHostSpec `json:"hosts,omitempty"`
@@ -69,40 +68,26 @@ type NetworkDisruptionSpec struct {
 	Cloud *NetworkDisruptionCloudSpec `json:"cloud,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
-	// +ddmark:validation:Minimum=0
-	// +ddmark:validation:Maximum=100
 	Drop int `json:"drop,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
-	// +ddmark:validation:Minimum=0
-	// +ddmark:validation:Maximum=100
 	Duplicate int `json:"duplicate,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
-	// +ddmark:validation:Minimum=0
-	// +ddmark:validation:Maximum=100
 	Corrupt int `json:"corrupt,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=60000
-	// +ddmark:validation:Minimum=0
-	// +ddmark:validation:Maximum=60000
 	Delay uint `json:"delay,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
-	// +ddmark:validation:Minimum=0
-	// +ddmark:validation:Maximum=100
 	DelayJitter uint `json:"delayJitter,omitempty"`
 	// +kubebuilder:validation:Minimum=0
-	// +ddmark:validation:Minimum=0
 	BandwidthLimit int `json:"bandwidthLimit,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=65535
-	// +ddmark:validation:Minimum=0
-	// +ddmark:validation:Maximum=65535
 	// +nullable
 	DeprecatedPort *int `json:"port,omitempty"`
 	// +kubebuilder:validation:Enum=egress;ingress
-	// +ddmark:validation:Enum=egress;ingress
 	DeprecatedFlow string `json:"flow,omitempty"`
 	// +nullable
 	HTTP *NetworkHTTPFilters `json:"http,omitempty"`
@@ -120,17 +105,12 @@ type NetworkDisruptionHostSpec struct {
 	Host string `json:"host,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=65535
-	// +ddmark:validation:Minimum=0
-	// +ddmark:validation:Maximum=65535
 	Port int `json:"port,omitempty"`
 	// +kubebuilder:validation:Enum=tcp;udp;""
-	// +ddmark:validation:Enum=tcp;udp;""
 	Protocol string `json:"protocol,omitempty"`
 	// +kubebuilder:validation:Enum=ingress;egress;""
-	// +ddmark:validation:Enum=ingress;egress;""
 	Flow string `json:"flow,omitempty"`
 	// +kubebuilder:validation:Enum=new;est;""
-	// +ddmark:validation:Enum=new;est;""
 	ConnState string `json:"connState,omitempty"`
 }
 
@@ -145,12 +125,9 @@ type NetworkDisruptionServicePortSpec struct {
 	Name string `json:"name,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=65535
-	// +ddmark:validation:Minimum=0
-	// +ddmark:validation:Maximum=65535
 	Port int `json:"port,omitempty"`
 }
 
-// +ddmark:validation:AtLeastOneOf={AWSServiceList,GCPServiceList,DatadogServiceList}
 type NetworkDisruptionCloudSpec struct {
 	AWSServiceList     *[]NetworkDisruptionCloudServiceSpec `json:"aws,omitempty"`
 	GCPServiceList     *[]NetworkDisruptionCloudServiceSpec `json:"gcp,omitempty"`
@@ -159,16 +136,12 @@ type NetworkDisruptionCloudSpec struct {
 
 type NetworkDisruptionCloudServiceSpec struct {
 	// +kubebuilder:validation:Required
-	// +ddmark:validation:Required=true
 	ServiceName string `json:"service"`
 	// +kubebuilder:validation:Enum=tcp;udp;""
-	// +ddmark:validation:Enum=tcp;udp;""
 	Protocol string `json:"protocol,omitempty"`
 	// +kubebuilder:validation:Enum=ingress;egress;""
-	// +ddmark:validation:Enum=ingress;egress;""
 	Flow string `json:"flow,omitempty"`
 	// +kubebuilder:validation:Enum=new;est;""
-	// +ddmark:validation:Enum=new;est;""
 	ConnState string `json:"connState,omitempty"`
 }
 

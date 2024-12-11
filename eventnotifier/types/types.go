@@ -30,7 +30,6 @@ const (
 // Default level is considered Success, meaning all info will be ignored
 // +kubebuilder:default=Success
 // +kubebuilder:validation:Enum=Info;Success;Completion;Warning;Error
-// +ddmark:validation:Enum=Info;Success;Completion;Warning;Error
 type NotificationType string
 
 const (

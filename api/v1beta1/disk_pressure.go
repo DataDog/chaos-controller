@@ -12,7 +12,7 @@ import (
 // DiskPressureSpec represents a disk pressure disruption
 type DiskPressureSpec struct {
 	Path string `json:"path"`
-	// +ddmark:validation:Required=true
+	// +kubebuilder:validation:Required
 	Throttling DiskPressureThrottlingSpec `json:"throttling"`
 }
 

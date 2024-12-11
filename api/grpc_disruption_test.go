@@ -158,44 +158,7 @@ var _ = Describe("GRPCDisruption Validation", func() {
 	})
 
 	Describe("Alterations with ErrorToReturn", func() {
-		Context("which are not in the standard grpc errors", func() {
-			It("Fails ddmark validation", func() {
-				spec.Endpoints = []v1beta1.EndpointAlteration{
-					{
-						TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
-						ErrorToReturn:    "MEOW",
-						OverrideToReturn: "",
-						QueryPercent:     50,
-					},
-				}
-
-				err := ddMarkClient.ValidateStructMultierror(spec, "grpc_test_suite")
-				Expect(err.Errors).To(HaveLen(1))
-				Expect(err.Errors[0].Error()).To(Equal("grpc_test_suite>Endpoints>>ErrorToReturn - ddmark:validation:Enum: field needs to be one of [OK CANCELED UNKNOWN INVALID_ARGUMENT DEADLINE_EXCEEDED NOT_FOUND ALREADY_EXISTS PERMISSION_DENIED RESOURCE_EXHAUSTED FAILED_PRECONDITION ABORTED OUT_OF_RANGE UNIMPLEMENTED INTERNAL UNAVAILABLE DATA_LOSS UNAUTHENTICATED]"))
-			})
-		})
-
 		Context("which are in the standard grpc errors", func() {
-			It("Passes ddmark validation", func() {
-				for errorString := range v1beta1.ErrorMap {
-					spec.Endpoints = append(
-						spec.Endpoints,
-						v1beta1.EndpointAlteration{
-							TargetEndpoint:   "/chaosdogfood.ChaosDogfood/order",
-							ErrorToReturn:    errorString,
-							OverrideToReturn: "",
-							QueryPercent:     1,
-						},
-					)
-				}
-
-				Expect(spec.Endpoints).To(HaveLen(17))
-
-				err := ddMarkClient.ValidateStructMultierror(spec, "grpc_test_suite")
-				Expect(err.ErrorOrNil()).To(Succeed())
-				Expect(err.Errors).To(BeEmpty())
-			})
-
 			It("Passes validation", func() {
 				spec.Endpoints = []v1beta1.EndpointAlteration{
 					{
