@@ -94,8 +94,8 @@ func (s GRPCDisruptionSpec) Validate() (retErr error) {
 		}
 
 		// check that exactly one of ErrorToReturn or OverrideToReturn is configured
-		if alteration.ErrorToReturn == "" && alteration.OverrideToReturn == "" {
-			retErr = multierror.Append(retErr, fmt.Errorf("the gRPC disruption must have either ErrorToReturn or OverrideToReturn specified for endpoint %s", alteration.TargetEndpoint))
+		if (alteration.ErrorToReturn == "" && alteration.OverrideToReturn == "") || (alteration.ErrorToReturn != "" && alteration.OverrideToReturn != "") {
+			retErr = multierror.Append(retErr, fmt.Errorf("the gRPC disruption must have exactly one of ErrorToReturn or OverrideToReturn specified for endpoint %s", alteration.TargetEndpoint))
 		}
 	}
 
