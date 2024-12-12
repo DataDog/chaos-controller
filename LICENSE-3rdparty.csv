@@ -200,7 +200,6 @@ github.com/gogo/protobuf,github.com/gogo/protobuf/protoc-gen-gogo/descriptor,BSD
 github.com/gogo/protobuf,github.com/gogo/protobuf/sortkeys,BSD-3-Clause
 github.com/gogo/protobuf,github.com/gogo/protobuf/types,BSD-3-Clause
 github.com/golang/groupcache,github.com/golang/groupcache/lru,Apache-2.0
-github.com/golang/protobuf,github.com/golang/protobuf/jsonpb,BSD-3-Clause
 github.com/golang/protobuf,github.com/golang/protobuf/proto,BSD-3-Clause
 github.com/golang/protobuf,github.com/golang/protobuf/ptypes,BSD-3-Clause
 github.com/golang/protobuf,github.com/golang/protobuf/ptypes/any,BSD-3-Clause
@@ -401,6 +400,7 @@ go.opentelemetry.io/otel,go.opentelemetry.io/otel/semconv/v1.17.0,Apache-2.0
 go.opentelemetry.io/otel/metric,go.opentelemetry.io/otel/metric,Apache-2.0
 go.opentelemetry.io/otel/metric,go.opentelemetry.io/otel/metric/embedded,Apache-2.0
 go.opentelemetry.io/otel/trace,go.opentelemetry.io/otel/trace,Apache-2.0
+go.opentelemetry.io/otel/trace,go.opentelemetry.io/otel/trace/embedded,Apache-2.0
 go.uber.org/atomic,go.uber.org/atomic,MIT
 go.uber.org/multierr,go.uber.org/multierr,MIT
 go.uber.org/zap,go.uber.org/zap,MIT
@@ -480,25 +480,17 @@ golang.org/x/tools,golang.org/x/tools/internal/event,BSD-3-Clause
 golang.org/x/tools,golang.org/x/tools/internal/event/core,BSD-3-Clause
 golang.org/x/tools,golang.org/x/tools/internal/event/keys,BSD-3-Clause
 golang.org/x/tools,golang.org/x/tools/internal/event/label,BSD-3-Clause
-golang.org/x/tools,golang.org/x/tools/internal/event/tag,BSD-3-Clause
 golang.org/x/tools,golang.org/x/tools/internal/gcimporter,BSD-3-Clause
 golang.org/x/tools,golang.org/x/tools/internal/gocommand,BSD-3-Clause
 golang.org/x/tools,golang.org/x/tools/internal/packagesinternal,BSD-3-Clause
 golang.org/x/tools,golang.org/x/tools/internal/pkgbits,BSD-3-Clause
+golang.org/x/tools,golang.org/x/tools/internal/stdlib,BSD-3-Clause
 golang.org/x/tools,golang.org/x/tools/internal/tokeninternal,BSD-3-Clause
-golang.org/x/tools,golang.org/x/tools/internal/typeparams,BSD-3-Clause
 golang.org/x/tools,golang.org/x/tools/internal/typesinternal,BSD-3-Clause
 golang.org/x/tools,golang.org/x/tools/internal/versions,BSD-3-Clause
 golang.org/x/xerrors,golang.org/x/xerrors,BSD-3-Clause
 golang.org/x/xerrors,golang.org/x/xerrors/internal,BSD-3-Clause
 gomodules.xyz/jsonpatch/v2,gomodules.xyz/jsonpatch/v2,Apache-2.0
-google.golang.org/appengine,google.golang.org/appengine/internal,Apache-2.0
-google.golang.org/appengine,google.golang.org/appengine/internal/base,Apache-2.0
-google.golang.org/appengine,google.golang.org/appengine/internal/datastore,Apache-2.0
-google.golang.org/appengine,google.golang.org/appengine/internal/log,Apache-2.0
-google.golang.org/appengine,google.golang.org/appengine/internal/remote_api,Apache-2.0
-google.golang.org/appengine,google.golang.org/appengine/internal/urlfetch,Apache-2.0
-google.golang.org/appengine,google.golang.org/appengine/urlfetch,Apache-2.0
 google.golang.org/genproto/googleapis/rpc,google.golang.org/genproto/googleapis/rpc/status,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/attributes,Apache-2.0
@@ -506,6 +498,7 @@ google.golang.org/grpc,google.golang.org/grpc/backoff,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/balancer,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/balancer/base,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/balancer/grpclb/state,Apache-2.0
+google.golang.org/grpc,google.golang.org/grpc/balancer/pickfirst,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/balancer/roundrobin,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/binarylog/grpc_binarylog_v1,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/channelz,Apache-2.0
@@ -527,7 +520,6 @@ google.golang.org/grpc,google.golang.org/grpc/internal/channelz,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/internal/credentials,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/internal/envconfig,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/internal/grpclog,Apache-2.0
-google.golang.org/grpc,google.golang.org/grpc/internal/grpcrand,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/internal/grpcsync,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/internal/grpcutil,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/internal/idle,Apache-2.0
@@ -535,6 +527,7 @@ google.golang.org/grpc,google.golang.org/grpc/internal/metadata,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/internal/pretty,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/internal/resolver,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/internal/resolver/dns,Apache-2.0
+google.golang.org/grpc,google.golang.org/grpc/internal/resolver/dns/internal,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/internal/resolver/passthrough,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/internal/resolver/unix,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/internal/serviceconfig,Apache-2.0
@@ -546,6 +539,7 @@ google.golang.org/grpc,google.golang.org/grpc/keepalive,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/metadata,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/peer,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/resolver,Apache-2.0
+google.golang.org/grpc,google.golang.org/grpc/resolver/dns,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/serviceconfig,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/stats,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/status,Apache-2.0
@@ -558,6 +552,7 @@ google.golang.org/protobuf,google.golang.org/protobuf/internal/descfmt,BSD-3-Cla
 google.golang.org/protobuf,google.golang.org/protobuf/internal/descopts,BSD-3-Clause
 google.golang.org/protobuf,google.golang.org/protobuf/internal/detrand,BSD-3-Clause
 google.golang.org/protobuf,google.golang.org/protobuf/internal/editiondefaults,BSD-3-Clause
+google.golang.org/protobuf,google.golang.org/protobuf/internal/editionssupport,BSD-3-Clause
 google.golang.org/protobuf,google.golang.org/protobuf/internal/encoding/defval,BSD-3-Clause
 google.golang.org/protobuf,google.golang.org/protobuf/internal/encoding/json,BSD-3-Clause
 google.golang.org/protobuf,google.golang.org/protobuf/internal/encoding/messageset,BSD-3-Clause
@@ -575,6 +570,7 @@ google.golang.org/protobuf,google.golang.org/protobuf/internal/set,BSD-3-Clause
 google.golang.org/protobuf,google.golang.org/protobuf/internal/strs,BSD-3-Clause
 google.golang.org/protobuf,google.golang.org/protobuf/internal/version,BSD-3-Clause
 google.golang.org/protobuf,google.golang.org/protobuf/proto,BSD-3-Clause
+google.golang.org/protobuf,google.golang.org/protobuf/protoadapt,BSD-3-Clause
 google.golang.org/protobuf,google.golang.org/protobuf/reflect/protodesc,BSD-3-Clause
 google.golang.org/protobuf,google.golang.org/protobuf/reflect/protoreflect,BSD-3-Clause
 google.golang.org/protobuf,google.golang.org/protobuf/reflect/protoregistry,BSD-3-Clause
