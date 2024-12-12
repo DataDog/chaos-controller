@@ -11,13 +11,13 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/url"
-	"os"
 	"runtime"
 	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
+
+	pb "github.com/DataDog/datadog-agent/pkg/proto/pbgo/trace"
 
 	traceinternal "gopkg.in/DataDog/dd-trace-go.v1/ddtrace/internal"
 	"gopkg.in/DataDog/dd-trace-go.v1/internal"
@@ -38,19 +38,21 @@ var defaultDialer = &net.Dialer{
 	DualStack: true,
 }
 
-var defaultClient = &http.Client{
-	// We copy the transport to avoid using the default one, as it might be
-	// augmented with tracing and we don't want these calls to be recorded.
-	// See https://golang.org/pkg/net/http/#DefaultTransport .
-	Transport: &http.Transport{
-		Proxy:                 http.ProxyFromEnvironment,
-		DialContext:           defaultDialer.DialContext,
-		MaxIdleConns:          100,
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
-	},
-	Timeout: defaultHTTPTimeout,
+func defaultHTTPClient(timeout time.Duration) *http.Client {
+	if timeout == 0 {
+		timeout = defaultHTTPTimeout
+	}
+	return &http.Client{
+		Transport: &http.Transport{
+			Proxy:                 http.ProxyFromEnvironment,
+			DialContext:           defaultDialer.DialContext,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		},
+		Timeout: timeout,
+	}
 }
 
 const (
@@ -58,7 +60,7 @@ const (
 	defaultPort        = "8126"
 	defaultAddress     = defaultHostname + ":" + defaultPort
 	defaultURL         = "http://" + defaultAddress
-	defaultHTTPTimeout = 2 * time.Second         // defines the current timeout before giving up with the send process
+	defaultHTTPTimeout = 10 * time.Second        // defines the current timeout before giving up with the send process
 	traceCountHeader   = "X-Datadog-Trace-Count" // header containing the number of traces in the payload
 )
 
@@ -68,7 +70,7 @@ type transport interface {
 	// It returns a non-nil response body when no error occurred.
 	send(p *payload) (body io.ReadCloser, err error)
 	// sendStats sends the given stats payload to the agent.
-	sendStats(s *statsPayload) error
+	sendStats(s *pb.ClientStatsPayload) error
 	// endpoint returns the URL to which the transport will send traces.
 	endpoint() string
 }
@@ -99,6 +101,9 @@ func newHTTPTransport(url string, client *http.Client) *httpTransport {
 	if cid := internal.ContainerID(); cid != "" {
 		defaultHeaders["Datadog-Container-ID"] = cid
 	}
+	if eid := internal.EntityID(); eid != "" {
+		defaultHeaders["Datadog-Entity-ID"] = eid
+	}
 	return &httpTransport{
 		traceURL: fmt.Sprintf("%s/v0.4/traces", url),
 		statsURL: fmt.Sprintf("%s/v0.6/stats", url),
@@ -107,7 +112,7 @@ func newHTTPTransport(url string, client *http.Client) *httpTransport {
 	}
 }
 
-func (t *httpTransport) sendStats(p *statsPayload) error {
+func (t *httpTransport) sendStats(p *pb.ClientStatsPayload) error {
 	var buf bytes.Buffer
 	if err := msgp.Encode(&buf, p); err != nil {
 		return err
@@ -140,11 +145,11 @@ func (t *httpTransport) send(p *payload) (body io.ReadCloser, err error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot create http request: %v", err)
 	}
+	req.ContentLength = int64(p.size())
 	for header, value := range t.headers {
 		req.Header.Set(header, value)
 	}
 	req.Header.Set(traceCountHeader, strconv.Itoa(p.itemCount()))
-	req.Header.Set("Content-Length", strconv.Itoa(p.size()))
 	req.Header.Set(headerComputedTopLevel, "yes")
 	if t, ok := traceinternal.GetGlobalTracer().(*tracer); ok {
 		if t.config.canComputeStats() {
@@ -182,33 +187,4 @@ func (t *httpTransport) send(p *payload) (body io.ReadCloser, err error) {
 
 func (t *httpTransport) endpoint() string {
 	return t.traceURL
-}
-
-// resolveAgentAddr resolves the given agent address and fills in any missing host
-// and port using the defaults. Some environment variable settings will
-// take precedence over configuration.
-func resolveAgentAddr() *url.URL {
-	var host, port string
-	if v := os.Getenv("DD_AGENT_HOST"); v != "" {
-		host = v
-	}
-	if v := os.Getenv("DD_TRACE_AGENT_PORT"); v != "" {
-		port = v
-	}
-	if _, err := os.Stat(defaultSocketAPM); host == "" && port == "" && err == nil {
-		return &url.URL{
-			Scheme: "unix",
-			Path:   defaultSocketAPM,
-		}
-	}
-	if host == "" {
-		host = defaultHostname
-	}
-	if port == "" {
-		port = defaultPort
-	}
-	return &url.URL{
-		Scheme: "http",
-		Host:   fmt.Sprintf("%s:%s", host, port),
-	}
 }

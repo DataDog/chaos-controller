@@ -9,25 +9,37 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"runtime"
 	"runtime/pprof"
+	"strings"
 	"sync"
 	"time"
 
 	"gopkg.in/DataDog/dd-trace-go.v1/internal"
 	"gopkg.in/DataDog/dd-trace-go.v1/internal/log"
 	"gopkg.in/DataDog/dd-trace-go.v1/internal/traceprof"
+	"gopkg.in/DataDog/dd-trace-go.v1/profiler/internal/immutable"
 )
 
 // outChannelSize specifies the size of the profile output channel.
 const outChannelSize = 5
 
+// customProfileLabelLimit is the maximum number of pprof labels which can
+// be used as custom attributes in the profiler UI
+const customProfileLabelLimit = 10
+
 var (
 	mu             sync.Mutex
 	activeProfiler *profiler
 	containerID    = internal.ContainerID() // replaced in tests
+	entityID       = internal.EntityID()    // replaced in tests
+
+	// errProfilerStopped is a sentinel for suppressng errors if we are
+	// about to stop the profiler
+	errProfilerStopped = errors.New("profiler stopped")
 )
 
 // Start starts the profiler. If the profiler is already running, it will be
@@ -35,6 +47,9 @@ var (
 //
 // It may return an error if an API key is not provided by means of the
 // WithAPIKey option, or if a hostname is not found.
+//
+// If DD_PROFILING_ENABLED=false is set in the process environment, it will
+// prevent the profiler from starting.
 func Start(opts ...Option) error {
 	mu.Lock()
 	defer mu.Unlock()
@@ -46,8 +61,12 @@ func Start(opts ...Option) error {
 	if err != nil {
 		return err
 	}
+	if !p.cfg.enabled {
+		return nil
+	}
 	activeProfiler = p
 	activeProfiler.run()
+	traceprof.SetProfilerEnabled(true)
 	return nil
 }
 
@@ -58,6 +77,7 @@ func Stop() {
 	if activeProfiler != nil {
 		activeProfiler.stop()
 		activeProfiler = nil
+		traceprof.SetProfilerEnabled(false)
 	}
 	mu.Unlock()
 }
@@ -80,11 +100,6 @@ type profiler struct {
 
 	// lastTrace is the last time an execution trace was collected
 	lastTrace time.Time
-}
-
-func (p *profiler) shouldTrace() bool {
-	p.cfg.traceConfig.Refresh()
-	return p.cfg.traceConfig.Enabled && time.Since(p.lastTrace) > p.cfg.traceConfig.Period
 }
 
 // testHooks are functions that are replaced during testing which would normally
@@ -123,12 +138,18 @@ func (p *profiler) lookupProfile(name string, w io.Writer, debug int) error {
 
 // newProfiler creates a new, unstarted profiler.
 func newProfiler(opts ...Option) (*profiler, error) {
+	if os.Getenv("AWS_LAMBDA_FUNCTION_NAME") != "" {
+		return nil, errors.New("profiling not supported in AWS Lambda runtimes")
+	}
 	cfg, err := defaultConfig()
 	if err != nil {
 		return nil, err
 	}
 	for _, opt := range opts {
 		opt(cfg)
+	}
+	if len(cfg.customProfilerLabels) > customProfileLabelLimit {
+		cfg.customProfilerLabels = cfg.customProfilerLabels[:customProfileLabelLimit]
 	}
 	// TODO(fg) remove this after making expGoroutineWaitProfile public.
 	if os.Getenv("DD_PROFILING_WAIT_PROFILE") != "" {
@@ -187,6 +208,26 @@ func newProfiler(opts ...Option) (*profiler, error) {
 	if cfg.logStartup {
 		logStartup(cfg)
 	}
+	var tags []string
+	var seenVersionTag bool
+	for _, tag := range cfg.tags.Slice() {
+		// If the user configured a tag via DD_VERSION or WithVersion,
+		// override any version tags the user provided via WithTags,
+		// since having more than one version tag breaks the comparison
+		// UI. If a version is only supplied by WithTags, keep only the
+		// first one.
+		if strings.HasPrefix(strings.ToLower(tag), "version:") {
+			if cfg.version != "" || seenVersionTag {
+				continue
+			}
+			seenVersionTag = true
+		}
+		tags = append(tags, tag)
+	}
+	if cfg.version != "" {
+		tags = append(tags, "version:"+cfg.version)
+	}
+	cfg.tags = immutable.NewStringSlice(tags)
 
 	p := profiler{
 		cfg:    cfg,
@@ -254,7 +295,8 @@ func (p *profiler) collect(ticker <-chan time.Time) {
 		endpointCounter.GetAndReset()
 	}()
 
-	for {
+	exit := false
+	for !exit {
 		bat := batch{
 			seq:   p.seq,
 			host:  p.cfg.hostname,
@@ -265,7 +307,9 @@ func (p *profiler) collect(ticker <-chan time.Time) {
 				// because we don't collect them every profiling cycle from
 				// missing a trace because the feature isn't turned on.
 				fmt.Sprintf("_dd.profiler.go_execution_trace_enabled:%v", p.cfg.traceConfig.Enabled),
+				pgoTag(),
 			},
+			customAttributes: p.cfg.customProfilerLabels,
 		}
 		p.seq++
 
@@ -276,10 +320,26 @@ func (p *profiler) collect(ticker <-chan time.Time) {
 		// finished (because p.pendingProfiles will have been
 		// incremented to count every non-CPU profile before CPU
 		// profiling starts)
+
 		profileTypes := p.enabledProfileTypes()
-		if p.shouldTrace() {
+
+		// Decide whether we should record an execution trace
+		p.cfg.traceConfig.Refresh()
+		// Randomly record a trace with probability (profile period) / (trace period).
+		// Note that if the trace period is equal to or less than the profile period,
+		// we will always record a trace
+		// We do multiplication here instead of division to defensively guard against
+		// division by 0
+		shouldTraceRandomly := rand.Float64()*float64(p.cfg.traceConfig.Period) < float64(p.cfg.period)
+		// As a special case, we want to trace during the first
+		// profiling cycle since startup activity is generally much
+		// different than regular operation
+		firstCycle := bat.seq == 0
+		shouldTrace := p.cfg.traceConfig.Enabled && (shouldTraceRandomly || firstCycle)
+		if shouldTrace {
 			profileTypes = append(profileTypes, executionTrace)
 		}
+
 		for _, t := range profileTypes {
 			if t != CPUProfile {
 				p.pendingProfiles.Add(1)
@@ -294,9 +354,12 @@ func (p *profiler) collect(ticker <-chan time.Time) {
 				}
 				profs, err := p.runProfile(t)
 				if err != nil {
-					log.Error("Error getting %s profile: %v; skipping.", t, err)
-					tags := append(p.cfg.tags.Slice(), t.Tag())
-					p.cfg.statsd.Count("datadog.profiling.go.collect_error", 1, tags, 1)
+					if err != errProfilerStopped {
+						log.Error("Error getting %s profile: %v; skipping.", t, err)
+						tags := append(p.cfg.tags.Slice(), t.Tag())
+						p.cfg.statsd.Count("datadog.profiling.go.collect_error", 1, tags, 1)
+					}
+					return
 				}
 				mu.Lock()
 				defer mu.Unlock()
@@ -322,7 +385,11 @@ func (p *profiler) collect(ticker <-chan time.Time) {
 			// is less than the configured profiling period, the ticker will block
 			// until the end of the profiling period.
 		case <-p.exit:
-			return
+			if !p.cfg.flushOnExit {
+				return
+			}
+			// If we're flushing, we enqueue the batch before exiting the loop.
+			exit = true
 		}
 
 		// Include endpoint hits from tracer in profile `event.json`.
@@ -395,8 +462,13 @@ func (p *profiler) send() {
 	for {
 		select {
 		case <-p.exit:
-			return
-		case bat := <-p.out:
+			if !p.cfg.flushOnExit {
+				return
+			}
+		case bat, ok := <-p.out:
+			if !ok {
+				return
+			}
 			if err := p.outputDir(bat); err != nil {
 				log.Error("Failed to output profile to dir: %v", err)
 			}
@@ -431,10 +503,13 @@ func (p *profiler) outputDir(bat batch) error {
 
 // interruptibleSleep sleeps for the given duration or until interrupted by the
 // p.exit channel being closed.
-func (p *profiler) interruptibleSleep(d time.Duration) {
+// Returns whether the sleep was interrupted
+func (p *profiler) interruptibleSleep(d time.Duration) bool {
 	select {
 	case <-p.exit:
+		return true
 	case <-time.After(d):
+		return false
 	}
 }
 
