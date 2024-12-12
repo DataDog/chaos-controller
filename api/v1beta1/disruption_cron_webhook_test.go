@@ -606,7 +606,7 @@ var _ = Describe("DisruptionCron Webhook", func() {
 			})
 
 			When("the schedule frequency becomes shorter", func() {
-				It("should not return an error", func() {
+				It("should return an error", func() {
 					// Arrange
 					minimumCronFrequency = time.Hour * 24 * 365
 					disruptionCron := makeValidDisruptionCron()
