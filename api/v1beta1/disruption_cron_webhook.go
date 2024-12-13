@@ -37,6 +37,7 @@ var (
 	disruptionCronPermittedUserGroups      map[string]struct{}
 	disruptionCronPermittedUserGroupString string
 	defaultCronDelayedStartTolerance       time.Duration
+	minimumCronFrequency                   time.Duration
 )
 
 func (d *DisruptionCron) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebhookWithManagerConfig) error {
@@ -55,6 +56,8 @@ func (d *DisruptionCron) SetupWebhookWithManager(setupWebhookConfig utils.SetupW
 
 	disruptionCronPermittedUserGroupString = strings.Join(setupWebhookConfig.PermittedUserGroups, ",")
 	defaultCronDelayedStartTolerance = setupWebhookConfig.DefaultCronDelayedStartTolerance
+	minimumCronFrequency = setupWebhookConfig.MinimumCronFrequency
+	defaultDuration = setupWebhookConfig.DefaultDurationFlag
 
 	return ctrl.NewWebhookManagedBy(setupWebhookConfig.Manager).
 		For(d).
@@ -100,6 +103,10 @@ func (d *DisruptionCron) ValidateCreate() (admission.Warnings, error) {
 		return nil, err
 	}
 
+	if err := d.validateMinimumFrequency(minimumCronFrequency); err != nil {
+		return nil, err
+	}
+
 	// send informative event to disruption cron to broadcast
 	d.emitEvent(EventDisruptionCronCreated)
 
@@ -121,6 +128,15 @@ func (d *DisruptionCron) ValidateUpdate(oldObject runtime.Object) (admission.War
 
 	if err := d.validateDisruptionCronSpec(); err != nil {
 		return nil, err
+	}
+
+	// If a DisruptionCron is already more frequent than the minimum frequency, we don't want to
+	// block updates on other parts of the spec or status. But if the schedule is being updated,
+	// we do want to enforce that it happens more often than the minimum frequency
+	if oldObject.(*DisruptionCron).Spec.Schedule != d.Spec.Schedule {
+		if err := d.validateMinimumFrequency(minimumCronFrequency); err != nil {
+			return nil, err
+		}
 	}
 
 	// send informative event to disruption cron to broadcast
@@ -192,6 +208,39 @@ func (d *DisruptionCron) validateDisruptionCronSpec() error {
 
 	if err := d.Spec.DisruptionTemplate.ValidateSelectorsOptional(false); err != nil {
 		return fmt.Errorf("spec.disruptionTemplate validation failed: %w", err)
+	}
+
+	return nil
+}
+
+func (d *DisruptionCron) validateMinimumFrequency(minFrequency time.Duration) error {
+	schedule, err := cron.ParseStandard(d.Spec.Schedule)
+	if err != nil {
+		return fmt.Errorf("spec.Schedule must follow the standard cron syntax: %w", err)
+	}
+
+	specDuration := defaultDuration
+	if d.Spec.DisruptionTemplate.Duration.Duration() > 0 {
+		specDuration = d.Spec.DisruptionTemplate.Duration.Duration()
+	}
+
+	now := time.Now()
+	nextDisruptionStarts := schedule.Next(now)
+	nextDisruptionCompletes := nextDisruptionStarts.Add(specDuration)
+
+	// Measure, "frequency", the time between when we would schedule the next two disruptions.
+	// We don't want to measure from "now", because the cron standard will try to run at whole intervals, e.g.,
+	// a schedule for "every 15 minutes", created at 1:05, will try to run the first disruption at 1:15. So we find the next two intervals,
+	// which would be 1:15 and 1:30, and find the difference
+	frequency := schedule.Next(nextDisruptionStarts).Sub(nextDisruptionStarts)
+
+	// Measure, "interval", the time from when the next disruption completes, until the following disruption would start.
+	// This lets us know how long the target will be undisrupted for, between two disruptions. If that's less than the minimum frequency,
+	// we need to return an error
+	interval := schedule.Next(nextDisruptionCompletes).Sub(nextDisruptionCompletes)
+	if interval < minFrequency {
+		return fmt.Errorf("this cron's spec.Schedule is \"%s\", which will create disruptions that last %s every %s. This leaves only %s between disruptions, but the minimum tolerated frequency is %s",
+			d.Spec.Schedule, specDuration.String(), frequency.String(), interval.String(), minFrequency.String())
 	}
 
 	return nil
