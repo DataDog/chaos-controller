@@ -36,7 +36,7 @@ type DisruptionCronReconciler struct {
 }
 
 func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
-	r.log = r.BaseLog.With(cLog.DisruptionCronNamespaceKey, req.Namespace, cLog.DisruptionCronNamespaceKey, req.Name)
+	r.log = r.BaseLog.With(cLog.DisruptionCronNamespaceKey, req.Namespace, cLog.DisruptionCronNameKey, req.Name)
 	r.log.Info("Reconciling DisruptionCron")
 
 	// reconcile metrics
