@@ -55,6 +55,7 @@ data:
       deleteOnly: {{ .Values.controller.deleteOnly }}
       defaultDuration: {{ .Values.controller.defaultDuration }}
       defaultCronDelayedStartTolerance: {{ .Values.controller.defaultCronDelayedStartTolerance }}
+      minimumCronFrequency: {{ .Values.controller.minimumCronFrequency }}
       maxDuration: {{ .Values.controller.maxDuration }}
       finalizerDeletionDelay: {{ .Values.controller.finalizerDeletionDelay }}
       expiredDisruptionGCDelay: {{ .Values.controller.expiredDisruptionGCDelay }}
