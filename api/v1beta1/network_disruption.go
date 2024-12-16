@@ -68,25 +68,25 @@ type NetworkDisruptionSpec struct {
 	Cloud *NetworkDisruptionCloudSpec `json:"cloud,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
-	Drop int `json:"drop,omitempty"`
+	Drop int `json:"drop,omitempty" validate:"gte=0,lte=100"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
-	Duplicate int `json:"duplicate,omitempty"`
+	Duplicate int `json:"duplicate,omitempty" validate:"gte=0,lte=100"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
-	Corrupt int `json:"corrupt,omitempty"`
+	Corrupt int `json:"corrupt,omitempty" validate:"gte=0,lte=100"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=60000
-	Delay uint `json:"delay,omitempty"`
+	Delay uint `json:"delay,omitempty" validate:"gte=0,lte=60000"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
-	DelayJitter uint `json:"delayJitter,omitempty"`
+	DelayJitter uint `json:"delayJitter,omitempty" validate:"gte=0,lte=100"`
 	// +kubebuilder:validation:Minimum=0
-	BandwidthLimit int `json:"bandwidthLimit,omitempty"`
+	BandwidthLimit int `json:"bandwidthLimit,omitempty" validate:"gte=0"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=65535
 	// +nullable
-	DeprecatedPort *int `json:"port,omitempty"`
+	DeprecatedPort *int `json:"port,omitempty" validate:"gte=0,lte=65535"`
 	// +kubebuilder:validation:Enum=egress;ingress
 	DeprecatedFlow string `json:"flow,omitempty"`
 	// +nullable
