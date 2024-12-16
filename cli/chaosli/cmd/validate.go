@@ -9,6 +9,8 @@ import (
 	"fmt"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+
+	"github.com/go-playground/validator/v10"
 	"github.com/spf13/cobra"
 )
 
@@ -31,9 +33,23 @@ func init() {
 }
 
 func ValidateDisruption(path string) error {
-	_, err := DisruptionFromFile(path)
+	dis, err := DisruptionFromFile(path)
 	if err != nil {
 		return fmt.Errorf("error reading from disruption at %v: %w", path, err)
+	}
+
+	validate := validator.New()
+
+	err = validate.Struct(dis)
+
+	if err != nil {
+		return fmt.Errorf("error validating disruption struct at %v: %w", path, err)
+	}
+
+	err = dis.Spec.Validate()
+
+	if err != nil {
+		return fmt.Errorf("error validating disruption spec at %v: %w", path, err)
 	}
 
 	fmt.Println("file is valid !")
