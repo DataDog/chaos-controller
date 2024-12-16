@@ -7,18 +7,15 @@ package v1beta1
 
 import (
 	"encoding/json"
-	"fmt"
 	"time"
 
-	"github.com/DataDog/chaos-controller/ddmark"
 	"github.com/DataDog/chaos-controller/mocks"
 	metricsnoop "github.com/DataDog/chaos-controller/o11y/metrics/noop"
 	tracernoop "github.com/DataDog/chaos-controller/o11y/tracer/noop"
 	chaostypes "github.com/DataDog/chaos-controller/types"
-	"github.com/hashicorp/go-multierror"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/stretchr/testify/mock"
 	authv1 "k8s.io/api/authentication/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,13 +35,10 @@ var oldDisruption, newDisruption *Disruption
 
 var _ = Describe("Disruption Webhook", func() {
 	var (
-		ddmarkMock   *ddmark.ClientMock
 		recorderMock *mocks.EventRecorderMock
 	)
 
 	BeforeEach(func() {
-		ddmarkMock = ddmark.NewClientMock(GinkgoT())
-		ddmarkClient = ddmarkMock
 		allowNodeLevel = true
 		allowNodeFailure = true
 		recorderMock = mocks.NewEventRecorderMock(GinkgoT())
@@ -299,7 +293,6 @@ var _ = Describe("Disruption Webhook", func() {
 					// Assert
 					Expect(err).Should(HaveOccurred())
 					Expect(err.Error()).Should(HavePrefix("the controller is currently in delete-only mode, you can't create new disruptions for now"))
-					Expect(ddmarkMock.AssertNumberOfCalls(GinkgoT(), "ValidateStructMultierror", 0)).To(BeTrue())
 				})
 			})
 
@@ -314,7 +307,6 @@ var _ = Describe("Disruption Webhook", func() {
 					// Assert
 					Expect(err).Should(HaveOccurred())
 					Expect(err.Error()).Should(HavePrefix("invalid disruption name: found '!', expected: ',' or 'end of string'"))
-					Expect(ddmarkMock.AssertNumberOfCalls(GinkgoT(), "ValidateStructMultierror", 0)).To(BeTrue())
 				})
 			})
 
@@ -329,7 +321,6 @@ var _ = Describe("Disruption Webhook", func() {
 					// Assert
 					Expect(err).Should(HaveOccurred())
 					Expect(err.Error()).Should(HavePrefix("the chaos handler is disabled but the disruption onInit field is set to true, please enable the handler by specifying the --handler-enabled flag to the controller if you want to use the onInit feature"))
-					Expect(ddmarkMock.AssertNumberOfCalls(GinkgoT(), "ValidateStructMultierror", 0)).To(BeTrue())
 				})
 			})
 
@@ -345,7 +336,6 @@ var _ = Describe("Disruption Webhook", func() {
 					// Assert
 					Expect(err).Should(HaveOccurred())
 					Expect(err).To(MatchError("1 error occurred:\n\t* Spec: either selector or advancedSelector field must be set\n\n"))
-					Expect(ddmarkMock.AssertNumberOfCalls(GinkgoT(), "ValidateStructMultierror", 0)).To(BeTrue())
 				})
 			})
 
@@ -368,7 +358,6 @@ var _ = Describe("Disruption Webhook", func() {
 					// Assert
 					Expect(err).Should(HaveOccurred())
 					Expect(err).To(MatchError("you have specified a duration of 2h0m0s, but the maximum duration allowed is 1h0m0s, please specify a duration lower or equal than this value"))
-					Expect(ddmarkMock.AssertNumberOfCalls(GinkgoT(), "ValidateStructMultierror", 0)).To(BeTrue())
 				})
 
 				AfterEach(func() {
@@ -385,7 +374,6 @@ var _ = Describe("Disruption Webhook", func() {
 
 					Expect(err).Should(HaveOccurred())
 					Expect(err).To(MatchError("1 error occurred:\n\t* Spec: unable to parse requirement: values[0][app]: Invalid value: \"demo-{nginx}\": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')\n\n"))
-					Expect(ddmarkMock.AssertNumberOfCalls(GinkgoT(), "ValidateStructMultierror", 0)).To(BeTrue())
 				})
 			})
 
@@ -402,25 +390,6 @@ var _ = Describe("Disruption Webhook", func() {
 
 					Expect(err).Should(HaveOccurred())
 					Expect(err).To(MatchError("1 error occurred:\n\t* Spec: error parsing given advanced selector to requirements: values[0][app]: Invalid value: \"*nginx\": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')\n\n"))
-					Expect(ddmarkMock.AssertNumberOfCalls(GinkgoT(), "ValidateStructMultierror", 0)).To(BeTrue())
-				})
-			})
-
-			When("ddmark return an error", func() {
-				It("should catch this error and propagated it", func() {
-					// Arrange
-					ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{
-						Errors: []error{
-							fmt.Errorf("something bad happened"),
-						},
-					})
-
-					// Action
-					_, err := newDisruption.ValidateCreate()
-
-					// Assert
-					Expect(err).Should(HaveOccurred())
-					Expect(err.Error()).Should(ContainSubstring("something bad happened"))
 				})
 			})
 
@@ -453,8 +422,6 @@ var _ = Describe("Disruption Webhook", func() {
 			When("triggers.*.notBefore is in the future", func() {
 				It("should not return an error", func() {
 					// Arrange
-					ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})
-
 					newDisruption.Spec.Duration = "30m"
 					newDisruption.Spec.Triggers = &DisruptionTriggers{
 						Inject: DisruptionTrigger{
@@ -510,7 +477,6 @@ var _ = Describe("Disruption Webhook", func() {
 
 				It("should not return an error if they are within a permitted group", func() {
 					// Arrange
-					ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})
 					permittedUserGroups = map[string]struct{}{}
 					permittedUserGroups["some"] = struct{}{}
 					permittedUserGroups["any"] = struct{}{}
@@ -530,13 +496,11 @@ var _ = Describe("Disruption Webhook", func() {
 
 					// Assert
 					Expect(err).ShouldNot(HaveOccurred())
-					Expect(ddmarkMock.AssertNumberOfCalls(GinkgoT(), "ValidateStructMultierror", 1)).To(BeTrue())
 				})
 			})
 
 			When("controller has network-disruptions disabled", func() {
 				It("should return an error which denies the creation of a new disruption", func() {
-					ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{}).Once()
 					disabledDisruptions = []string{"network-disruption"}
 
 					_, err := newDisruption.ValidateCreate()
@@ -549,7 +513,6 @@ var _ = Describe("Disruption Webhook", func() {
 
 		Describe("expectations with node disruptions", func() {
 			BeforeEach(func() {
-				ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})
 				k8sClient = makek8sClientWithDisruptionPod()
 				metricsSink = metricsnoop.New(logger)
 				tracerSink = tracernoop.New(logger)
@@ -571,6 +534,7 @@ var _ = Describe("Disruption Webhook", func() {
 			Context("allowNodeFailure is false", func() {
 				JustBeforeEach(func() {
 					newDisruption.Spec.NodeFailure = &NodeFailureSpec{}
+					newDisruption.Spec.Network = nil
 				})
 
 				It("should reject the disruption at node level", func() {
@@ -638,6 +602,7 @@ var _ = Describe("Disruption Webhook", func() {
 					allowNodeLevel = true
 					newDisruption.Spec.Level = chaostypes.DisruptionLevelNode
 					newDisruption.Spec.NodeFailure = &NodeFailureSpec{}
+					newDisruption.Spec.Network = nil
 
 					disruptionJSON, err := json.Marshal(newDisruption)
 					Expect(err).ShouldNot(HaveOccurred())
@@ -659,7 +624,6 @@ var _ = Describe("Disruption Webhook", func() {
 
 		Describe("safemode expectations with a disk failure disruption", func() {
 			BeforeEach(func() {
-				ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})
 				k8sClient = makek8sClientWithDisruptionPod()
 				metricsSink = metricsnoop.New(logger)
 				tracerSink = tracernoop.New(logger)
@@ -807,7 +771,6 @@ var _ = Describe("Disruption Webhook", func() {
 
 		Describe("safemode expectations with a network failure disruption", func() {
 			BeforeEach(func() {
-				ddmarkMock.EXPECT().ValidateStructMultierror(mock.Anything, mock.Anything).Return(&multierror.Error{})
 				k8sClient = makek8sClientWithDisruptionPod()
 				metricsSink = metricsnoop.New(logger)
 				tracerSink = tracernoop.New(logger)

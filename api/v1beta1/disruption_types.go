@@ -35,14 +35,8 @@ import (
 )
 
 // DisruptionSpec defines the desired state of Disruption
-// +ddmark:validation:ExclusiveFields={ContainerFailure,CPUPressure,DiskPressure,NodeFailure,Network,DNS,DiskFailure}
-// +ddmark:validation:ExclusiveFields={NodeFailure,CPUPressure,DiskPressure,ContainerFailure,Network,DNS,DiskFailure}
-// +ddmark:validation:LinkedFieldsValueWithTrigger={NodeFailure,Level}
-// +ddmark:validation:AtLeastOneOf={DNS,CPUPressure,Network,NodeFailure,ContainerFailure,DiskPressure,GRPC,DiskFailure}
-// +ddmark:validation:AtLeastOneOf={Selector,AdvancedSelector}
 type DisruptionSpec struct {
 	// +kubebuilder:validation:Required
-	// +ddmark:validation:Required=true
 	Count *intstr.IntOrString `json:"count"` // number of pods to target in either integer form or percent form appended with a %
 	// AllowDisruptedTargets allow pods with one or several other active disruptions, with disruption kinds that does not intersect
 	// with this disruption kinds, to be returned as part of eligible targets for this disruption
@@ -67,7 +61,6 @@ type DisruptionSpec struct {
 	// Level defines what the disruption will target, either a pod or a node
 	// +kubebuilder:default=pod
 	// +kubebuilder:validation:Enum=pod;node
-	// +ddmark:validation:Enum=pod;node
 	Level      chaostypes.DisruptionLevel `json:"level,omitempty"`
 	Containers []string                   `json:"containers,omitempty"`
 	// +nullable
@@ -108,7 +101,6 @@ func (dt DisruptionTriggers) IsZero() bool {
 	return dt.Inject.IsZero() && dt.CreatePods.IsZero()
 }
 
-// +ddmark:validation:ExclusiveFields={NotBefore,Offset}
 type DisruptionTrigger struct {
 	// inject.notBefore: Normal reconciliation and chaos pod creation will occur, but chaos pods will wait to inject until NotInjectedBefore. Must be after NoPodsBefore if both are specified
 	// createPods.notBefore: Will skip reconciliation until this time, no chaos pods will be created until after NoPodsBefore
@@ -133,13 +125,11 @@ type Reporting struct {
 	// +kubebuilder:validation:MaxLength=80
 	// +kubebuilder:validation:Pattern=(^[a-z0-9-_]+$)|(^C[A-Z0-9]+$)
 	// +kubebuilder:validation:Required
-	// +ddmark:validation:Required=true
 	SlackChannel string `json:"slackChannel,omitempty"`
 	// Purpose determines contextual informations about the disruption
 	// a brief context to determines disruption goal
 	// +kubebuilder:validation:MinLength=10
 	// +kubebuilder:validation:Required
-	// +ddmark:validation:Required=true
 	Purpose string `json:"purpose,omitempty"`
 	// MinNotificationType is the minimal notification type we want to receive informations for
 	// In order of importance it's Info, Success, Warning, Error
@@ -202,7 +192,6 @@ func (dd DisruptionDuration) Duration() time.Duration {
 type TargetInjection struct {
 	InjectorPodName string `json:"injectorPodName,omitempty"`
 	// +kubebuilder:validation:Enum=NotInjected;Injected;IsStuckOnRemoval
-	// +ddmark:validation:Enum=NotInjected;Injected;IsStuckOnRemoval
 	InjectionStatus chaostypes.DisruptionTargetInjectionStatus `json:"injectionStatus,omitempty"`
 	// since when this status is in place
 	Since metav1.Time `json:"since,omitempty"`
@@ -264,7 +253,6 @@ type DisruptionStatus struct {
 	IsStuckOnRemoval bool `json:"isStuckOnRemoval,omitempty"`
 	IsInjected       bool `json:"isInjected,omitempty"`
 	// +kubebuilder:validation:Enum=NotInjected;PartiallyInjected;PausedPartiallyInjected;Injected;PausedInjected;PreviouslyNotInjected;PreviouslyPartiallyInjected;PreviouslyInjected
-	// +ddmark:validation:Enum=NotInjected;PartiallyInjected;PausedPartiallyInjected;Injected;PausedInjected;PreviouslyNotInjected;PreviouslyPartiallyInjected;PreviouslyInjected
 	// +kubebuilder:default=NotInjected
 	InjectionStatus chaostypes.DisruptionInjectionStatus `json:"injectionStatus,omitempty"`
 	// +nullable
@@ -324,7 +312,7 @@ func (r *Disruption) TimeToInject() time.Time {
 	}
 
 	if triggers.Inject.Offset.Duration() > 0 {
-		// We measure the offset from the latter of two timestamps: creationTimestamp of the disruption, and spec.trigger.createPods
+		// We measure the offset from the latter of two timestamps: creationTimestamp of the disruption, and spec.triggers.createPods
 		notInjectedBefore = r.TimeToCreatePods().Add(triggers.Inject.Offset.Duration())
 	}
 
@@ -523,7 +511,6 @@ type DisruptionList struct {
 }
 
 // DisruptionPulse contains the active disruption duration and the dormant disruption duration
-// +ddmark:validation:LinkedFields={ActiveDuration,DormantDuration}
 type DisruptionPulse struct {
 	ActiveDuration  DisruptionDuration `json:"activeDuration,omitempty"`
 	DormantDuration DisruptionDuration `json:"dormantDuration,omitempty"`
@@ -671,6 +658,24 @@ func (s DisruptionSpec) validateGlobalDisruptionScope(requireSelectors bool) (re
 		retErr = multierror.Append(retErr, errors.New("cannot execute a container failure because the level configuration is set to node"))
 	}
 
+	// Rule: At least one disruption kind must be applied
+	if s.CPUPressure == nil && s.DiskPressure == nil && s.DiskFailure == nil && s.Network == nil && s.GRPC == nil && s.ContainerFailure == nil && s.NodeFailure == nil && len(s.DNS) == 0 {
+		retErr = multierror.Append(retErr, errors.New("at least one disruption kind must be specified, please read the docs to see your options"))
+	}
+
+	// Rule: ContainerFailure and NodeFailure disruptions are not compatible with other failure types
+	if s.ContainerFailure != nil {
+		if s.CPUPressure != nil || s.DiskPressure != nil || s.DiskFailure != nil || s.Network != nil || s.GRPC != nil || s.NodeFailure != nil || len(s.DNS) > 0 {
+			retErr = multierror.Append(retErr, errors.New("container failure disruptions are not compatible with other disruption kinds. The container failure will remove the impact of the other disruption types"))
+		}
+	}
+
+	if s.NodeFailure != nil {
+		if s.CPUPressure != nil || s.DiskPressure != nil || s.DiskFailure != nil || s.Network != nil || s.GRPC != nil || s.ContainerFailure != nil || len(s.DNS) > 0 {
+			retErr = multierror.Append(retErr, errors.New("node failure disruptions are not compatible with other disruption kinds. The node failure will remove the impact of the other disruption types"))
+		}
+	}
+
 	// Rule: on init compatibility
 	if s.OnInit {
 		if s.CPUPressure != nil ||
@@ -704,7 +709,19 @@ func (s DisruptionSpec) validateGlobalDisruptionScope(requireSelectors bool) (re
 	if s.Triggers != nil && !s.Triggers.IsZero() {
 		if !s.Triggers.Inject.IsZero() && !s.Triggers.CreatePods.IsZero() {
 			if !s.Triggers.Inject.NotBefore.IsZero() && !s.Triggers.CreatePods.NotBefore.IsZero() && s.Triggers.Inject.NotBefore.Before(&s.Triggers.CreatePods.NotBefore) {
-				retErr = multierror.Append(retErr, fmt.Errorf("spec.trigger.inject.notBefore is %s, which is before your spec.trigger.createPods.notBefore of %s. inject.notBefore must come after createPods.notBefore if both are specified", s.Triggers.Inject.NotBefore, s.Triggers.CreatePods.NotBefore))
+				retErr = multierror.Append(retErr, fmt.Errorf("spec.triggers.inject.notBefore is %s, which is before your spec.triggers.createPods.notBefore of %s. inject.notBefore must come after createPods.notBefore if both are specified", s.Triggers.Inject.NotBefore, s.Triggers.CreatePods.NotBefore))
+			}
+		}
+
+		if !s.Triggers.Inject.IsZero() {
+			if !s.Triggers.Inject.NotBefore.IsZero() && s.Triggers.Inject.Offset.Duration() != 0 {
+				retErr = multierror.Append(retErr, errors.New("its not possible to set spec.triggers.inject.notBefore and spec.triggers.inject.offset"))
+			}
+		}
+
+		if !s.Triggers.CreatePods.IsZero() {
+			if !s.Triggers.CreatePods.NotBefore.IsZero() && s.Triggers.CreatePods.Offset.Duration() != 0 {
+				retErr = multierror.Append(retErr, errors.New("its not possible to set spec.triggers.createPods.notBefore and spec.triggers.createPods.offset"))
 			}
 		}
 	}
@@ -715,6 +732,10 @@ func (s DisruptionSpec) validateGlobalDisruptionScope(requireSelectors bool) (re
 			if s.NodeFailure != nil || s.ContainerFailure != nil {
 				retErr = multierror.Append(retErr, errors.New("pulse is only compatible with network, cpu pressure, disk pressure, dns and grpc disruptions"))
 			}
+		}
+
+		if (s.Pulse.ActiveDuration.Duration() > 0 && s.Pulse.DormantDuration.Duration() == 0) || (s.Pulse.ActiveDuration.Duration() == 0 && s.Pulse.DormantDuration.Duration() > 0) {
+			retErr = multierror.Append(retErr, errors.New("if spec.pulse.activeDuration or spec.pulse.dormantDuration are specified, then both options must be set"))
 		}
 
 		if s.Pulse.ActiveDuration.Duration() != 0 && s.Pulse.ActiveDuration.Duration() < chaostypes.PulsingDisruptionMinimumDuration {
@@ -733,6 +754,12 @@ func (s DisruptionSpec) validateGlobalDisruptionScope(requireSelectors bool) (re
 	// Rule: count must be valid
 	if err := ValidateCount(s.Count); err != nil {
 		retErr = multierror.Append(retErr, err)
+	}
+
+	if s.Unsafemode != nil {
+		if err := s.Unsafemode.Validate(); err != nil {
+			retErr = multierror.Append(retErr, err)
+		}
 	}
 
 	return retErr

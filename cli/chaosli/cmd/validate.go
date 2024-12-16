@@ -9,7 +9,6 @@ import (
 	"fmt"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/hashicorp/go-multierror"
 	"github.com/spf13/cobra"
 )
 
@@ -42,15 +41,7 @@ func ValidateDisruption(path string) error {
 	return nil
 }
 
-// RunAllValidation runs and concatenate the ddmark validation and the regular api validation
-func RunAllValidation(disruption v1beta1.Disruption, rootPath string) error {
-	var retErr *multierror.Error
-
-	retErr = multierror.Append(retErr, multierror.Prefix(ddMarkClient.ValidateStructMultierror(disruption, rootPath), "ddmark:  "))
-
-	if err := disruption.Spec.Validate(); err != nil {
-		retErr = multierror.Append(retErr, multierror.Prefix(err, "validate:"))
-	}
-
-	return retErr.ErrorOrNil()
+// RunAllValidation runs the regular api validation
+func RunAllValidation(disruption v1beta1.Disruption) error {
+	return disruption.Spec.Validate()
 }

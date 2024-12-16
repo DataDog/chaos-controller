@@ -17,14 +17,12 @@ import (
 type OpenatSyscallSpec struct {
 	// Refer to this documentation: https://linux.die.net/man/2/open
 	// +kubebuilder:validation:Enum=EACCES;EDQUOT;EEXIST;EFAULT;EFBIG;EINTR;EISDIR;ELOOP;EMFILE;ENAMETOOLONG;ENFILE;ENODEV;ENOENT;ENOMEM;ENOSPC;ENOTDIR;ENXIO;EOVERFLOW;EPERM;EROFS;ETXTBSY;EWOULDBLOCK
-	// +ddmark:validation:Enum=EACCES;EDQUOT;EEXIST;EFAULT;EFBIG;EINTR;EISDIR;ELOOP;EMFILE;ENAMETOOLONG;ENFILE;ENODEV;ENOENT;ENOMEM;ENOSPC;ENOTDIR;ENXIO;EOVERFLOW;EPERM;EROFS;ETXTBSY;EWOULDBLOCK
 	ExitCode string `json:"exitCode"`
 }
 
 // DiskFailureSpec represents a disk failure disruption
 type DiskFailureSpec struct {
 	// +kubebuilder:validation:Required
-	// +ddmark:validation:Required=true
 	Paths []string `json:"paths"`
 	// +nullable
 	OpenatSyscall *OpenatSyscallSpec `json:"openat,omitempty"`
