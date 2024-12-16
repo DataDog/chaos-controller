@@ -8,6 +8,7 @@ package noop
 import (
 	"github.com/DataDog/chaos-controller/o11y/tracer/types"
 	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/zap"
 )
 
@@ -21,7 +22,7 @@ type Sink struct {
 func New(log *zap.SugaredLogger) Sink {
 	log.Debug("NOOP Sink: Tracer Started")
 
-	provider := trace.NewNoopTracerProvider()
+	provider := noop.NewTracerProvider()
 
 	return Sink{
 		log,

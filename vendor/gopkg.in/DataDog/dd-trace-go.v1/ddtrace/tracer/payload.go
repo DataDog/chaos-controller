@@ -72,6 +72,7 @@ func newPayload() *payload {
 
 // push pushes a new item into the stream.
 func (p *payload) push(t spanList) error {
+	p.buf.Grow(t.Msgsize())
 	if err := msgp.Encode(&p.buf, t); err != nil {
 		return err
 	}
@@ -80,7 +81,7 @@ func (p *payload) push(t spanList) error {
 	return nil
 }
 
-// itemCount returns the number of items available in the srteam.
+// itemCount returns the number of items available in the stream.
 func (p *payload) itemCount() int {
 	return int(atomic.LoadUint32(&p.count))
 }

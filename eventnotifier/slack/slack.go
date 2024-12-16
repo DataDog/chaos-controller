@@ -17,6 +17,7 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
 	"github.com/DataDog/chaos-controller/eventnotifier/utils"
+	cLog "github.com/DataDog/chaos-controller/log"
 	"github.com/slack-go/slack"
 	"go.uber.org/zap"
 	authv1 "k8s.io/api/authentication/v1"
@@ -120,7 +121,7 @@ func (n *Notifier) Notify(obj client.Object, event corev1.Event, notifType types
 }
 
 func (n *Notifier) notifyForDisruption(dis *v1beta1.Disruption, event corev1.Event, notifType types.NotificationType) error {
-	logger := n.logger.With("disruptionName", dis.Name, "disruptionNamespace", dis.Namespace, "eventType", event.Type)
+	logger := n.logger.With(cLog.DisruptionNameKey, dis.Name, cLog.DisruptionNamespaceKey, dis.Namespace, "eventType", event.Type)
 
 	slackMsg := n.buildSlackMessage(dis, event, notifType, dis.Spec.Reporting, logger)
 
@@ -153,7 +154,7 @@ func (n *Notifier) notifyForDisruption(dis *v1beta1.Disruption, event corev1.Eve
 }
 
 func (n *Notifier) notifyForDisruptionCron(disruptionCron *v1beta1.DisruptionCron, event corev1.Event, notifType types.NotificationType) error {
-	logger := n.logger.With("disruptionCronName", disruptionCron.Name, "disruptionCronNamespace", disruptionCron.Namespace, "eventType", event.Type)
+	logger := n.logger.With(cLog.DisruptionCronNameKey, disruptionCron.Name, cLog.DisruptionCronNamespaceKey, disruptionCron.Namespace, "eventType", event.Type)
 
 	slackMsg := n.buildSlackMessage(disruptionCron, event, notifType, disruptionCron.Spec.Reporting, logger)
 

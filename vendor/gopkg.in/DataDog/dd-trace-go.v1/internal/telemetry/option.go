@@ -18,7 +18,8 @@ import (
 // An Option is used to configure the telemetry client's settings
 type Option func(*client)
 
-// ApplyOps sets various fields of the client
+// ApplyOps sets various fields of the client.
+// To be called before starting any product.
 func (c *client) ApplyOps(opts ...Option) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -59,6 +60,13 @@ func WithVersion(version string) Option {
 func WithHTTPClient(httpClient *http.Client) Option {
 	return func(client *client) {
 		client.Client = httpClient
+	}
+}
+
+// SyncFlushOnStop forces a sync flush on client stop
+func SyncFlushOnStop() Option {
+	return func(client *client) {
+		client.syncFlushOnStop = true
 	}
 }
 

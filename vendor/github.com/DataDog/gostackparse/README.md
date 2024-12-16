@@ -66,7 +66,7 @@ gostackparse has been tested using a combination of hand picked [test-fixtures](
 
 [panicparse](https://github.com/maruel/panicparse) is a popular library implementing similar functionality.
 
-gostackparse was created to provide a subset of the functionality using ~10x less code while achieving > 100x faster performance. If you like fast minimalistic code, you might prefer it. If you're looking for more features and a larger community, use panicparse.
+gostackparse was created to provide a subset of the functionality (only the parsing) using ~10x less code while achieving > 100x faster performance. If you like fast minimalistic code, you might prefer it. If you're looking for more features and a larger community, use panicparse.
 
 ## Benchmarks
 

@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
+	cLog "github.com/DataDog/chaos-controller/log"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
@@ -98,8 +99,8 @@ func (w ChaosPodHandler) sendEvent(newPod *corev1.Pod) {
 	w.log.Debugw("ChaosPodHandler UPDATE - Send event",
 		"eventMessage", eventMessage,
 		"eventType", eventType,
-		"disruptionName", w.disruption.Name,
-		"disruptionNamespace", w.disruption.Namespace,
+		cLog.DisruptionNameKey, w.disruption.Name,
+		cLog.DisruptionNamespaceKey, w.disruption.Namespace,
 		"chaosPodName", newPod.Name,
 	)
 }

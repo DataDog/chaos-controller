@@ -12,6 +12,7 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
 	"github.com/DataDog/chaos-controller/eventnotifier/utils"
+	cLog "github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/datadog-go/statsd"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -74,7 +75,7 @@ func (n *Notifier) Notify(obj client.Object, event corev1.Event, notifType types
 }
 
 func (n *Notifier) notifyDisruption(d *v1beta1.Disruption, event corev1.Event, notifType types.NotificationType) error {
-	n.logger.With("disruptionName", d.Name)
+	n.logger.With(cLog.DisruptionNameKey, d.Name, cLog.DisruptionNamespaceKey, d.Namespace)
 
 	eventType := n.getEventAlertType(notifType)
 
@@ -86,7 +87,7 @@ func (n *Notifier) notifyDisruption(d *v1beta1.Disruption, event corev1.Event, n
 }
 
 func (n *Notifier) notifyDisruptionCron(d *v1beta1.DisruptionCron, event corev1.Event, notifType types.NotificationType) error {
-	n.logger.With("disruptionCronName", d.Name, "disruptionCronNamespace", d.Namespace)
+	n.logger.With(cLog.DisruptionCronNameKey, d.Name, cLog.DisruptionCronNamespaceKey, d.Namespace)
 
 	eventType := n.getEventAlertType(notifType)
 

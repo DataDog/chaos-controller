@@ -8,7 +8,9 @@ package tracer
 import (
 	"encoding/binary"
 	"encoding/hex"
+	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -20,6 +22,7 @@ import (
 	sharedinternal "gopkg.in/DataDog/dd-trace-go.v1/internal"
 	"gopkg.in/DataDog/dd-trace-go.v1/internal/log"
 	"gopkg.in/DataDog/dd-trace-go.v1/internal/samplernames"
+	"gopkg.in/DataDog/dd-trace-go.v1/internal/telemetry"
 )
 
 var _ ddtrace.SpanContext = (*spanContext)(nil)
@@ -48,13 +51,13 @@ func (t *traceID) SetUpper(i uint64) {
 	binary.BigEndian.PutUint64(t[:8], i)
 }
 
-func (t *traceID) SetUpperFromHex(s string) {
+func (t *traceID) SetUpperFromHex(s string) error {
 	u, err := strconv.ParseUint(s, 16, 64)
 	if err != nil {
-		log.Debug("Attempted to decode an invalid hex traceID %s", s)
-		return
+		return fmt.Errorf("malformed %q: %s", s, err)
 	}
 	t.SetUpper(u)
+	return nil
 }
 
 func (t *traceID) Empty() bool {
@@ -88,6 +91,17 @@ type spanContext struct {
 	span   *span  // reference to the span that hosts this context
 	errors int32  // number of spans with errors in this trace
 
+	// The 16-character hex string of the last seen Datadog Span ID
+	// this value will be added as the _dd.parent_id tag to spans
+	// created from this spanContext.
+	// This value is extracted from the `p` sub-key within the tracestate.
+	// The backend will use the _dd.parent_id tag to reparent spans in
+	// distributed traces if they were missing their parent span.
+	// Missing parent span could occur when a W3C-compliant tracer
+	// propagated this context, but didn't send any spans to Datadog.
+	reparentID string
+	isRemote   bool
+
 	// the below group should propagate cross-process
 
 	traceID traceID
@@ -109,6 +123,7 @@ func newSpanContext(span *span, parent *spanContext) *spanContext {
 		spanID: span.SpanID,
 		span:   span,
 	}
+
 	context.traceID.SetLower(span.TraceID)
 	if parent != nil {
 		context.traceID.SetUpper(parent.traceID.Upper())
@@ -119,7 +134,7 @@ func newSpanContext(span *span, parent *spanContext) *spanContext {
 			context.setBaggageItem(k, v)
 			return true
 		})
-	} else if sharedinternal.BoolEnv("DD_TRACE_128_BIT_TRACEID_GENERATION_ENABLED", false) {
+	} else if sharedinternal.BoolEnv("DD_TRACE_128_BIT_TRACEID_GENERATION_ENABLED", true) {
 		// add 128 bit trace id, if enabled, formatted as big-endian:
 		// <32-bit unix seconds> <32 bits of zero> <64 random bits>
 		id128 := time.Duration(span.Start) / time.Second
@@ -153,6 +168,9 @@ func (c *spanContext) TraceID() uint64 { return c.traceID.Lower() }
 
 // TraceID128 implements ddtrace.SpanContextW3C.
 func (c *spanContext) TraceID128() string {
+	if c == nil {
+		return ""
+	}
 	return c.traceID.HexEncoded()
 }
 
@@ -175,17 +193,18 @@ func (c *spanContext) ForeachBaggageItem(handler func(k, v string) bool) {
 	}
 }
 
+// sets the sampling priority and decision maker (based on `sampler`).
 func (c *spanContext) setSamplingPriority(p int, sampler samplernames.SamplerName) {
 	if c.trace == nil {
 		c.trace = newTrace()
 	}
-	if c.trace.priority != nil && *c.trace.priority != float64(p) {
+	if c.trace.setSamplingPriority(p, sampler) {
+		// the trace's sampling priority or sampler was updated: mark this as updated
 		c.updated = true
 	}
-	c.trace.setSamplingPriority(p, sampler)
 }
 
-func (c *spanContext) samplingPriority() (p int, ok bool) {
+func (c *spanContext) SamplingPriority() (p int, ok bool) {
 	if c.trace == nil {
 		return 0, false
 	}
@@ -287,10 +306,12 @@ func (t *trace) samplingPriority() (p int, ok bool) {
 	return t.samplingPriorityLocked()
 }
 
-func (t *trace) setSamplingPriority(p int, sampler samplernames.SamplerName) {
+// setSamplingPriority sets the sampling priority and the decision maker
+// and returns true if it was modified.
+func (t *trace) setSamplingPriority(p int, sampler samplernames.SamplerName) bool {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	t.setSamplingPriorityLocked(p, sampler)
+	return t.setSamplingPriorityLocked(p, sampler)
 }
 
 func (t *trace) keep() {
@@ -314,23 +335,54 @@ func (t *trace) setTagLocked(key, value string) {
 	t.tags[key] = value
 }
 
-func (t *trace) setSamplingPriorityLocked(p int, sampler samplernames.SamplerName) {
+func samplerToDM(sampler samplernames.SamplerName) string {
+	return "-" + strconv.Itoa(int(sampler))
+}
+
+func (t *trace) setSamplingPriorityLocked(p int, sampler samplernames.SamplerName) bool {
 	if t.locked {
-		return
+		return false
 	}
+
+	updatedPriority := t.priority == nil || *t.priority != float64(p)
+
 	if t.priority == nil {
 		t.priority = new(float64)
 	}
 	*t.priority = float64(p)
-	_, ok := t.propagatingTags[keyDecisionMaker]
-	if p > 0 && !ok && sampler != samplernames.Unknown {
+	curDM, existed := t.propagatingTags[keyDecisionMaker]
+	if p > 0 && sampler != samplernames.Unknown {
 		// We have a positive priority and the sampling mechanism isn't set.
 		// Send nothing when sampler is `Unknown` for RFC compliance.
-		t.setPropagatingTagLocked(keyDecisionMaker, "-"+strconv.Itoa(int(sampler)))
+		// If a global sampling rate is set, it was always applied first. And this call can be
+		// triggered again by applying a rule sampler. The sampling priority will be the same, but
+		// the decision maker will be different. So we compare the decision makers as well.
+		// Note that once global rate sampling is deprecated, we no longer need to compare
+		// the DMs. Sampling priority is sufficient to distinguish a change in DM.
+		dm := samplerToDM(sampler)
+		updatedDM := !existed || dm != curDM
+		if updatedDM {
+			t.setPropagatingTagLocked(keyDecisionMaker, dm)
+			return true
+		}
 	}
-	if p <= 0 && ok {
+	if p <= 0 && existed {
 		delete(t.propagatingTags, keyDecisionMaker)
 	}
+
+	return updatedPriority
+}
+
+func (t *trace) isLocked() bool {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	return t.locked
+}
+
+func (t *trace) setLocked(locked bool) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.locked = locked
 }
 
 // push pushes a new span into the trace. If the buffer is full, it returns
@@ -361,20 +413,56 @@ func (t *trace) push(sp *span) {
 	}
 }
 
+// setTraceTags sets all "trace level" tags on the provided span
+// t must already be locked.
+func (t *trace) setTraceTags(s *span, tr *tracer) {
+	for k, v := range t.tags {
+		s.setMeta(k, v)
+	}
+	for k, v := range t.propagatingTags {
+		s.setMeta(k, v)
+	}
+	for k, v := range ginternal.GetTracerGitMetadataTags() {
+		s.setMeta(k, v)
+	}
+	if s.context != nil && s.context.traceID.HasUpper() {
+		s.setMeta(keyTraceID128, s.context.traceID.UpperHex())
+	}
+	if hn := tr.hostname(); hn != "" {
+		s.setMeta(keyTracerHostname, hn)
+	}
+}
+
 // finishedOne acknowledges that another span in the trace has finished, and checks
 // if the trace is complete, in which case it calls the onFinish function. It uses
-// the given priority, if non-nil, to mark the root span.
+// the given priority, if non-nil, to mark the root span. This also will trigger a partial flush
+// if enabled and the total number of finished spans is greater than or equal to the partial flush limit.
+// The provided span must be locked.
 func (t *trace) finishedOne(s *span) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	s.finished = true
 	if t.full {
 		// capacity has been reached, the buffer is no longer tracking
 		// all the spans in the trace, so the below conditions will not
 		// be accurate and would trigger a pre-mature flush, exposing us
 		// to a race condition where spans can be modified while flushing.
+		//
+		// TODO(partialFlush): should we do a partial flush in this scenario?
 		return
 	}
 	t.finished++
+	tr, ok := internal.GetGlobalTracer().(*tracer)
+	if !ok {
+		return
+	}
+	setPeerService(s, tr.config)
+
+	// attach the _dd.base_service tag only when the globally configured service name is different from the
+	// span service name.
+	if s.Service != "" && !strings.EqualFold(s.Service, tr.config.serviceName) {
+		s.Meta[keyBaseService] = tr.config.serviceName
+	}
 	if s == t.root && t.priority != nil {
 		// after the root has finished we lock down the priority;
 		// we won't be able to make changes to a span after finishing
@@ -388,42 +476,52 @@ func (t *trace) finishedOne(s *span) {
 		// TODO(barbayar): make sure this doesn't happen in vain when switching to
 		// the new wire format. We won't need to set the tags on the first span
 		// in the chunk there.
-		for k, v := range t.tags {
-			s.setMeta(k, v)
-		}
-		for k, v := range t.propagatingTags {
-			s.setMeta(k, v)
-		}
-		for k, v := range ginternal.GetTracerGitMetadataTags() {
-			s.setMeta(k, v)
-		}
-		if s.context != nil && s.context.traceID.HasUpper() {
-			s.setMeta(keyTraceID128, s.context.traceID.UpperHex())
-		}
+		t.setTraceTags(s, tr)
 	}
-	if len(t.spans) == t.finished {
-		defer func() {
-			t.spans = nil
-			t.finished = 0 // important, because a buffer can be used for several flushes
-		}()
-	}
-	tr, ok := internal.GetGlobalTracer().(*tracer)
-	if !ok {
+
+	if len(t.spans) == t.finished { // perform a full flush of all spans
+		t.finishChunk(tr, &chunk{
+			spans:    t.spans,
+			willSend: decisionKeep == samplingDecision(atomic.LoadUint32((*uint32)(&t.samplingDecision))),
+		})
+		t.spans = nil
 		return
 	}
-	setPeerService(s, tr.config)
-	if len(t.spans) != t.finished {
-		return
+
+	doPartialFlush := tr.config.partialFlushEnabled && t.finished >= tr.config.partialFlushMinSpans
+	if !doPartialFlush {
+		return // The trace hasn't completed and partial flushing will not occur
 	}
-	if hn := tr.hostname(); hn != "" {
-		s.setMeta(keyTracerHostname, hn)
+	log.Debug("Partial flush triggered with %d finished spans", t.finished)
+	telemetry.GlobalClient.Count(telemetry.NamespaceTracers, "trace_partial_flush.count", 1, []string{"reason:large_trace"}, true)
+	finishedSpans := make([]*span, 0, t.finished)
+	leftoverSpans := make([]*span, 0, len(t.spans)-t.finished)
+	for _, s2 := range t.spans {
+		if s2.finished {
+			finishedSpans = append(finishedSpans, s2)
+		} else {
+			leftoverSpans = append(leftoverSpans, s2)
+		}
 	}
-	// we have a tracer that can receive completed traces.
-	atomic.AddUint32(&tr.spansFinished, uint32(len(t.spans)))
-	tr.pushTrace(&finishedTrace{
-		spans:    t.spans,
+	// TODO: (Support MetricKindDist) Re-enable these when we actually support `MetricKindDist`
+	//telemetry.GlobalClient.Record(telemetry.NamespaceTracers, telemetry.MetricKindDist, "trace_partial_flush.spans_closed", float64(len(finishedSpans)), nil, true)
+	//telemetry.GlobalClient.Record(telemetry.NamespaceTracers, telemetry.MetricKindDist, "trace_partial_flush.spans_remaining", float64(len(leftoverSpans)), nil, true)
+	finishedSpans[0].setMetric(keySamplingPriority, *t.priority)
+	if s != t.spans[0] {
+		// Make sure the first span in the chunk has the trace-level tags
+		t.setTraceTags(finishedSpans[0], tr)
+	}
+	t.finishChunk(tr, &chunk{
+		spans:    finishedSpans,
 		willSend: decisionKeep == samplingDecision(atomic.LoadUint32((*uint32)(&t.samplingDecision))),
 	})
+	t.spans = leftoverSpans
+}
+
+func (t *trace) finishChunk(tr *tracer, ch *chunk) {
+	atomic.AddUint32(&tr.spansFinished, uint32(len(ch.spans)))
+	tr.pushChunk(ch)
+	t.finished = 0 // important, because a buffer can be used for several flushes
 }
 
 // setPeerService sets the peer.service, _dd.peer.service.source, and _dd.peer.service.remapped_from
@@ -462,6 +560,7 @@ func setPeerServiceFromSource(s *span) string {
 		return ok
 	}
 	var sources []string
+	useTargetHost := true
 	switch {
 	// order of the cases and their sources matters here. These are in priority order (highest to lowest)
 	case has("aws_service"):
@@ -472,9 +571,13 @@ func setPeerServiceFromSource(s *span) string {
 			"tablename",
 			"bucketname",
 		}
-	case has(ext.DBSystem):
+	case s.Meta[ext.DBSystem] == ext.DBSystemCassandra:
 		sources = []string{
 			ext.CassandraContactPoints,
+		}
+		useTargetHost = false
+	case has(ext.DBSystem):
+		sources = []string{
 			ext.DBName,
 			ext.DBInstance,
 		}
@@ -488,11 +591,13 @@ func setPeerServiceFromSource(s *span) string {
 		}
 	}
 	// network destination tags will be used as fallback unless there are higher priority sources already set.
-	sources = append(sources, []string{
-		ext.NetworkDestinationName,
-		ext.PeerHostname,
-		ext.TargetHost,
-	}...)
+	if useTargetHost {
+		sources = append(sources, []string{
+			ext.NetworkDestinationName,
+			ext.PeerHostname,
+			ext.TargetHost,
+		}...)
+	}
 	for _, source := range sources {
 		if val, ok := s.Meta[source]; ok {
 			s.setMeta(ext.PeerService, val)
@@ -500,4 +605,34 @@ func setPeerServiceFromSource(s *span) string {
 		}
 	}
 	return ""
+}
+
+const hexEncodingDigits = "0123456789abcdef"
+
+// spanIDHexEncoded returns the hex encoded string of the given span ID `u`
+// with the given padding.
+//
+// Code is borrowed from `fmt.fmtInteger` in the standard library.
+func spanIDHexEncoded(u uint64, padding int) string {
+	// The allocated intbuf with a capacity of 68 bytes
+	// is large enough for integer formatting.
+	var intbuf [68]byte
+	buf := intbuf[0:]
+	if padding > 68 {
+		buf = make([]byte, padding)
+	}
+	// Because printing is easier right-to-left: format u into buf, ending at buf[i].
+	i := len(buf)
+	for u >= 16 {
+		i--
+		buf[i] = hexEncodingDigits[u&0xF]
+		u >>= 4
+	}
+	i--
+	buf[i] = hexEncodingDigits[u]
+	for i > 0 && padding > len(buf)-i {
+		i--
+		buf[i] = '0'
+	}
+	return string(buf[i:])
 }

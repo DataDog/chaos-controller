@@ -11,6 +11,7 @@ import (
 	"time"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
+	cLog "github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/o11y/metrics"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 
@@ -35,7 +36,7 @@ type DisruptionCronReconciler struct {
 }
 
 func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
-	r.log = r.BaseLog.With("disruptionCronNamespace", req.Namespace, "disruptionCronName", req.Name)
+	r.log = r.BaseLog.With(cLog.DisruptionCronNamespaceKey, req.Namespace, cLog.DisruptionCronNameKey, req.Name)
 	r.log.Info("Reconciling DisruptionCron")
 
 	// reconcile metrics
@@ -192,7 +193,7 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	r.handleMetricSinkError(r.MetricsSink.MetricDisruptionScheduled(append(DisruptionCronTags, "disruptionName:"+disruption.Name)))
 
-	r.log.Infow("created Disruption for DisruptionCron run", "disruptionName", disruption.Name)
+	r.log.Infow("created Disruption for DisruptionCron run", cLog.DisruptionNameKey, disruption.Name)
 
 	// ------------------------------------------------------------------ //
 	// If this process restarts at this point (after posting a disruption, but

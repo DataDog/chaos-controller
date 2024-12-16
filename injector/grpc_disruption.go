@@ -6,7 +6,6 @@
 package injector
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"strconv"
@@ -147,13 +146,9 @@ func (i *GRPCDisruptionInjector) Clean() error {
 func (i *GRPCDisruptionInjector) connectToServer() (*grpc.ClientConn, error) {
 	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()), // Future Work: make secure
-		grpc.WithBlock(),
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), i.timeout)
 
-	defer cancel()
-
-	conn, err := grpc.DialContext(ctx, i.serverAddr, opts...)
+	conn, err := grpc.NewClient(i.serverAddr, opts...)
 	if err != nil {
 		return nil, errors.New("fail to dial: " + i.serverAddr)
 	}
