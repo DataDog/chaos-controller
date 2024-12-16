@@ -68,21 +68,21 @@ type NetworkDisruptionSpec struct {
 	Cloud *NetworkDisruptionCloudSpec `json:"cloud,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
-	Drop int `json:"drop,omitempty"`
+	Drop int `json:"drop,omitempty" validate:"omitempty,gte=0,lte=100"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
-	Duplicate int `json:"duplicate,omitempty"`
+	Duplicate int `json:"duplicate,omitempty" validate:"omitempty,gte=0,lte=100"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
-	Corrupt int `json:"corrupt,omitempty"`
+	Corrupt int `json:"corrupt,omitempty" validate:"omitempty,gte=0,lte=100"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=60000
-	Delay uint `json:"delay,omitempty"`
+	Delay uint `json:"delay,omitempty" validate:"omitempty,gte=0,lte=60000"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
-	DelayJitter uint `json:"delayJitter,omitempty"`
+	DelayJitter uint `json:"delayJitter,omitempty" validate:"omitempty,gte=0,lte=100"`
 	// +kubebuilder:validation:Minimum=0
-	BandwidthLimit int `json:"bandwidthLimit,omitempty"`
+	BandwidthLimit int `json:"bandwidthLimit,omitempty" validate:"omitempty,gte=0"`
 	// +nullable
 	HTTP *NetworkHTTPFilters `json:"http,omitempty"`
 }
@@ -97,13 +97,13 @@ type NetworkDisruptionHostSpec struct {
 	Host string `json:"host,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=65535
-	Port int `json:"port,omitempty"`
+	Port int `json:"port,omitempty" validate:"omitempty,gte=0,lte=65535"`
 	// +kubebuilder:validation:Enum=tcp;udp;""
-	Protocol string `json:"protocol,omitempty"`
+	Protocol string `json:"protocol,omitempty" validate:"omitempty,oneofci=udp tcp"`
 	// +kubebuilder:validation:Enum=ingress;egress;""
-	Flow string `json:"flow,omitempty"`
+	Flow string `json:"flow,omitempty" validate:"omitempty,oneofci=ingress egress"`
 	// +kubebuilder:validation:Enum=new;est;""
-	ConnState string `json:"connState,omitempty"`
+	ConnState string `json:"connState,omitempty" validate:"omitempty,oneofci=new est"`
 }
 
 type NetworkDisruptionServiceSpec struct {
@@ -117,7 +117,7 @@ type NetworkDisruptionServicePortSpec struct {
 	Name string `json:"name,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=65535
-	Port int `json:"port,omitempty"`
+	Port int `json:"port,omitempty" validate:"omitempty,gte=0,lte=65535"`
 }
 
 type NetworkDisruptionCloudSpec struct {
@@ -128,13 +128,13 @@ type NetworkDisruptionCloudSpec struct {
 
 type NetworkDisruptionCloudServiceSpec struct {
 	// +kubebuilder:validation:Required
-	ServiceName string `json:"service"`
+	ServiceName string `json:"service" validate:"required"`
 	// +kubebuilder:validation:Enum=tcp;udp;""
-	Protocol string `json:"protocol,omitempty"`
+	Protocol string `json:"protocol,omitempty" validate:"omitempty,oneofci=tcp udp"`
 	// +kubebuilder:validation:Enum=ingress;egress;""
-	Flow string `json:"flow,omitempty"`
+	Flow string `json:"flow,omitempty" validate:"omitempty,oneofci=ingress egress"`
 	// +kubebuilder:validation:Enum=new;est;""
-	ConnState string `json:"connState,omitempty"`
+	ConnState string `json:"connState,omitempty" validate:"omitempty,oneofci=new est"`
 }
 
 func (p HTTPPath) validate() error {

@@ -7,10 +7,15 @@ package v1beta1
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 
+	"github.com/go-playground/locales/en"
+	ut "github.com/go-playground/universal-translator"
+	"github.com/go-playground/validator/v10"
+	"github.com/hashicorp/go-multierror"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -113,6 +118,120 @@ func ValidateCount(count *intstr.IntOrString) error {
 		if value <= 0 {
 			return fmt.Errorf("count must be a positive integer or a valid percentage value")
 		}
+	}
+
+	return nil
+}
+
+func newGoValidator() (*validator.Validate, ut.Translator, error) {
+	englishLocale := en.New()
+	uni := ut.New(englishLocale, englishLocale)
+
+	translator, _ := uni.GetTranslator("en")
+
+	validate := validator.New(validator.WithRequiredStructEnabled())
+
+	if err := validate.RegisterTranslation("required", translator, func(ut ut.Translator) error {
+		return ut.Add("required", "{0} is a required field, and must be set", true)
+	}, func(ut ut.Translator, fe validator.FieldError) string {
+		t, _ := ut.T("required", fe.Field())
+
+		return t
+	}); err != nil {
+		return nil, nil, err
+	}
+
+	if err := validate.RegisterTranslation("gte", translator, func(ut ut.Translator) error {
+		return ut.Add("gte", "{0} is set to {1}, but must be greater or equal to {2}", true)
+	}, func(ut ut.Translator, fe validator.FieldError) string {
+		i, ok := fe.Value().(int)
+		if !ok {
+			iPtr, k := fe.Value().(*int)
+			if !k {
+				unsignedVal, k3 := fe.Value().(uint)
+				if !k3 {
+					return fmt.Sprintf("could not determine value of field %s %v", fe.Field(), fe.Value())
+				} else {
+					i = int(unsignedVal)
+				}
+			} else {
+				if iPtr == nil {
+					i = 0
+				} else {
+					i = *iPtr
+				}
+			}
+		}
+		var iStr string
+		iStr = strconv.Itoa(i)
+		t, _ := ut.T("gte", fe.Namespace(), iStr, fe.Param())
+
+		return t
+	}); err != nil {
+		return nil, nil, err
+	}
+
+	if err := validate.RegisterTranslation("lte", translator, func(ut ut.Translator) error {
+		return ut.Add("lte", "{0} is set to {1}, but must be less or equal to {2}", true)
+	}, func(ut ut.Translator, fe validator.FieldError) string {
+		i, ok := fe.Value().(int)
+		if !ok {
+			iPtr, k := fe.Value().(*int)
+			if !k {
+				unsignedVal, k3 := fe.Value().(uint)
+				if !k3 {
+					return fmt.Sprintf("could not determine value of field %s %v", fe.Field(), fe.Value())
+				} else {
+					i = int(unsignedVal)
+				}
+			} else {
+				if iPtr == nil {
+					i = 0
+				} else {
+					i = *iPtr
+				}
+			}
+		}
+		var iStr string
+		iStr = strconv.Itoa(i)
+		t, _ := ut.T("lte", fe.Namespace(), iStr, fe.Param())
+
+		return t
+	}); err != nil {
+		return nil, nil, err
+	}
+
+	return validate, translator, nil
+}
+
+func ValidateStructTags(s DisruptionSpec) error {
+	var retErr *multierror.Error
+
+	validate, translator, err := newGoValidator()
+	if err != nil {
+		return fmt.Errorf("could not validate struct tags: %w", err)
+	}
+
+	err = validate.Struct(s)
+
+	if err != nil {
+		// this check is only needed when your code could produce
+		// an invalid value for validation such as interface with nil
+		// value most including myself do not usually have code like this.
+		var invalidValidationError *validator.InvalidValidationError
+		if errors.As(err, &invalidValidationError) {
+			return err
+		}
+
+		for _, err := range err.(validator.ValidationErrors) {
+			retErr = multierror.Append(retErr,
+				multierror.Prefix(errors.New(err.Translate(translator)), "validate:"),
+			)
+		}
+	}
+
+	if retErr != nil {
+		return retErr.ErrorOrNil()
 	}
 
 	return nil
