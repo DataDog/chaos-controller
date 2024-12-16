@@ -233,12 +233,14 @@ func (i *networkDisruptionInjector) Inject() error {
 				return fmt.Errorf("error injecting packet marking iptables rule: %w", err)
 			}
 		} else { // cgroup v1 needs to mark packets through the net_cls cgroup controller of the container
-			if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", types.InjectorCgroupClassID); err != nil {
-				return fmt.Errorf("error injecting packet marking in net_cls cgroup: %w", err)
-			}
-
-			if err := i.config.IPTables.MarkClassID(types.InjectorCgroupClassID, types.InjectorCgroupClassID); err != nil {
-				return fmt.Errorf("error injecting packet marking iptables rule: %w", err)
+			if i.spec.HasHTTPFilters() {
+				if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", types.InjectorBPFCgroupClassID); err != nil {
+					return fmt.Errorf("error injecting packet marking in net_cls cgroup: %w", err)
+				}
+			} else {
+				if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", types.InjectorCgroupClassID); err != nil {
+					return fmt.Errorf("error injecting packet marking in net_cls cgroup: %w", err)
+				}
 			}
 		}
 	}
@@ -491,8 +493,14 @@ func (i *networkDisruptionInjector) applyOperations() error {
 			}
 
 			// create fw filter to classify packets based on their mark
-			if err := i.config.TrafficController.AddFwFilter(interfaces, "4:0", types.InjectorCgroupClassID, "4:2"); err != nil {
-				return fmt.Errorf("can't create the fw filter: %w", err)
+			if i.config.Cgroup.IsCgroupV2() {
+				if err := i.config.TrafficController.AddFwFilter(interfaces, "4:0", types.InjectorCgroupClassID, "4:2"); err != nil {
+					return fmt.Errorf("can't create the fw filter: %w", err)
+				}
+			} else {
+				if err := i.config.TrafficController.AddCgroupFilter(interfaces, "4:0", 2); err != nil {
+					return fmt.Errorf("can't create the cgroup filter: %w", err)
+				}
 			}
 
 			// parent 4:2 refers to the 3nd band of the 4th prio qdisc
@@ -505,10 +513,18 @@ func (i *networkDisruptionInjector) applyOperations() error {
 				return fmt.Errorf("can't create a new qdisc: %w", err)
 			}
 
-			// create fw filter to classify packets based on their mark
-			if err := i.config.TrafficController.AddFwFilter(interfaces, "2:0", types.InjectorCgroupClassID, "2:2"); err != nil {
-				return fmt.Errorf("can't create the fw filter: %w", err)
+			if i.config.Cgroup.IsCgroupV2() {
+				// create fw filter to classify packets based on their mark
+				if err := i.config.TrafficController.AddFwFilter(interfaces, "2:0", types.InjectorCgroupClassID, "2:2"); err != nil {
+					return fmt.Errorf("can't create the fw filter: %w", err)
+				}
+			} else {
+				// create cgroup filter to classify packets
+				if err := i.config.TrafficController.AddCgroupFilter(interfaces, "2:0", 2); err != nil {
+					return fmt.Errorf("can't create the cgroup filter: %w", err)
+				}
 			}
+
 			// parent 2:2 refers to the 2nd band of the 2nd prio qdisc
 			// handle starts from 3 because 1 and 2 are used by the 2 prio qdiscs
 			parent = "2:2"
