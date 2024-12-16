@@ -36,6 +36,7 @@ const (
 	IntType
 	UintType
 	NilType
+	DurationType
 	ExtensionType
 
 	// pseudo-types provided
@@ -142,8 +143,9 @@ type Reader struct {
 	// is stateless; all the
 	// buffering is done
 	// within R.
-	R       *fwd.Reader
-	scratch []byte
+	R              *fwd.Reader
+	scratch        []byte
+	recursionDepth int
 }
 
 // Read implements `io.Reader`
@@ -189,6 +191,11 @@ func (m *Reader) CopyNext(w io.Writer) (int64, error) {
 		return n, io.ErrShortWrite
 	}
 
+	if done, err := m.recursiveCall(); err != nil {
+		return n, err
+	} else {
+		defer done()
+	}
 	// for maps and slices, read elements
 	for x := uintptr(0); x < o; x++ {
 		var n2 int64
@@ -199,6 +206,18 @@ func (m *Reader) CopyNext(w io.Writer) (int64, error) {
 		n += n2
 	}
 	return n, nil
+}
+
+// recursiveCall will increment the recursion depth and return an error if it is exceeded.
+// If a nil error is returned, done must be called to decrement the counter.
+func (m *Reader) recursiveCall() (done func(), err error) {
+	if m.recursionDepth >= recursionLimit {
+		return func() {}, ErrRecursion
+	}
+	m.recursionDepth++
+	return func() {
+		m.recursionDepth--
+	}, nil
 }
 
 // ReadFull implements `io.ReadFull`
@@ -262,7 +281,7 @@ func getNextSize(r *fwd.Reader) (uintptr, uintptr, error) {
 		return 0, 0, err
 	}
 	lead := b[0]
-	spec := &sizes[lead]
+	spec := getBytespec(lead)
 	size, mode := spec.size, spec.extra
 	if size == 0 {
 		return 0, 0, InvalidPrefixError(lead)
@@ -331,7 +350,12 @@ func (m *Reader) Skip() error {
 		return err
 	}
 
-	// for maps and slices, skip elements
+	// for maps and slices, skip elements with recursive call
+	if done, err := m.recursiveCall(); err != nil {
+		return err
+	} else {
+		defer done()
+	}
 	for x := uintptr(0); x < o; x++ {
 		err = m.Skip()
 		if err != nil {
@@ -394,7 +418,7 @@ func (m *Reader) ReadMapKey(scratch []byte) ([]byte, error) {
 	return out, nil
 }
 
-// MapKeyPtr returns a []byte pointing to the contents
+// ReadMapKeyPtr returns a []byte pointing to the contents
 // of a valid map key. The key cannot be empty, and it
 // must be shorter than the total buffer size of the
 // *Reader. Additionally, the returned slice is only
@@ -557,6 +581,12 @@ func (m *Reader) ReadBool() (b bool, err error) {
 	}
 	_, err = m.R.Skip(1)
 	return
+}
+
+// ReadDuration reads a time.Duration from the reader
+func (m *Reader) ReadDuration() (d time.Duration, err error) {
+	i, err := m.ReadInt64()
+	return time.Duration(i), err
 }
 
 // ReadInt64 reads an int64 from the reader
@@ -1259,7 +1289,7 @@ func (m *Reader) ReadTime() (t time.Time, err error) {
 	return
 }
 
-// ReadIntf reads out the next object as a raw interface{}.
+// ReadIntf reads out the next object as a raw interface{}/any.
 // Arrays are decoded as []interface{}, and maps are decoded
 // as map[string]interface{}. Integers are decoded as int64
 // and unsigned integers are decoded as uint64.
@@ -1302,6 +1332,10 @@ func (m *Reader) ReadIntf() (i interface{}, err error) {
 		i, err = m.ReadTime()
 		return
 
+	case DurationType:
+		i, err = m.ReadDuration()
+		return
+
 	case ExtensionType:
 		var t int8
 		t, err = m.peekExtensionType()
@@ -1322,6 +1356,13 @@ func (m *Reader) ReadIntf() (i interface{}, err error) {
 		return
 
 	case MapType:
+		// This can call back here, so treat as recursive call.
+		if done, err := m.recursiveCall(); err != nil {
+			return nil, err
+		} else {
+			defer done()
+		}
+
 		mp := make(map[string]interface{})
 		err = m.ReadMapStrIntf(mp)
 		i = mp
@@ -1347,6 +1388,13 @@ func (m *Reader) ReadIntf() (i interface{}, err error) {
 		if err != nil {
 			return
 		}
+
+		if done, err := m.recursiveCall(); err != nil {
+			return nil, err
+		} else {
+			defer done()
+		}
+
 		out := make([]interface{}, int(sz))
 		for j := range out {
 			out[j], err = m.ReadIntf()

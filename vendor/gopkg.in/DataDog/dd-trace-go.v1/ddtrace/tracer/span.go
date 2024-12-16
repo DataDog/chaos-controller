@@ -11,7 +11,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"math"
 	"os"
 	"reflect"
 	"runtime"
@@ -29,12 +28,14 @@ import (
 	sharedinternal "gopkg.in/DataDog/dd-trace-go.v1/internal"
 	"gopkg.in/DataDog/dd-trace-go.v1/internal/globalconfig"
 	"gopkg.in/DataDog/dd-trace-go.v1/internal/log"
+	"gopkg.in/DataDog/dd-trace-go.v1/internal/orchestrion"
 	"gopkg.in/DataDog/dd-trace-go.v1/internal/samplernames"
 	"gopkg.in/DataDog/dd-trace-go.v1/internal/traceprof"
 
-	"github.com/DataDog/datadog-agent/pkg/obfuscate"
 	"github.com/tinylib/msgp/msgp"
 	"golang.org/x/xerrors"
+
+	"github.com/DataDog/datadog-agent/pkg/obfuscate"
 )
 
 type (
@@ -64,22 +65,24 @@ type errorConfig struct {
 type span struct {
 	sync.RWMutex `msg:"-"` // all fields are protected by this RWMutex
 
-	Name     string             `msg:"name"`              // operation name
-	Service  string             `msg:"service"`           // service name (i.e. "grpc.server", "http.request")
-	Resource string             `msg:"resource"`          // resource name (i.e. "/user?id=123", "SELECT * FROM users")
-	Type     string             `msg:"type"`              // protocol associated with the span (i.e. "web", "db", "cache")
-	Start    int64              `msg:"start"`             // span start time expressed in nanoseconds since epoch
-	Duration int64              `msg:"duration"`          // duration of the span expressed in nanoseconds
-	Meta     map[string]string  `msg:"meta,omitempty"`    // arbitrary map of metadata
-	Metrics  map[string]float64 `msg:"metrics,omitempty"` // arbitrary map of numeric metrics
-	SpanID   uint64             `msg:"span_id"`           // identifier of this span
-	TraceID  uint64             `msg:"trace_id"`          // lower 64-bits of the root span identifier
-	ParentID uint64             `msg:"parent_id"`         // identifier of the span's direct parent
-	Error    int32              `msg:"error"`             // error status of the span; 0 means no errors
+	Name       string             `msg:"name"`                  // operation name
+	Service    string             `msg:"service"`               // service name (i.e. "grpc.server", "http.request")
+	Resource   string             `msg:"resource"`              // resource name (i.e. "/user?id=123", "SELECT * FROM users")
+	Type       string             `msg:"type"`                  // protocol associated with the span (i.e. "web", "db", "cache")
+	Start      int64              `msg:"start"`                 // span start time expressed in nanoseconds since epoch
+	Duration   int64              `msg:"duration"`              // duration of the span expressed in nanoseconds
+	Meta       map[string]string  `msg:"meta,omitempty"`        // arbitrary map of metadata
+	MetaStruct metaStructMap      `msg:"meta_struct,omitempty"` // arbitrary map of metadata with structured values
+	Metrics    map[string]float64 `msg:"metrics,omitempty"`     // arbitrary map of numeric metrics
+	SpanID     uint64             `msg:"span_id"`               // identifier of this span
+	TraceID    uint64             `msg:"trace_id"`              // lower 64-bits of the root span identifier
+	ParentID   uint64             `msg:"parent_id"`             // identifier of the span's direct parent
+	Error      int32              `msg:"error"`                 // error status of the span; 0 means no errors
+	SpanLinks  []ddtrace.SpanLink `msg:"span_links"`            // links to other spans
 
 	goExecTraced bool         `msg:"-"`
 	noDebugStack bool         `msg:"-"` // disables debug stack traces
-	finished     bool         `msg:"-"` // true if the span has been submitted to a tracer.
+	finished     bool         `msg:"-"` // true if the span has been submitted to a tracer. Can only be read/modified if the trace is locked.
 	context      *spanContext `msg:"-"` // span propagation context
 
 	pprofCtxActive  context.Context `msg:"-"` // contains pprof.WithLabel labels to tell the profiler more about this span
@@ -108,6 +111,9 @@ func (s *span) BaggageItem(key string) string {
 
 // SetTag adds a set of key/value metadata to the span.
 func (s *span) SetTag(key string, value interface{}) {
+	// To avoid dumping the memory address in case value is a pointer, we dereference it.
+	// Any pointer value that is a pointer to a pointer will be dumped as a string.
+	value = dereference(value)
 	s.Lock()
 	defer s.Unlock()
 	// We don't lock spans when flushing, so we could have a data race when
@@ -161,6 +167,34 @@ func (s *span) SetTag(key string, value interface{}) {
 		s.setMeta(key, v.String())
 		return
 	}
+
+	if value != nil {
+		// Arrays will be translated to dot notation. e.g.
+		// {"myarr.0": "foo", "myarr.1": "bar"}
+		// which will be displayed as an array in the UI.
+		switch reflect.TypeOf(value).Kind() {
+		case reflect.Slice:
+			slice := reflect.ValueOf(value)
+			for i := 0; i < slice.Len(); i++ {
+				key := fmt.Sprintf("%s.%d", key, i)
+				v := slice.Index(i)
+				if num, ok := toFloat64(v.Interface()); ok {
+					s.setMetric(key, num)
+				} else {
+					s.setMeta(key, fmt.Sprintf("%v", v))
+				}
+			}
+			return
+		}
+
+		// Can be sent as messagepack in `meta_struct` instead of `meta`
+		// reserved for internal use only
+		if v, ok := value.(sharedinternal.MetaStructValue); ok {
+			s.setMetaStruct(key, v.Value)
+			return
+		}
+	}
+
 	// not numeric, not a string, not a fmt.Stringer, not a bool, and not an error
 	s.setMeta(key, fmt.Sprint(value))
 }
@@ -200,7 +234,9 @@ func (s *span) root() *span {
 // the user id can be propagated across traces using the WithPropagation() option.
 // See https://docs.datadoghq.com/security_platform/application_security/setup_and_configure/?tab=set_user#add-user-information-to-traces
 func (s *span) SetUser(id string, opts ...UserMonitoringOption) {
-	var cfg UserMonitoringConfig
+	cfg := UserMonitoringConfig{
+		Metadata: make(map[string]string),
+	}
 	for _, fn := range opts {
 		fn(&cfg)
 	}
@@ -228,14 +264,19 @@ func (s *span) SetUser(id string, opts ...UserMonitoringOption) {
 		}
 		delete(root.Meta, keyPropagatedUserID)
 	}
-	for k, v := range map[string]string{
+
+	usrData := map[string]string{
 		keyUserID:        id,
 		keyUserEmail:     cfg.Email,
 		keyUserName:      cfg.Name,
 		keyUserScope:     cfg.Scope,
 		keyUserRole:      cfg.Role,
 		keyUserSessionID: cfg.SessionID,
-	} {
+	}
+	for k, v := range cfg.Metadata {
+		usrData[fmt.Sprintf("usr.%s", k)] = v
+	}
+	for k, v := range usrData {
 		if v != "" {
 			// setMeta is used since the span is already locked
 			root.setMeta(k, v)
@@ -363,6 +404,13 @@ func (s *span) setMeta(key, v string) {
 	}
 }
 
+func (s *span) setMetaStruct(key string, v any) {
+	if s.MetaStruct == nil {
+		s.MetaStruct = make(metaStructMap, 1)
+	}
+	s.MetaStruct[key] = v
+}
+
 // setTagBool sets a boolean tag on the span.
 func (s *span) setTagBool(key string, v bool) {
 	switch key {
@@ -434,9 +482,7 @@ func (s *span) Finish(opts ...ddtrace.FinishOption) {
 			s.Unlock()
 		}
 	}
-	if s.taskEnd != nil {
-		s.taskEnd()
-	}
+
 	if s.goExecTraced && rt.IsEnabled() {
 		// Only tag spans as traced if they both started & ended with
 		// execution tracing enabled. This is technically not sufficient
@@ -453,13 +499,17 @@ func (s *span) Finish(opts ...ddtrace.FinishOption) {
 		// there's nothign we can show.
 		s.SetTag("go_execution_traced", "partial")
 	}
-	s.finish(t)
 
-	if s.pprofCtxRestore != nil {
-		// Restore the labels of the parent span so any CPU samples after this
-		// point are attributed correctly.
-		pprof.SetGoroutineLabels(s.pprofCtxRestore)
+	if s.root() == s {
+		if tr, ok := internal.GetGlobalTracer().(*tracer); ok && tr.rulesSampling.traces.enabled() {
+			if !s.context.trace.isLocked() && s.context.trace.propagatingTag(keyDecisionMaker) != "-4" {
+				tr.rulesSampling.SampleTrace(s)
+			}
+		}
 	}
+
+	s.finish(t)
+	orchestrion.GLSPopValue(sharedinternal.ActiveSpanKey)
 }
 
 // SetOperationName sets or changes the operation name.
@@ -492,23 +542,40 @@ func (s *span) finish(finishTime int64) {
 	if s.Duration < 0 {
 		s.Duration = 0
 	}
-	s.finished = true
+	if s.taskEnd != nil {
+		s.taskEnd()
+	}
 
 	keep := true
 	if t, ok := internal.GetGlobalTracer().(*tracer); ok {
+		if !t.config.enabled.current {
+			return
+		}
 		// we have an active tracer
-		if t.config.canComputeStats() && shouldComputeStats(s) {
-			// the agent supports computed stats
-			select {
-			case t.stats.In <- newAggregableSpan(s, t.obfuscator):
-				// ok
-			default:
-				log.Error("Stats channel full, disregarding span.")
+		if t.config.canComputeStats() {
+			statSpan, shouldCalc := t.stats.newTracerStatSpan(s, t.obfuscator)
+			if shouldCalc {
+				// the agent supports computed stats
+				select {
+				case t.stats.In <- statSpan:
+					// ok
+				default:
+					log.Error("Stats channel full, disregarding span.")
+				}
 			}
 		}
 		if t.config.canDropP0s() {
 			// the agent supports dropping p0's in the client
 			keep = shouldKeep(s)
+		}
+		if t.config.debugAbandonedSpans {
+			// the tracer supports debugging abandoned spans
+			select {
+			case t.abandonedSpansDebugger.In <- newAbandonedSpanCandidate(s, true):
+				// ok
+			default:
+				log.Error("Abandoned spans channel full, disregarding span.")
+			}
 		}
 	}
 	if keep {
@@ -521,31 +588,11 @@ func (s *span) finish(finishTime int64) {
 			s, s.Name, s.Resource, s.Meta, s.Metrics)
 	}
 	s.context.finish()
-}
 
-// newAggregableSpan creates a new summary for the span s, within an application
-// version version.
-func newAggregableSpan(s *span, obfuscator *obfuscate.Obfuscator) *aggregableSpan {
-	var statusCode uint32
-	if sc, ok := s.Meta["http.status_code"]; ok && sc != "" {
-		if c, err := strconv.Atoi(sc); err == nil && c > 0 && c <= math.MaxInt32 {
-			statusCode = uint32(c)
-		}
-	}
-	key := aggregation{
-		Name:       s.Name,
-		Resource:   obfuscatedResource(obfuscator, s.Type, s.Resource),
-		Service:    s.Service,
-		Type:       s.Type,
-		Synthetics: strings.HasPrefix(s.Meta[keyOrigin], "synthetics"),
-		StatusCode: statusCode,
-	}
-	return &aggregableSpan{
-		key:      key,
-		Start:    s.Start,
-		Duration: s.Duration,
-		TopLevel: s.Metrics[keyTopLevel] == 1,
-		Error:    s.Error,
+	if s.pprofCtxRestore != nil {
+		// Restore the labels of the parent span so any CPU samples after this
+		// point are attributed correctly.
+		pprof.SetGoroutineLabels(s.pprofCtxRestore)
 	}
 }
 
@@ -577,7 +624,7 @@ func obfuscatedResource(o *obfuscate.Obfuscator, typ, resource string) string {
 // shouldKeep reports whether the trace should be kept.
 // a single span being kept implies the whole trace being kept.
 func shouldKeep(s *span) bool {
-	if p, ok := s.context.samplingPriority(); ok && p > 0 {
+	if p, ok := s.context.SamplingPriority(); ok && p > 0 {
 		// positive sampling priorities stay
 		return true
 	}
@@ -662,7 +709,8 @@ func (s *span) Format(f fmt.State, c rune) {
 			traceID = fmt.Sprintf("%d", s.TraceID)
 		}
 		fmt.Fprintf(f, `dd.trace_id=%q `, traceID)
-		fmt.Fprintf(f, `dd.span_id="%d"`, s.SpanID)
+		fmt.Fprintf(f, `dd.span_id="%d" `, s.SpanID)
+		fmt.Fprintf(f, `dd.parent_id="%d"`, s.ParentID)
 	default:
 		fmt.Fprintf(f, "%%!%c(ddtrace.Span=%v)", c, s)
 	}
@@ -674,6 +722,7 @@ const (
 	keyDecisionMaker        = "_dd.p.dm"
 	keyServiceHash          = "_dd.dm.service_hash"
 	keyOrigin               = "_dd.origin"
+	keyReparentID           = "_dd.parent_id"
 	// keyHostname can be used to override the agent's hostname detection when using `WithHostname`. Not to be confused with keyTracerHostname
 	// which is set via auto-detection.
 	keyHostname                = "_dd.hostname"
@@ -704,6 +753,8 @@ const (
 	keyPeerServiceSource = "_dd.peer.service.source"
 	// keyPeerServiceRemappedFrom indicates the previous value for peer.service, in case remapping happened.
 	keyPeerServiceRemappedFrom = "_dd.peer.service.remapped_from"
+	// keyBaseService contains the globally configured tracer service name. It is only set for spans that override it.
+	keyBaseService = "_dd.base_service"
 )
 
 // The following set of tags is used for user monitoring and set through calls to span.SetUser().

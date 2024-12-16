@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	globalinternal "gopkg.in/DataDog/dd-trace-go.v1/internal"
 	"gopkg.in/DataDog/dd-trace-go.v1/internal/log"
 )
 
@@ -48,10 +49,10 @@ type agentTraceWriter struct {
 	prioritySampling *prioritySampler
 
 	// statsd is used to send metrics
-	statsd statsdClient
+	statsd globalinternal.StatsdClient
 }
 
-func newAgentTraceWriter(c *config, s *prioritySampler, statsdClient statsdClient) *agentTraceWriter {
+func newAgentTraceWriter(c *config, s *prioritySampler, statsdClient globalinternal.StatsdClient) *agentTraceWriter {
 	return &agentTraceWriter{
 		config:           c,
 		payload:          newPayload(),
@@ -96,8 +97,8 @@ func (h *agentTraceWriter) flush() {
 			p.clear()
 
 			<-h.climit
-			h.wg.Done()
 			h.statsd.Timing("datadog.tracer.flush_duration", time.Since(start), nil, 1)
+			h.wg.Done()
 		}(time.Now())
 
 		var count, size int
@@ -105,7 +106,8 @@ func (h *agentTraceWriter) flush() {
 		for attempt := 0; attempt <= h.config.sendRetries; attempt++ {
 			size, count = p.size(), p.itemCount()
 			log.Debug("Sending payload: size: %d traces: %d\n", size, count)
-			rc, err := h.config.transport.send(p)
+			var rc io.ReadCloser
+			rc, err = h.config.transport.send(p)
 			if err == nil {
 				log.Debug("sent traces after %d attempts", attempt+1)
 				h.statsd.Count("datadog.tracer.flush_bytes", int64(size), nil, 1)
@@ -135,10 +137,10 @@ type logTraceWriter struct {
 	buf       bytes.Buffer
 	hasTraces bool
 	w         io.Writer
-	statsd    statsdClient
+	statsd    globalinternal.StatsdClient
 }
 
-func newLogTraceWriter(c *config, statsdClient statsdClient) *logTraceWriter {
+func newLogTraceWriter(c *config, statsdClient globalinternal.StatsdClient) *logTraceWriter {
 	w := &logTraceWriter{
 		config: c,
 		w:      logWriter,
@@ -216,6 +218,22 @@ func (h *logTraceWriter) encodeSpan(s *span) {
 		h.marshalString(k)
 		h.buf.WriteString(":")
 		h.marshalString(v)
+	}
+	// We cannot pack messagepack into JSON, so we need to marshal the meta struct as JSON, and send them through the `meta` field
+	for k, v := range s.MetaStruct {
+		if first {
+			first = false
+		} else {
+			h.buf.WriteString(`,`)
+		}
+		h.marshalString(k)
+		h.buf.WriteString(":")
+		jsonValue, err := json.Marshal(v)
+		if err != nil {
+			log.Error("Error marshaling value %q: %v", v, err)
+			continue
+		}
+		h.marshalString(string(jsonValue))
 	}
 	h.buf.WriteString(`},"metrics":{`)
 	first = true

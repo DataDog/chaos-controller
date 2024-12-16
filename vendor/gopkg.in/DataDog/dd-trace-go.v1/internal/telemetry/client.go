@@ -13,7 +13,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"os"
 	"runtime"
 	"runtime/debug"
 	"strings"
@@ -21,8 +20,8 @@ import (
 	"time"
 
 	"gopkg.in/DataDog/dd-trace-go.v1/internal"
-	"gopkg.in/DataDog/dd-trace-go.v1/internal/appsec"
 	"gopkg.in/DataDog/dd-trace-go.v1/internal/globalconfig"
+	"gopkg.in/DataDog/dd-trace-go.v1/internal/hostname"
 	logger "gopkg.in/DataDog/dd-trace-go.v1/internal/log"
 	"gopkg.in/DataDog/dd-trace-go.v1/internal/osinfo"
 	"gopkg.in/DataDog/dd-trace-go.v1/internal/version"
@@ -31,7 +30,9 @@ import (
 // Client buffers and sends telemetry messages to Datadog (possibly through an
 // agent).
 type Client interface {
-	ProductStart(namespace Namespace, configuration []Configuration)
+	RegisterAppConfig(name string, val interface{}, origin Origin)
+	ProductChange(namespace Namespace, enabled bool, configuration []Configuration)
+	ConfigChange(configuration []Configuration)
 	Record(namespace Namespace, metric MetricKind, name string, value float64, tags []string, common bool)
 	Count(namespace Namespace, name string, value float64, tags []string, common bool)
 	ApplyOps(opts ...Option)
@@ -44,7 +45,7 @@ var (
 	GlobalClient Client
 	globalClient sync.Mutex
 
-	// integrations tracks the the integrations enabled
+	// integrations tracks the integrations enabled
 	contribPackages []Integration
 	contrib         sync.Mutex
 
@@ -67,7 +68,6 @@ var (
 		},
 		Timeout: 5 * time.Second,
 	}
-	hostname string
 
 	// protects agentlessURL, which may be changed for testing purposes
 	agentlessEndpointLock sync.RWMutex
@@ -75,17 +75,13 @@ var (
 	// also the default URL in case connecting to the agent URL fails.
 	agentlessURL = "https://instrumentation-telemetry-intake.datadoghq.com/api/v2/apmtelemetry"
 
-	defaultHeartbeatInterval = 60 // seconds
+	defaultHeartbeatInterval = 60.0 // seconds
 
 	// LogPrefix specifies the prefix for all telemetry logging
 	LogPrefix = "Instrumentation telemetry: "
 )
 
 func init() {
-	h, err := os.Hostname()
-	if err == nil {
-		hostname = h
-	}
 	GlobalClient = new(client)
 }
 
@@ -144,11 +140,28 @@ type client struct {
 	// metrics are sent
 	metrics    map[Namespace]map[string]*metric
 	newMetrics bool
+
+	// syncFlushOnStop forces a sync flush to ensure all metrics are sent before stopping the client
+	syncFlushOnStop bool
+
+	// Globally registered application configuration sent in the app-started request, along with the locally-defined
+	// configuration of the  event.
+	globalAppConfig []Configuration
 }
 
 func log(msg string, args ...interface{}) {
 	// Debug level so users aren't spammed with telemetry info.
 	logger.Debug(fmt.Sprintf(LogPrefix+msg, args...))
+}
+
+// RegisterAppConfig allows to register a globally-defined application configuration.
+// This configuration will be sent when the telemetry client is started and over related configuration updates.
+func (c *client) RegisterAppConfig(name string, value interface{}, origin Origin) {
+	c.globalAppConfig = append(c.globalAppConfig, Configuration{
+		Name:   name,
+		Value:  value,
+		Origin: origin,
+	})
 }
 
 // start registers that the app has begun running with the app-started event.
@@ -158,7 +171,7 @@ func log(msg string, args ...interface{}) {
 // DD_TELEMETRY_HEARTBEAT_INTERVAL, DD_INSTRUMENTATION_TELEMETRY_DEBUG,
 // and DD_TELEMETRY_DEPENDENCY_COLLECTION_ENABLED.
 // TODO: implement passing in error information about tracer start
-func (c *client) start(configuration []Configuration, namespace Namespace) {
+func (c *client) start(configuration []Configuration, namespace Namespace, flush bool) {
 	if Disabled() {
 		return
 	}
@@ -180,35 +193,55 @@ func (c *client) start(configuration []Configuration, namespace Namespace) {
 	productInfo := Products{
 		AppSec: ProductDetails{
 			Version: version.Tag,
-			Enabled: appsec.Enabled(),
+			// if appsec is the one starting the telemetry client,
+			// then AppSec is enabled
+			Enabled: namespace == NamespaceAppSec,
+		},
+		Profiler: ProductDetails{
+			Version: version.Tag,
+			// if the profiler is the one starting the telemetry client,
+			// then profiling is enabled.
+			Enabled: namespace == NamespaceProfilers,
 		},
 	}
-	productInfo.Profiler = ProductDetails{
-		Version: version.Tag,
-		// if the profiler is the one starting the telemetry client,
-		// then profiling is enabled
-		Enabled: namespace == NamespaceProfilers,
+
+	var cfg []Configuration
+	cfg = append(cfg, c.globalAppConfig...)
+	cfg = append(cfg, configuration...)
+
+	// State whether the app has its Go dependencies available or not
+	deps, ok := debug.ReadBuildInfo()
+	if !ok {
+		deps = nil // because not guaranteed to be nil by the public doc when !ok
 	}
+	cfg = append(cfg, BoolConfig("dependencies_available", ok))
+	collectDependenciesEnabled := collectDependencies()
+	cfg = append(cfg, BoolConfig("DD_TELEMETRY_DEPENDENCY_COLLECTION_ENABLED", collectDependenciesEnabled)) // TODO: report all the possible telemetry config option automatically
+	if !collectDependenciesEnabled {
+		deps = nil // to simplify the condition below to `deps != nil`
+	}
+
 	payload := &AppStarted{
-		Configuration: configuration,
+		Configuration: cfg,
 		Products:      productInfo,
 	}
 	appStarted := c.newRequest(RequestTypeAppStarted)
 	appStarted.Body.Payload = payload
 	c.scheduleSubmit(appStarted)
 
-	if collectDependencies() {
+	if deps != nil {
 		var depPayload Dependencies
-		if deps, ok := debug.ReadBuildInfo(); ok {
-			for _, dep := range deps.Deps {
-				depPayload.Dependencies = append(depPayload.Dependencies,
-					Dependency{
-						Name:    dep.Path,
-						Version: strings.TrimPrefix(dep.Version, "v"),
-					},
-				)
-			}
+		for _, dep := range deps.Deps {
+			depPayload.Dependencies = append(depPayload.Dependencies,
+				Dependency{
+					Name:    dep.Path,
+					Version: strings.TrimPrefix(dep.Version, "v"),
+				},
+			)
 		}
+		// Send the telemetry request if and only if the dependencies are actually present in the binary.
+		// For instance, bazel doesn't include them out of the box (cf. https://github.com/bazelbuild/rules_go/issues/3090),
+		// which would result in an empty list of dependencies.
 		dep := c.newRequest(RequestTypeDependenciesLoaded)
 		dep.Body.Payload = depPayload
 		c.scheduleSubmit(dep)
@@ -220,15 +253,20 @@ func (c *client) start(configuration []Configuration, namespace Namespace) {
 		c.scheduleSubmit(req)
 	}
 
-	c.flush()
+	if flush {
+		c.flush(false)
+	}
+	c.heartbeatInterval = heartbeatInterval()
+	c.heartbeatT = time.AfterFunc(c.heartbeatInterval, c.backgroundHeartbeat)
+}
 
-	heartbeat := internal.IntEnv("DD_TELEMETRY_HEARTBEAT_INTERVAL", defaultHeartbeatInterval)
-	if heartbeat < 1 || heartbeat > 3600 {
-		log("DD_TELEMETRY_HEARTBEAT_INTERVAL=%d not in [1,3600] range, setting to default of %d", heartbeat, defaultHeartbeatInterval)
+func heartbeatInterval() time.Duration {
+	heartbeat := internal.FloatEnv("DD_TELEMETRY_HEARTBEAT_INTERVAL", defaultHeartbeatInterval)
+	if heartbeat <= 0 || heartbeat > 3600 {
+		log("DD_TELEMETRY_HEARTBEAT_INTERVAL=%d not in [1,3600] range, setting to default of %f", heartbeat, defaultHeartbeatInterval)
 		heartbeat = defaultHeartbeatInterval
 	}
-	c.heartbeatInterval = time.Duration(heartbeat) * time.Second
-	c.heartbeatT = time.AfterFunc(c.heartbeatInterval, c.backgroundHeartbeat)
+	return time.Duration(heartbeat * float64(time.Second))
 }
 
 // Stop notifies the telemetry endpoint that the app is closing. All outstanding
@@ -245,7 +283,7 @@ func (c *client) Stop() {
 	// close request types have no body
 	r := c.newRequest(RequestTypeAppClosing)
 	c.scheduleSubmit(r)
-	c.flush()
+	c.flush(c.syncFlushOnStop)
 }
 
 // Disabled returns whether instrumentation telemetry is disabled
@@ -347,7 +385,7 @@ func (c *client) Count(namespace Namespace, name string, value float64, tags []s
 // flush sends any outstanding telemetry messages and aggregated metrics to be
 // sent to the backend. Requests are sent in the background. Must be called
 // with c.mu locked
-func (c *client) flush() {
+func (c *client) flush(sync bool) {
 	// initialize submissions slice of capacity len(c.requests) + 2
 	// to hold all the new events, plus two potential metric events
 	submissions := make([]*Request, 0, len(c.requests)+2)
@@ -401,40 +439,27 @@ func (c *client) flush() {
 		}
 	}
 
-	go func() {
+	submit := func() {
 		for _, r := range submissions {
 			err := r.submit()
 			if err != nil {
 				log("submission error: %s", err.Error())
 			}
 		}
-	}()
-}
+	}
 
-var (
-	osName        string
-	osNameOnce    sync.Once
-	osVersion     string
-	osVersionOnce sync.Once
-)
-
-// XXX: is it actually safe to cache osName and osVersion? For example, can the
-// kernel be updated without stopping execution?
-
-func getOSName() string {
-	osNameOnce.Do(func() { osName = osinfo.OSName() })
-	return osName
-}
-
-func getOSVersion() string {
-	osVersionOnce.Do(func() { osVersion = osinfo.OSVersion() })
-	return osVersion
+	if sync {
+		submit()
+	} else {
+		go submit()
+	}
 }
 
 // newRequests populates a request with the common fields shared by all requests
 // sent through this Client
 func (c *client) newRequest(t RequestType) *Request {
 	c.seqID++
+	hostname := hostname.Get()
 	body := &Body{
 		APIVersion:  "v2",
 		RequestType: t,
@@ -451,11 +476,13 @@ func (c *client) newRequest(t RequestType) *Request {
 			LanguageVersion: runtime.Version(),
 		},
 		Host: Host{
-			Hostname:     hostname,
-			OS:           getOSName(),
-			OSVersion:    getOSVersion(),
-			Architecture: runtime.GOARCH,
-			// TODO (lievan): getting kernel name, release, version TBD
+			Hostname:      hostname,
+			OS:            osinfo.OSName(),
+			OSVersion:     osinfo.OSVersion(),
+			Architecture:  osinfo.Architecture(),
+			KernelName:    osinfo.KernelName(),
+			KernelRelease: osinfo.KernelRelease(),
+			KernelVersion: osinfo.KernelVersion(),
 		},
 	}
 
@@ -467,7 +494,12 @@ func (c *client) newRequest(t RequestType) *Request {
 		"DD-Client-Library-Version":  {version.Tag},
 		"DD-Agent-Env":               {c.Env},
 		"DD-Agent-Hostname":          {hostname},
-		"Datadog-Container-ID":       {internal.ContainerID()},
+	}
+	if cid := internal.ContainerID(); cid != "" {
+		header.Set("Datadog-Container-ID", cid)
+	}
+	if eid := internal.EntityID(); eid != "" {
+		header.Set("Datadog-Entity-ID", eid)
 	}
 	if c.URL == getAgentlessURL() {
 		header.Set("DD-API-KEY", c.APIKey)
@@ -575,6 +607,6 @@ func (c *client) backgroundHeartbeat() {
 		return
 	}
 	c.scheduleSubmit(c.newRequest(RequestTypeAppHeartbeat))
-	c.flush()
+	c.flush(false)
 	c.heartbeatT.Reset(c.heartbeatInterval)
 }
