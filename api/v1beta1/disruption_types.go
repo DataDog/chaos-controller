@@ -586,6 +586,10 @@ func (s DisruptionSpec) ValidateSelectorsOptional(requireSelectors bool) (retErr
 		}
 	}
 
+	if err := ValidateStructTags(s); err != nil {
+		retErr = multierror.Append(retErr, err)
+	}
+
 	return multierror.Prefix(retErr, "Spec:")
 }
 

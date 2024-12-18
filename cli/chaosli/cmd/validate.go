@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+
 	"github.com/spf13/cobra"
 )
 
