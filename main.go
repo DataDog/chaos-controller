@@ -8,6 +8,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"time"
 
@@ -16,6 +17,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+
+	corev1 "k8s.io/api/core/v1"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/cloudservice"
@@ -36,7 +39,6 @@ import (
 	"github.com/DataDog/chaos-controller/utils"
 	"github.com/DataDog/chaos-controller/watchers"
 	chaoswebhook "github.com/DataDog/chaos-controller/webhook"
-	corev1 "k8s.io/api/core/v1"
 
 	"github.com/go-logr/zapr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -105,7 +107,8 @@ func main() {
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme: scheme,
+		Scheme:                 scheme,
+		HealthProbeBindAddress: cfg.Controller.HealthProbeBindAddr,
 		Metrics: metricsserver.Options{
 			BindAddress: cfg.Controller.MetricsBindAddr,
 		},
@@ -468,6 +471,18 @@ func main() {
 	// +kubebuilder:scaffold:builder
 
 	logger.Infow("starting chaos-controller")
+
+	if err := mgr.AddHealthzCheck("healthz", func(req *http.Request) error {
+		return mgr.GetWebhookServer().StartedChecker()(req)
+	}); err != nil {
+		logger.Fatalw("Unable to set up health check", "error", err)
+	}
+
+	if err := mgr.AddReadyzCheck("readyz", func(req *http.Request) error {
+		return mgr.GetWebhookServer().StartedChecker()(req)
+	}); err != nil {
+		logger.Fatalw("Unable to set up ready check", "error", err)
+	}
 
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		stopCh <- struct{}{} // stop the informer

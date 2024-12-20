@@ -11,8 +11,6 @@ import (
 	"os"
 	"time"
 
-	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
-	"github.com/DataDog/chaos-controller/eventnotifier"
 	"github.com/cenkalti/backoff"
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/pflag"
@@ -22,6 +20,9 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
+
+	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
+	"github.com/DataDog/chaos-controller/eventnotifier"
 )
 
 type config struct {
@@ -31,6 +32,7 @@ type config struct {
 }
 
 type controllerConfig struct {
+	HealthProbeBindAddr              string                          `json:"healthProbeBindAddr" yaml:"healthProbeBindAddr"`
 	MetricsBindAddr                  string                          `json:"metricsBindAddr" yaml:"metricsBindAddr"`
 	MetricsSink                      string                          `json:"metricsSink" yaml:"metricsSink"`
 	ExpiredDisruptionGCDelay         time.Duration                   `json:"expiredDisruptionGCDelay" yaml:"expiredDisruptionGCDelay"`
@@ -134,6 +136,8 @@ func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osAr
 	mainFS.StringVar(&configMapOverrides, "config-overrides", "", "Name of ConfigMap to provide config overrides")
 
 	mainFS.StringVar(&cfg.Controller.MetricsBindAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
+
+	mainFS.StringVar(&cfg.Controller.HealthProbeBindAddr, "health-probe-bind-address", "0.0.0.0:8081", "The address the health probe endpoint binds to.")
 
 	if err := viper.BindPFlag("controller.metricsBindAddr", mainFS.Lookup("metrics-bind-address")); err != nil {
 		return cfg, err

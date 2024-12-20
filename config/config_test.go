@@ -8,10 +8,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/DataDog/chaos-controller/config"
-	"github.com/DataDog/chaos-controller/eventnotifier/http"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
+
+	"github.com/DataDog/chaos-controller/config"
+	"github.com/DataDog/chaos-controller/eventnotifier/http"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -56,6 +57,7 @@ var _ = Describe("Config", func() {
 				Expect(v.Controller.FinalizerDeletionDelay).To(Equal(20 * time.Second))
 				Expect(v.Controller.EnableSafeguards).To(BeTrue())
 				Expect(v.Controller.EnableObserver).To(BeTrue())
+				Expect(v.Controller.HealthProbeBindAddr).To(Equal("0.0.0.0:8081"))
 				Expect(v.Controller.MetricsBindAddr).To(Equal(":8080"))
 				Expect(v.Controller.LeaderElection).To(BeFalse())
 				Expect(v.Controller.MetricsSink).To(Equal("noop"))
@@ -125,6 +127,7 @@ var _ = Describe("Config", func() {
 				Expect(v.Controller.EnableSafeguards).To(BeFalse())
 				Expect(v.Controller.EnableObserver).To(BeFalse())
 				Expect(v.Controller.MetricsBindAddr).To(Equal("127.0.0.1:8080"))
+				Expect(v.Controller.HealthProbeBindAddr).To(Equal("0.0.0.0:8082"))
 				Expect(v.Controller.LeaderElection).To(BeTrue())
 				Expect(v.Controller.MetricsSink).To(Equal("datadog"))
 				Expect(v.Controller.ProfilerSink).To(Equal("notdatadog"))
