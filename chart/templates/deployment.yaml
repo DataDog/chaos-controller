@@ -110,6 +110,18 @@ spec:
               cpu: {{ .Values.controller.resources.cpu }}
               memory: {{ .Values.controller.resources.memory }}
               ephemeral-storage: {{ .Values.controller.resources.ephemeralStorage }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: {{  .Values.controller.healthProbeBindPort }}
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: {{  .Values.controller.healthProbeBindPort }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
           volumeMounts:
             - mountPath: /tmp/k8s-webhook-server/serving-certs
               name: cert
