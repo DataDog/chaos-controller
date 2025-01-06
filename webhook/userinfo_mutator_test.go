@@ -1,24 +1,25 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2024 Datadog, Inc.
+// Copyright 2025 Datadog, Inc.
 
 package webhook_test
 
 import (
 	"context"
 
+	"net/http"
+
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/mocks"
 	"github.com/DataDog/chaos-controller/webhook"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
-	"k8s.io/api/admission/v1"
+	v1 "k8s.io/api/admission/v1"
 	authv1 "k8s.io/api/authentication/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/json"
-	"net/http"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 

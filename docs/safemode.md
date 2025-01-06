@@ -15,6 +15,7 @@ intended for a given cluster cannot be accidentally run anywhere else, especiall
 `controller.safeMode.specifiedEnvironment` field in the config map to a string of their choice. Disruptions will then be rejected if they do not have a `chaos.datadoghq.com/environment` annotation set to an identical string.
 
 For example, if your controller's specifiedEnvironment field was set to `production`, Disruptions would need their environment annotation to match:
+
 ```yaml
 metadata:
   annotations:
@@ -39,7 +40,6 @@ If the percentage of targets exceeds any of those thresholds, the safety net is 
 For an example of how to use these configuration, please take a look at the example towards the end of the doc. The following list are configurations currently available for the safety nets:
 
 ```yaml
-
 ---
 unsafeMode:
   config:
@@ -85,7 +85,7 @@ spec:
 # Unless explicitly stated otherwise all files in this repository are licensed
 # under the Apache License Version 2.0.
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
-# Copyright 2024 Datadog, Inc.
+# Copyright 2025 Datadog, Inc.
 
 apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
