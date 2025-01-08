@@ -87,8 +87,10 @@ spec:
         flow: ingress # optional, flow direction (egress: outgoing traffic, ingress: incoming traffic, defaults to egress)
         connState: new # optional, connection state (new: new connections, est: established connections, defaults to all states)
     http: # http filters
-      method: get # http method to filter on
-      path: / # requested path to filter on
+      methods:
+        - GET # http method to filter on
+      paths:
+        - / # requested path to filter on
     drop: 10 # "mandatory", at least one of `bandwidthLimit`, `delay`, `drop`, `corrupt`, or `duplicate` must be specified; probability to drop packets (between 0 and 100)
     corrupt: 5 # probability to corrupt packets (between 0 and 100)
     delay: 1000 # latency to apply to packets in ms
