@@ -1,7 +1,7 @@
 # Unless explicitly stated otherwise all files in this repository are licensed
 # under the Apache License Version 2.0.
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
-# Copyright 2024 Datadog, Inc.
+# Copyright 2025 Datadog, Inc.
 
 version: 2.1
 
@@ -168,7 +168,7 @@ jobs:
     steps:
       - go_restore_cache
       - when:
-          condition: <<parameters.with-python>>  # if the job needs python, we install it
+          condition: <<parameters.with-python>> # if the job needs python, we install it
           steps:
             - ubuntu_install_python
       - run:

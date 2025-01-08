@@ -1,7 +1,7 @@
 # Unless explicitly stated otherwise all files in this repository are licensed
 # under the Apache License Version 2.0.
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
-# Copyright 2024 Datadog, Inc.
+# Copyright 2025 Datadog, Inc.
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -76,7 +76,7 @@ spec:
         app.kubernetes.io/component: client
       labels:
         app: demo-curl
-#        chaos.datadoghq.com/disrupt-on-init: "true" # uncomment this and run `kubectl -n chaos-demo apply -f examples/demo.yaml`, for testing the examples/on_init.yaml disruption
+    #        chaos.datadoghq.com/disrupt-on-init: "true" # uncomment this and run `kubectl -n chaos-demo apply -f examples/demo.yaml`, for testing the examples/on_init.yaml disruption
     spec:
       containers:
         - name: cpu-stress # jump into pod and run `kill -s TERM 7` to confirm re-start apply cpu reinjection
