@@ -302,45 +302,6 @@ var _ = Describe("NetworkDisruptionSpec", func() {
 			})
 		})
 
-		Describe("test deprecated fields cases", func() {
-			port := 8080
-			DescribeTable("with deprecated field defined",
-				func(invalidDisruptionSpec NetworkDisruptionSpec, expectedErrorMessage string) {
-					// Action
-					err := invalidDisruptionSpec.Validate()
-
-					// Assert
-					Expect(err).Should(HaveOccurred())
-					errorMessage := err.Error()
-					Expect(strings.Count(errorMessage, expectedErrorMessage)).To(Equal(1))
-				},
-				Entry("When the DeprecatedPort is defined",
-					NetworkDisruptionSpec{DeprecatedPort: &port},
-					"the port specification at the network disruption level is deprecated; apply to network disruption hosts instead",
-				),
-				Entry("When the DeprecatedFlow is defined",
-					NetworkDisruptionSpec{DeprecatedFlow: "lorem"},
-					"the flow specification at the network disruption level is deprecated; apply to network disruption hosts instead",
-				),
-				Entry("When the DeprecatedMethod is defined",
-					NetworkDisruptionSpec{
-						HTTP: &NetworkHTTPFilters{
-							DeprecatedMethod: "ALL",
-						},
-					},
-					"the Method specification at the HTTP network disruption level is no longer supported; use Methods HTTP field instead",
-				),
-				Entry("When the DeprecatedPath is defined",
-					NetworkDisruptionSpec{
-						HTTP: &NetworkHTTPFilters{
-							DeprecatedPath: DefaultHTTPPathFilter,
-						},
-					},
-					"the Path specification at the HTTP network disruption level is no longer supported; use Paths HTTP field instead",
-				),
-			)
-		})
-
 		Describe("test Methods field cases", func() {
 			DescribeTable("with valid methods",
 				func(methods HTTPMethods) {
