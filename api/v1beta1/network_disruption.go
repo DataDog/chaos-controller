@@ -83,22 +83,14 @@ type NetworkDisruptionSpec struct {
 	DelayJitter uint `json:"delayJitter,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	BandwidthLimit int `json:"bandwidthLimit,omitempty"`
-	// +kubebuilder:validation:Minimum=0
-	// +kubebuilder:validation:Maximum=65535
-	// +nullable
-	DeprecatedPort *int `json:"port,omitempty"`
-	// +kubebuilder:validation:Enum=egress;ingress
-	DeprecatedFlow string `json:"flow,omitempty"`
 	// +nullable
 	HTTP *NetworkHTTPFilters `json:"http,omitempty"`
 }
 
 // NetworkHTTPFilters contains http filters
 type NetworkHTTPFilters struct {
-	DeprecatedMethod string      `json:"method,omitempty"`
-	DeprecatedPath   HTTPPath    `json:"path,omitempty"`
-	Methods          HTTPMethods `json:"methods,omitempty"`
-	Paths            HTTPPaths   `json:"paths,omitempty"`
+	Methods HTTPMethods `json:"methods,omitempty"`
+	Paths   HTTPPaths   `json:"paths,omitempty"`
 }
 
 type NetworkDisruptionHostSpec struct {
@@ -175,14 +167,6 @@ func (h HTTPMethods) isNotEmpty() bool {
 
 // validate validates args for the given http filters.
 func (s *NetworkHTTPFilters) validate() (retErr error) {
-	if s.DeprecatedPath != "" {
-		retErr = multierror.Append(retErr, fmt.Errorf("the Path specification at the HTTP network disruption level is no longer supported; use Paths HTTP field instead"))
-	}
-
-	if s.DeprecatedMethod != "" {
-		retErr = multierror.Append(retErr, fmt.Errorf("the Method specification at the HTTP network disruption level is no longer supported; use Methods HTTP field instead"))
-	}
-
 	retErr = s.validatePaths(retErr)
 
 	retErr = s.validateMethods(retErr)
@@ -306,15 +290,6 @@ func (s *NetworkDisruptionSpec) Validate() (retErr error) {
 
 	if s.Drop == 0 && s.Delay == 0 && s.BandwidthLimit == 0 && s.Corrupt == 0 && s.Duplicate == 0 {
 		retErr = multierror.Append(retErr, fmt.Errorf("when applying a network disruption, at least one of network.drop, network.delay, network.corrupt, network.duplicate, or network.bandwidthLimit must be set"))
-	}
-
-	// ensure deprecated fields are not used
-	if s.DeprecatedPort != nil {
-		retErr = multierror.Append(retErr, fmt.Errorf("the port specification at the network disruption level is deprecated; apply to network disruption hosts instead"))
-	}
-
-	if s.DeprecatedFlow != "" {
-		retErr = multierror.Append(retErr, fmt.Errorf("the flow specification at the network disruption level is deprecated; apply to network disruption hosts instead"))
 	}
 
 	if s.HTTP != nil {
