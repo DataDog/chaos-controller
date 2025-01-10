@@ -115,6 +115,7 @@ ifeq (true,$(USE_VOLUMES))
 	-docker cp . ebpf-volume:/app
 	-docker rm ebpf-builder
 	docker run --platform linux/$(GOARCH) --volumes-from ebpf-volume --name=ebpf-builder ebpf-builder-$(GOARCH)
+	mkdir -p bin/injector/ebpf/$(GOARCH)
 	docker cp ebpf-builder:/app/bin/injector/ebpf/$(GOARCH) bin/injector/ebpf/$(GOARCH)
 	docker rm ebpf-builder
 else
