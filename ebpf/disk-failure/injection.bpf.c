@@ -71,7 +71,7 @@ int injection_disk_failure(struct pt_regs *ctx)
     char cmp_path_name[62];
     bpf_probe_read(&cmp_path_name, sizeof(cmp_path_name), path);
     char cmp_expected_path[62];
-    bpf_probe_read(cmp_expected_path, sizeof(cmp_expected_path), filter_path);
+    bpf_probe_read(cmp_expected_path, sizeof(cmp_expected_path),  (const void *)filter_path);
     int filter_len = (int) (sizeof(filter_path) / sizeof(filter_path[0])) - 1;
    
     if (filter_len > 62) {
