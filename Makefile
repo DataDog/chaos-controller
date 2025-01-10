@@ -122,6 +122,12 @@ else
 	docker run --rm --platform linux/$(GOARCH) -v $(shell pwd):/app ebpf-builder-$(GOARCH)
 endif
 
+docker-build-ebpf_arm:
+	$(MAKE) docker-build-ebpf GOARCH=arm64
+
+docker-build-ebpf_amd:
+	$(MAKE) docker-build-ebpf GOARCH=amd64
+
 lima-push-injector lima-push-handler lima-push-manager: FAKE_FOR=COMPLETION
 
 _injector:;
