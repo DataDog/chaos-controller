@@ -1,5 +1,6 @@
 ARCH := x86
-BUILD_DIR := ../bin/injector/ebpf
+GOARCH := $(shell go env GOARCH)
+BUILD_DIR := ../bin/injector/ebpf/$(GOARCH)
 TARGET_PREFIX := bpf-
 UNAME_ARCH := $(shell uname -m)
 
