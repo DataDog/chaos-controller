@@ -201,6 +201,24 @@ func newGoValidator() (*validator.Validate, ut.Translator, error) {
 		return nil, nil, err
 	}
 
+	if err := validate.RegisterTranslation("oneofci", translator, func(ut ut.Translator) error {
+		return ut.Add("oneofci", "{0} is set to {1}, but must be one of the following: \"{2}\"", true)
+	}, func(ut ut.Translator, fe validator.FieldError) string {
+		options := fe.Param()
+
+		userOptionsString := strings.Join(strings.Split(options, " "), ", ")
+
+		userChoiceStr, ok := fe.Value().(string)
+		if !ok {
+			return fmt.Sprintf("could not determine value of field %s %v", fe.Field(), fe.Value())
+		}
+
+		t, _ := ut.T("oneofci", fe.Namespace(), userChoiceStr, userOptionsString)
+		return t
+	}); err != nil {
+		return nil, nil, err
+	}
+
 	return validate, translator, nil
 }
 
