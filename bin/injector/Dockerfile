@@ -45,7 +45,7 @@ COPY injector_${TARGETARCH} /usr/local/bin/chaos-injector
 COPY injector_${TARGETARCH} /usr/local/bin/injector
 
 COPY dns_disruption_resolver.py /usr/local/bin/dns_disruption_resolver.py
-COPY ebpf/ /usr/local/bin/
+COPY ebpf/${TARGETARCH}/ /usr/local/bin/
 
 ENTRYPOINT ["/usr/local/bin/chaos-injector"]
 
