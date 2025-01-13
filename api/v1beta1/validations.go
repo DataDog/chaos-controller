@@ -156,9 +156,8 @@ func newGoValidator() (*validator.Validate, ut.Translator, error) {
 				if !k3 {
 					// this will be directly seen by the user if their field fails validation.
 					return fmt.Sprintf("could not determine value of field %s %v", fe.Field(), fe.Value())
-				} else {
-					i = int(unsignedVal)
 				}
+				i = int(unsignedVal)
 			} else {
 				if iPtr == nil {
 					i = 0
@@ -190,9 +189,8 @@ func newGoValidator() (*validator.Validate, ut.Translator, error) {
 				if !k3 {
 					// this will be directly seen by the user if their field fails validation.
 					return fmt.Sprintf("could not determine value of field %s %v", fe.Field(), fe.Value())
-				} else {
-					i = int(unsignedVal)
 				}
+				i = int(unsignedVal)
 			} else {
 				if iPtr == nil {
 					i = 0
