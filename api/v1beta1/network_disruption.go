@@ -58,12 +58,12 @@ type HTTPPath string
 // NetworkDisruptionSpec represents a network disruption injection
 type NetworkDisruptionSpec struct {
 	// +nullable
-	Hosts []NetworkDisruptionHostSpec `json:"hosts,omitempty"`
+	Hosts []NetworkDisruptionHostSpec `json:"hosts,omitempty" validate:"omitempty,dive"`
 	// +nullable
-	AllowedHosts               []NetworkDisruptionHostSpec `json:"allowedHosts,omitempty"`
+	AllowedHosts               []NetworkDisruptionHostSpec `json:"allowedHosts,omitempty" validate:"omitempty,dive"`
 	DisableDefaultAllowedHosts bool                        `json:"disableDefaultAllowedHosts,omitempty"`
 	// +nullable
-	Services []NetworkDisruptionServiceSpec `json:"services,omitempty"`
+	Services []NetworkDisruptionServiceSpec `json:"services,omitempty" validate:"omitempty,dive"`
 	// +nullable
 	Cloud *NetworkDisruptionCloudSpec `json:"cloud,omitempty"`
 	// +kubebuilder:validation:Minimum=0
@@ -110,7 +110,7 @@ type NetworkDisruptionServiceSpec struct {
 	Name      string `json:"name"`
 	Namespace string `json:"namespace"`
 	// +optional
-	Ports []NetworkDisruptionServicePortSpec `json:"ports,omitempty"`
+	Ports []NetworkDisruptionServicePortSpec `json:"ports,omitempty" validate:"omitempty,dive"`
 }
 
 type NetworkDisruptionServicePortSpec struct {
@@ -121,9 +121,9 @@ type NetworkDisruptionServicePortSpec struct {
 }
 
 type NetworkDisruptionCloudSpec struct {
-	AWSServiceList     *[]NetworkDisruptionCloudServiceSpec `json:"aws,omitempty"`
-	GCPServiceList     *[]NetworkDisruptionCloudServiceSpec `json:"gcp,omitempty"`
-	DatadogServiceList *[]NetworkDisruptionCloudServiceSpec `json:"datadog,omitempty"`
+	AWSServiceList     *[]NetworkDisruptionCloudServiceSpec `json:"aws,omitempty" validate:"omitempty,dive"`
+	GCPServiceList     *[]NetworkDisruptionCloudServiceSpec `json:"gcp,omitempty" validate:"omitempty,dive"`
+	DatadogServiceList *[]NetworkDisruptionCloudServiceSpec `json:"datadog,omitempty" validate:"omitempty,dive"`
 }
 
 type NetworkDisruptionCloudServiceSpec struct {
