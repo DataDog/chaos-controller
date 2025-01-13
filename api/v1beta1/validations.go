@@ -162,8 +162,8 @@ func newGoValidator() (*validator.Validate, ut.Translator, error) {
 				}
 			}
 		}
-		var iStr string
-		iStr = strconv.Itoa(i)
+
+		iStr := strconv.Itoa(i)
 		t, _ := ut.T("gte", fe.Namespace(), iStr, fe.Param())
 
 		return t
@@ -192,8 +192,8 @@ func newGoValidator() (*validator.Validate, ut.Translator, error) {
 				}
 			}
 		}
-		var iStr string
-		iStr = strconv.Itoa(i)
+
+		iStr := strconv.Itoa(i)
 		t, _ := ut.T("lte", fe.Namespace(), iStr, fe.Param())
 
 		return t
