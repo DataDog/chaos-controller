@@ -45,20 +45,20 @@ var ErrorMap = map[string]codes.Code{
 type GRPCDisruptionSpec struct {
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=65535
-	Port      int                  `json:"port"`
-	Endpoints []EndpointAlteration `json:"endpoints"`
+	Port      int                  `json:"port" validate:"gte=1,lte=65535"`
+	Endpoints []EndpointAlteration `json:"endpoints" validate:"dive"`
 }
 
 // EndpointAlteration represents an endpoint to disrupt and the corresponding error to return
 type EndpointAlteration struct {
 	TargetEndpoint string `json:"endpoint"`
 	// +kubebuilder:validation:Enum=OK;CANCELED;UNKNOWN;INVALID_ARGUMENT;DEADLINE_EXCEEDED;NOT_FOUND;ALREADY_EXISTS;PERMISSION_DENIED;RESOURCE_EXHAUSTED;FAILED_PRECONDITION;ABORTED;OUT_OF_RANGE;UNIMPLEMENTED;INTERNAL;UNAVAILABLE;DATA_LOSS;UNAUTHENTICATED
-	ErrorToReturn string `json:"error,omitempty"`
+	ErrorToReturn string `json:"error,omitempty" validate:"omitempty,oneofci=OK CANCELED UNKNOWN INVALID_ARGUMENT DEADLINE_EXCEEDED NOT_FOUND ALREADY_EXISTS PERMISSION_DENIED RESOURCE_EXHAUSTED FAILED_PRECONDITION ABORTED OUT_OF_RANGE UNIMPLEMENTED INTERNAL UNAVAILABLE DATA_LOSS UNAUTHENTICATED"`
 	// +kubebuilder:validation:Enum={}
 	OverrideToReturn string `json:"override,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
-	QueryPercent int `json:"queryPercent,omitempty"`
+	QueryPercent int `json:"queryPercent,omitempty" validate:"omitempty,gte=0,lte=100"`
 }
 
 // Validate validates that all alterations have either an error or override to return and at least 1% chance of occurring,

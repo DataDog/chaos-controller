@@ -13,7 +13,7 @@ import (
 type DiskPressureSpec struct {
 	Path string `json:"path"`
 	// +kubebuilder:validation:Required
-	Throttling DiskPressureThrottlingSpec `json:"throttling"`
+	Throttling DiskPressureThrottlingSpec `json:"throttling" validate:"required"`
 }
 
 // DiskPressureThrottlingSpec represents a throttle on read and write disk operations
