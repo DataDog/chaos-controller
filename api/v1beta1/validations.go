@@ -132,6 +132,7 @@ func newGoValidator() (*validator.Validate, ut.Translator, error) {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	if err := validate.RegisterTranslation("required", translator, func(ut ut.Translator) error {
+		// The {idx} values are interpolated using the arguments to the ut.T("required", ...) call in the function below
 		return ut.Add("required", "{0} is a required field, and must be set", true)
 	}, func(ut ut.Translator, fe validator.FieldError) string {
 		t, _ := ut.T("required", fe.Namespace())
@@ -142,14 +143,18 @@ func newGoValidator() (*validator.Validate, ut.Translator, error) {
 	}
 
 	if err := validate.RegisterTranslation("gte", translator, func(ut ut.Translator) error {
+		// The {idx} values are interpolated using the arguments to the ut.T("gte", ...) call in the function below
 		return ut.Add("gte", "{0} is set to {1}, but must be greater or equal to {2}", true)
 	}, func(ut ut.Translator, fe validator.FieldError) string {
+		// values that are constrained by "gte" can include: int, *int, uint
+		// fe.Value() is an interface{}, so we need to check each of these type options, one by one
 		i, ok := fe.Value().(int)
 		if !ok {
 			iPtr, k := fe.Value().(*int)
 			if !k {
 				unsignedVal, k3 := fe.Value().(uint)
 				if !k3 {
+					// this will be directly seen by the user if their field fails validation.
 					return fmt.Sprintf("could not determine value of field %s %v", fe.Field(), fe.Value())
 				} else {
 					i = int(unsignedVal)
@@ -172,14 +177,18 @@ func newGoValidator() (*validator.Validate, ut.Translator, error) {
 	}
 
 	if err := validate.RegisterTranslation("lte", translator, func(ut ut.Translator) error {
+		// The {idx} values are interpolated using the arguments to the ut.T("lte", ...) call in the function below
 		return ut.Add("lte", "{0} is set to {1}, but must be less or equal to {2}", true)
 	}, func(ut ut.Translator, fe validator.FieldError) string {
+		// values that are constrained by "lte" can include: int, *int, uint
+		// fe.Value() is an interface{}, so we need to check each of these type options, one by one
 		i, ok := fe.Value().(int)
 		if !ok {
 			iPtr, k := fe.Value().(*int)
 			if !k {
 				unsignedVal, k3 := fe.Value().(uint)
 				if !k3 {
+					// this will be directly seen by the user if their field fails validation.
 					return fmt.Sprintf("could not determine value of field %s %v", fe.Field(), fe.Value())
 				} else {
 					i = int(unsignedVal)
@@ -202,6 +211,7 @@ func newGoValidator() (*validator.Validate, ut.Translator, error) {
 	}
 
 	if err := validate.RegisterTranslation("oneofci", translator, func(ut ut.Translator) error {
+		// The {idx} values are interpolated using the arguments to the ut.T("oneofci", ...) call in the function below
 		return ut.Add("oneofci", "{0} is set to {1}, but must be one of the following: \"{2}\"", true)
 	}, func(ut ut.Translator, fe validator.FieldError) string {
 		options := fe.Param()
