@@ -134,7 +134,7 @@ func newGoValidator() (*validator.Validate, ut.Translator, error) {
 	if err := validate.RegisterTranslation("required", translator, func(ut ut.Translator) error {
 		return ut.Add("required", "{0} is a required field, and must be set", true)
 	}, func(ut ut.Translator, fe validator.FieldError) string {
-		t, _ := ut.T("required", fe.Field())
+		t, _ := ut.T("required", fe.Namespace())
 
 		return t
 	}); err != nil {
