@@ -101,7 +101,9 @@ triggers:
 	})
 })
 
-var _ = Describe("Validator", func() {
+// TODO write a thousand unit tests for go-validator
+// TODO remove the FDescribe
+var _ = FDescribe("Validator", func() {
 	var (
 		err       error
 		validator *v1beta1.DisruptionSpec
@@ -110,6 +112,89 @@ var _ = Describe("Validator", func() {
 	JustBeforeEach(func() {
 		err = validator.Validate()
 	})
+
+	Describe("validating top-level spec", func() {
+
+	})
+
+	Describe("validating grpc spec", func() {
+
+	})
+
+	Describe("validating network failure spec", func() {
+
+	})
+
+	Describe("validating disk failure spec", func() {
+		var spec *v1beta1.DisruptionSpec
+
+		BeforeEach(func() {
+			spec = &v1beta1.DisruptionSpec{
+				Count:    &intstr.IntOrString{Type: intstr.String, StrVal: "100%"},
+				Selector: map[string]string{"foo": "bar"},
+				DiskFailure: &v1beta1.DiskFailureSpec{
+					Paths: []string{"/"},
+				},
+			}
+			validator = spec
+		})
+
+		Context("with an empty disk failure spec", func() {
+			BeforeEach(func() {
+				spec.DiskFailure = &v1beta1.DiskFailureSpec{}
+			})
+			It("should not validate", func() {
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("DiskFailure.Paths is a required field, and must be set"))
+			})
+		})
+
+		Context("with an invalid exit code", func() {
+			BeforeEach(func() {
+				spec.DiskFailure.OpenatSyscall = &v1beta1.OpenatSyscallSpec{ExitCode: "EBADEXIT"}
+			})
+
+			It("should not validate", func() {
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("DiskFailure.OpenatSyscall.ExitCode is set to EBADEXIT, but must be one of the following: \"EACCES, EDQUOT, EEXIST, EFAULT, EFBIG, EINTR, EISDIR, ELOOP, EMFILE, ENAMETOOLONG, ENFILE, ENODEV, ENOENT, ENOMEM, ENOSPC, ENOTDIR, ENXIO, EOVERFLOW, EPERM, EROFS, ETXTBSY, EWOULDBLOCK\""))
+			})
+		})
+	})
+
+	Describe("validating disk pressure spec", func() {
+		var spec *v1beta1.DisruptionSpec
+
+		BeforeEach(func() {
+			spec = &v1beta1.DisruptionSpec{
+				Count: &intstr.IntOrString{Type: intstr.String, StrVal: "100%"},
+				DiskPressure: &v1beta1.DiskPressureSpec{
+					Path:       "",
+					Throttling: v1beta1.DiskPressureThrottlingSpec{},
+				},
+				Selector: map[string]string{"foo": "bar"},
+			}
+			validator = spec
+		})
+
+		Context("with throttling left empty", func() {
+			It("should not validate", func() {
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).Should(ContainSubstring(".DiskPressure.Throttling is a required field, and must be set"))
+			})
+		})
+
+		Context("with throttling", func() {
+			BeforeEach(func() {
+				readBytesPerSec := 1024
+				spec.DiskPressure.Throttling.ReadBytesPerSec = &readBytesPerSec
+			})
+
+			It("should validate", func() {
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+	})
+
 	Describe("validating container failure spec", func() {
 		var spec *v1beta1.DisruptionSpec
 
