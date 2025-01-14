@@ -160,6 +160,41 @@ var _ = FDescribe("Validator", func() {
 			})
 		})
 
+		Context("when using container failure with another kind", func() {
+			BeforeEach(func() {
+				spec.ContainerFailure = &v1beta1.ContainerFailureSpec{}
+			})
+
+			It("should not validate", func() {
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("container failure disruptions are not compatible with other disruption kinds. The container failure will remove the impact of the other disruption types"))
+			})
+		})
+
+		Context("when using node failure with another kind", func() {
+			BeforeEach(func() {
+				spec.NodeFailure = &v1beta1.NodeFailureSpec{}
+			})
+
+			It("should not validate", func() {
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("node failure disruptions are not compatible with other disruption kinds. The node failure will remove the impact of the other disruption types"))
+			})
+		})
+
+		Context("when specifying pulse's active duration without dormant", func() {
+			BeforeEach(func() {
+				spec.Pulse = &v1beta1.DisruptionPulse{
+					ActiveDuration: "15s",
+				}
+			})
+
+			It("should not validate", func() {
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("if spec.pulse.activeDuration or spec.pulse.dormantDuration are specified, then both options must be set"))
+			})
+		})
+
 		Context("with a valid disruption", func() {
 			It("should validate", func() {
 				Expect(err).NotTo(HaveOccurred())
