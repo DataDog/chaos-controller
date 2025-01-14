@@ -167,7 +167,7 @@ func registerGteTranslation(validate *validator.Validate, translator ut.Translat
 				unsignedVal, k3 := fe.Value().(uint)
 				if !k3 {
 					// this will be directly seen by the user if their field fails validation.
-					return fmt.Sprintf("could not determine value of field %s %v", fe.Field(), fe.Value())
+					return fmt.Sprintf("could not determine value %v for field %s", fe.Value(), fe.Field())
 				}
 				i = int(unsignedVal)
 			} else {
@@ -200,7 +200,7 @@ func registerLteTranslation(validate *validator.Validate, translator ut.Translat
 				unsignedVal, k3 := fe.Value().(uint)
 				if !k3 {
 					// this will be directly seen by the user if their field fails validation.
-					return fmt.Sprintf("could not determine value of field %s %v", fe.Field(), fe.Value())
+					return fmt.Sprintf("could not determine value %v for field %s", fe.Value(), fe.Field())
 				}
 				i = int(unsignedVal)
 			} else {
@@ -241,7 +241,7 @@ func registerOneofciTranslation(validate *validator.Validate, translator ut.Tran
 
 		userChoiceStr, ok := fe.Value().(string)
 		if !ok {
-			return fmt.Sprintf("could not determine value of field %s %v", fe.Field(), fe.Value())
+			return fmt.Sprintf("could not permit value \"%v\" for field %s, try one of \"%s\"", fe.Value(), fe.Field(), userOptionsString)
 		}
 
 		t, _ := ut.T("oneofci", fe.Namespace(), userChoiceStr, userOptionsString)
