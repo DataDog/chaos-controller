@@ -131,18 +131,30 @@ func newGoValidator() (*validator.Validate, ut.Translator, error) {
 
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
-	if err := validate.RegisterTranslation("required", translator, func(ut ut.Translator) error {
-		// The {idx} values are interpolated using the arguments to the ut.T("required", ...) call in the function below
-		return ut.Add("required", "{0} is a required field, and must be set", true)
-	}, func(ut ut.Translator, fe validator.FieldError) string {
-		t, _ := ut.T("required", fe.Namespace())
-
-		return t
-	}); err != nil {
+	// We need to register a translation for every tag we use
+	// in order to control the error message returned to the users when
+	// their specs are invalid
+	if err := registerRequiredTranslation(validate, translator); err != nil {
 		return nil, nil, err
 	}
 
-	if err := validate.RegisterTranslation("gte", translator, func(ut ut.Translator) error {
+	if err := registerGteTranslation(validate, translator); err != nil {
+		return nil, nil, err
+	}
+
+	if err := registerLteTranslation(validate, translator); err != nil {
+		return nil, nil, err
+	}
+
+	if err := registerOneofciTranslation(validate, translator); err != nil {
+		return nil, nil, err
+	}
+
+	return validate, translator, nil
+}
+
+func registerGteTranslation(validate *validator.Validate, translator ut.Translator) error {
+	return validate.RegisterTranslation("gte", translator, func(ut ut.Translator) error {
 		// The {idx} values are interpolated using the arguments to the ut.T("gte", ...) call in the function below
 		return ut.Add("gte", "{0} is set to {1}, but must be greater or equal to {2}", true)
 	}, func(ut ut.Translator, fe validator.FieldError) string {
@@ -171,11 +183,11 @@ func newGoValidator() (*validator.Validate, ut.Translator, error) {
 		t, _ := ut.T("gte", fe.Namespace(), iStr, fe.Param())
 
 		return t
-	}); err != nil {
-		return nil, nil, err
-	}
+	})
+}
 
-	if err := validate.RegisterTranslation("lte", translator, func(ut ut.Translator) error {
+func registerLteTranslation(validate *validator.Validate, translator ut.Translator) error {
+	return validate.RegisterTranslation("lte", translator, func(ut ut.Translator) error {
 		// The {idx} values are interpolated using the arguments to the ut.T("lte", ...) call in the function below
 		return ut.Add("lte", "{0} is set to {1}, but must be less or equal to {2}", true)
 	}, func(ut ut.Translator, fe validator.FieldError) string {
@@ -204,11 +216,22 @@ func newGoValidator() (*validator.Validate, ut.Translator, error) {
 		t, _ := ut.T("lte", fe.Namespace(), iStr, fe.Param())
 
 		return t
-	}); err != nil {
-		return nil, nil, err
-	}
+	})
+}
 
-	if err := validate.RegisterTranslation("oneofci", translator, func(ut ut.Translator) error {
+func registerRequiredTranslation(validate *validator.Validate, translator ut.Translator) error {
+	return validate.RegisterTranslation("required", translator, func(ut ut.Translator) error {
+		// The {idx} values are interpolated using the arguments to the ut.T("required", ...) call in the function below
+		return ut.Add("required", "{0} is a required field, and must be set", true)
+	}, func(ut ut.Translator, fe validator.FieldError) string {
+		t, _ := ut.T("required", fe.Namespace())
+
+		return t
+	})
+}
+
+func registerOneofciTranslation(validate *validator.Validate, translator ut.Translator) error {
+	return validate.RegisterTranslation("oneofci", translator, func(ut ut.Translator) error {
 		// The {idx} values are interpolated using the arguments to the ut.T("oneofci", ...) call in the function below
 		return ut.Add("oneofci", "{0} is set to {1}, but must be one of the following: \"{2}\"", true)
 	}, func(ut ut.Translator, fe validator.FieldError) string {
@@ -223,11 +246,7 @@ func newGoValidator() (*validator.Validate, ut.Translator, error) {
 
 		t, _ := ut.T("oneofci", fe.Namespace(), userChoiceStr, userOptionsString)
 		return t
-	}); err != nil {
-		return nil, nil, err
-	}
-
-	return validate, translator, nil
+	})
 }
 
 func ValidateStructTags(s DisruptionSpec) error {
