@@ -114,7 +114,57 @@ var _ = FDescribe("Validator", func() {
 	})
 
 	Describe("validating top-level spec", func() {
+		var spec *v1beta1.DisruptionSpec
 
+		BeforeEach(func() {
+			spec = &v1beta1.DisruptionSpec{
+				Count:    &intstr.IntOrString{Type: intstr.String, StrVal: "100%"},
+				Selector: map[string]string{"foo": "bar"},
+				Network: &v1beta1.NetworkDisruptionSpec{
+					Drop: 100,
+				},
+			}
+			validator = spec
+		})
+
+		Context("with no count", func() {
+			BeforeEach(func() {
+				spec.Count = nil
+			})
+
+			It("should not validate", func() {
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("Count is a required field, and must be set"))
+			})
+		})
+
+		Context("with an invalid level", func() {
+			BeforeEach(func() {
+				spec.Level = "host"
+			})
+
+			It("should not validate", func() {
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring(" could not permit value \"host\" for field Level, try one of \"pod, node\""))
+			})
+		})
+
+		Context("with an invalid disruption containing no kinds", func() {
+			BeforeEach(func() {
+				spec.Network = nil
+			})
+
+			It("should not validate", func() {
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring(" at least one disruption kind must be specified"))
+			})
+		})
+
+		Context("with a valid disruption", func() {
+			It("should validate", func() {
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
 	})
 
 	Describe("validating grpc spec", func() {
