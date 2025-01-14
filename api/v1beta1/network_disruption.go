@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2024 Datadog, Inc.
+// Copyright 2025 Datadog, Inc.
 
 package v1beta1
 
@@ -95,25 +95,14 @@ type NetworkDisruptionSpec struct {
 	// +kubebuilder:validation:Minimum=0
 	// +ddmark:validation:Minimum=0
 	BandwidthLimit int `json:"bandwidthLimit,omitempty"`
-	// +kubebuilder:validation:Minimum=0
-	// +kubebuilder:validation:Maximum=65535
-	// +ddmark:validation:Minimum=0
-	// +ddmark:validation:Maximum=65535
-	// +nullable
-	DeprecatedPort *int `json:"port,omitempty"`
-	// +kubebuilder:validation:Enum=egress;ingress
-	// +ddmark:validation:Enum=egress;ingress
-	DeprecatedFlow string `json:"flow,omitempty"`
 	// +nullable
 	HTTP *NetworkHTTPFilters `json:"http,omitempty"`
 }
 
 // NetworkHTTPFilters contains http filters
 type NetworkHTTPFilters struct {
-	DeprecatedMethod string      `json:"method,omitempty"`
-	DeprecatedPath   HTTPPath    `json:"path,omitempty"`
-	Methods          HTTPMethods `json:"methods,omitempty"`
-	Paths            HTTPPaths   `json:"paths,omitempty"`
+	Methods HTTPMethods `json:"methods,omitempty"`
+	Paths   HTTPPaths   `json:"paths,omitempty"`
 }
 
 type NetworkDisruptionHostSpec struct {
@@ -202,14 +191,6 @@ func (h HTTPMethods) isNotEmpty() bool {
 
 // validate validates args for the given http filters.
 func (s *NetworkHTTPFilters) validate() (retErr error) {
-	if s.DeprecatedPath != "" {
-		retErr = multierror.Append(retErr, fmt.Errorf("the Path specification at the HTTP network disruption level is no longer supported; use Paths HTTP field instead"))
-	}
-
-	if s.DeprecatedMethod != "" {
-		retErr = multierror.Append(retErr, fmt.Errorf("the Method specification at the HTTP network disruption level is no longer supported; use Methods HTTP field instead"))
-	}
-
 	retErr = s.validatePaths(retErr)
 
 	retErr = s.validateMethods(retErr)
@@ -329,15 +310,6 @@ func (s *NetworkDisruptionSpec) Validate() (retErr error) {
 		if err := host.Validate(); err != nil {
 			retErr = multierror.Append(retErr, err)
 		}
-	}
-
-	// ensure deprecated fields are not used
-	if s.DeprecatedPort != nil {
-		retErr = multierror.Append(retErr, fmt.Errorf("the port specification at the network disruption level is deprecated; apply to network disruption hosts instead"))
-	}
-
-	if s.DeprecatedFlow != "" {
-		retErr = multierror.Append(retErr, fmt.Errorf("the flow specification at the network disruption level is deprecated; apply to network disruption hosts instead"))
 	}
 
 	if s.HTTP != nil {

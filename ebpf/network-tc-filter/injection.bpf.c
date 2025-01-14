@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2024 Datadog, Inc.
+// Copyright 2025 Datadog, Inc.
 
 // +build ignore
 #include "injection.bpf.h"
@@ -53,7 +53,6 @@ static __always_inline bool  validate_path(char* path) {
         bpf_probe_read_kernel_str(&request_path, sizeof(request_path), path);
 
         // Check if the prefix match the method.
-        #pragma unroll
         for (int j = 0; j < MAX_PATH_LEN; ++j) {
             // Break the loop if the prefix is completed
             if (expected_path[j] == '\0')

@@ -415,11 +415,6 @@ spec:
                           maximum: 100
                           minimum: 0
                           type: integer
-                        flow:
-                          enum:
-                            - egress
-                            - ingress
-                          type: string
                         hosts:
                           items:
                             properties:
@@ -454,24 +449,15 @@ spec:
                           description: NetworkHTTPFilters contains http filters
                           nullable: true
                           properties:
-                            method:
-                              type: string
                             methods:
                               items:
                                 type: string
                               type: array
-                            path:
-                              type: string
                             paths:
                               items:
                                 type: string
                               type: array
                           type: object
-                        port:
-                          maximum: 65535
-                          minimum: 0
-                          nullable: true
-                          type: integer
                         services:
                           items:
                             properties:

@@ -957,11 +957,6 @@ func (in *NetworkDisruptionSpec) DeepCopyInto(out *NetworkDisruptionSpec) {
 		*out = new(NetworkDisruptionCloudSpec)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.DeprecatedPort != nil {
-		in, out := &in.DeprecatedPort, &out.DeprecatedPort
-		*out = new(int)
-		**out = **in
-	}
 	if in.HTTP != nil {
 		in, out := &in.HTTP, &out.HTTP
 		*out = new(NetworkHTTPFilters)

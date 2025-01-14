@@ -1,7 +1,7 @@
 # Unless explicitly stated otherwise all files in this repository are licensed
 # under the Apache License Version 2.0.
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
-# Copyright 2024 Datadog, Inc.
+# Copyright 2025 Datadog, Inc.
 
 ---
 variables:
@@ -42,7 +42,7 @@ build:make:
   script:
     - *install-make
     - export PATH="/usr/local/go/bin:${PATH}"
-    - make GOBIN=/usr/local/go/bin install-go all docker-build-ebpf
+    - make GOBIN=/usr/local/go/bin install-go all docker-build-ebpf_arm docker-build-ebpf_amd
   artifacts:
     paths:
       - bin/manager/manager_amd64
