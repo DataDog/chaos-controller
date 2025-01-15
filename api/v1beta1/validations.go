@@ -268,9 +268,8 @@ func ValidateStructTags(s DisruptionSpec) error {
 	err = validate.Struct(s)
 
 	if err != nil {
-		// this check is only needed when your code could produce
-		// an invalid value for validation such as interface with nil
-		// value most including myself do not usually have code like this.
+		// this check is only needed when the rare case in which we produce
+		// an invalid value for validation such as interface with a nil value
 		var invalidValidationError *validator.InvalidValidationError
 		if errors.As(err, &invalidValidationError) {
 			return err
