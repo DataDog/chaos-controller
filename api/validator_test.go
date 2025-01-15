@@ -203,7 +203,100 @@ var _ = FDescribe("Validator", func() {
 	})
 
 	Describe("validating grpc spec", func() {
+		var spec *v1beta1.DisruptionSpec
 
+		BeforeEach(func() {
+			spec = &v1beta1.DisruptionSpec{
+				Count:    &intstr.IntOrString{Type: intstr.String, StrVal: "100%"},
+				Selector: map[string]string{"foo": "bar"},
+				GRPC: &v1beta1.GRPCDisruptionSpec{
+					Port: 8443,
+					Endpoints: []v1beta1.EndpointAlteration{
+						{
+							TargetEndpoint:   "/getTest",
+							ErrorToReturn:    "NOT_FOUND",
+							OverrideToReturn: "",
+							QueryPercent:     0,
+						},
+					},
+				},
+			}
+			validator = spec
+		})
+
+		Context("with a valid spec", func() {
+			It("should validate", func() {
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+
+		Context("with an invalid port", func() {
+			BeforeEach(func() {
+				spec.GRPC.Port = 70000
+			})
+
+			It("should not validate", func() {
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).Should(ContainSubstring("GRPC.Port is set to 70000, but must be less or equal to 65535"))
+			})
+		})
+
+		Context("without endpoints", func() {
+			BeforeEach(func() {
+				spec.GRPC.Endpoints = nil
+			})
+
+			It("should not validate", func() {
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).Should(ContainSubstring("GRPC.Endpoints is a required field, and must be set"))
+			})
+		})
+
+		Context("with an alteration without a target endpoint", func() {
+			BeforeEach(func() {
+				spec.GRPC.Endpoints[0].TargetEndpoint = ""
+			})
+
+			It("should not validate", func() {
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).Should(ContainSubstring("TargetEndpoint is a required field, and must be set"))
+			})
+		})
+
+		Context("with an alteration with an invalid error", func() {
+			BeforeEach(func() {
+				spec.GRPC.Endpoints[0].ErrorToReturn = "TOO_MANY_GRPCS"
+				spec.GRPC.Endpoints[0].OverrideToReturn = ""
+			})
+
+			It("should not validate", func() {
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).Should(ContainSubstring("ErrorToReturn is set to TOO_MANY_GRPCS, but must be one of the following: \"OK, CANCELED, UNKNOWN, INVALID_ARGUMENT, DEADLINE_EXCEEDED, NOT_FOUND, ALREADY_EXISTS, PERMISSION_DENIED, RESOURCE_EXHAUSTED, FAILED_PRECONDITION, ABORTED, OUT_OF_RANGE, UNIMPLEMENTED, INTERNAL, UNAVAILABLE, DATA_LOSS, UNAUTHENTICATED\""))
+			})
+		})
+
+		Context("with an alteration without an override nor error", func() {
+			BeforeEach(func() {
+				spec.GRPC.Endpoints[0].ErrorToReturn = ""
+				spec.GRPC.Endpoints[0].OverrideToReturn = ""
+			})
+
+			It("should not validate", func() {
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).Should(ContainSubstring("gRPC disruption must have exactly one of ErrorToReturn or OverrideToReturn specified"))
+			})
+		})
+
+		Context("with an alteration with an invalid query percentage", func() {
+			BeforeEach(func() {
+				spec.GRPC.Endpoints[0].QueryPercent = 267
+			})
+
+			It("should not validate", func() {
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).Should(ContainSubstring("QueryPercent is set to 267, but must be less or equal to 100"))
+			})
+		})
 	})
 
 	Describe("validating network failure spec", func() {
@@ -228,6 +321,7 @@ var _ = FDescribe("Validator", func() {
 			BeforeEach(func() {
 				spec.DiskFailure = &v1beta1.DiskFailureSpec{}
 			})
+
 			It("should not validate", func() {
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("DiskFailure.Paths is a required field, and must be set"))

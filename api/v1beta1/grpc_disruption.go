@@ -47,7 +47,7 @@ type GRPCDisruptionSpec struct {
 	// +kubebuilder:validation:Maximum=65535
 	Port int `json:"port" validate:"gte=1,lte=65535"`
 	// +kubebuilder:validation:Required
-	Endpoints []EndpointAlteration `json:"endpoints" validate:"dive,required"`
+	Endpoints []EndpointAlteration `json:"endpoints" validate:"required,dive"`
 }
 
 // EndpointAlteration represents an endpoint to disrupt and the corresponding error to return
