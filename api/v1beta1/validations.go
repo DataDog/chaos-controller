@@ -163,29 +163,7 @@ func registerGteTranslation(validate *validator.Validate, translator ut.Translat
 		// The {idx} values are interpolated using the arguments to the ut.T("gte", ...) call in the function below
 		return ut.Add("gte", "{0} is set to {1}, but must be greater or equal to {2}", true)
 	}, func(ut ut.Translator, fe validator.FieldError) string {
-		// values that are constrained by "gte" can include: int, *int, uint
-		// fe.Value() is an interface{}, so we need to check each of these type options, one by one
-		i, ok := fe.Value().(int)
-		if !ok {
-			iPtr, k := fe.Value().(*int)
-			if !k {
-				unsignedVal, k3 := fe.Value().(uint)
-				if !k3 {
-					// this will be directly seen by the user if their field fails validation.
-					return fmt.Sprintf("could not determine value %v for field %s", fe.Value(), fe.Field())
-				}
-
-				i = int(unsignedVal)
-			} else {
-				if iPtr == nil {
-					i = 0
-				} else {
-					i = *iPtr
-				}
-			}
-		}
-
-		iStr := strconv.Itoa(i)
+		iStr := fieldErrorToNumString(fe)
 		t, _ := ut.T("gte", fe.Namespace(), iStr, fe.Param())
 
 		return t
@@ -197,33 +175,40 @@ func registerLteTranslation(validate *validator.Validate, translator ut.Translat
 		// The {idx} values are interpolated using the arguments to the ut.T("lte", ...) call in the function below
 		return ut.Add("lte", "{0} is set to {1}, but must be less or equal to {2}", true)
 	}, func(ut ut.Translator, fe validator.FieldError) string {
-		// values that are constrained by "lte" can include: int, *int, uint
-		// fe.Value() is an interface{}, so we need to check each of these type options, one by one
-		i, ok := fe.Value().(int)
-		if !ok {
-			iPtr, k := fe.Value().(*int)
-			if !k {
-				unsignedVal, k3 := fe.Value().(uint)
-				if !k3 {
-					// this will be directly seen by the user if their field fails validation.
-					return fmt.Sprintf("could not determine value %v for field %s", fe.Value(), fe.Field())
-				}
-
-				i = int(unsignedVal)
-			} else {
-				if iPtr == nil {
-					i = 0
-				} else {
-					i = *iPtr
-				}
-			}
-		}
-
-		iStr := strconv.Itoa(i)
+		iStr := fieldErrorToNumString(fe)
 		t, _ := ut.T("lte", fe.Namespace(), iStr, fe.Param())
 
 		return t
 	})
+}
+
+// fieldErrorToNumString can be used by any validation field that constrains numeric types,
+// specifically int, *int, or uint, currently. It will take the FieldError and return a string
+// that represents the value the user tried to use.
+func fieldErrorToNumString(fe validator.FieldError) string {
+	// values that are constrained by "lte" or "gte" can include: int, *int, uint
+	// fe.Value() is an interface{}, so we need to check each of these type options, one by one
+	i, ok := fe.Value().(int)
+	if !ok {
+		iPtr, k := fe.Value().(*int)
+		if !k {
+			unsignedVal, k3 := fe.Value().(uint)
+			if !k3 {
+				// this will be directly seen by the user if their field fails validation.
+				return fmt.Sprintf("could not determine value %v for field %s", fe.Value(), fe.Field())
+			}
+
+			i = int(unsignedVal)
+		} else {
+			if iPtr == nil {
+				i = 0
+			} else {
+				i = *iPtr
+			}
+		}
+	}
+
+	return strconv.Itoa(i)
 }
 
 func registerRequiredTranslation(validate *validator.Validate, translator ut.Translator) error {
@@ -257,7 +242,7 @@ func registerOneofciTranslation(validate *validator.Validate, translator ut.Tran
 	})
 }
 
-func ValidateStructTags(s DisruptionSpec) error {
+func validateStructTags(s interface{}) error {
 	var retErr *multierror.Error
 
 	validate, translator, err := newGoValidator()
