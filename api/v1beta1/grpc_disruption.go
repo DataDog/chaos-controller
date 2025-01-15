@@ -45,13 +45,15 @@ var ErrorMap = map[string]codes.Code{
 type GRPCDisruptionSpec struct {
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=65535
-	Port      int                  `json:"port" validate:"gte=1,lte=65535"`
-	Endpoints []EndpointAlteration `json:"endpoints" validate:"dive"`
+	Port int `json:"port" validate:"gte=1,lte=65535"`
+	// +kubebuilder:validation:Required
+	Endpoints []EndpointAlteration `json:"endpoints" validate:"dive,required"`
 }
 
 // EndpointAlteration represents an endpoint to disrupt and the corresponding error to return
 type EndpointAlteration struct {
-	TargetEndpoint string `json:"endpoint"`
+	// +kubebuilder:validation:Required
+	TargetEndpoint string `json:"endpoint" validate:"required"`
 	// +kubebuilder:validation:Enum=OK;CANCELED;UNKNOWN;INVALID_ARGUMENT;DEADLINE_EXCEEDED;NOT_FOUND;ALREADY_EXISTS;PERMISSION_DENIED;RESOURCE_EXHAUSTED;FAILED_PRECONDITION;ABORTED;OUT_OF_RANGE;UNIMPLEMENTED;INTERNAL;UNAVAILABLE;DATA_LOSS;UNAUTHENTICATED
 	ErrorToReturn string `json:"error,omitempty" validate:"omitempty,oneofci=OK CANCELED UNKNOWN INVALID_ARGUMENT DEADLINE_EXCEEDED NOT_FOUND ALREADY_EXISTS PERMISSION_DENIED RESOURCE_EXHAUSTED FAILED_PRECONDITION ABORTED OUT_OF_RANGE UNIMPLEMENTED INTERNAL UNAVAILABLE DATA_LOSS UNAUTHENTICATED"`
 	// +kubebuilder:validation:Enum={}
