@@ -101,9 +101,7 @@ triggers:
 	})
 })
 
-// TODO write a thousand unit tests for go-validator
-// TODO remove the FDescribe
-var _ = FDescribe("Validator", func() {
+var _ = Describe("Validator", func() {
 	var (
 		err       error
 		validator *v1beta1.DisruptionSpec
