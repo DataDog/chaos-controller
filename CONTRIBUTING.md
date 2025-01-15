@@ -225,7 +225,7 @@ We use [go-validator](https://github.com/go-playground/validator) to supplement 
 Error messages are customized in the translation functions in [validations.go](./api/v1beta1/validations.go). Most are self-explanatory
 but the go-validator docs will have more information. We want to especially call out the "dive" tag here. This is used on slice or map
 fields to tell go-validator that validation needs to be run on every element in the slice or map. Other nested structs will be validated
-by default.
+by default. When using the "dive" tag, on a field, it _must_ be the final tag, or the others will be skipped.
 
 ## 3rd-party licenses
 
