@@ -123,6 +123,11 @@ func ValidateCount(count *intstr.IntOrString) error {
 	return nil
 }
 
+// newGoValidator instantiates a validator and translator which can be used to inspect a struct marked with `validate`
+// tags, and then return an array of validator.ValidationErrors explaining which fields did not match which constraints.
+// The returned translator can then be used to transform those errors into easy to understand, user-facing error messages.
+// The returned validator and translator are prepared to translate the following tags: required, gte, lte, oneofci. Other tags
+// will still be validated, but the error messages will be the defaults.
 func newGoValidator() (*validator.Validate, ut.Translator, error) {
 	englishLocale := en.New()
 	uni := ut.New(englishLocale, englishLocale)
