@@ -28,6 +28,7 @@ controller:
   metricsSink: noop
   profilerSink: noop
   tracerSink: noop
+  healthProbeBindPort: 8081
   notifiers:
     common:
       clusterName: lima
