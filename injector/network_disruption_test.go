@@ -93,6 +93,7 @@ var _ = Describe("Failure", func() {
 		tc.EXPECT().AddPrio(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 		tc.EXPECT().AddFilter(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(0, nil).Maybe()
 		tc.EXPECT().AddFwFilter(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+		tc.EXPECT().AddCgroupFilter(mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 		tc.EXPECT().AddOutputLimit(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 		tc.EXPECT().DeleteFilter(mock.Anything, mock.Anything).Return(nil).Maybe()
 		tc.EXPECT().ClearQdisc(mock.Anything).Return(nil).Maybe()
@@ -293,10 +294,6 @@ var _ = Describe("Failure", func() {
 			tc.AssertCalled(GinkgoT(), "AddPrio", []string{"lo", "eth0", "eth1"}, "1:4", "2:", uint32(2), mock.Anything)
 		})
 
-		It("should add an fw filter to classify packets according to their classid set by iptables mark", func() {
-			tc.AssertCalled(GinkgoT(), "AddFwFilter", []string{"lo", "eth0", "eth1"}, "2:0", "0x00020002", "2:2")
-		})
-
 		It("should apply disruptions to main interfaces 2nd band", func() {
 			tc.AssertCalled(GinkgoT(), "AddNetem", []string{"lo", "eth0", "eth1"}, "2:2", mock.Anything, time.Second, time.Second, spec.Drop, spec.Corrupt, spec.Duplicate)
 			tc.AssertNumberOfCalls(GinkgoT(), "AddNetem", 1)
@@ -304,9 +301,12 @@ var _ = Describe("Failure", func() {
 		})
 
 		Context("packet marking with cgroups v1", func() {
+			It("should add a cgroup filter to mark packets going out from the identified (container or host) cgroup for the tc fw filter", func() {
+				tc.AssertCalled(GinkgoT(), "AddCgroupFilter", []string{"lo", "eth0", "eth1"}, "2:0", uint32(2))
+			})
+
 			It("should mark packets going out from the identified (container or host) cgroup for the tc fw filter", func() {
 				cgroupManager.AssertCalled(GinkgoT(), "Write", "net_cls", "net_cls.classid", chaostypes.InjectorCgroupClassID)
-				iptables.AssertCalled(GinkgoT(), "MarkClassID", chaostypes.InjectorCgroupClassID, chaostypes.InjectorCgroupClassID)
 			})
 		})
 
@@ -317,6 +317,10 @@ var _ = Describe("Failure", func() {
 
 			It("should not raise an error", func() {
 				Expect(err).ShouldNot(HaveOccurred())
+			})
+
+			It("should add an fw filter to classify packets according to their classid set by iptables mark", func() {
+				tc.AssertCalled(GinkgoT(), "AddFwFilter", []string{"lo", "eth0", "eth1"}, "2:0", "0x00020002", "2:2")
 			})
 
 			It("should mark packets going out from the identified (container or host) cgroup for the tc fw filter", func() {
@@ -719,8 +723,13 @@ var _ = Describe("Failure", func() {
 					tc.AssertCalled(GinkgoT(), "AddPrio", interfaces, "2:2", "3:", uint32(2), mock.Anything)
 					tc.AssertCalled(GinkgoT(), "AddPrio", interfaces, "3:2", "4:", uint32(2), mock.Anything)
 
-					By("adding an fw filter to classify packets according to their classid set by iptables mark")
-					tc.AssertCalled(GinkgoT(), "AddFwFilter", interfaces, "4:0", "0x00020002", "4:2")
+					if config.Cgroup.IsCgroupV2() {
+						By("adding an fw filter to classify packets according to their classid set by iptables mark")
+						tc.AssertCalled(GinkgoT(), "AddFwFilter", interfaces, "4:0", "0x00020002", "4:2")
+					} else {
+						By("should add a cgroup filter to mark packets going out from the identified (container or host) cgroup for the tc fw filter")
+						tc.AssertCalled(GinkgoT(), "AddCgroupFilter", interfaces, "4:0", uint32(2))
+					}
 
 					By("adding an BPF filter to classify packets according to their method")
 					tc.AssertCalled(GinkgoT(), "AddBPFFilter", interfaces, "2:0", "/usr/local/bin/bpf-network-tc-filter.bpf.o", "2:2", "classifier_methods")
