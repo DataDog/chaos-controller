@@ -300,7 +300,121 @@ var _ = FDescribe("Validator", func() {
 	})
 
 	Describe("validating network failure spec", func() {
+		var spec *v1beta1.DisruptionSpec
 
+		BeforeEach(func() {
+			spec = &v1beta1.DisruptionSpec{
+				Count:    &intstr.IntOrString{Type: intstr.String, StrVal: "100%"},
+				Selector: map[string]string{"foo": "bar"},
+				Network: &v1beta1.NetworkDisruptionSpec{
+					Drop: 100,
+				},
+			}
+			validator = spec
+		})
+
+		// We can skip the "valid spec" case as we use a network disruption for the top-level spec tests
+
+		Context("without a failure type", func() {})
+
+		Context("with invalid failure numbers", func() {
+			BeforeEach(func() {
+				spec.Network.Drop = -1
+				spec.Network.Duplicate = 102
+				spec.Network.Corrupt = 103
+				spec.Network.Delay = 75000
+				spec.Network.DelayJitter = 200
+				spec.Network.BandwidthLimit = -1
+			})
+
+			It("should not validate", func() {
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).Should(ContainSubstring("Network.Drop is set to -1, but must be greater or equal to 0"))
+				Expect(err.Error()).Should(ContainSubstring("Network.Duplicate is set to 102, but must be less or equal to 100"))
+				Expect(err.Error()).Should(ContainSubstring("Network.Corrupt is set to 103, but must be less or equal to 100"))
+				Expect(err.Error()).Should(ContainSubstring("Network.Delay is set to 75000, but must be less or equal to 60000"))
+				Expect(err.Error()).Should(ContainSubstring("Network.DelayJitter is set to 200, but must be less or equal to 100"))
+				Expect(err.Error()).Should(ContainSubstring("Network.BandwidthLimit is set to -1, but must be greater or equal to 0"))
+			})
+		})
+
+		Context("with an invalid host spec", func() {
+			BeforeEach(func() {
+				spec.Network.Hosts = []v1beta1.NetworkDisruptionHostSpec{
+					{
+						Host:      "optional!",
+						Port:      -1,
+						Protocol:  "grpc",
+						Flow:      "away",
+						ConnState: "all",
+					},
+				}
+			})
+
+			It("should not validate", func() {
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).Should(ContainSubstring("Port is set to -1, but must be greater or equal to 0"))
+				Expect(err.Error()).Should(ContainSubstring("Protocol is set to grpc, but must be one of the following: \"udp, tcp\""))
+				Expect(err.Error()).Should(ContainSubstring("Flow is set to away, but must be one of the following: \"ingress, egress\""))
+				Expect(err.Error()).Should(ContainSubstring("ConnState is set to all, but must be one of the following: \"new, est\""))
+			})
+		})
+
+		Context("with an invalid service spec", func() {
+			BeforeEach(func() {
+				spec.Network.Services = []v1beta1.NetworkDisruptionServiceSpec{
+					{
+						Name:      "",
+						Namespace: "",
+						Ports: []v1beta1.NetworkDisruptionServicePortSpec{
+							{
+								Port: 8000000,
+							},
+						},
+					},
+				}
+			})
+
+			It("should not validate", func() {
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).Should(ContainSubstring("Port is set to 8000000, but must be less or equal to 65535"))
+			})
+		})
+
+		Context("with an invalid cloud spec", func() {
+			BeforeEach(func() {
+				spec.Network.Cloud = &v1beta1.NetworkDisruptionCloudSpec{
+					DatadogServiceList: &[]v1beta1.NetworkDisruptionCloudServiceSpec{
+						{
+							ServiceName: "",
+							Protocol:    "http",
+							Flow:        "both",
+							ConnState:   "old",
+						},
+					},
+				}
+
+			})
+
+			It("should not validate", func() {
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).Should(ContainSubstring("ServiceName is a required field, and must be set"))
+				Expect(err.Error()).Should(ContainSubstring("Protocol is set to http, but must be one of the following: \"tcp, udp\""))
+				Expect(err.Error()).Should(ContainSubstring("Flow is set to both, but must be one of the following: \"ingress, egress\""))
+				Expect(err.Error()).Should(ContainSubstring("ConnState is set to old, but must be one of the following: \"new, est\""))
+			})
+		})
+
+		Context("with an empty cloud spec", func() {
+			BeforeEach(func() {
+				spec.Network.Cloud = &v1beta1.NetworkDisruptionCloudSpec{}
+			})
+
+			It("should not validate", func() {
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).Should(ContainSubstring("if network.cloud is specified, at least one of cloud.aws, cloud.gcp, or cloud.datadog must be set"))
+			})
+		})
 	})
 
 	Describe("validating disk failure spec", func() {
