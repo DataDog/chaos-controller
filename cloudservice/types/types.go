@@ -28,8 +28,9 @@ type CloudProviderIPRangeInfo struct {
 
 // CloudProviderConfig Single configuration for any cloud provider
 type CloudProviderConfig struct {
-	Enabled     bool   `json:"enabled" yaml:"enabled"`
-	IPRangesURL string `json:"ipRangesURL" yaml:"ipRangesURL"`
+	Enabled       bool     `json:"enabled" yaml:"enabled"`
+	IPRangesURL   string   `json:"ipRangesURL" yaml:"ipRangesURL"`
+	ExtraIPRanges []string `json:"extraIpRanges" yaml:"extraIpRanges"`
 }
 
 // CloudProviderConfigs all cloud provider configurations for the manager
