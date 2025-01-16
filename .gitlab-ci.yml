@@ -42,7 +42,7 @@ build:make:
   script:
     - *install-make
     - export PATH="/usr/local/go/bin:${PATH}"
-    - make GOBIN=/usr/local/go/bin install-go all docker-build-ebpf
+    - make GOBIN=/usr/local/go/bin install-go all docker-build-ebpf_arm docker-build-ebpf_amd
   artifacts:
     paths:
       - bin/manager/manager_amd64

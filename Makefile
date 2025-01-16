@@ -105,7 +105,7 @@ docker-build-manager docker-build-only-manager: CONTAINER_NAME=$(MANAGER_IMAGE)
 
 docker-build-ebpf:
 	docker buildx build --platform linux/$(GOARCH) --build-arg BUILDGOVERSION=$(BUILDGOVERSION) -t ebpf-builder-$(GOARCH) -f bin/ebpf-builder/Dockerfile .
-	-rm -r bin/injector/ebpf/
+	-rm -r bin/injector/ebpf/$(GOARCH)/
 ifeq (true,$(USE_VOLUMES))
 # create a dummy container with volume to store files
 # circleci remote docker does not allow to use volumes, locally we fallbakc to standard volume but can call this target with USE_VOLUMES=true to debug if necessary
@@ -115,11 +115,18 @@ ifeq (true,$(USE_VOLUMES))
 	-docker cp . ebpf-volume:/app
 	-docker rm ebpf-builder
 	docker run --platform linux/$(GOARCH) --volumes-from ebpf-volume --name=ebpf-builder ebpf-builder-$(GOARCH)
-	docker cp ebpf-builder:/app/bin/injector/ebpf bin/injector/ebpf
+	mkdir -p bin/injector/ebpf/$(GOARCH)
+	docker cp ebpf-builder:/app/bin/injector/ebpf/$(GOARCH) bin/injector/ebpf/$(GOARCH)
 	docker rm ebpf-builder
 else
 	docker run --rm --platform linux/$(GOARCH) -v $(shell pwd):/app ebpf-builder-$(GOARCH)
 endif
+
+docker-build-ebpf_arm:
+	$(MAKE) docker-build-ebpf GOARCH=arm64
+
+docker-build-ebpf_amd:
+	$(MAKE) docker-build-ebpf GOARCH=amd64
 
 lima-push-injector lima-push-handler lima-push-manager: FAKE_FOR=COMPLETION
 
