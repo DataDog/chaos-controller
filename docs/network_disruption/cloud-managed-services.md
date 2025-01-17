@@ -79,9 +79,16 @@ We are using the URL **https://ip-ranges.amazonaws.com/ip-ranges.json** to pull 
 
 Available service is `Google`.
 
-Google does not indicates which ip ranges correspond to which service in its ip ranges files.
+Google does not indicate which ip ranges correspond to which service in its ip ranges files.
 
 We are using the URL **https://www.gstatic.com/ipranges/goog.json**. This file is the generic Google ip ranges file. We could not use the Google Cloud specific file due to some ip ranges from the apis being in the first file (goog.json). ([More info here](https://support.google.com/a/answer/10026322?hl=en))
+
+We'd like to include the private ranges alongside the public ranges. The private ranges don't appear to be published in a static json file, but are listed in documentation in various places:
+https://cloud.google.com/vpc/docs/configure-private-google-access#config-options
+https://cloud.google.com/vpc/docs/subnets#restricted-ranges
+
+So we configure this directly in the configmap under `controller.cloudProviders.gcp.extraIpRanges`, which takes a list of strings,
+of the form `"service;iprange;iprange;...;iprange`. We aren't able to use a map because of how viper normalizes map keys.
 
 ### Datadog
 
