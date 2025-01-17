@@ -263,9 +263,7 @@ func (s *cloudServicesProvidersManager) pullIPRangesPerCloudProvider(cloudProvid
 		serviceAndSplitIPRange := strings.SplitN(ipRangeList, ";", 2)
 		service := serviceAndSplitIPRange[0]
 		splitIPRange := strings.Split(serviceAndSplitIPRange[1], ";")
-		for _, ipRange := range splitIPRange {
-			provider.IPRangeInfo.IPRanges[service] = append(provider.IPRangeInfo.IPRanges[service], ipRange)
-		}
+		provider.IPRangeInfo.IPRanges[service] = append(provider.IPRangeInfo.IPRanges[service], splitIPRange...)
 	}
 
 	return err
