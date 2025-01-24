@@ -135,6 +135,7 @@ func newGoValidator() (*validator.Validate, ut.Translator, error) {
 	translator, _ := uni.GetTranslator("en")
 
 	validate := validator.New(validator.WithRequiredStructEnabled())
+	validate.SetTagName("chaos_validate")
 
 	// We need to register a translation for every tag we use
 	// in order to control the error message returned to the users when
