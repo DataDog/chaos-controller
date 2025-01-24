@@ -222,6 +222,7 @@ export DATADOG_API_KEY=$(security find-generic-password -a ${USER} -s datadog_ap
 ## Adding new spec validation
 
 We use [go-validator](https://github.com/go-playground/validator) to supplement the kubebuilder validation annotations on our resource Specs.
+Structs are tagged with `"chaos_validate:..."` to specify constraints on valid fields, such as `lte`, `gte`, `required`, etc.
 Error messages are customized in the translation functions in [validations.go](./api/v1beta1/validations.go). Most are self-explanatory
 but the go-validator docs will have more information. We want to especially call out the "dive" tag here. This is used on slice or map
 fields to tell go-validator that validation needs to be run on every element in the slice or map. Other nested structs will be validated
