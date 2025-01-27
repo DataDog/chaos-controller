@@ -55,6 +55,7 @@ type controllerConfig struct {
 	DisruptionRolloutEnabled         bool                            `json:"disruptionRolloutEnabled" yaml:"disruptionRolloutEnabled"`
 	DisruptionDeletionTimeout        time.Duration                   `json:"disruptionDeletionTimeout" yaml:"disruptionDeletionTimeout"`
 	FinalizerDeletionDelay           time.Duration                   `json:"finalizerDeletionDelay" yaml:"finalizerDeletionDelay"`
+	TargetResourceMissingThreshold   time.Duration                   `json:"targetResourceMissingThreshold" yaml:"targetResourceMissingThreshold"`
 	DisabledDisruptions              []string                        `json:"disabledDisruptions" yaml:"disabledDisruptions"`
 }
 
@@ -560,6 +561,12 @@ func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osAr
 	mainFS.DurationVar(&cfg.Controller.FinalizerDeletionDelay, "finalizer-deletion-delay", DefaultFinalizerDeletionDelay, "Define a delay before we attempt at removing the finalizers (on disruption and disruptioncron only)")
 
 	if err := viper.BindPFlag("controller.finalizerDeletionDelay", mainFS.Lookup("finalizer-deletion-delay")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.DurationVar(&cfg.Controller.TargetResourceMissingThreshold, "target-resource-missing-threshold", time.Hour*24, "Define the amount of time a cron or rollout will tolerate its target missing before self-deleting")
+
+	if err := viper.BindPFlag("controller.targetResourceMissingThreshold", mainFS.Lookup("target-resource-missing-threshold")); err != nil {
 		return cfg, err
 	}
 

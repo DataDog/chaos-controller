@@ -69,6 +69,7 @@ controller:
   defaultCronDelayedStartTolerance: 15m
   minimumCronFrequency: 15m # a disruption cron with a spec.schedule that runs more often than this will be rejected.
   finalizerDeletionDelay: 20s
+  targetResourceMissingThreshold: 24h # duration after a cron or rollout self-delete if target is missing for this long
   expiredDisruptionGCDelay: 10m # time after a disruption expires before deleting it
   userInfoHook: true
   webhook: # admission webhook configuration
