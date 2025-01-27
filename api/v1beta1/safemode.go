@@ -5,6 +5,10 @@
 
 package v1beta1
 
+import (
+	"fmt"
+)
+
 // UnsafemodeSpec represents a spec with parameters to turn off specific safety nets designed to catch common traps or issues running a disruption
 // All of these are turned off by default, so disabling safety nets requires manually changing these booleans to true
 type UnsafemodeSpec struct {
@@ -22,18 +26,25 @@ type Config struct {
 }
 
 // CountTooLargeConfig represents the configuration for the countTooLarge safetynet
-// +ddmark:validation:AtLeastOneOf={NamespaceThreshold,ClusterThreshold}
 type CountTooLargeConfig struct {
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=100
-	// +ddmark:validation:Minimum=1
-	// +ddmark:validation:Maximum=100
 	NamespaceThreshold *int `json:"namespaceThreshold,omitempty"`
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=100
-	// +ddmark:validation:Minimum=1
-	// +ddmark:validation:Maximum=100
 	ClusterThreshold *int `json:"clusterThreshold,omitempty"`
+}
+
+func (u *UnsafemodeSpec) Validate() error {
+	if u.Config != nil {
+		if u.Config.CountTooLarge != nil {
+			if u.Config.CountTooLarge.NamespaceThreshold == nil && u.Config.CountTooLarge.ClusterThreshold == nil {
+				return fmt.Errorf("at least one of unsafeMode.config.countTooLarge.NamespaceThreshold or unsafeMode.config.countTooLarge.ClusterThreshold must be set")
+			}
+		}
+	}
+
+	return nil
 }
 
 // MaxClusterThreshold is the float64 of 1.0, representing 100%. clusterThreshold is passed into the config

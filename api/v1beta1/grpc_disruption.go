@@ -45,26 +45,19 @@ var ErrorMap = map[string]codes.Code{
 type GRPCDisruptionSpec struct {
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=65535
-	// +ddmark:validation:Minimum=1
-	// +ddmark:validation:Maximum=65535
 	Port      int                  `json:"port"`
 	Endpoints []EndpointAlteration `json:"endpoints"`
 }
 
 // EndpointAlteration represents an endpoint to disrupt and the corresponding error to return
-// +ddmark:validation:ExclusiveFields={ErrorToReturn,OverrideToReturn}
 type EndpointAlteration struct {
 	TargetEndpoint string `json:"endpoint"`
 	// +kubebuilder:validation:Enum=OK;CANCELED;UNKNOWN;INVALID_ARGUMENT;DEADLINE_EXCEEDED;NOT_FOUND;ALREADY_EXISTS;PERMISSION_DENIED;RESOURCE_EXHAUSTED;FAILED_PRECONDITION;ABORTED;OUT_OF_RANGE;UNIMPLEMENTED;INTERNAL;UNAVAILABLE;DATA_LOSS;UNAUTHENTICATED
-	// +ddmark:validation:Enum=OK;CANCELED;UNKNOWN;INVALID_ARGUMENT;DEADLINE_EXCEEDED;NOT_FOUND;ALREADY_EXISTS;PERMISSION_DENIED;RESOURCE_EXHAUSTED;FAILED_PRECONDITION;ABORTED;OUT_OF_RANGE;UNIMPLEMENTED;INTERNAL;UNAVAILABLE;DATA_LOSS;UNAUTHENTICATED
 	ErrorToReturn string `json:"error,omitempty"`
 	// +kubebuilder:validation:Enum={}
-	// +ddmark:validation:Enum="{}"
 	OverrideToReturn string `json:"override,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
-	// +ddmark:validation:Minimum=0
-	// +ddmark:validation:Maximum=100
 	QueryPercent int `json:"queryPercent,omitempty"`
 }
 
@@ -101,9 +94,8 @@ func (s GRPCDisruptionSpec) Validate() (retErr error) {
 		}
 
 		// check that exactly one of ErrorToReturn or OverrideToReturn is configured
-		// (ddmark already prevents both from being configured)
-		if alteration.ErrorToReturn == "" && alteration.OverrideToReturn == "" {
-			retErr = multierror.Append(retErr, fmt.Errorf("the gRPC disruption must have either ErrorToReturn or OverrideToReturn specified for endpoint %s", alteration.TargetEndpoint))
+		if (alteration.ErrorToReturn == "" && alteration.OverrideToReturn == "") || (alteration.ErrorToReturn != "" && alteration.OverrideToReturn != "") {
+			retErr = multierror.Append(retErr, fmt.Errorf("the gRPC disruption must have exactly one of ErrorToReturn or OverrideToReturn specified for endpoint %s", alteration.TargetEndpoint))
 		}
 	}
 

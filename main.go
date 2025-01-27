@@ -24,7 +24,6 @@ import (
 	"github.com/DataDog/chaos-controller/cloudservice"
 	"github.com/DataDog/chaos-controller/config"
 	"github.com/DataDog/chaos-controller/controllers"
-	"github.com/DataDog/chaos-controller/ddmark"
 	"github.com/DataDog/chaos-controller/eventbroadcaster"
 	"github.com/DataDog/chaos-controller/eventnotifier"
 	"github.com/DataDog/chaos-controller/log"
@@ -461,10 +460,6 @@ func main() {
 	defer func() {
 		for _, contextTuple := range disruptionReconciler.CacheContextStore {
 			contextTuple.CancelFunc()
-		}
-
-		if err := ddmark.CleanupAllLibraries(); err != nil {
-			logger.Error(err)
 		}
 	}()
 

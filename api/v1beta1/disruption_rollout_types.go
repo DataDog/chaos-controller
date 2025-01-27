@@ -42,13 +42,11 @@ type DisruptionRolloutSpec struct {
 	DelayedStartTolerance DisruptionDuration `json:"delayedStartTolerance,omitempty"`
 
 	// +kubebuilder:validation:Required
-	// +ddmark:validation:Required=true
 	// TargetResource specifies the resource to run disruptions against.
 	// It can only be a deployment or statefulset.
 	TargetResource TargetResourceSpec `json:"targetResource"`
 
 	// +kubebuilder:validation:Required
-	// +ddmark:validation:Required=true
 	// Specifies the Disruption that will be created when executing a disruptionrollout.
 	DisruptionTemplate DisruptionSpec `json:"disruptionTemplate"`
 }

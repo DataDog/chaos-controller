@@ -17,7 +17,6 @@ import (
 
 	"github.com/DataDog/chaos-controller/cloudservice"
 	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
-	"github.com/DataDog/chaos-controller/ddmark"
 	cLog "github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/o11y/metrics"
 	"github.com/DataDog/chaos-controller/o11y/tracer"
@@ -56,7 +55,6 @@ var (
 	defaultDuration                 time.Duration
 	cloudServicesProvidersManager   cloudservice.CloudServicesProvidersManager
 	chaosNamespace                  string
-	ddmarkClient                    ddmark.Client
 	safemodeEnvironment             string
 	permittedUserGroups             map[string]struct{}
 	permittedUserGroupWarningString string
@@ -65,13 +63,6 @@ var (
 const SafemodeEnvironmentAnnotation = GroupName + "/environment"
 
 func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebhookWithManagerConfig) error {
-	var err error
-	ddmarkClient, err = ddmark.NewClient(EmbeddedChaosAPI)
-
-	if err != nil {
-		return err
-	}
-
 	logger = &zap.SugaredLogger{}
 	*logger = *setupWebhookConfig.Logger.With(
 		"source", "admission-controller",
@@ -229,12 +220,7 @@ func (r *Disruption) ValidateCreate() (admission.Warnings, error) {
 		return nil, fmt.Errorf("you have specified a duration of %s, but the maximum duration allowed is %s, please specify a duration lower or equal than this value", r.Spec.Duration.Duration(), maxDuration)
 	}
 
-	multiErr := ddmarkClient.ValidateStructMultierror(r.Spec, "validation_webhook")
-	if multiErr.ErrorOrNil() != nil {
-		return nil, multierror.Prefix(multiErr, "ddmark: ")
-	}
-
-	if err = checkForDisabledDisruptions(r); err != nil {
+	if err := checkForDisabledDisruptions(r); err != nil {
 		return nil, err
 	}
 

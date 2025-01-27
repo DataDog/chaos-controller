@@ -187,6 +187,7 @@ var _ = Describe("NetworkDisruptionSpec", func() {
 						HTTP: &NetworkHTTPFilters{
 							Paths: paths,
 						},
+						Drop: 100,
 					}
 
 					// Action
@@ -222,6 +223,7 @@ var _ = Describe("NetworkDisruptionSpec", func() {
 							HTTP: &NetworkHTTPFilters{
 								Paths: invalidPaths,
 							},
+							Drop: 100,
 						}
 
 						// Action
@@ -310,6 +312,7 @@ var _ = Describe("NetworkDisruptionSpec", func() {
 						HTTP: &NetworkHTTPFilters{
 							Methods: methods,
 						},
+						Drop: 100,
 					}
 
 					// Action
@@ -405,7 +408,7 @@ var _ = Describe("NetworkDisruptionSpec", func() {
 
 		Describe("test option limits", func() {
 			It("rejects bandwidthLimits below 32 bytes", func() {
-				disruptionSpec := NetworkDisruptionSpec{BandwidthLimit: 0}
+				disruptionSpec := NetworkDisruptionSpec{BandwidthLimit: 0, Delay: 1}
 				err := disruptionSpec.Validate()
 				Expect(err).ShouldNot(HaveOccurred())
 

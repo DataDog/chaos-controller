@@ -56,7 +56,6 @@ type HTTPPaths []HTTPPath
 type HTTPPath string
 
 // NetworkDisruptionSpec represents a network disruption injection
-// +ddmark:validation:AtLeastOneOf={BandwidthLimit,Drop,Delay,Corrupt,Duplicate}
 type NetworkDisruptionSpec struct {
 	// +nullable
 	Hosts []NetworkDisruptionHostSpec `json:"hosts,omitempty"`
@@ -69,31 +68,20 @@ type NetworkDisruptionSpec struct {
 	Cloud *NetworkDisruptionCloudSpec `json:"cloud,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
-	// +ddmark:validation:Minimum=0
-	// +ddmark:validation:Maximum=100
 	Drop int `json:"drop,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
-	// +ddmark:validation:Minimum=0
-	// +ddmark:validation:Maximum=100
 	Duplicate int `json:"duplicate,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
-	// +ddmark:validation:Minimum=0
-	// +ddmark:validation:Maximum=100
 	Corrupt int `json:"corrupt,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=60000
-	// +ddmark:validation:Minimum=0
-	// +ddmark:validation:Maximum=60000
 	Delay uint `json:"delay,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
-	// +ddmark:validation:Minimum=0
-	// +ddmark:validation:Maximum=100
 	DelayJitter uint `json:"delayJitter,omitempty"`
 	// +kubebuilder:validation:Minimum=0
-	// +ddmark:validation:Minimum=0
 	BandwidthLimit int `json:"bandwidthLimit,omitempty"`
 	// +nullable
 	HTTP *NetworkHTTPFilters `json:"http,omitempty"`
@@ -109,17 +97,12 @@ type NetworkDisruptionHostSpec struct {
 	Host string `json:"host,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=65535
-	// +ddmark:validation:Minimum=0
-	// +ddmark:validation:Maximum=65535
 	Port int `json:"port,omitempty"`
 	// +kubebuilder:validation:Enum=tcp;udp;""
-	// +ddmark:validation:Enum=tcp;udp;""
 	Protocol string `json:"protocol,omitempty"`
 	// +kubebuilder:validation:Enum=ingress;egress;""
-	// +ddmark:validation:Enum=ingress;egress;""
 	Flow string `json:"flow,omitempty"`
 	// +kubebuilder:validation:Enum=new;est;""
-	// +ddmark:validation:Enum=new;est;""
 	ConnState string `json:"connState,omitempty"`
 }
 
@@ -134,12 +117,9 @@ type NetworkDisruptionServicePortSpec struct {
 	Name string `json:"name,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=65535
-	// +ddmark:validation:Minimum=0
-	// +ddmark:validation:Maximum=65535
 	Port int `json:"port,omitempty"`
 }
 
-// +ddmark:validation:AtLeastOneOf={AWSServiceList,GCPServiceList,DatadogServiceList}
 type NetworkDisruptionCloudSpec struct {
 	AWSServiceList     *[]NetworkDisruptionCloudServiceSpec `json:"aws,omitempty"`
 	GCPServiceList     *[]NetworkDisruptionCloudServiceSpec `json:"gcp,omitempty"`
@@ -148,16 +128,12 @@ type NetworkDisruptionCloudSpec struct {
 
 type NetworkDisruptionCloudServiceSpec struct {
 	// +kubebuilder:validation:Required
-	// +ddmark:validation:Required=true
 	ServiceName string `json:"service"`
 	// +kubebuilder:validation:Enum=tcp;udp;""
-	// +ddmark:validation:Enum=tcp;udp;""
 	Protocol string `json:"protocol,omitempty"`
 	// +kubebuilder:validation:Enum=ingress;egress;""
-	// +ddmark:validation:Enum=ingress;egress;""
 	Flow string `json:"flow,omitempty"`
 	// +kubebuilder:validation:Enum=new;est;""
-	// +ddmark:validation:Enum=new;est;""
 	ConnState string `json:"connState,omitempty"`
 }
 
@@ -312,6 +288,10 @@ func (s *NetworkDisruptionSpec) Validate() (retErr error) {
 		}
 	}
 
+	if s.Drop == 0 && s.Delay == 0 && s.BandwidthLimit == 0 && s.Corrupt == 0 && s.Duplicate == 0 {
+		retErr = multierror.Append(retErr, fmt.Errorf("when applying a network disruption, at least one of network.drop, network.delay, network.corrupt, network.duplicate, or network.bandwidthLimit must be set"))
+	}
+
 	if s.HTTP != nil {
 		if err := s.HTTP.validate(); err != nil {
 			retErr = multierror.Append(retErr, err)
@@ -320,6 +300,12 @@ func (s *NetworkDisruptionSpec) Validate() (retErr error) {
 
 	if s.BandwidthLimit > 0 && s.BandwidthLimit < 32 {
 		retErr = multierror.Append(retErr, fmt.Errorf("bandwidthLimits below 32 bytes are not supported"))
+	}
+
+	if s.Cloud != nil {
+		if err := s.Cloud.Validate(); err != nil {
+			retErr = multierror.Append(retErr, err)
+		}
 	}
 
 	return multierror.Prefix(retErr, "Network:")
@@ -509,6 +495,14 @@ func (s *NetworkDisruptionSpec) Format() string {
 // HasHTTPFilters return true if a custom method or path is defined, else return false
 func (s *NetworkDisruptionSpec) HasHTTPFilters() bool {
 	return s.HTTP != nil && (s.HTTP.Methods.isNotEmpty() || s.HTTP.Paths.isNotDefault())
+}
+
+func (s *NetworkDisruptionCloudSpec) Validate() error {
+	if s.GCPServiceList == nil && s.DatadogServiceList == nil && s.AWSServiceList == nil {
+		return fmt.Errorf("if network.cloud is specified, at least one of cloud.aws, cloud.gcp, or cloud.datadog must be set")
+	}
+
+	return nil
 }
 
 // TransformToCloudMap for ease of computing when transforming the cloud services ip ranges to a list of hosts to disrupt

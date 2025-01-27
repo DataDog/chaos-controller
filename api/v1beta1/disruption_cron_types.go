@@ -43,7 +43,6 @@ type DisruptionCronList struct {
 type DisruptionCronSpec struct {
 	// +kubebuilder:validation:MinLength=0
 	// +kubebuilder:validation:Required
-	// +ddmark:validation:Required=true
 	// The schedule in Cron format, see https://en.wikipedia.org/wiki/Cron.
 	Schedule string `json:"schedule"`
 
@@ -58,13 +57,11 @@ type DisruptionCronSpec struct {
 	DelayedStartTolerance DisruptionDuration `json:"delayedStartTolerance,omitempty"`
 
 	// +kubebuilder:validation:Required
-	// +ddmark:validation:Required=true
 	// TargetResource specifies the resource to run disruptions against.
 	// It can only be a deployment or statefulset.
 	TargetResource TargetResourceSpec `json:"targetResource"`
 
 	// +kubebuilder:validation:Required
-	// +ddmark:validation:Required=true
 	// Specifies the Disruption that will be created when executing a disruptioncron.
 	DisruptionTemplate DisruptionSpec `json:"disruptionTemplate"`
 
@@ -78,13 +75,10 @@ type DisruptionCronSpec struct {
 type TargetResourceSpec struct {
 	// +kubebuilder:validation:Enum=deployment;statefulset
 	// +kubebuilder:validation:Required
-	// +ddmark:validation:Enum=deployment;statefulset
-	// +ddmark:validation:Required=true
 	// Kind specifies the type of the long-lived resource. Allowed values: "deployment", "statefulset".
 	Kind string `json:"kind"`
 
 	// +kubebuilder:validation:Required
-	// +ddmark:validation:Required=true
 	// Name specifies the name of the specific instance of the long-lived resource to be targeted.
 	Name string `json:"name"`
 }

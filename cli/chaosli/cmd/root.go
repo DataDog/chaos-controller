@@ -12,17 +12,15 @@ import (
 	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/ddmark"
 	"github.com/spf13/cobra"
 
-	homedir "github.com/mitchellh/go-homedir"
+	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
 )
 
 // Version will be set with the -ldflags option at compile time
 var Version = "v0"
 var cfgFile string
-var ddMarkClient ddmark.Client
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -42,21 +40,9 @@ in english for better understanding, and more.`,
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	_ = rootCmd.Execute()
-
-	defer func() {
-		if ddMarkClient == nil {
-			return
-		}
-
-		if err := ddMarkClient.CleanupLibraries(); err != nil {
-			log.Fatal(err)
-		}
-	}()
 }
 
 func init() {
-	initDDMark()
-
 	// run initConfig function before each Run() of each command having a Run() method
 	cobra.OnInitialize(initConfig)
 	// Here you will define your flags and configuration settings.
@@ -101,15 +87,6 @@ func initConfig() {
 	}
 }
 
-func initDDMark() {
-	var err error
-
-	ddMarkClient, err = ddmark.NewClient(v1beta1.EmbeddedChaosAPI)
-	if err != nil {
-		log.Fatalf("ddmark didn't init properly, err: %v", err)
-	}
-}
-
 func DisruptionFromFile(path string) (v1beta1.Disruption, error) {
 	parsedSpec := ReadUnmarshalValidate(path)
 
@@ -130,7 +107,7 @@ func ReadUnmarshalValidate(path string) v1beta1.Disruption {
 		log.Fatalf("there were problems reading the disruption at this path: %v", err)
 	}
 
-	if err = RunAllValidation(*parsedSpec, path); err != nil {
+	if err = RunAllValidation(*parsedSpec); err != nil {
 		log.Fatalf("there were some problems when validating your disruption:\n%v", err)
 	}
 
