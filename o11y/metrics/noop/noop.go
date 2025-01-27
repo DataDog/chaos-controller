@@ -234,6 +234,14 @@ func (n Sink) MetricMissingTargetFound(tags []string) error {
 	return nil
 }
 
+// MetricMissingTargetDeleted reports when a scheduled Disruption has been deleted by the chaos-controller,
+// because its target has been missing for too long
+func (n Sink) MetricMissingTargetDeleted(tags []string) error {
+	n.log.Debugf("NOOP: MetricMissingTargetDeleted %s\n", tags)
+
+	return nil
+}
+
 // MetricNextScheduledTime reports the duration until the next scheduled disruption will run
 func (n Sink) MetricNextScheduledTime(duration time.Duration, tags []string) error {
 	n.log.Debugf("NOOP: MetricNextScheduledRun %v, s%s\n", duration, tags)

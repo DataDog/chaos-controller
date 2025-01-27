@@ -27,12 +27,13 @@ import (
 var DisruptionCronTags = []string{}
 
 type DisruptionCronReconciler struct {
-	Client                 client.Client
-	Scheme                 *runtime.Scheme
-	BaseLog                *zap.SugaredLogger
-	log                    *zap.SugaredLogger
-	MetricsSink            metrics.Sink
-	FinalizerDeletionDelay time.Duration
+	Client                         client.Client
+	Scheme                         *runtime.Scheme
+	BaseLog                        *zap.SugaredLogger
+	log                            *zap.SugaredLogger
+	MetricsSink                    metrics.Sink
+	FinalizerDeletionDelay         time.Duration
+	TargetResourceMissingThreshold time.Duration
 }
 
 func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
@@ -260,7 +261,7 @@ func (r *DisruptionCronReconciler) updateTargetResourcePreviouslyMissing(ctx con
 			return targetResourceExists, disruptionCronDeleted, r.handleTargetResourceFirstMissing(ctx, instance)
 		}
 
-		if time.Since(instance.Status.TargetResourcePreviouslyMissing.Time) > TargetResourceMissingThreshold {
+		if time.Since(instance.Status.TargetResourcePreviouslyMissing.Time) > r.TargetResourceMissingThreshold {
 			r.log.Warnw("target has been missing for over one day, deleting this schedule",
 				"timeMissing", time.Since(instance.Status.TargetResourcePreviouslyMissing.Time))
 
@@ -297,6 +298,8 @@ func (r *DisruptionCronReconciler) handleTargetResourceMissingPastExpiration(ctx
 	if err := r.Client.Delete(ctx, instance); err != nil {
 		return fmt.Errorf("failed to delete instance: %w", err)
 	}
+
+	r.handleMetricSinkError(r.MetricsSink.MetricMissingTargetDeleted(DisruptionCronTags))
 
 	return nil
 }

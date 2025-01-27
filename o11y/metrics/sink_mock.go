@@ -680,6 +680,52 @@ func (_c *SinkMock_MetricInjected_Call) RunAndReturn(run func(bool, string, []st
 	return _c
 }
 
+// MetricMissingTargetDeleted provides a mock function with given fields: tags
+func (_m *SinkMock) MetricMissingTargetDeleted(tags []string) error {
+	ret := _m.Called(tags)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MetricMissingTargetDeleted")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func([]string) error); ok {
+		r0 = rf(tags)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SinkMock_MetricMissingTargetDeleted_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MetricMissingTargetDeleted'
+type SinkMock_MetricMissingTargetDeleted_Call struct {
+	*mock.Call
+}
+
+// MetricMissingTargetDeleted is a helper method to define mock.On call
+//   - tags []string
+func (_e *SinkMock_Expecter) MetricMissingTargetDeleted(tags interface{}) *SinkMock_MetricMissingTargetDeleted_Call {
+	return &SinkMock_MetricMissingTargetDeleted_Call{Call: _e.mock.On("MetricMissingTargetDeleted", tags)}
+}
+
+func (_c *SinkMock_MetricMissingTargetDeleted_Call) Run(run func(tags []string)) *SinkMock_MetricMissingTargetDeleted_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]string))
+	})
+	return _c
+}
+
+func (_c *SinkMock_MetricMissingTargetDeleted_Call) Return(_a0 error) *SinkMock_MetricMissingTargetDeleted_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *SinkMock_MetricMissingTargetDeleted_Call) RunAndReturn(run func([]string) error) *SinkMock_MetricMissingTargetDeleted_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // MetricMissingTargetFound provides a mock function with given fields: tags
 func (_m *SinkMock) MetricMissingTargetFound(tags []string) error {
 	ret := _m.Called(tags)

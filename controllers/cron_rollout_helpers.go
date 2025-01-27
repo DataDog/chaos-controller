@@ -25,9 +25,8 @@ import (
 )
 
 const (
-	DisruptionCronNameLabel        = chaosv1beta1.GroupName + "/disruption-cron-name"
-	DisruptionRolloutNameLabel     = chaosv1beta1.GroupName + "/disruption-rollout-name"
-	TargetResourceMissingThreshold = time.Hour * 24
+	DisruptionCronNameLabel    = chaosv1beta1.GroupName + "/disruption-cron-name"
+	DisruptionRolloutNameLabel = chaosv1beta1.GroupName + "/disruption-rollout-name"
 )
 
 // GetChildDisruptions retrieves disruptions associated with a resource by its label.
