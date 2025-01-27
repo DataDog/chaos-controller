@@ -242,6 +242,12 @@ func (d Sink) MetricMissingTargetFound(tags []string) error {
 	return d.metricWithStatus(d.prefix+"schedule.missing_target_found", tags)
 }
 
+// MetricMissingTargetDeleted reports when a scheduled Disruption has been deleted by the chaos-controller,
+// because its target has been missing for too long
+func (d Sink) MetricMissingTargetDeleted(tags []string) error {
+	return d.metricWithStatus(d.prefix+"schedule.missing_target_deleted", tags)
+}
+
 // MetricNextScheduledTime reports the duration until the next scheduled disruption will run
 func (d Sink) MetricNextScheduledTime(duration time.Duration, tags []string) error {
 	return d.timing(d.prefix+"schedule.next_scheduled", duration, tags)

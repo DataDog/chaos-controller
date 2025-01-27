@@ -49,6 +49,7 @@ type Sink interface {
 	MetricTooLate(tags []string) error
 	MetricTargetMissing(duration time.Duration, tags []string) error
 	MetricMissingTargetFound(tags []string) error
+	MetricMissingTargetDeleted(tags []string) error
 	MetricNextScheduledTime(time time.Duration, tags []string) error
 	MetricDisruptionScheduled(tags []string) error
 	MetricPausedCron(tags []string) error

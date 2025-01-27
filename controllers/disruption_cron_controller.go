@@ -298,6 +298,8 @@ func (r *DisruptionCronReconciler) handleTargetResourceMissingPastExpiration(ctx
 		return fmt.Errorf("failed to delete instance: %w", err)
 	}
 
+	r.handleMetricSinkError(r.MetricsSink.MetricMissingTargetDeleted(DisruptionCronTags))
+
 	return nil
 }
 
