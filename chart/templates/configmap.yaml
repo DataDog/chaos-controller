@@ -10,6 +10,7 @@ metadata:
 data:
   config.yaml: |
     controller:
+      healthProbeBindAddr: "0.0.0.0:{{ .Values.controller.healthProbeBindPort }}"
       metricsBindAddr: 127.0.0.1:8080
       leaderElection: {{ .Values.controller.leaderElection }}
       metricsSink: {{ .Values.controller.metricsSink | quote }}
