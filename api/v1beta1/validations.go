@@ -7,10 +7,15 @@ package v1beta1
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 
+	"github.com/go-playground/locales/en"
+	ut "github.com/go-playground/universal-translator"
+	"github.com/go-playground/validator/v10"
+	"github.com/hashicorp/go-multierror"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -113,6 +118,158 @@ func ValidateCount(count *intstr.IntOrString) error {
 		if value <= 0 {
 			return fmt.Errorf("count must be a positive integer or a valid percentage value")
 		}
+	}
+
+	return nil
+}
+
+// newGoValidator instantiates a validator and translator which can be used to inspect a struct marked with `validate`
+// tags, and then return an array of validator.ValidationErrors explaining which fields did not match which constraints.
+// The returned translator can then be used to transform those errors into easy to understand, user-facing error messages.
+// The returned validator and translator are prepared to translate the following tags: required, gte, lte, oneofci. Other tags
+// will still be validated, but the error messages will be the defaults.
+func newGoValidator() (*validator.Validate, ut.Translator, error) {
+	englishLocale := en.New()
+	uni := ut.New(englishLocale, englishLocale)
+
+	translator, _ := uni.GetTranslator("en")
+
+	validate := validator.New(validator.WithRequiredStructEnabled())
+	validate.SetTagName("chaos_validate")
+
+	// We need to register a translation for every tag we use
+	// in order to control the error message returned to the users when
+	// their specs are invalid
+	if err := registerRequiredTranslation(validate, translator); err != nil {
+		return nil, nil, err
+	}
+
+	if err := registerGteTranslation(validate, translator); err != nil {
+		return nil, nil, err
+	}
+
+	if err := registerLteTranslation(validate, translator); err != nil {
+		return nil, nil, err
+	}
+
+	if err := registerOneofciTranslation(validate, translator); err != nil {
+		return nil, nil, err
+	}
+
+	return validate, translator, nil
+}
+
+func registerGteTranslation(validate *validator.Validate, translator ut.Translator) error {
+	return validate.RegisterTranslation("gte", translator, func(ut ut.Translator) error {
+		// The {idx} values are interpolated using the arguments to the ut.T("gte", ...) call in the function below
+		return ut.Add("gte", "{0} is set to {1}, but must be greater or equal to {2}", true)
+	}, func(ut ut.Translator, fe validator.FieldError) string {
+		iStr := fieldErrorToNumString(fe)
+		t, _ := ut.T("gte", fe.Namespace(), iStr, fe.Param())
+
+		return t
+	})
+}
+
+func registerLteTranslation(validate *validator.Validate, translator ut.Translator) error {
+	return validate.RegisterTranslation("lte", translator, func(ut ut.Translator) error {
+		// The {idx} values are interpolated using the arguments to the ut.T("lte", ...) call in the function below
+		return ut.Add("lte", "{0} is set to {1}, but must be less or equal to {2}", true)
+	}, func(ut ut.Translator, fe validator.FieldError) string {
+		iStr := fieldErrorToNumString(fe)
+		t, _ := ut.T("lte", fe.Namespace(), iStr, fe.Param())
+
+		return t
+	})
+}
+
+// fieldErrorToNumString can be used by any validation field that constrains numeric types,
+// specifically int, *int, or uint, currently. It will take the FieldError and return a string
+// that represents the value the user tried to use.
+func fieldErrorToNumString(fe validator.FieldError) string {
+	// values that are constrained by "lte" or "gte" can include: int, *int, uint
+	// fe.Value() is an interface{}, so we need to check each of these type options, one by one
+	i, ok := fe.Value().(int)
+	if !ok {
+		iPtr, k := fe.Value().(*int)
+		if !k {
+			unsignedVal, k3 := fe.Value().(uint)
+			if !k3 {
+				// this will be directly seen by the user if their field fails validation.
+				return fmt.Sprintf("could not determine value %v for field %s", fe.Value(), fe.Field())
+			}
+
+			i = int(unsignedVal)
+		} else {
+			if iPtr == nil {
+				i = 0
+			} else {
+				i = *iPtr
+			}
+		}
+	}
+
+	return strconv.Itoa(i)
+}
+
+func registerRequiredTranslation(validate *validator.Validate, translator ut.Translator) error {
+	return validate.RegisterTranslation("required", translator, func(ut ut.Translator) error {
+		// The {idx} values are interpolated using the arguments to the ut.T("required", ...) call in the function below
+		return ut.Add("required", "{0} is a required field, and must be set", true)
+	}, func(ut ut.Translator, fe validator.FieldError) string {
+		t, _ := ut.T("required", fe.Namespace())
+
+		return t
+	})
+}
+
+func registerOneofciTranslation(validate *validator.Validate, translator ut.Translator) error {
+	return validate.RegisterTranslation("oneofci", translator, func(ut ut.Translator) error {
+		// The {idx} values are interpolated using the arguments to the ut.T("oneofci", ...) call in the function below
+		return ut.Add("oneofci", "{0} is set to {1}, but must be one of the following: \"{2}\"", true)
+	}, func(ut ut.Translator, fe validator.FieldError) string {
+		options := fe.Param()
+
+		userOptionsString := strings.Join(strings.Split(options, " "), ", ")
+
+		userChoiceStr, ok := fe.Value().(string)
+		if !ok {
+			return fmt.Sprintf("could not permit value \"%v\" for field %s, try one of \"%s\"", fe.Value(), fe.Field(), userOptionsString)
+		}
+
+		t, _ := ut.T("oneofci", fe.Namespace(), userChoiceStr, userOptionsString)
+
+		return t
+	})
+}
+
+func validateStructTags(s interface{}) error {
+	var retErr *multierror.Error
+
+	validate, translator, err := newGoValidator()
+	if err != nil {
+		return fmt.Errorf("could not validate struct tags: %w", err)
+	}
+
+	err = validate.Struct(s)
+
+	if err != nil {
+		// this check is only needed when the rare case in which we produce
+		// an invalid value for validation such as interface with a nil value
+		var invalidValidationError *validator.InvalidValidationError
+		if errors.As(err, &invalidValidationError) {
+			return err
+		}
+
+		for _, err := range err.(validator.ValidationErrors) {
+			retErr = multierror.Append(retErr,
+				multierror.Prefix(errors.New(err.Translate(translator)), "validate:"),
+			)
+		}
+	}
+
+	if retErr != nil {
+		return retErr.ErrorOrNil()
 	}
 
 	return nil

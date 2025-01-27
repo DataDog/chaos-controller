@@ -213,6 +213,10 @@ github.com/evanphx/json-patch/v5,github.com/evanphx/json-patch/v5,BSD-3-Clause
 github.com/evanphx/json-patch/v5,github.com/evanphx/json-patch/v5/internal/json,BSD-3-Clause
 github.com/felixge/httpsnoop,github.com/felixge/httpsnoop,MIT
 github.com/fsnotify/fsnotify,github.com/fsnotify/fsnotify,BSD-3-Clause
+github.com/gabriel-vasile/mimetype,github.com/gabriel-vasile/mimetype,MIT
+github.com/gabriel-vasile/mimetype,github.com/gabriel-vasile/mimetype/internal/charset,MIT
+github.com/gabriel-vasile/mimetype,github.com/gabriel-vasile/mimetype/internal/json,MIT
+github.com/gabriel-vasile/mimetype,github.com/gabriel-vasile/mimetype/internal/magic,MIT
 github.com/go-logr/logr,github.com/go-logr/logr,Apache-2.0
 github.com/go-logr/logr,github.com/go-logr/logr/funcr,Apache-2.0
 github.com/go-logr/logr,github.com/go-logr/logr/slogr,Apache-2.0
@@ -224,6 +228,11 @@ github.com/go-openapi/jsonpointer,github.com/go-openapi/jsonpointer,Apache-2.0
 github.com/go-openapi/jsonreference,github.com/go-openapi/jsonreference,Apache-2.0
 github.com/go-openapi/jsonreference,github.com/go-openapi/jsonreference/internal,Apache-2.0
 github.com/go-openapi/swag,github.com/go-openapi/swag,Apache-2.0
+github.com/go-playground/locales,github.com/go-playground/locales,MIT
+github.com/go-playground/locales,github.com/go-playground/locales/currency,MIT
+github.com/go-playground/locales,github.com/go-playground/locales/en,MIT
+github.com/go-playground/universal-translator,github.com/go-playground/universal-translator,MIT
+github.com/go-playground/validator/v10,github.com/go-playground/validator/v10,MIT
 github.com/go-task/slim-sprig,github.com/go-task/slim-sprig,MIT
 github.com/godbus/dbus/v5,github.com/godbus/dbus/v5,BSD-2-Clause
 github.com/gogo/googleapis,github.com/gogo/googleapis/google/rpc,Apache-2.0
@@ -281,6 +290,8 @@ github.com/klauspost/compress,github.com/klauspost/compress/internal/cpuinfo,Apa
 github.com/klauspost/compress,github.com/klauspost/compress/internal/snapref,Apache-2.0
 github.com/klauspost/compress,github.com/klauspost/compress/zstd,Apache-2.0
 github.com/klauspost/compress,github.com/klauspost/compress/zstd/internal/xxhash,Apache-2.0
+github.com/leodido/go-urn,github.com/leodido/go-urn,MIT
+github.com/leodido/go-urn,github.com/leodido/go-urn/scim/schema,MIT
 github.com/liggitt/tabwriter,github.com/liggitt/tabwriter,BSD-3-Clause
 github.com/lufia/plan9stats,github.com/lufia/plan9stats,BSD-3-Clause
 github.com/magiconair/properties,github.com/magiconair/properties,BSD-2-Clause
@@ -486,6 +497,7 @@ go.uber.org/zap,go.uber.org/zap/internal/ztest,MIT
 go.uber.org/zap,go.uber.org/zap/zapcore,MIT
 go.uber.org/zap,go.uber.org/zap/zaptest,MIT
 go.uber.org/zap,go.uber.org/zap/zaptest/observer,MIT
+golang.org/x/crypto,golang.org/x/crypto/sha3,BSD-3-Clause
 golang.org/x/exp,golang.org/x/exp/maps,BSD-3-Clause
 golang.org/x/mod,golang.org/x/mod/semver,BSD-3-Clause
 golang.org/x/net,golang.org/x/net/bpf,BSD-3-Clause
@@ -510,6 +522,7 @@ golang.org/x/oauth2,golang.org/x/oauth2,BSD-3-Clause
 golang.org/x/oauth2,golang.org/x/oauth2/internal,BSD-3-Clause
 golang.org/x/sync,golang.org/x/sync/errgroup,BSD-3-Clause
 golang.org/x/sync,golang.org/x/sync/semaphore,BSD-3-Clause
+golang.org/x/sys,golang.org/x/sys/cpu,BSD-3-Clause
 golang.org/x/sys,golang.org/x/sys/execabs,BSD-3-Clause
 golang.org/x/sys,golang.org/x/sys/plan9,BSD-3-Clause
 golang.org/x/sys,golang.org/x/sys/unix,BSD-3-Clause

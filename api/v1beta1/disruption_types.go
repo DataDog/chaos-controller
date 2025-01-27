@@ -37,7 +37,7 @@ import (
 // DisruptionSpec defines the desired state of Disruption
 type DisruptionSpec struct {
 	// +kubebuilder:validation:Required
-	Count *intstr.IntOrString `json:"count"` // number of pods to target in either integer form or percent form appended with a %
+	Count *intstr.IntOrString `json:"count" chaos_validate:"required"` // number of pods to target in either integer form or percent form appended with a %
 	// AllowDisruptedTargets allow pods with one or several other active disruptions, with disruption kinds that does not intersect
 	// with this disruption kinds, to be returned as part of eligible targets for this disruption
 	// - e.g. apply a CPU pressure and later, apply a container failure for a short duration
@@ -61,7 +61,7 @@ type DisruptionSpec struct {
 	// Level defines what the disruption will target, either a pod or a node
 	// +kubebuilder:default=pod
 	// +kubebuilder:validation:Enum=pod;node
-	Level      chaostypes.DisruptionLevel `json:"level,omitempty"`
+	Level      chaostypes.DisruptionLevel `json:"level,omitempty" chaos_validate:"omitempty,oneofci=pod node"`
 	Containers []string                   `json:"containers,omitempty"`
 	// +nullable
 	Network *NetworkDisruptionSpec `json:"network,omitempty"`
@@ -125,7 +125,7 @@ type Reporting struct {
 	// +kubebuilder:validation:MaxLength=80
 	// +kubebuilder:validation:Pattern=(^[a-z0-9-_]+$)|(^C[A-Z0-9]+$)
 	// +kubebuilder:validation:Required
-	SlackChannel string `json:"slackChannel,omitempty"`
+	SlackChannel string `json:"slackChannel,omitempty" chaos_validate:"required"`
 	// Purpose determines contextual informations about the disruption
 	// a brief context to determines disruption goal
 	// +kubebuilder:validation:MinLength=10
@@ -586,6 +586,10 @@ func (s DisruptionSpec) ValidateSelectorsOptional(requireSelectors bool) (retErr
 		}
 	}
 
+	if err := validateStructTags(s); err != nil {
+		retErr = multierror.Append(retErr, err)
+	}
+
 	return multierror.Prefix(retErr, "Spec:")
 }
 
@@ -747,7 +751,7 @@ func (s DisruptionSpec) validateGlobalDisruptionScope(requireSelectors bool) (re
 		}
 	}
 
-	if s.GRPC != nil && s.Level != chaostypes.DisruptionLevelPod {
+	if s.GRPC != nil && s.Level == chaostypes.DisruptionLevelNode {
 		retErr = multierror.Append(retErr, errors.New("GRPC disruptions can only be applied at the pod level"))
 	}
 
