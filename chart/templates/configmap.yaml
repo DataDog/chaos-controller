@@ -50,6 +50,12 @@ data:
         gcp:
           enabled: {{ .Values.controller.cloudProviders.gcp.enabled }}
           ipRangesURL: {{ .Values.controller.cloudProviders.gcp.ipRangesURL }}
+        {{- if .Values.controller.cloudProviders.gcp.extraIpRanges }}
+          extraIpRanges:
+          {{- range $index, $val := .Values.controller.cloudProviders.gcp.extraIpRanges }}
+            - {{ $val | quote }}
+          {{- end }}
+        {{- end}}
         datadog:
           enabled: {{ .Values.controller.cloudProviders.datadog.enabled }}
           ipRangesURL: {{ .Values.controller.cloudProviders.datadog.ipRangesURL }}

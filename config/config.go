@@ -509,6 +509,12 @@ func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osAr
 		return cfg, err
 	}
 
+	mainFS.StringSliceVar(&cfg.Controller.CloudProviders.GCP.ExtraIPRanges, "cloud-providers-gcp-extraipranges", []string{}, "Any additional ranges for GCP")
+
+	if err := viper.BindPFlag("controller.cloudProviders.gcp.ipRanges", mainFS.Lookup("cloud-providers-gcp-extraipranges")); err != nil {
+		return cfg, err
+	}
+
 	mainFS.BoolVar(&cfg.Controller.CloudProviders.Datadog.Enabled, "cloud-providers-datadog-enabled", true, "Enable Datadog cloud provider disruptions (defaults to true, is overridden by --cloud-providers-disable-all)")
 
 	if err := viper.BindPFlag("controller.cloudProviders.datadog.enabled", mainFS.Lookup("cloud-providers-datadog-enabled")); err != nil {
