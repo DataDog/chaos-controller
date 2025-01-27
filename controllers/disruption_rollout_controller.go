@@ -242,6 +242,8 @@ func (r *DisruptionRolloutReconciler) handleTargetResourceMissingPastExpiration(
 		return fmt.Errorf("failed to delete instance: %w", err)
 	}
 
+	r.handleMetricSinkError(r.MetricsSink.MetricMissingTargetDeleted(DisruptionRolloutTags))
+
 	return nil
 }
 
