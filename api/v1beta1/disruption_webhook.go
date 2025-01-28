@@ -116,6 +116,7 @@ func (r *Disruption) ValidateCreate() (_ admission.Warnings, err error) {
 	log := logger.With(cLog.DisruptionNameKey, r.Name, cLog.DisruptionNamespaceKey, r.Namespace)
 
 	metricTags := r.getMetricsTags()
+
 	defer func() {
 		if err != nil {
 			if mErr := metricsSink.MetricValidationFailed(metricTags); mErr != nil {
@@ -270,6 +271,7 @@ func (r *Disruption) ValidateUpdate(old runtime.Object) (_ admission.Warnings, e
 	log.Debugw("validating updated disruption", "spec", r.Spec)
 
 	metricTags := r.getMetricsTags()
+
 	defer func() {
 		if err != nil {
 			if mErr := metricsSink.MetricValidationFailed(metricTags); mErr != nil {
