@@ -70,19 +70,12 @@ type DisruptionReconciler struct {
 	log                        *zap.SugaredLogger
 	SafetyNets                 []safemode.Safemode
 	ExpiredDisruptionGCDelay   *time.Duration
-	CacheContextStore          map[string]CtxTuple
 	DisruptionsWatchersManager watchers.DisruptionsWatchersManager
 	ChaosPodService            services.ChaosPodService
 	CloudService               cloudservice.CloudServicesProvidersManager
 	DisruptionsDeletionTimeout time.Duration
 	DeleteOnly                 bool
 	FinalizerDeletionDelay     time.Duration
-}
-
-type CtxTuple struct {
-	Ctx                      context.Context
-	CancelFunc               context.CancelFunc
-	DisruptionNamespacedName types.NamespacedName
 }
 
 const TargetsCountLogLimit = 50
@@ -1094,10 +1087,6 @@ func (r *DisruptionReconciler) ReportMetrics(ctx context.Context) {
 
 		if err := r.MetricsSink.MetricPodsGauge(float64(chaosPodsCount)); err != nil {
 			r.BaseLog.Errorw("error sending pods.gauge metric", "error", err)
-		}
-
-		if err := r.MetricsSink.MetricSelectorCacheGauge(float64(len(r.CacheContextStore))); err != nil {
-			r.BaseLog.Errorw("error sending selector.cache.gauge metric", "error", err)
 		}
 	}
 }

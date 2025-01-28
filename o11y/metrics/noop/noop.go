@@ -203,13 +203,6 @@ func (n Sink) MetricWatcherCalls(tags []string) error {
 	return nil
 }
 
-// MetricSelectorCacheGauge reports how many caches are still in the cache array to prevent leaks
-func (n Sink) MetricSelectorCacheGauge(gauge float64) error {
-	n.log.Debugf("NOOP: MetricSelectorCacheGauge %f\n", gauge)
-
-	return nil
-}
-
 // MetricTooLate reports when a scheduled disruption misses its aloted time to be scheduled
 // specific to cron and rollout controllers
 func (n Sink) MetricTooLate(tags []string) error {
