@@ -109,6 +109,7 @@ func New(log *zap.SugaredLogger, config types.CloudProviderConfigs, httpClientMo
 			provider.CloudProviderIPRangeManager = gcp.New()
 			provider.Conf.Enabled = config.GCP.Enabled
 			provider.Conf.IPRangesURL = config.GCP.IPRangesURL
+			provider.Conf.ExtraIPRanges = config.GCP.ExtraIPRanges
 		case types.CloudProviderDatadog:
 			provider.CloudProviderIPRangeManager = datadog.New()
 			provider.Conf.Enabled = config.Datadog.Enabled
@@ -252,6 +253,18 @@ func (s *cloudServicesProvidersManager) pullIPRangesPerCloudProvider(cloudProvid
 	}
 
 	provider.IPRangeInfo, err = provider.CloudProviderIPRangeManager.ConvertToGenericIPRanges(unparsedIPRange)
+
+	for _, ipRangeList := range provider.Conf.ExtraIPRanges {
+		// Viper "normalizes" all map keys by casting them all to lower case: https://github.com/spf13/viper/issues/373
+		// Because the services for each cloud provider use different case methods, e.g., "Google" vs "S3" vs "synthetics",
+		// there's no easy way to undo this lowercasing. So we've stored the extra ranges in the following syntax:
+		// "service;iprange;iprange;...;iprange". We split by ';' once to find the service, then split by ';' again to find
+		// all extra ranges
+		serviceAndSplitIPRange := strings.SplitN(ipRangeList, ";", 2)
+		service := serviceAndSplitIPRange[0]
+		splitIPRange := strings.Split(serviceAndSplitIPRange[1], ";")
+		provider.IPRangeInfo.IPRanges[service] = append(provider.IPRangeInfo.IPRanges[service], splitIPRange...)
+	}
 
 	return err
 }
