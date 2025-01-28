@@ -322,7 +322,8 @@ func main() {
 			BaseLog: logger,
 			Scheme:  mgr.GetScheme(),
 			// new metrics sink for rollout controller
-			MetricsSink: initMetricsSink(cfg.Controller.MetricsSink, logger, metricstypes.SinkAppRolloutController),
+			MetricsSink:                    initMetricsSink(cfg.Controller.MetricsSink, logger, metricstypes.SinkAppRolloutController),
+			TargetResourceMissingThreshold: cfg.Controller.TargetResourceMissingThreshold,
 		}
 
 		defer closeMetricsSink(logger, disruptionRolloutReconciler.MetricsSink)
@@ -386,8 +387,9 @@ func main() {
 			BaseLog: logger,
 			Scheme:  mgr.GetScheme(),
 			// new metrics sink for cron controller
-			MetricsSink:            initMetricsSink(cfg.Controller.MetricsSink, logger, metricstypes.SinkAppCronController),
-			FinalizerDeletionDelay: cfg.Controller.FinalizerDeletionDelay,
+			MetricsSink:                    initMetricsSink(cfg.Controller.MetricsSink, logger, metricstypes.SinkAppCronController),
+			FinalizerDeletionDelay:         cfg.Controller.FinalizerDeletionDelay,
+			TargetResourceMissingThreshold: cfg.Controller.TargetResourceMissingThreshold,
 		}
 
 		defer closeMetricsSink(logger, disruptionCronReconciler.MetricsSink)

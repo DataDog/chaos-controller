@@ -43,6 +43,7 @@ controller:
   defaultDuration: 3m
   finalizerDeletionDelay: 2s
   expiredDisruptionGCDelay: 15s
+  targetResourceMissingThreshold: 1m
   webhook:
     certDir: chart/certs
     host: ""

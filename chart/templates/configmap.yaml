@@ -65,6 +65,7 @@ data:
       minimumCronFrequency: {{ .Values.controller.minimumCronFrequency }}
       maxDuration: {{ .Values.controller.maxDuration }}
       finalizerDeletionDelay: {{ .Values.controller.finalizerDeletionDelay }}
+      targetResourceMissingThreshold: {{ .Values.controller.targetResourceMissingThreshold }}
       expiredDisruptionGCDelay: {{ .Values.controller.expiredDisruptionGCDelay }}
       userInfoHook: {{ .Values.controller.userInfoHook }}
       webhook:

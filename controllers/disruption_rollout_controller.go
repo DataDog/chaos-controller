@@ -24,11 +24,12 @@ import (
 var DisruptionRolloutTags = []string{}
 
 type DisruptionRolloutReconciler struct {
-	Client      client.Client
-	Scheme      *runtime.Scheme
-	BaseLog     *zap.SugaredLogger
-	log         *zap.SugaredLogger
-	MetricsSink metrics.Sink
+	Client                         client.Client
+	Scheme                         *runtime.Scheme
+	BaseLog                        *zap.SugaredLogger
+	log                            *zap.SugaredLogger
+	MetricsSink                    metrics.Sink
+	TargetResourceMissingThreshold time.Duration
 }
 
 func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
@@ -203,7 +204,7 @@ func (r *DisruptionRolloutReconciler) updateTargetResourcePreviouslyMissing(ctx 
 			return targetResourceExists, disruptionRolloutDeleted, r.handleTargetResourceFirstMissing(ctx, instance)
 		}
 
-		if time.Since(instance.Status.TargetResourcePreviouslyMissing.Time) > TargetResourceMissingThreshold {
+		if time.Since(instance.Status.TargetResourcePreviouslyMissing.Time) > r.TargetResourceMissingThreshold {
 			r.log.Errorw("target has been missing for over one day, deleting this schedule",
 				"timeMissing", time.Since(instance.Status.TargetResourcePreviouslyMissing.Time))
 
@@ -240,6 +241,8 @@ func (r *DisruptionRolloutReconciler) handleTargetResourceMissingPastExpiration(
 	if err := r.Client.Delete(ctx, instance); err != nil {
 		return fmt.Errorf("failed to delete instance: %w", err)
 	}
+
+	r.handleMetricSinkError(r.MetricsSink.MetricMissingTargetDeleted(DisruptionRolloutTags))
 
 	return nil
 }
