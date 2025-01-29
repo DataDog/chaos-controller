@@ -372,8 +372,8 @@ func (r *Disruption) ValidateDelete() (admission.Warnings, error) {
 // getMetricsTags parses the disruption to generate metrics tags
 func (r *Disruption) getMetricsTags() []string {
 	tags := []string{
-		"disruptionName:" + r.Name,
-		"namespace:" + r.Namespace,
+		fmt.Sprintf("%s:%s", cLog.DisruptionNameKey, r.Name),
+		fmt.Sprintf("%s:%s", cLog.DisruptionNamespaceKey, r.Namespace),
 	}
 
 	if userInfo, err := r.UserInfo(); !errors.Is(err, ErrNoUserInfo) {
