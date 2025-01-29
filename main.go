@@ -380,6 +380,7 @@ func main() {
 
 	if cfg.Controller.DisruptionCronEnabled {
 		disruptionCronRecorder := broadcaster.NewRecorder(mgr.GetScheme(), corev1.EventSource{Component: chaosv1beta1.SourceDisruptionCronComponent})
+		disruptionCronMetricsSink := initMetricsSink(cfg.Controller.MetricsSink, logger, metricstypes.SinkAppCronController)
 
 		// create disruption cron reconciler
 		disruptionCronReconciler := &controllers.DisruptionCronReconciler{
@@ -387,7 +388,7 @@ func main() {
 			BaseLog: logger,
 			Scheme:  mgr.GetScheme(),
 			// new metrics sink for cron controller
-			MetricsSink:                    initMetricsSink(cfg.Controller.MetricsSink, logger, metricstypes.SinkAppCronController),
+			MetricsSink:                    disruptionCronMetricsSink,
 			FinalizerDeletionDelay:         cfg.Controller.FinalizerDeletionDelay,
 			TargetResourceMissingThreshold: cfg.Controller.TargetResourceMissingThreshold,
 		}
@@ -408,6 +409,7 @@ func main() {
 			DefaultCronDelayedStartTolerance: cfg.Controller.DefaultCronDelayedStartTolerance,
 			MinimumCronFrequency:             cfg.Controller.MinimumCronFrequency,
 			DefaultDurationFlag:              cfg.Controller.DefaultDuration,
+			MetricsSink:                      disruptionCronMetricsSink,
 		}
 
 		if err = (&chaosv1beta1.DisruptionCron{}).SetupWebhookWithManager(disruptionCronSetupWebhookConfig); err != nil {
