@@ -382,6 +382,8 @@ func main() {
 		disruptionCronRecorder := broadcaster.NewRecorder(mgr.GetScheme(), corev1.EventSource{Component: chaosv1beta1.SourceDisruptionCronComponent})
 		disruptionCronMetricsSink := initMetricsSink(cfg.Controller.MetricsSink, logger, metricstypes.SinkAppCronController)
 
+		defer closeMetricsSink(logger, disruptionCronMetricsSink)
+
 		// create disruption cron reconciler
 		disruptionCronReconciler := &controllers.DisruptionCronReconciler{
 			Client:  mgr.GetClient(),
