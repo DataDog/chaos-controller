@@ -225,7 +225,6 @@ func main() {
 		TracerSink:                 tracerSink,
 		TargetSelector:             targetSelector,
 		ExpiredDisruptionGCDelay:   gcPtr,
-		CacheContextStore:          make(map[string]controllers.CtxTuple),
 		ChaosPodService:            chaosPodService,
 		CloudService:               cloudProviderManager,
 		DisruptionsDeletionTimeout: cfg.Controller.DisruptionDeletionTimeout,
@@ -461,13 +460,6 @@ func main() {
 	// for safety purposes: as long as no event is emitted and mgr.Start(ctx.Context) isn't
 	// called, the broadcaster isn't actually initiated
 	defer broadcaster.Shutdown()
-
-	// erase/close caches contexts
-	defer func() {
-		for _, contextTuple := range disruptionReconciler.CacheContextStore {
-			contextTuple.CancelFunc()
-		}
-	}()
 
 	// +kubebuilder:scaffold:builder
 
