@@ -112,8 +112,18 @@ func (r *Disruption) Default() {
 var _ webhook.Validator = &Disruption{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *Disruption) ValidateCreate() (admission.Warnings, error) {
+func (r *Disruption) ValidateCreate() (_ admission.Warnings, err error) {
 	log := logger.With(cLog.DisruptionNameKey, r.Name, cLog.DisruptionNamespaceKey, r.Namespace)
+
+	metricTags := r.getMetricsTags()
+
+	defer func() {
+		if err != nil {
+			if mErr := metricsSink.MetricValidationFailed(metricTags); mErr != nil {
+				log.Errorw("error sending a metric", "error", mErr)
+			}
+		}
+	}()
 
 	ctx, err := r.SpanContext(context.Background())
 	if err != nil {
@@ -196,11 +206,7 @@ func (r *Disruption) ValidateCreate() (admission.Warnings, error) {
 		}
 	}
 
-	if err := r.Spec.Validate(); err != nil {
-		if mErr := metricsSink.MetricValidationFailed(r.getMetricsTags()); mErr != nil {
-			log.Errorw("error sending a metric", "error", mErr)
-		}
-
+	if err = r.Spec.Validate(); err != nil {
 		return nil, err
 	}
 
@@ -260,15 +266,23 @@ func (r *Disruption) ValidateCreate() (admission.Warnings, error) {
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *Disruption) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
+func (r *Disruption) ValidateUpdate(old runtime.Object) (_ admission.Warnings, err error) {
 	log := logger.With(cLog.DisruptionNameKey, r.Name, cLog.DisruptionNamespaceKey, r.Namespace)
 	log.Debugw("validating updated disruption", "spec", r.Spec)
 
-	var err error
+	metricTags := r.getMetricsTags()
+
+	defer func() {
+		if err != nil {
+			if mErr := metricsSink.MetricValidationFailed(metricTags); mErr != nil {
+				log.Errorw("error sending a metric", "error", mErr)
+			}
+		}
+	}()
 
 	oldDisruption := old.(*Disruption)
 
-	if err := validateUserInfoImmutable(oldDisruption, r); err != nil {
+	if err = validateUserInfoImmutable(oldDisruption, r); err != nil {
 		return nil, err
 	}
 
@@ -287,10 +301,7 @@ func (r *Disruption) ValidateUpdate(old runtime.Object) (admission.Warnings, err
 				oldPodsInfos = append(oldPodsInfos, fmt.Sprintf("%s/%s", oldPod.Namespace, oldPod.Name))
 			}
 
-			metricTags := append(r.getMetricsTags(), "prevent_finalizer_removal:true")
-			if mErr := metricsSink.MetricValidationFailed(metricTags); mErr != nil {
-				log.Errorw("error sending a metric", "error", mErr)
-			}
+			metricTags = append(metricTags, "prevent_finalizer_removal:true")
 
 			return nil, fmt.Errorf(`unable to remove disruption finalizer, disruption '%s/%s' still has associated pods:
 - %s
@@ -337,10 +348,6 @@ You first need to remove those chaos pods (and potentially their finalizers) to 
 	}
 
 	if err := r.Spec.Validate(); err != nil {
-		if mErr := metricsSink.MetricValidationFailed(r.getMetricsTags()); mErr != nil {
-			log.Errorw("error sending a metric", "error", mErr)
-		}
-
 		return nil, err
 	}
 
@@ -365,8 +372,8 @@ func (r *Disruption) ValidateDelete() (admission.Warnings, error) {
 // getMetricsTags parses the disruption to generate metrics tags
 func (r *Disruption) getMetricsTags() []string {
 	tags := []string{
-		"disruptionName:" + r.Name,
-		"namespace:" + r.Namespace,
+		fmt.Sprintf("%s:%s", cLog.DisruptionNameKey, r.Name),
+		fmt.Sprintf("%s:%s", cLog.DisruptionNamespaceKey, r.Namespace),
 	}
 
 	if userInfo, err := r.UserInfo(); !errors.Is(err, ErrNoUserInfo) {

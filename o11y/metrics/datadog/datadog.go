@@ -237,11 +237,6 @@ func (d Sink) MetricWatcherCalls(tags []string) error {
 	return d.metricWithStatus(d.prefix+"watcher.calls_total", tags)
 }
 
-// MetricSelectorCacheGauge reports how many caches are still in the cache array to prevent leaks
-func (d Sink) MetricSelectorCacheGauge(gauge float64) error {
-	return d.client.Gauge(d.prefix+"selector.cache.gauge", gauge, []string{}, 1)
-}
-
 // MetricTooLate reports when a scheduled Disruption misses its configured time to be run,
 // specific to cron and rollout controllers
 func (d Sink) MetricTooLate(tags []string) error {

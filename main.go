@@ -225,7 +225,6 @@ func main() {
 		TracerSink:                 tracerSink,
 		TargetSelector:             targetSelector,
 		ExpiredDisruptionGCDelay:   gcPtr,
-		CacheContextStore:          make(map[string]controllers.CtxTuple),
 		ChaosPodService:            chaosPodService,
 		CloudService:               cloudProviderManager,
 		DisruptionsDeletionTimeout: cfg.Controller.DisruptionDeletionTimeout,
@@ -380,6 +379,9 @@ func main() {
 
 	if cfg.Controller.DisruptionCronEnabled {
 		disruptionCronRecorder := broadcaster.NewRecorder(mgr.GetScheme(), corev1.EventSource{Component: chaosv1beta1.SourceDisruptionCronComponent})
+		disruptionCronMetricsSink := initMetricsSink(cfg.Controller.MetricsSink, logger, metricstypes.SinkAppCronController)
+
+		defer closeMetricsSink(logger, disruptionCronMetricsSink)
 
 		// create disruption cron reconciler
 		disruptionCronReconciler := &controllers.DisruptionCronReconciler{
@@ -387,7 +389,7 @@ func main() {
 			BaseLog: logger,
 			Scheme:  mgr.GetScheme(),
 			// new metrics sink for cron controller
-			MetricsSink:                    initMetricsSink(cfg.Controller.MetricsSink, logger, metricstypes.SinkAppCronController),
+			MetricsSink:                    disruptionCronMetricsSink,
 			FinalizerDeletionDelay:         cfg.Controller.FinalizerDeletionDelay,
 			TargetResourceMissingThreshold: cfg.Controller.TargetResourceMissingThreshold,
 		}
@@ -408,6 +410,7 @@ func main() {
 			DefaultCronDelayedStartTolerance: cfg.Controller.DefaultCronDelayedStartTolerance,
 			MinimumCronFrequency:             cfg.Controller.MinimumCronFrequency,
 			DefaultDurationFlag:              cfg.Controller.DefaultDuration,
+			MetricsSink:                      disruptionCronMetricsSink,
 		}
 
 		if err = (&chaosv1beta1.DisruptionCron{}).SetupWebhookWithManager(disruptionCronSetupWebhookConfig); err != nil {
@@ -457,13 +460,6 @@ func main() {
 	// for safety purposes: as long as no event is emitted and mgr.Start(ctx.Context) isn't
 	// called, the broadcaster isn't actually initiated
 	defer broadcaster.Shutdown()
-
-	// erase/close caches contexts
-	defer func() {
-		for _, contextTuple := range disruptionReconciler.CacheContextStore {
-			contextTuple.CancelFunc()
-		}
-	}()
 
 	// +kubebuilder:scaffold:builder
 

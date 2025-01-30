@@ -13,6 +13,7 @@ import (
 	"time"
 
 	cLog "github.com/DataDog/chaos-controller/log"
+	"github.com/DataDog/chaos-controller/o11y/metrics"
 	"github.com/DataDog/chaos-controller/utils"
 	"github.com/robfig/cron"
 	"go.uber.org/zap"
@@ -37,6 +38,7 @@ var (
 	disruptionCronWebhookDeleteOnly        bool
 	disruptionCronPermittedUserGroups      map[string]struct{}
 	disruptionCronPermittedUserGroupString string
+	disruptionCronMetricsSink              metrics.Sink
 	defaultCronDelayedStartTolerance       time.Duration
 	minimumCronFrequency                   time.Duration
 )
@@ -48,6 +50,7 @@ func (d *DisruptionCron) SetupWebhookWithManager(setupWebhookConfig utils.SetupW
 		"source", "admission-controller",
 		"admission-controller", "disruption-cron-webhook",
 	)
+	disruptionCronMetricsSink = setupWebhookConfig.MetricsSink
 
 	disruptionCronPermittedUserGroups = map[string]struct{}{}
 
@@ -82,29 +85,39 @@ func (d *DisruptionCron) Default() {
 var _ webhook.Validator = &DisruptionCron{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (d *DisruptionCron) ValidateCreate() (admission.Warnings, error) {
+func (d *DisruptionCron) ValidateCreate() (_ admission.Warnings, err error) {
 	log := disruptionCronWebhookLogger.With(cLog.DisruptionCronNameKey, d.Name, cLog.DisruptionCronNamespaceKey, d.Namespace)
 
 	log.Infow("validating created disruption cron", "spec", d.Spec)
+
+	metricTags := d.getMetricsTags()
+
+	defer func() {
+		if err != nil {
+			if mErr := disruptionCronMetricsSink.MetricValidationFailed(metricTags); mErr != nil {
+				log.Errorw("error sending a metric", "error", mErr)
+			}
+		}
+	}()
 
 	// delete-only mode, reject everything trying to be created
 	if disruptionCronWebhookDeleteOnly {
 		return nil, errors.New("the controller is currently in delete-only mode, you can't create new disruption cron for now")
 	}
 
-	if err := validateUserInfoGroup(d, disruptionCronPermittedUserGroups, disruptionCronPermittedUserGroupString); err != nil {
+	if err = validateUserInfoGroup(d, disruptionCronPermittedUserGroups, disruptionCronPermittedUserGroupString); err != nil {
 		return nil, err
 	}
 
-	if err := d.validateDisruptionCronName(); err != nil {
+	if err = d.validateDisruptionCronName(); err != nil {
 		return nil, err
 	}
 
-	if err := d.validateDisruptionCronSpec(); err != nil {
+	if err = d.validateDisruptionCronSpec(); err != nil {
 		return nil, err
 	}
 
-	if err := d.validateMinimumFrequency(minimumCronFrequency); err != nil {
+	if err = d.validateMinimumFrequency(minimumCronFrequency); err != nil {
 		return nil, err
 	}
 
@@ -114,20 +127,30 @@ func (d *DisruptionCron) ValidateCreate() (admission.Warnings, error) {
 	return nil, nil
 }
 
-func (d *DisruptionCron) ValidateUpdate(oldObject runtime.Object) (admission.Warnings, error) {
+func (d *DisruptionCron) ValidateUpdate(oldObject runtime.Object) (_ admission.Warnings, err error) {
 	log := logger.With(cLog.DisruptionCronNameKey, d.Name, cLog.DisruptionCronNamespaceKey, d.Namespace)
 
 	log.Infow("validating updated disruption cron", "spec", d.Spec)
 
-	if err := validateUserInfoImmutable(oldObject.(*DisruptionCron), d); err != nil {
+	metricTags := d.getMetricsTags()
+
+	defer func() {
+		if err != nil {
+			if mErr := disruptionCronMetricsSink.MetricValidationFailed(metricTags); mErr != nil {
+				log.Errorw("error sending a metric", "error", mErr)
+			}
+		}
+	}()
+
+	if err = validateUserInfoImmutable(oldObject.(*DisruptionCron), d); err != nil {
 		return nil, err
 	}
 
-	if err := d.validateDisruptionCronName(); err != nil {
+	if err = d.validateDisruptionCronName(); err != nil {
 		return nil, err
 	}
 
-	if err := d.validateDisruptionCronSpec(); err != nil {
+	if err = d.validateDisruptionCronSpec(); err != nil {
 		return nil, err
 	}
 

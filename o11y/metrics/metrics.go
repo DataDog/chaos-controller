@@ -68,8 +68,6 @@ type Sink interface {
 	MetricDisruptionsGauge(gauge float64, tags []string) error
 	// MetricDisruptionsCount counts finished disruptions, and tags the disruption kind
 	MetricDisruptionsCount(kind chaostypes.DisruptionKindName, tags []string) error
-	// MetricSelectorCacheGauge reports how many caches are still in the cache array to prevent leaks
-	MetricSelectorCacheGauge(gauge float64) error
 	// MetricWatcherCalls is a counter of watcher calls. This is emitted by every OnChange event for all of our watchers,
 	// e.g., the chaos pod watcher, the target pod watcher, the disruption watcher.
 	MetricWatcherCalls(tags []string) error

@@ -1191,52 +1191,6 @@ func (_c *SinkMock_MetricRestart_Call) RunAndReturn(run func() error) *SinkMock_
 	return _c
 }
 
-// MetricSelectorCacheGauge provides a mock function with given fields: gauge
-func (_m *SinkMock) MetricSelectorCacheGauge(gauge float64) error {
-	ret := _m.Called(gauge)
-
-	if len(ret) == 0 {
-		panic("no return value specified for MetricSelectorCacheGauge")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(float64) error); ok {
-		r0 = rf(gauge)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// SinkMock_MetricSelectorCacheGauge_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MetricSelectorCacheGauge'
-type SinkMock_MetricSelectorCacheGauge_Call struct {
-	*mock.Call
-}
-
-// MetricSelectorCacheGauge is a helper method to define mock.On call
-//   - gauge float64
-func (_e *SinkMock_Expecter) MetricSelectorCacheGauge(gauge interface{}) *SinkMock_MetricSelectorCacheGauge_Call {
-	return &SinkMock_MetricSelectorCacheGauge_Call{Call: _e.mock.On("MetricSelectorCacheGauge", gauge)}
-}
-
-func (_c *SinkMock_MetricSelectorCacheGauge_Call) Run(run func(gauge float64)) *SinkMock_MetricSelectorCacheGauge_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(float64))
-	})
-	return _c
-}
-
-func (_c *SinkMock_MetricSelectorCacheGauge_Call) Return(_a0 error) *SinkMock_MetricSelectorCacheGauge_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *SinkMock_MetricSelectorCacheGauge_Call) RunAndReturn(run func(float64) error) *SinkMock_MetricSelectorCacheGauge_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // MetricStuckOnRemoval provides a mock function with given fields: tags
 func (_m *SinkMock) MetricStuckOnRemoval(tags []string) error {
 	ret := _m.Called(tags)

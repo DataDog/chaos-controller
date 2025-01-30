@@ -6,7 +6,10 @@
 package v1beta1
 
 import (
+	"fmt"
 	"time"
+
+	"github.com/DataDog/chaos-controller/log"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -107,4 +110,14 @@ type DisruptionCronTrigger struct {
 // IsReadyToRemoveFinalizer checks if adisruptioncron has been deleting for > finalizerDelay
 func (d *DisruptionCron) IsReadyToRemoveFinalizer(finalizerDelay time.Duration) bool {
 	return d.DeletionTimestamp != nil && time.Now().After(d.DeletionTimestamp.Add(finalizerDelay))
+}
+
+// getMetricsTags parses the disruptioncron to generate metrics tags
+func (d *DisruptionCron) getMetricsTags() []string {
+	tags := []string{
+		fmt.Sprintf("%s:%s", log.DisruptionCronNameKey, d.Name),
+		fmt.Sprintf("%s:%s", log.DisruptionCronNamespaceKey, d.Namespace),
+	}
+
+	return tags
 }
