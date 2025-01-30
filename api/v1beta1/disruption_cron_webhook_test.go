@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/DataDog/chaos-controller/mocks"
+	metricsnoop "github.com/DataDog/chaos-controller/o11y/metrics/noop"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap/zaptest"
 	authV1 "k8s.io/api/authentication/v1"
@@ -29,6 +30,7 @@ var _ = Describe("DisruptionCron Webhook", func() {
 
 	BeforeEach(func() {
 		disruptionCronWebhookLogger = zaptest.NewLogger(GinkgoT()).Sugar()
+		disruptionCronMetricsSink = metricsnoop.New(disruptionCronWebhookLogger)
 		defaultUserGroups = map[string]struct{}{
 			"group1": {},
 			"group2": {},
