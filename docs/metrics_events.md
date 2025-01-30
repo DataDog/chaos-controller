@@ -22,7 +22,15 @@ Here's the list of metrics sent by the controller and the injector.
 * `chaos.controller.disruptions.stuck_on_removal` increments when a disruption is stuck on removal
 * `chaos.controller.disruptions.stuck_on_removal_total` is the total count of existing disruption being flagged as stuck on removal
 * `chaos.controller.disruptions.gauge` is the total count of existing disruption
-* `chaos.controller.disruptions.count` increments when a disruption is created
+* `chaos.controller.disruptions.count` increments when a disruption is finished
+* `chaos.controller.watcher.calls_total` increments each time any watcher handles an OnChange event
+* `chaos.cron.controller.schedule.too_late` increments each time a DisruptionCron has missed the time to schedule its disruption
+* `chaos.cron.controller.schedule.target_missing` increments each time a DisruptionCron cannot find its target
+* `chaos.cron.controller.schedule.missing_target_found` increments each time a DisruptionCron which couldn't find its target, is now able to find it
+* `chaos.cron.controller.schedule.missing_target_deleted` increments each time a DisruptionCron self deletes because its target was missing for too long
+* `chaos.cron.controller.schedule.next_scheduled` is the time between now and when the next disruption for this DisruptionCron should run
+* `chaos.cron.controller.schedule.disruption_scheduled` increments each time a DisruptionCron schedules a child disruption
+* `chaos.cron.controller.schedule.paused` increments each time a DisruptionCron reconciles while in a paused state
 
 #### Admission webhooks
 
