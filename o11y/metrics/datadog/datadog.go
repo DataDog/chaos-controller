@@ -158,7 +158,7 @@ func (d Sink) MetricDisruptionOngoingDuration(duration time.Duration, tags []str
 // schedule a new chaos-injector pod. The `succeed` bool argument is false if there was an error returned.
 func (d Sink) MetricPodsCreated(target, instanceName, namespace string, succeed bool) error {
 	status := boolToStatus(succeed)
-	tags := []string{"target:" + target, "disruptionName:" + instanceName, "status:" + status, "namespace:" + namespace}
+	tags := []string{"target:" + target, "disruptionName:" + instanceName, "status:" + status, "disruptionNamespace:" + namespace}
 
 	return d.metricWithStatus(d.prefix+"pods.created", tags)
 }
