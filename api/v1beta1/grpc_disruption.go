@@ -148,3 +148,7 @@ func (s GRPCDisruptionSpec) GenerateArgs() []string {
 
 	return args
 }
+
+func (s *GRPCDisruptionSpec) Explain() []string {
+	return []string{"TODO"}
+}

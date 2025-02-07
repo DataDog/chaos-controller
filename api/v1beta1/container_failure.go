@@ -27,3 +27,7 @@ func (s *ContainerFailureSpec) GenerateArgs() []string {
 
 	return args
 }
+
+func (s *ContainerFailureSpec) Explain() []string {
+	return []string{"TODO"}
+}

@@ -110,6 +110,10 @@ func (s *DiskFailureSpec) GenerateArgs() (args []string) {
 	return args
 }
 
+func (s *DiskFailureSpec) Explain() []string {
+	return []string{"TODO"}
+}
+
 // GetExitCodeInt return the integer value of a linux exit code.
 func (oss *OpenatSyscallSpec) GetExitCodeInt() int {
 	switch oss.ExitCode {

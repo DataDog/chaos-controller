@@ -47,3 +47,7 @@ func (s *DiskPressureSpec) GenerateArgs() []string {
 
 	return args
 }
+
+func (s *DiskPressureSpec) Explain() []string {
+	return []string{"TODO"}
+}

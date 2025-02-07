@@ -74,3 +74,7 @@ func (s DNSDisruptionSpec) GenerateArgs() []string {
 
 	return args
 }
+
+func (s DNSDisruptionSpec) Explain() []string {
+	return []string{"TODO"}
+}

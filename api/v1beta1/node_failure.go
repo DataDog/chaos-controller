@@ -28,3 +28,7 @@ func (s *NodeFailureSpec) GenerateArgs() []string {
 
 	return args
 }
+
+func (s *NodeFailureSpec) Explain() []string {
+	return []string{"TODO"}
+}

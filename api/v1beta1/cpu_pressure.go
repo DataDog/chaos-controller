@@ -49,3 +49,7 @@ func (s *CPUPressureSpec) GenerateArgs() []string {
 
 	return args
 }
+
+func (s *CPUPressureSpec) Explain() []string {
+	return []string{"TODO"}
+}

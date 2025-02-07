@@ -714,3 +714,7 @@ func (s *NetworkDisruptionSpec) UpdateHostsOnCloudDisruption(cloudManager clouds
 
 	return nil
 }
+
+func (s *NetworkDisruptionSpec) Explain() []string {
+	return []string{"TODO"}
+}

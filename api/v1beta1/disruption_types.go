@@ -137,6 +137,10 @@ type Reporting struct {
 	MinNotificationType eventtypes.NotificationType `json:"minNotificationType,omitempty"`
 }
 
+func (r *Reporting) Explain() string {
+	return "TODO"
+}
+
 // EmbeddedChaosAPI includes the library so it can be statically exported to chaosli
 //
 //go:embed *.go
@@ -879,6 +883,12 @@ func (s DisruptionSpec) DisruptionCount() int {
 func (s DisruptionSpec) Explain() []string {
 	var explanation []string
 	explanation = append(explanation, "Here's our best explanation of what this spec will do when run:")
+
+	explanation = append(explanation, fmt.Sprintf("spec.duration is %s,. After that amount of time, the disruption "+
+		"will stop and clean itself up. If it fails to clean up, an alert will be sent. If you want the disruption to stop early, "+
+		"just try to delete the disruption. All chaos-injector pods will immediately try to stop the failure.",
+		s.Duration.Duration().String()))
+
 	if s.DryRun {
 		explanation = append(explanation, "spec.dryRun is set to true, meaning we will simulate a real disruption "+
 			"as best as possible, by creating the resource, picking targets, and creating chaos-injector pods, "+
@@ -961,6 +971,42 @@ func (s DisruptionSpec) Explain() []string {
 			"to your defined spec.count, and add/remove targets as needed, e.g., with a count of \"100%\", if new targets "+
 			"are scheduled, we will inject into them as well. "+
 			"If you want a different behavior, trying setting spec.staticTargeting to true.")
+	}
+
+	if s.Reporting != nil {
+		explanation = append(explanation, s.Reporting.Explain())
+	}
+
+	if s.NodeFailure != nil {
+		explanation = append(explanation, s.NodeFailure.Explain()...)
+	}
+
+	if s.ContainerFailure != nil {
+		explanation = append(explanation, s.ContainerFailure.Explain()...)
+	}
+
+	if s.Network != nil {
+		explanation = append(explanation, s.Network.Explain()...)
+	}
+
+	if s.CPUPressure != nil {
+		explanation = append(explanation, s.CPUPressure.Explain()...)
+	}
+
+	if s.DiskPressure != nil {
+		explanation = append(explanation, s.DiskPressure.Explain()...)
+	}
+
+	if s.DiskFailure != nil {
+		explanation = append(explanation, s.DiskFailure.Explain()...)
+	}
+
+	if s.DNS != nil {
+		explanation = append(explanation, s.DNS.Explain()...)
+	}
+
+	if s.GRPC != nil {
+		explanation = append(explanation, s.GRPC.Explain()...)
 	}
 
 	return explanation
