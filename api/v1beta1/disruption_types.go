@@ -875,6 +875,72 @@ func (s DisruptionSpec) DisruptionCount() int {
 	return count
 }
 
+// Explain returns a string explanation of this disruption spec
+func (s DisruptionSpec) Explain() []string {
+	var explanation []string
+	explanation = append(explanation, "Here's our best explanation of what this spec will do when run:")
+	if s.DryRun {
+		explanation = append(explanation, "spec.dryRun is set to true, meaning we will simulate a real disruption "+
+			"as best as possible, by creating the resource, picking targets, and creating chaos-injector pods, "+
+			"but we will not inject any actual failure.")
+	}
+
+	// s.Level can be "", which defaults to Pod
+	if s.Level != chaostypes.DisruptionLevelNode {
+		explanation = append(explanation, "spec.level is pod. We will pick pods as targets based on your selector, and inject the failure into the pod containers.")
+	} else {
+		explanation = append(explanation, "spec.level is node. We will pick nodes as targets based on your selector, and inject the failure into the nodes, affecting all pods on those nodes.")
+	}
+
+	if s.Selector != nil {
+		explanation = append(explanation, fmt.Sprintf("This spec has the following selectors which will be used to target %ss with these labels.\n\t\t  %s", s.Level, s.Selector.String())
+	}
+
+	if s.AdvancedSelector != nil {
+		advancedSelectorExplanation := fmt.Sprintf("This spec has the following advanced selectors which will be used to target %ss based on their labels:\n", s.Level)
+
+		for _, selector := range s.AdvancedSelector {
+			advancedSelectorExplanation += fmt.Sprintf("\t\t%s\n", selector.String())
+		}
+
+		explanation = append(explanation, advancedSelectorExplanation)
+	}
+
+	if s.Filter != nil && s.Filter.Annotations != nil {
+		explanation = append(explanation, fmt.Sprintf("This spec has the following annotation filters which will be used to target %ss with these annotations.\n\t\t  %s\n", s.Level, s.Filter.Annotations.String())
+	}
+
+	if s.Containers != nil {
+		explanation = append(explanation, fmt.Sprintf("\tspec.containers is set, so this disruption will only inject the failure the following containers on the target pods\n\t\t  %s\n", strings.Join(s.Containers, ","))
+	}
+
+	if s.Pulse != nil {
+		fmt.Printf("\tℹ️  has the pulse mode activated meaning that after an initial delay of %s the disruptions will alternate between an active injected state with a duration of %s, and an inactive dormant state with a duration of %s.\n", s.Pulse.InitialDelay.Duration().String(), s.Pulse.ActiveDuration.Duration().String(), s.Pulse.DormantDuration.Duration().String())
+	}
+
+	if s.OnInit {
+		fmt.Printf("\tℹ️  has the onInit mode activated meaning the disruptions will be launched at the initialization of the targeted pods.\n")
+	}
+
+	countSuffix := ""
+	if s.Count.Type == intstr.Int {
+		countSuffix = fmt.Sprintf("(described as a discrete number of %ss)", s.Level)
+	} else {
+		countSuffix = fmt.Sprintf("(described as a percentage of total %ss)", s.Level)
+	}
+
+	fmt.Printf("\tℹ️  is going to target %s %s(s) (%s).\n", s.Count, s.Level, countSuffix)
+
+	if s.StaticTargeting {
+		fmt.Printf("\tℹ️  has StaticTargeting activated, so new pods/nodes will be NOT be targeted \n")
+	} else {
+		fmt.Printf("\tℹ️  has StaticTargeting deactivated, so new pods/nodes will be targeted\n")
+	}
+
+	return explanation
+
+}
+
 // RemoveDeadTargets removes targets not found in matchingTargets from the targets list
 func (status *DisruptionStatus) RemoveDeadTargets(matchingTargets []string) {
 	desiredTargets := TargetInjections{}
