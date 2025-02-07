@@ -948,15 +948,19 @@ func (s DisruptionSpec) Explain() []string {
 		)
 	}
 
-	fmt.Printf("spec.count is %s, so the disruption will try to target %s",
+	explanation = append(explanation, fmt.Sprintf("spec.count is %s, so the disruption will try to target %s",
 		s.Count.String(),
 		countSuffix,
-	)
+	))
 
 	if s.StaticTargeting {
-		fmt.Printf("\tℹ️  has StaticTargeting activated, so new pods/nodes will be NOT be targeted \n")
+		explanation = append(explanation, fmt.Sprintf("spec.staticTargeting is true, so after we pick an initial set of targets and inject, "+
+			"we will not attempt to inject into any new targets that appear while the disruption is ongoing."))
 	} else {
-		fmt.Printf("\tℹ️  has StaticTargeting deactivated, so new pods/nodes will be targeted\n")
+		explanation = append(explanation, "By default we will continually compare the injected target count "+
+			"to your defined spec.count, and add/remove targets as needed, e.g., with a count of \"100%\", if new targets "+
+			"are scheduled, we will inject into them as well. "+
+			"If you want a different behavior, trying setting spec.staticTargeting to true.")
 	}
 
 	return explanation
