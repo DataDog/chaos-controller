@@ -893,7 +893,7 @@ func (s DisruptionSpec) Explain() []string {
 	}
 
 	if s.Selector != nil {
-		explanation = append(explanation, fmt.Sprintf("This spec has the following selectors which will be used to target %ss with these labels.\n\t\t  %s", s.Level, s.Selector.String())
+		explanation = append(explanation, fmt.Sprintf("This spec has the following selectors which will be used to target %ss with these labels.\n\t\t  %s", s.Level, s.Selector.String()))
 	}
 
 	if s.AdvancedSelector != nil {
@@ -907,29 +907,51 @@ func (s DisruptionSpec) Explain() []string {
 	}
 
 	if s.Filter != nil && s.Filter.Annotations != nil {
-		explanation = append(explanation, fmt.Sprintf("This spec has the following annotation filters which will be used to target %ss with these annotations.\n\t\t  %s\n", s.Level, s.Filter.Annotations.String())
+		explanation = append(explanation, fmt.Sprintf("This spec has the following annotation filters which will be used to target %ss with these annotations.\n\t\t  %s\n", s.Level, s.Filter.Annotations.String()))
 	}
 
 	if s.Containers != nil {
-		explanation = append(explanation, fmt.Sprintf("\tspec.containers is set, so this disruption will only inject the failure the following containers on the target pods\n\t\t  %s\n", strings.Join(s.Containers, ","))
+		explanation = append(explanation, fmt.Sprintf("spec.containers is set, so this disruption will only inject the failure the following containers on the target pods\n\t\t  %s\n", strings.Join(s.Containers, ",")))
 	}
 
 	if s.Pulse != nil {
-		fmt.Printf("\tℹ️  has the pulse mode activated meaning that after an initial delay of %s the disruptions will alternate between an active injected state with a duration of %s, and an inactive dormant state with a duration of %s.\n", s.Pulse.InitialDelay.Duration().String(), s.Pulse.ActiveDuration.Duration().String(), s.Pulse.DormantDuration.Duration().String())
+		explanation = append(explanation,
+			fmt.Sprintf("spec.pulse is set, so rather than a constant failure injection,after an initial delay of %s"+
+				" the disruption will alternate between an active injected state with a duration of %s,"+
+				" and an inactive dormant state with a duration of %s.\n",
+				s.Pulse.InitialDelay.Duration().String(),
+				s.Pulse.ActiveDuration.Duration().String(),
+				s.Pulse.DormantDuration.Duration().String()))
 	}
 
 	if s.OnInit {
-		fmt.Printf("\tℹ️  has the onInit mode activated meaning the disruptions will be launched at the initialization of the targeted pods.\n")
+		explanation = append(explanation, fmt.Sprintf("spec.onInit is true. "+
+			"The disruptions will be launched during the initialization of the targeted pods."+
+			"This requires some extra setup on your end, please [read the full documentation](https://github.com/DataDog/chaos-controller/blob/main/docs/features.md#applying-a-disruption-on-pod-initialization)"))
 	}
 
 	countSuffix := ""
 	if s.Count.Type == intstr.Int {
-		countSuffix = fmt.Sprintf("(described as a discrete number of %ss)", s.Level)
+		countSuffix = fmt.Sprintf("exactly %d %ss. If it can't find that many targets, it will inject into as many as it discovers."+
+			"If there are more than %d eligible targets, a random %d will be chosen.",
+			s.Count.IntValue(),
+			s.Level,
+			s.Count.IntValue(),
+			s.Count.IntValue(),
+		)
+		countSuffix += " If it's more convenient, you can set spec.count to a % instead (just append the '%' character)."
 	} else {
-		countSuffix = fmt.Sprintf("(described as a percentage of total %ss)", s.Level)
+		countSuffix = fmt.Sprintf("%s percent of all eligible %ss found. "+
+			"If it's more convenient, you can set spec.count to an int intead of a percentage.",
+			s.Count.String(),
+			s.Level,
+		)
 	}
 
-	fmt.Printf("\tℹ️  is going to target %s %s(s) (%s).\n", s.Count, s.Level, countSuffix)
+	fmt.Printf("spec.count is %s, so the disruption will try to target %s",
+		s.Count.String(),
+		countSuffix,
+	)
 
 	if s.StaticTargeting {
 		fmt.Printf("\tℹ️  has StaticTargeting activated, so new pods/nodes will be NOT be targeted \n")
