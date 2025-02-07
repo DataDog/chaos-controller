@@ -982,7 +982,7 @@ func (s DisruptionSpec) Explain() []string {
 	}
 
 	if s.ContainerFailure != nil {
-		explanation = append(explanation, s.ContainerFailure.Explain()...)
+		explanation = append(explanation, s.ContainerFailure.Explain())
 	}
 
 	if s.Network != nil {
