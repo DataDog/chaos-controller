@@ -2,7 +2,7 @@
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2025 Datadog, Inc.
-package controllers
+package v1beta1
 
 import (
 	"context"
@@ -11,7 +11,6 @@ import (
 	"sort"
 	"time"
 
-	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	cLog "github.com/DataDog/chaos-controller/log"
 	"go.uber.org/zap"
 	appsv1 "k8s.io/api/apps/v1"
@@ -25,14 +24,14 @@ import (
 )
 
 const (
-	DisruptionCronNameLabel    = chaosv1beta1.GroupName + "/disruption-cron-name"
-	DisruptionRolloutNameLabel = chaosv1beta1.GroupName + "/disruption-rollout-name"
+	DisruptionCronNameLabel    = GroupName + "/disruption-cron-name"
+	DisruptionRolloutNameLabel = GroupName + "/disruption-rollout-name"
 )
 
 // GetChildDisruptions retrieves disruptions associated with a resource by its label.
 // Most of the time, this will return an empty list as disruptions are typically short-lived objects.
-func GetChildDisruptions(ctx context.Context, cl client.Client, log *zap.SugaredLogger, namespace, labelKey, labelVal string) (*chaosv1beta1.DisruptionList, error) {
-	disruptions := &chaosv1beta1.DisruptionList{}
+func GetChildDisruptions(ctx context.Context, cl client.Client, log *zap.SugaredLogger, namespace, labelKey, labelVal string) (*DisruptionList, error) {
+	disruptions := &DisruptionList{}
 	labelSelector := labels.SelectorFromSet(labels.Set{labelKey: labelVal})
 
 	if err := cl.List(ctx, disruptions, client.InNamespace(namespace), &client.ListOptions{LabelSelector: labelSelector}); err != nil {
@@ -45,7 +44,7 @@ func GetChildDisruptions(ctx context.Context, cl client.Client, log *zap.Sugared
 
 // GetTargetResource retrieves the specified target resource (Deployment or StatefulSet).
 // It returns the target resource object and any error encountered during retrieval.
-func GetTargetResource(ctx context.Context, cl client.Client, targetResource *chaosv1beta1.TargetResourceSpec, namespace string) (client.Object, error) {
+func GetTargetResource(ctx context.Context, cl client.Client, targetResource *TargetResourceSpec, namespace string) (client.Object, error) {
 	var targetObj client.Object
 
 	switch targetResource.Kind {
@@ -65,7 +64,7 @@ func GetTargetResource(ctx context.Context, cl client.Client, targetResource *ch
 
 // CheckTargetResourceExists determines if the target resource exists.
 // Returns a boolean indicating presence and an error if one occurs.
-func CheckTargetResourceExists(ctx context.Context, cl client.Client, targetResource *chaosv1beta1.TargetResourceSpec, namespace string) (bool, error) {
+func CheckTargetResourceExists(ctx context.Context, cl client.Client, targetResource *TargetResourceSpec, namespace string) (bool, error) {
 	_, err := GetTargetResource(ctx, cl, targetResource, namespace)
 
 	if apierrors.IsNotFound(err) {
@@ -79,7 +78,7 @@ func CheckTargetResourceExists(ctx context.Context, cl client.Client, targetReso
 
 // GetSelectors retrieves the labels of the specified target resource (Deployment or StatefulSet).
 // Returns a set of labels to be used as Disruption selectors and an error if retrieval fails.
-func GetSelectors(ctx context.Context, cl client.Client, targetResource *chaosv1beta1.TargetResourceSpec, namespace string) (labels *metav1.LabelSelector, err error) {
+func GetSelectors(ctx context.Context, cl client.Client, targetResource *TargetResourceSpec, namespace string) (labels *metav1.LabelSelector, err error) {
 	targetObj, err := GetTargetResource(ctx, cl, targetResource, namespace)
 	if err != nil {
 		return nil, err
@@ -104,10 +103,10 @@ func GetSelectors(ctx context.Context, cl client.Client, targetResource *chaosv1
 
 // createBaseDisruption generates a basic Disruption object using the provided owner and disruptionSpec.
 // The returned Disruption object has its basic details set, but it's not saved or stored anywhere yet.
-func createBaseDisruption(owner metav1.Object, disruptionSpec *chaosv1beta1.DisruptionSpec) *chaosv1beta1.Disruption {
+func createBaseDisruption(owner metav1.Object, disruptionSpec *DisruptionSpec) *Disruption {
 	name := generateDisruptionName(owner)
 
-	return &chaosv1beta1.Disruption{
+	return &Disruption{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        name,
 			Namespace:   owner.GetNamespace(),
@@ -121,7 +120,7 @@ func createBaseDisruption(owner metav1.Object, disruptionSpec *chaosv1beta1.Disr
 // setDisruptionAnnotations updates the annotations of a given Disruption object with those of its owner.
 // It sets a scheduled time annotation using the provided scheduledTime.
 // It parses the UserInfo annotation if it exists and sets user-related annotations.
-func setDisruptionAnnotations(disruption *chaosv1beta1.Disruption, owner metav1.Object, scheduledTime time.Time) error {
+func setDisruptionAnnotations(disruption *Disruption, owner metav1.Object, scheduledTime time.Time) error {
 	disruption.CopyOwnerAnnotations(owner)
 
 	disruption.SetScheduledAtAnnotation(scheduledTime)
@@ -131,7 +130,7 @@ func setDisruptionAnnotations(disruption *chaosv1beta1.Disruption, owner metav1.
 
 // overwriteDisruptionSelectors updates the selectors of a given Disruption object based on the provided targetResource.
 // Returns an error if fetching selectors from the target resource fails.
-func overwriteDisruptionSelectors(ctx context.Context, cl client.Client, disruption *chaosv1beta1.Disruption, targetResource *chaosv1beta1.TargetResourceSpec, namespace string) error {
+func overwriteDisruptionSelectors(ctx context.Context, cl client.Client, disruption *Disruption, targetResource *TargetResourceSpec, namespace string) error {
 	// Get selectors from target resource
 	selectors, err := GetSelectors(ctx, cl, targetResource, namespace)
 	if err != nil {
@@ -156,7 +155,7 @@ func overwriteDisruptionSelectors(ctx context.Context, cl client.Client, disrupt
 // CreateDisruptionFromTemplate constructs a Disruption object based on the provided owner, disruptionSpec, and targetResource.
 // The function sets annotations, overwrites selectors, and associates the Disruption with its owner.
 // It returns the constructed Disruption or an error if any step fails.
-func CreateDisruptionFromTemplate(ctx context.Context, cl client.Client, scheme *runtime.Scheme, owner metav1.Object, targetResource *chaosv1beta1.TargetResourceSpec, disruptionSpec *chaosv1beta1.DisruptionSpec, scheduledTime time.Time, log *zap.SugaredLogger) (*chaosv1beta1.Disruption, error) {
+func CreateDisruptionFromTemplate(ctx context.Context, cl client.Client, scheme *runtime.Scheme, owner metav1.Object, targetResource *TargetResourceSpec, disruptionSpec *DisruptionSpec, scheduledTime time.Time, log *zap.SugaredLogger) (*Disruption, error) {
 	disruption := createBaseDisruption(owner, disruptionSpec)
 
 	ownerNameLabel := getOwnerNameLabel(owner)
@@ -178,7 +177,7 @@ func CreateDisruptionFromTemplate(ctx context.Context, cl client.Client, scheme 
 }
 
 // getScheduledTimeForDisruption returns the scheduled time for a particular disruption.
-func getScheduledTimeForDisruption(log *zap.SugaredLogger, disruption *chaosv1beta1.Disruption) time.Time {
+func getScheduledTimeForDisruption(log *zap.SugaredLogger, disruption *Disruption) time.Time {
 	parsedTime, err := disruption.GetScheduledAtAnnotation()
 	if err != nil {
 		log.Errorw("unable to parse schedule time for child disruption", "err", err, cLog.DisruptionNameKey, disruption.Name)
@@ -189,7 +188,7 @@ func getScheduledTimeForDisruption(log *zap.SugaredLogger, disruption *chaosv1be
 }
 
 // GetMostRecentScheduleTime returns the most recent scheduled time from a list of disruptions.
-func GetMostRecentScheduleTime(log *zap.SugaredLogger, disruptions *chaosv1beta1.DisruptionList) time.Time {
+func GetMostRecentScheduleTime(log *zap.SugaredLogger, disruptions *DisruptionList) time.Time {
 	length := len(disruptions.Items)
 	if length == 0 {
 		return time.Time{}
@@ -209,9 +208,9 @@ func GetMostRecentScheduleTime(log *zap.SugaredLogger, disruptions *chaosv1beta1
 // It returns a formatted string name.
 func generateDisruptionName(owner metav1.Object) string {
 	switch typedOwner := owner.(type) {
-	case *chaosv1beta1.DisruptionCron:
+	case *DisruptionCron:
 		return fmt.Sprintf("disruption-cron-%s", typedOwner.GetName())
-	case *chaosv1beta1.DisruptionRollout:
+	case *DisruptionRollout:
 		return fmt.Sprintf("disruption-rollout-%s", typedOwner.GetName())
 	}
 
@@ -222,9 +221,9 @@ func generateDisruptionName(owner metav1.Object) string {
 // It returns the label string.
 func getOwnerNameLabel(owner metav1.Object) string {
 	switch owner.(type) {
-	case *chaosv1beta1.DisruptionCron:
+	case *DisruptionCron:
 		return DisruptionCronNameLabel
-	case *chaosv1beta1.DisruptionRollout:
+	case *DisruptionRollout:
 		return DisruptionRolloutNameLabel
 	}
 
