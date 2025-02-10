@@ -50,6 +50,15 @@ func (s *DiskPressureSpec) GenerateArgs() []string {
 }
 
 func (s *DiskPressureSpec) Explain() string {
-	explanation := fmt.Sprintf("spec.diskPressure will throttle io ")
+	explanation := fmt.Sprintf("spec.diskPressure will throttle io on the device mounted to the path %s, limiting it to ", s.Path)
+
+	if s.Throttling.ReadBytesPerSec != nil {
+		explanation += fmt.Sprintf("%d read bytes per second ", *s.Throttling.ReadBytesPerSec)
+	}
+
+	if s.Throttling.WriteBytesPerSec != nil {
+		explanation += fmt.Sprintf("%d write bytes per second.", *s.Throttling.WriteBytesPerSec)
+	}
+
 	return explanation
 }
