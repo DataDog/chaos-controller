@@ -632,7 +632,27 @@ func (h NetworkDisruptionHostSpec) Validate() error {
 }
 
 func (h NetworkDisruptionHostSpec) Explain() string {
-	return "TODO"
+	hostExplanation := ""
+
+	if h.Flow == FlowIngress {
+		fmt.Println("ACKS to incoming traffic. [See the docs for info](https://github.com/DataDog/chaos-controller/blob/main/docs/network_disruption/flow.md#q-why-are-there-limitations-on-ingress) ")
+	} else {
+		fmt.Println("Outgoing traffic ")
+	}
+
+	if len(h.Host) != 0 {
+		hostExplanation += fmt.Sprintf("to Host: %s ", h.Host)
+	}
+
+	if h.Port != 0 {
+		hostExplanation += fmt.Sprintf("on Port: %d ", h.Port)
+	}
+
+	if len(h.Protocol) != 0 {
+		hostExplanation += fmt.Sprintf("using Protocol: %s ", h.Protocol)
+	}
+
+	return hostExplanation
 }
 
 func (s NetworkDisruptionServiceSpec) ExtractAffectedPortsInServicePorts(k8sService *v1.Service) ([]v1.ServicePort, []NetworkDisruptionServicePortSpec) {
@@ -679,7 +699,27 @@ func (s NetworkDisruptionServiceSpec) ExtractAffectedPortsInServicePorts(k8sServ
 }
 
 func (s *NetworkDisruptionServiceSpec) Explain() string {
-	return "TODO"
+	explanation := fmt.Sprintf("The service %s in the namespace %s", s.Name, s.Namespace)
+
+	if len(s.Ports) > 0 {
+		portExpl := ""
+
+		for _, port := range s.Ports {
+			toPrint := []string{}
+
+			if port.Port != 0 {
+				toPrint = append(toPrint, strconv.Itoa(port.Port))
+			}
+
+			if port.Name != "" {
+				toPrint = append(toPrint, port.Name)
+			}
+
+			portExpl = fmt.Sprintf("Port: (%s)", strings.Join(toPrint, "/"))
+		}
+		explanation += fmt.Sprintf(", but only on the ports: %s.", portExpl)
+	}
+	return explanation
 }
 
 // UpdateHostsOnCloudDisruption from a cloud spec disruption, get all ip ranges of services provided and appends them into the s.Hosts slice
@@ -724,7 +764,7 @@ func (s *NetworkDisruptionSpec) UpdateHostsOnCloudDisruption(cloudManager clouds
 }
 
 func (s *NetworkDisruptionSpec) Explain() []string {
-	explanation := []string{"TODO"}
+	explanation := []string{""}
 	explanation = append(explanation, "spec.network will apply tc rules on every target, affecting a failure to specific network traffic. You can filter what network "+
 		"traffic is affected, using network.hosts, network.services, or network.allowedHosts. If you specify none of those, all outgoing traffic will be impacted.")
 
@@ -760,30 +800,10 @@ func (s *NetworkDisruptionSpec) Explain() []string {
 			"contacting the kubernetes API and finding up to date info on the specified services' IPs and ports. If you want to target services in other clusters, you'll need to refer to them by hostname "+
 			"and use network.hosts. We won't realize until the disruption has started that the specified services don't exist in the same k8s cluster. ")
 		explanation = append(explanation, "network.services will apply filters so that the chosen network failure affects the traffic between the target and the following services:")
-	}
 
-	for _, service := range s.Services {
-		explanation = append(explanation, service.Explain())
-		//fmt.Printf("\t\t🎯 Service: %s\n", data.Name)
-		//fmt.Printf("\t\t\t⛵️ Namespace: %s\n", data.Namespace)
-		//
-		//if len(data.Ports) > 0 {
-		//	fmt.Printf("\t\t\t⛵️ Affected ports:\n")
-		//
-		//	for _, port := range data.Ports {
-		//		toPrint := []string{}
-		//
-		//		if port.Port != 0 {
-		//			toPrint = append(toPrint, strconv.Itoa(port.Port))
-		//		}
-		//
-		//		if port.Name != "" {
-		//			toPrint = append(toPrint, port.Name)
-		//		}
-		//
-		//		fmt.Printf("\t\t\t\t⛵️ Port: (%s)\n", strings.Join(toPrint, "/"))
-		//	}
-		//}
+		for _, service := range s.Services {
+			explanation = append(explanation, service.Explain())
+		}
 	}
 
 	if len(s.AllowedHosts) > 0 {
