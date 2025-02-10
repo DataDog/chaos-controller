@@ -6,6 +6,8 @@
 package v1beta1
 
 import (
+	"fmt"
+
 	"github.com/hashicorp/go-multierror"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -50,6 +52,15 @@ func (s *CPUPressureSpec) GenerateArgs() []string {
 	return args
 }
 
-func (s *CPUPressureSpec) Explain() []string {
-	return []string{"TODO"}
+func (s *CPUPressureSpec) Explain() string {
+	explanation := "spec.cpuPressure will cause cpu pressure on the target, by joining its cgroup and creating threads " +
+		"intended to consume as much cpu as possible"
+
+	if s.Count != nil {
+		explanation += fmt.Sprintf("on %s of the target's cores.", s.Count.String())
+	} else {
+		explanation += " on all of the target's cores."
+	}
+
+	return explanation
 }

@@ -990,7 +990,7 @@ func (s DisruptionSpec) Explain() []string {
 	}
 
 	if s.CPUPressure != nil {
-		explanation = append(explanation, s.CPUPressure.Explain()...)
+		explanation = append(explanation, s.CPUPressure.Explain())
 	}
 
 	if s.DiskPressure != nil {
