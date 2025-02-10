@@ -716,5 +716,69 @@ func (s *NetworkDisruptionSpec) UpdateHostsOnCloudDisruption(cloudManager clouds
 }
 
 func (s *NetworkDisruptionSpec) Explain() []string {
-	return []string{"TODO"}
+	explanation := []string{"TODO"}
+	explanation = append(explanation, "spec.network will apply tc rules on every target, affecting a failure to specific network traffic.")
+
+	if s.Drop != 0 {
+		explanation = append(explanation, fmt.Sprintf("network.drop applies a packet drop of %d percent.\n", s.Drop))
+	}
+
+	if s.Corrupt != 0 {
+		fmt.Printf("\t\t💣 will corrupt packets at %d percent.\n", s.Corrupt)
+	}
+
+	if s.Delay != 0 {
+		fmt.Printf("\t\t💣 applies a packet delay of %d ms.\n", s.Delay)
+
+		if s.DelayJitter != 0 {
+			fmt.Printf("\t\t\t💣 applies a jitter of %d ms to the delay value to add randomness to the delay.\n", s.DelayJitter)
+		}
+	}
+
+	if s.BandwidthLimit != 0 {
+		fmt.Printf("\t\t💣 applies a bandwidth limit of %d ms.\n", s.BandwidthLimit)
+	}
+
+	if len(s.Hosts) != 0 {
+		fmt.Println("\t💥  will apply filters so that network failures apply to outgoing/ingoing traffic from/to the following hosts/ports/protocols triplets:")
+		s.Hosts.Explain()
+	}
+
+	if len(s.Services) != 0 {
+		fmt.Println("\t💥  will apply filters so that network failures apply to outgoing/ingoing traffic from/to the following services/namespaces pairs:")
+	}
+
+	for _, data := range s.Services {
+		fmt.Printf("\t\t🎯 Service: %s\n", data.Name)
+		fmt.Printf("\t\t\t⛵️ Namespace: %s\n", data.Namespace)
+
+		if len(data.Ports) > 0 {
+			fmt.Printf("\t\t\t⛵️ Affected ports:\n")
+
+			for _, port := range data.Ports {
+				toPrint := []string{}
+
+				if port.Port != 0 {
+					toPrint = append(toPrint, strconv.Itoa(port.Port))
+				}
+
+				if port.Name != "" {
+					toPrint = append(toPrint, port.Name)
+				}
+
+				fmt.Printf("\t\t\t\t⛵️ Port: (%s)\n", strings.Join(toPrint, "/"))
+			}
+		}
+	}
+
+	if len(s.AllowedHosts) > 0 {
+		fmt.Println("\t💥  will apply filters so that the injected network failure excludes affecting traffic to/from the following host tuples:")
+		s.AllowedHosts.Explain()
+	}
+
+	if s.DisableDefaultAllowedHosts {
+		fmt.Printf("\t\tSetting disableDefaultAllowedHosts will remove the default list of excluded hosts from disruptions, and will allow you to prevent targets from reaching the k8s api. \n")
+	}
+
+	return explanation
 }
