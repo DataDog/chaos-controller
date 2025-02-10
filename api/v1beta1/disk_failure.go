@@ -110,8 +110,25 @@ func (s *DiskFailureSpec) GenerateArgs() (args []string) {
 	return args
 }
 
-func (s *DiskFailureSpec) Explain() []string {
-	return []string{"TODO"}
+func (s *DiskFailureSpec) Explain() string {
+	explanation := "spec.diskFailure will cause io syscalls, "
+
+	if s.Probability != "" {
+		explanation += fmt.Sprintf("%s of the time, ", s.Probability)
+	} else {
+		explanation += "100% of the time, "
+	}
+
+	if s.OpenatSyscall != nil {
+		explanation += fmt.Sprintf("to return the exit code %s ", s.OpenatSyscall.ExitCode)
+	} else {
+		explanation += "to return the exit code -ENOENT "
+	}
+
+	explanation += " on any path with a prefix specified in spec.diskFailure.paths, e.g., choosing the path \"/\" would lead " +
+		"to all io syscalls being affected."
+
+	return explanation
 }
 
 // GetExitCodeInt return the integer value of a linux exit code.

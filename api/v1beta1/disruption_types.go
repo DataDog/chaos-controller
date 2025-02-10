@@ -998,7 +998,7 @@ func (s DisruptionSpec) Explain() []string {
 	}
 
 	if s.DiskFailure != nil {
-		explanation = append(explanation, s.DiskFailure.Explain()...)
+		explanation = append(explanation, s.DiskFailure.Explain())
 	}
 
 	if s.DNS != nil {
