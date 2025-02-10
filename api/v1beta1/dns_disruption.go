@@ -76,5 +76,11 @@ func (s DNSDisruptionSpec) GenerateArgs() []string {
 }
 
 func (s DNSDisruptionSpec) Explain() []string {
-	return []string{"TODO"}
+	explanation := []string{"spec.dns will intercept DNS requests from the target, replacing the specified records:"}
+
+	for _, pair := range s {
+		explanation = append(explanation, fmt.Sprintf("%s;%s;TODO%s", pair.Hostname, pair.Record.Type, pair.Record.Value))
+	}
+
+	return explanation
 }
