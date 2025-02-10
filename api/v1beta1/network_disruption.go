@@ -631,6 +631,10 @@ func (h NetworkDisruptionHostSpec) Validate() error {
 	return nil
 }
 
+func (h NetworkDisruptionHostSpec) Explain() string {
+	return "TODO"
+}
+
 func (s NetworkDisruptionServiceSpec) ExtractAffectedPortsInServicePorts(k8sService *v1.Service) ([]v1.ServicePort, []NetworkDisruptionServicePortSpec) {
 	if len(s.Ports) == 0 {
 		return k8sService.Spec.Ports, nil
@@ -672,6 +676,10 @@ func (s NetworkDisruptionServiceSpec) ExtractAffectedPortsInServicePorts(k8sServ
 	}
 
 	return goodPorts, notFoundPorts
+}
+
+func (s *NetworkDisruptionServiceSpec) Explain() string {
+	return "TODO"
 }
 
 // UpdateHostsOnCloudDisruption from a cloud spec disruption, get all ip ranges of services provided and appends them into the s.Hosts slice
@@ -717,67 +725,77 @@ func (s *NetworkDisruptionSpec) UpdateHostsOnCloudDisruption(cloudManager clouds
 
 func (s *NetworkDisruptionSpec) Explain() []string {
 	explanation := []string{"TODO"}
-	explanation = append(explanation, "spec.network will apply tc rules on every target, affecting a failure to specific network traffic.")
+	explanation = append(explanation, "spec.network will apply tc rules on every target, affecting a failure to specific network traffic. You can filter what network "+
+		"traffic is affected, using network.hosts, network.services, or network.allowedHosts. If you specify none of those, all outgoing traffic will be impacted.")
 
 	if s.Drop != 0 {
-		explanation = append(explanation, fmt.Sprintf("network.drop applies a packet drop of %d percent.\n", s.Drop))
+		explanation = append(explanation, fmt.Sprintf("network.drop applies a packet drop of %d percent.", s.Drop))
 	}
 
 	if s.Corrupt != 0 {
-		fmt.Printf("\t\t💣 will corrupt packets at %d percent.\n", s.Corrupt)
+		explanation = append(explanation, fmt.Sprintf("network.corrupt will corrupt %d percent of packets.", s.Corrupt))
 	}
 
 	if s.Delay != 0 {
-		fmt.Printf("\t\t💣 applies a packet delay of %d ms.\n", s.Delay)
+		explanation = append(explanation, fmt.Sprintf("network.delay applies a delay of %d ms to all packets.", s.Delay))
 
 		if s.DelayJitter != 0 {
-			fmt.Printf("\t\t\t💣 applies a jitter of %d ms to the delay value to add randomness to the delay.\n", s.DelayJitter)
+			explanation = append(explanation, fmt.Sprintf("network.delayJitter applies a jitter of up to %d ms to the delay value to normally distribute the delay.", s.DelayJitter))
 		}
 	}
 
 	if s.BandwidthLimit != 0 {
-		fmt.Printf("\t\t💣 applies a bandwidth limit of %d ms.\n", s.BandwidthLimit)
+		explanation = append(explanation, fmt.Sprintf("network.bandwidthLimit applies a bandwidth limit of %d ms to the filtered connections.", s.BandwidthLimit))
 	}
 
 	if len(s.Hosts) != 0 {
-		fmt.Println("\t💥  will apply filters so that network failures apply to outgoing/ingoing traffic from/to the following hosts/ports/protocols triplets:")
-		s.Hosts.Explain()
-	}
-
-	if len(s.Services) != 0 {
-		fmt.Println("\t💥  will apply filters so that network failures apply to outgoing/ingoing traffic from/to the following services/namespaces pairs:")
-	}
-
-	for _, data := range s.Services {
-		fmt.Printf("\t\t🎯 Service: %s\n", data.Name)
-		fmt.Printf("\t\t\t⛵️ Namespace: %s\n", data.Namespace)
-
-		if len(data.Ports) > 0 {
-			fmt.Printf("\t\t\t⛵️ Affected ports:\n")
-
-			for _, port := range data.Ports {
-				toPrint := []string{}
-
-				if port.Port != 0 {
-					toPrint = append(toPrint, strconv.Itoa(port.Port))
-				}
-
-				if port.Name != "" {
-					toPrint = append(toPrint, port.Name)
-				}
-
-				fmt.Printf("\t\t\t\t⛵️ Port: (%s)\n", strings.Join(toPrint, "/"))
-			}
+		explanation = append(explanation, "network.hosts will apply filters so that the chosen network failure affects the traffic between the target and the following groups:")
+		for _, host := range s.Hosts {
+			explanation = append(explanation, host.Explain())
 		}
 	}
 
+	if len(s.Services) != 0 {
+		explanation = append(explanation, "network.services is a convenience feature for targeting kubernetes services in the _same kubernetes cluster_. The chaos-controller will handle "+
+			"contacting the kubernetes API and finding up to date info on the specified services' IPs and ports. If you want to target services in other clusters, you'll need to refer to them by hostname "+
+			"and use network.hosts. We won't realize until the disruption has started that the specified services don't exist in the same k8s cluster. ")
+		explanation = append(explanation, "network.services will apply filters so that the chosen network failure affects the traffic between the target and the following services:")
+	}
+
+	for _, service := range s.Services {
+		explanation = append(explanation, service.Explain())
+		//fmt.Printf("\t\t🎯 Service: %s\n", data.Name)
+		//fmt.Printf("\t\t\t⛵️ Namespace: %s\n", data.Namespace)
+		//
+		//if len(data.Ports) > 0 {
+		//	fmt.Printf("\t\t\t⛵️ Affected ports:\n")
+		//
+		//	for _, port := range data.Ports {
+		//		toPrint := []string{}
+		//
+		//		if port.Port != 0 {
+		//			toPrint = append(toPrint, strconv.Itoa(port.Port))
+		//		}
+		//
+		//		if port.Name != "" {
+		//			toPrint = append(toPrint, port.Name)
+		//		}
+		//
+		//		fmt.Printf("\t\t\t\t⛵️ Port: (%s)\n", strings.Join(toPrint, "/"))
+		//	}
+		//}
+	}
+
 	if len(s.AllowedHosts) > 0 {
-		fmt.Println("\t💥  will apply filters so that the injected network failure excludes affecting traffic to/from the following host tuples:")
-		s.AllowedHosts.Explain()
+		explanation = append(explanation, "network.allowedHosts will apply filters so that the chosen network failure does not affect traffic between the target and the following groups, "+
+			"taking precedence over network.hosts:")
+		for _, host := range s.AllowedHosts {
+			explanation = append(explanation, host.Explain())
+		}
 	}
 
 	if s.DisableDefaultAllowedHosts {
-		fmt.Printf("\t\tSetting disableDefaultAllowedHosts will remove the default list of excluded hosts from disruptions, and will allow you to prevent targets from reaching the k8s api. \n")
+		explanation = append(explanation, "network.disableDefaultAllowedHosts will remove the default list of excluded hosts from disruptions, and will allow you to prevent targets from reaching the k8s api.")
 	}
 
 	return explanation
