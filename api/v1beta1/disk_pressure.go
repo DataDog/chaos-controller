@@ -6,6 +6,7 @@
 package v1beta1
 
 import (
+	"fmt"
 	"strconv"
 )
 
@@ -48,6 +49,7 @@ func (s *DiskPressureSpec) GenerateArgs() []string {
 	return args
 }
 
-func (s *DiskPressureSpec) Explain() []string {
-	return []string{"TODO"}
+func (s *DiskPressureSpec) Explain() string {
+	explanation := fmt.Sprintf("spec.diskPressure will throttle io ")
+	return explanation
 }
