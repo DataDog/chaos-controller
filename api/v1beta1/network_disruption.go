@@ -765,41 +765,41 @@ func (s *NetworkDisruptionSpec) UpdateHostsOnCloudDisruption(cloudManager clouds
 
 func (s *NetworkDisruptionSpec) Explain() []string {
 	explanation := []string{""}
-	explanation = append(explanation, "spec.network will apply tc rules on every target, affecting a failure to specific network traffic. You can filter what network "+
+	explanation = append(explanation, "spec.network will apply tc rules on every target, causing a failure on specific network traffic. You can filter what network "+
 		"traffic is affected, using network.hosts, network.services, or network.allowedHosts. If you specify none of those, all outgoing traffic will be impacted.")
 
 	if s.Drop != 0 {
-		explanation = append(explanation, fmt.Sprintf("network.drop applies a packet drop of %d percent.", s.Drop))
+		explanation = append(explanation, fmt.Sprintf("\tnetwork.drop applies a packet drop of %d percent.", s.Drop))
 	}
 
 	if s.Corrupt != 0 {
-		explanation = append(explanation, fmt.Sprintf("network.corrupt will corrupt %d percent of packets.", s.Corrupt))
+		explanation = append(explanation, fmt.Sprintf("\tnetwork.corrupt will corrupt %d percent of packets.", s.Corrupt))
 	}
 
 	if s.Delay != 0 {
-		explanation = append(explanation, fmt.Sprintf("network.delay applies a delay of %d ms to all packets.", s.Delay))
+		explanation = append(explanation, fmt.Sprintf("\tnetwork.delay applies a delay of %d ms to all packets.", s.Delay))
 
 		if s.DelayJitter != 0 {
-			explanation = append(explanation, fmt.Sprintf("network.delayJitter applies a jitter of up to %d ms to the delay value to normally distribute the delay.", s.DelayJitter))
+			explanation = append(explanation, fmt.Sprintf("\tnetwork.delayJitter applies a jitter of up to %d ms to the delay value to normally distribute the delay.", s.DelayJitter))
 		}
 	}
 
 	if s.BandwidthLimit != 0 {
-		explanation = append(explanation, fmt.Sprintf("network.bandwidthLimit applies a bandwidth limit of %d ms to the filtered connections.", s.BandwidthLimit))
+		explanation = append(explanation, fmt.Sprintf("\tnetwork.bandwidthLimit applies a bandwidth limit of %d ms to the filtered connections.", s.BandwidthLimit))
 	}
 
 	if len(s.Hosts) != 0 {
-		explanation = append(explanation, "network.hosts will apply filters so that the chosen network failure affects the traffic between the target and the following groups:")
+		explanation = append(explanation, "\tnetwork.hosts will apply filters so that the chosen network failure affects the traffic between the target and the following groups:")
 		for _, host := range s.Hosts {
 			explanation = append(explanation, host.Explain())
 		}
 	}
 
 	if len(s.Services) != 0 {
-		explanation = append(explanation, "network.services is a convenience feature for targeting kubernetes services in the _same kubernetes cluster_. The chaos-controller will handle "+
+		explanation = append(explanation, "\tnetwork.services is a convenience feature for targeting kubernetes services in the _same kubernetes cluster_. The chaos-controller will handle "+
 			"contacting the kubernetes API and finding up to date info on the specified services' IPs and ports. If you want to target services in other clusters, you'll need to refer to them by hostname "+
 			"and use network.hosts. We won't realize until the disruption has started that the specified services don't exist in the same k8s cluster. ")
-		explanation = append(explanation, "network.services will apply filters so that the chosen network failure affects the traffic between the target and the following services:")
+		explanation = append(explanation, "\tnetwork.services will apply filters so that the chosen network failure affects the traffic between the target and the following services:")
 
 		for _, service := range s.Services {
 			explanation = append(explanation, service.Explain())
@@ -807,7 +807,7 @@ func (s *NetworkDisruptionSpec) Explain() []string {
 	}
 
 	if len(s.AllowedHosts) > 0 {
-		explanation = append(explanation, "network.allowedHosts will apply filters so that the chosen network failure does not affect traffic between the target and the following groups, "+
+		explanation = append(explanation, "\tnetwork.allowedHosts will apply filters so that the chosen network failure does not affect traffic between the target and the following groups, "+
 			"taking precedence over network.hosts:")
 		for _, host := range s.AllowedHosts {
 			explanation = append(explanation, host.Explain())
@@ -815,7 +815,7 @@ func (s *NetworkDisruptionSpec) Explain() []string {
 	}
 
 	if s.DisableDefaultAllowedHosts {
-		explanation = append(explanation, "network.disableDefaultAllowedHosts will remove the default list of excluded hosts from disruptions, and will allow you to prevent targets from reaching the k8s api.")
+		explanation = append(explanation, "\tnetwork.disableDefaultAllowedHosts will remove the default list of excluded hosts from disruptions, and will allow you to prevent targets from reaching the k8s api.")
 	}
 
 	return explanation

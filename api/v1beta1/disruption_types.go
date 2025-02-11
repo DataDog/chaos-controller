@@ -884,7 +884,7 @@ func (s DisruptionSpec) Explain() []string {
 	var explanation []string
 	explanation = append(explanation, "Here's our best explanation of what this spec will do when run:")
 
-	explanation = append(explanation, fmt.Sprintf("spec.duration is %s,. After that amount of time, the disruption "+
+	explanation = append(explanation, fmt.Sprintf("spec.duration is %s. After that amount of time, the disruption "+
 		"will stop and clean itself up. If it fails to clean up, an alert will be sent. If you want the disruption to stop early, "+
 		"just try to delete the disruption. All chaos-injector pods will immediately try to stop the failure.",
 		s.Duration.Duration().String()))
@@ -897,13 +897,13 @@ func (s DisruptionSpec) Explain() []string {
 
 	// s.Level can be "", which defaults to Pod
 	if s.Level != chaostypes.DisruptionLevelNode {
-		explanation = append(explanation, "spec.level is pod. We will pick pods as targets based on your selector, and inject the failure into the pod containers.")
+		explanation = append(explanation, "spec.level is pod. We will pick pods as targets based on your selector, and inject the failure into the pods' containers.")
 	} else {
 		explanation = append(explanation, "spec.level is node. We will pick nodes as targets based on your selector, and inject the failure into the nodes, affecting all pods on those nodes.")
 	}
 
 	if s.Selector != nil {
-		explanation = append(explanation, fmt.Sprintf("This spec has the following selectors which will be used to target %ss with these labels.\n\t\t  %s", s.Level, s.Selector.String()))
+		explanation = append(explanation, fmt.Sprintf("This spec has the following selectors which will be used to target %ss with these labels:\n\t%s", s.Level, s.Selector.String()))
 	}
 
 	if s.AdvancedSelector != nil {
@@ -942,7 +942,7 @@ func (s DisruptionSpec) Explain() []string {
 
 	countSuffix := ""
 	if s.Count.Type == intstr.Int {
-		countSuffix = fmt.Sprintf("exactly %d %ss. If it can't find that many targets, it will inject into as many as it discovers."+
+		countSuffix = fmt.Sprintf("exactly %d %ss. If it can't find that many targets, it will inject into as many as it discovers. "+
 			"If there are more than %d eligible targets, a random %d will be chosen.",
 			s.Count.IntValue(),
 			s.Level,
