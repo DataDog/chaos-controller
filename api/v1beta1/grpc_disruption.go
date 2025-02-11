@@ -150,7 +150,7 @@ func (s GRPCDisruptionSpec) GenerateArgs() []string {
 }
 
 func (s GRPCDisruptionSpec) Explain() []string {
-	explanation := []string{
+	explanation := []string{"",
 		"spec.grpc will activate the chaos interceptor on the targeted grpc server, replacing responses with specified errors.",
 		"This disruption type can only work on grpc servers, not on the clients, " +
 			"and requires [the server to cooperate by installing the chaos interceptor]" +
@@ -167,7 +167,7 @@ func (s GRPCDisruptionSpec) Explain() []string {
 			spoof = endpt.OverrideToReturn
 		}
 
-		explanation = append(explanation, fmt.Sprintf("The endpoint %s will return %s %d%% of the time", endpt.TargetEndpoint, spoof, endpt.QueryPercent))
+		explanation = append(explanation, fmt.Sprintf("\t\tThe endpoint %s will return %s %d%% of the time", endpt.TargetEndpoint, spoof, endpt.QueryPercent))
 	}
 	return explanation
 }

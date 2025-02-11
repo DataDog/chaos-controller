@@ -52,7 +52,7 @@ func (s *CPUPressureSpec) GenerateArgs() []string {
 	return args
 }
 
-func (s *CPUPressureSpec) Explain() string {
+func (s *CPUPressureSpec) Explain() []string {
 	explanation := "spec.cpuPressure will cause cpu pressure on the target, by joining its cgroup and creating threads " +
 		"intended to consume as much cpu as possible"
 
@@ -62,5 +62,5 @@ func (s *CPUPressureSpec) Explain() string {
 		explanation += " on all of the target's cores."
 	}
 
-	return explanation
+	return []string{"", explanation}
 }

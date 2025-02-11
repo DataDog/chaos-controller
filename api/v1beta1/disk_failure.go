@@ -110,7 +110,7 @@ func (s *DiskFailureSpec) GenerateArgs() (args []string) {
 	return args
 }
 
-func (s *DiskFailureSpec) Explain() string {
+func (s *DiskFailureSpec) Explain() []string {
 	explanation := "spec.diskFailure will cause io syscalls, "
 
 	if s.Probability != "" {
@@ -128,7 +128,7 @@ func (s *DiskFailureSpec) Explain() string {
 	explanation += " on any path with a prefix specified in spec.diskFailure.paths, e.g., choosing the path \"/\" would lead " +
 		"to all io syscalls being affected."
 
-	return explanation
+	return []string{"", explanation}
 }
 
 // GetExitCodeInt return the integer value of a linux exit code.

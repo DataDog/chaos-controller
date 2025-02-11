@@ -29,15 +29,17 @@ func (s *NodeFailureSpec) GenerateArgs() []string {
 	return args
 }
 
-func (s *NodeFailureSpec) Explain() string {
+func (s *NodeFailureSpec) Explain() []string {
+	var explanation string
 	if s.Shutdown {
-		return "spec.nodeFailure.shutdown writes an \"o\" to the kernel's sysrq-trigger file, shutting down the host immediately. " +
+		explanation = "spec.nodeFailure.shutdown writes an \"o\" to the kernel's sysrq-trigger file, shutting down the host immediately. " +
 			"This will affect ALL pods on the host node. Depending on cloud provider behavior, the node may not be restarted at all, and " +
 			"all pods might be rescheduled onto other nodes."
 	}
 
-	return "spec.nodeFailure will trigger a kernel panic on the node by writing to the host's sysrq-trigger file. " +
+	explanation = "spec.nodeFailure will trigger a kernel panic on the node by writing to the host's sysrq-trigger file. " +
 		"This will affect ALL pods on the host node. Depending on cloud provider behavior, the node may not be restarted at all, and " +
 		"all pods might be rescheduled onto other nodes."
 
+	return []string{"", explanation}
 }

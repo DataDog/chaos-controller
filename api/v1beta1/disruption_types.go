@@ -978,11 +978,11 @@ func (s DisruptionSpec) Explain() []string {
 	}
 
 	if s.NodeFailure != nil {
-		explanation = append(explanation, s.NodeFailure.Explain())
+		explanation = append(explanation, s.NodeFailure.Explain()...)
 	}
 
 	if s.ContainerFailure != nil {
-		explanation = append(explanation, s.ContainerFailure.Explain())
+		explanation = append(explanation, s.ContainerFailure.Explain()...)
 	}
 
 	if s.Network != nil {
@@ -990,15 +990,15 @@ func (s DisruptionSpec) Explain() []string {
 	}
 
 	if s.CPUPressure != nil {
-		explanation = append(explanation, s.CPUPressure.Explain())
+		explanation = append(explanation, s.CPUPressure.Explain()...)
 	}
 
 	if s.DiskPressure != nil {
-		explanation = append(explanation, s.DiskPressure.Explain())
+		explanation = append(explanation, s.DiskPressure.Explain()...)
 	}
 
 	if s.DiskFailure != nil {
-		explanation = append(explanation, s.DiskFailure.Explain())
+		explanation = append(explanation, s.DiskFailure.Explain()...)
 	}
 
 	if s.DNS != nil {
