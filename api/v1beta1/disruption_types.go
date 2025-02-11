@@ -936,7 +936,7 @@ func (s DisruptionSpec) Explain() []string {
 
 	if s.Pulse != nil {
 		explanation = append(explanation,
-			fmt.Sprintf("spec.pulse is set, so rather than a constant failure injection,after an initial delay of %s"+
+			fmt.Sprintf("spec.pulse is set, so rather than a constant failure injection, after an initial delay of %s"+
 				" the disruption will alternate between an active injected state with a duration of %s,"+
 				" and an inactive dormant state with a duration of %s.\n",
 				s.Pulse.InitialDelay.Duration().String(),
