@@ -167,7 +167,12 @@ func (s GRPCDisruptionSpec) Explain() []string {
 			spoof = endpt.OverrideToReturn
 		}
 
-		explanation = append(explanation, fmt.Sprintf("\t\tThe endpoint %s will return %s %d%% of the time", endpt.TargetEndpoint, spoof, endpt.QueryPercent))
+		queryPercentExpl := fmt.Sprintf("%d%%", endpt.QueryPercent)
+		if endpt.QueryPercent == 0 {
+			queryPercentExpl = "up to 100% (evenly divided across all alterations on this endpoint)"
+		}
+
+		explanation = append(explanation, fmt.Sprintf("\t\tThe endpoint %s will return %s %s of the time", endpt.TargetEndpoint, spoof, queryPercentExpl))
 	}
 
 	return explanation
