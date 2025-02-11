@@ -268,6 +268,10 @@ func (s *NetworkHTTPFilters) validatePaths(retErr error) error {
 	return retErr
 }
 
+func (s *NetworkHTTPFilters) Explain() []string {
+	return []string{"TODO"}
+}
+
 // Validate validates args for the given disruption
 func (s *NetworkDisruptionSpec) Validate() (retErr error) {
 	if k8sClient != nil {
@@ -522,6 +526,10 @@ func (s *NetworkDisruptionCloudSpec) TransformToCloudMap() map[string][]NetworkD
 	}
 
 	return clouds
+}
+
+func (s *NetworkDisruptionCloudSpec) Explain() []string {
+	return []string{"TODO"}
 }
 
 // NetworkDisruptionHostSpecFromString parses the given hosts to host specs
@@ -786,6 +794,14 @@ func (s *NetworkDisruptionSpec) Explain() []string {
 
 	if s.BandwidthLimit != 0 {
 		explanation = append(explanation, fmt.Sprintf("\tnetwork.bandwidthLimit applies a bandwidth limit of %d ms to the filtered connections.", s.BandwidthLimit))
+	}
+
+	if s.Cloud != nil {
+		explanation = append(explanation, s.Cloud.Explain()...)
+	}
+
+	if s.HTTP != nil {
+		explanation = append(explanation, s.HTTP.Explain()...)
 	}
 
 	if len(s.Hosts) != 0 {
