@@ -920,18 +920,18 @@ func (s DisruptionSpec) Explain() []string {
 		advancedSelectorExplanation := fmt.Sprintf("This spec has the following advanced selectors which will be used to target %ss based on their labels:\n", s.Level)
 
 		for _, selector := range s.AdvancedSelector {
-			advancedSelectorExplanation += fmt.Sprintf("\t\t%s\n", selector.String())
+			advancedSelectorExplanation += fmt.Sprintf("\t%s\n", selector.String())
 		}
 
 		explanation = append(explanation, advancedSelectorExplanation)
 	}
 
 	if s.Filter != nil && s.Filter.Annotations != nil {
-		explanation = append(explanation, fmt.Sprintf("This spec has the following annotation filters which will be used to target %ss with these annotations.\n\t\t  %s\n", s.Level, s.Filter.Annotations.String()))
+		explanation = append(explanation, fmt.Sprintf("This spec has the following annotation filters which will be used to target %ss with these annotations.\n\t%s\n", s.Level, s.Filter.Annotations.String()))
 	}
 
 	if s.Containers != nil {
-		explanation = append(explanation, fmt.Sprintf("spec.containers is set, so this disruption will only inject the failure the following containers on the target pods\n\t\t  %s\n", strings.Join(s.Containers, ",")))
+		explanation = append(explanation, fmt.Sprintf("spec.containers is set, so this disruption will only inject the failure the following containers on the target pods\n\t%s\n", strings.Join(s.Containers, ",")))
 	}
 
 	if s.Pulse != nil {
