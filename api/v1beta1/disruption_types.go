@@ -888,10 +888,16 @@ func (s DisruptionSpec) Explain() []string {
 	var explanation []string
 	explanation = append(explanation, "Here's our best explanation of what this spec will do when run:")
 
+	durationExpl := s.Duration.Duration().String()
+	if s.Duration.Duration() == 0 {
+		durationExpl = "not set, so the default duration for your cluster will be used"
+	}
+
 	explanation = append(explanation, fmt.Sprintf("spec.duration is %s. After that amount of time, the disruption "+
 		"will stop and clean itself up. If it fails to clean up, an alert will be sent. If you want the disruption to stop early, "+
 		"just try to delete the disruption. All chaos-injector pods will immediately try to stop the failure.",
-		s.Duration.Duration().String()))
+		durationExpl,
+	))
 
 	if s.DryRun {
 		explanation = append(explanation, "spec.dryRun is set to true, meaning we will simulate a real disruption "+
