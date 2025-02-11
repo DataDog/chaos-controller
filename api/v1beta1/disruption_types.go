@@ -138,7 +138,11 @@ type Reporting struct {
 }
 
 func (r *Reporting) Explain() string {
-	return "TODO"
+	return fmt.Sprintf("While the disruption is ongoing, it will send slack messages for every event of severity %s or higher, "+
+		"to the slack channel with the ID (not name) %s, mentioning the purpose \"%s\"",
+		r.MinNotificationType,
+		r.SlackChannel,
+		r.Purpose)
 }
 
 // EmbeddedChaosAPI includes the library so it can be statically exported to chaosli
