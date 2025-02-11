@@ -89,6 +89,7 @@ triggers:
 
 		Context("with a non-empty disruption", func() {
 			BeforeEach(func() {
+				yamlDisruptionSpec.WriteString("\n  path: /mnt/path")
 				yamlDisruptionSpec.WriteString("\n  throttling:")
 				yamlDisruptionSpec.WriteString("\n    writeBytesPerSec: 1024")
 				yamlDisruptionSpec.WriteString("\n    readBytesPerSec: 1024")
@@ -476,6 +477,7 @@ var _ = Describe("Validator", func() {
 
 		Context("with throttling", func() {
 			BeforeEach(func() {
+				spec.DiskPressure.Path = "/mnt/example"
 				readBytesPerSec := 1024
 				spec.DiskPressure.Throttling.ReadBytesPerSec = &readBytesPerSec
 			})
