@@ -1014,7 +1014,6 @@ func (s DisruptionSpec) Explain() []string {
 	}
 
 	return explanation
-
 }
 
 // RemoveDeadTargets removes targets not found in matchingTargets from the targets list

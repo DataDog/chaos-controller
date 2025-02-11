@@ -33,9 +33,10 @@ func (s *ContainerFailureSpec) Explain() []string {
 	if s.Forced {
 		explanation = "spec.containerFailure.forced injects a container failure which sends the SIGKILL signal to the pod's container(s). " +
 			"If you'd prefer a SIGTERM, remove containerFailure.forced."
+	} else {
+		explanation = "spec.containerFailure injects a container failure which sends the SIGTERM signal to the pod's container(s). " +
+			"If you'd prefer a SIGKILL, set containerFailure.forced."
 	}
-	explanation = "spec.containerFailure injects a container failure which sends the SIGTERM signal to the pod's container(s). " +
-		"If you'd prefer a SIGKILL, set containerFailure.forced."
 
 	return []string{"", explanation}
 }

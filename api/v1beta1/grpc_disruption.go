@@ -169,5 +169,6 @@ func (s GRPCDisruptionSpec) Explain() []string {
 
 		explanation = append(explanation, fmt.Sprintf("\t\tThe endpoint %s will return %s %d%% of the time", endpt.TargetEndpoint, spoof, endpt.QueryPercent))
 	}
+
 	return explanation
 }

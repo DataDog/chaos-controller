@@ -270,11 +270,13 @@ func (s *NetworkHTTPFilters) validatePaths(retErr error) error {
 
 func (s *NetworkHTTPFilters) Explain() []string {
 	explanation := []string{}
+
 	if len(s.Methods) > 0 {
 		methodExpl := "\tRequests using the HTTP methods "
 		for _, method := range s.Methods {
 			methodExpl += fmt.Sprintf("%s, ", method)
 		}
+
 		explanation = append(explanation, methodExpl)
 	}
 
@@ -283,8 +285,10 @@ func (s *NetworkHTTPFilters) Explain() []string {
 		for _, path := range s.Paths {
 			pathExpl += fmt.Sprintf("\"%s\", ", path)
 		}
+
 		explanation = append(explanation, pathExpl)
 	}
+
 	return explanation
 }
 
@@ -552,10 +556,11 @@ func (s NetworkDisruptionCloudServiceSpec) Explain() string {
 		serviceExpl += "Outgoing traffic to "
 	}
 
-	serviceExpl += fmt.Sprintf("%s", s.ServiceName)
+	serviceExpl += s.ServiceName
 	if s.Protocol != "" {
 		serviceExpl += fmt.Sprintf(" using protocol %s", s.Protocol)
 	}
+
 	if s.ConnState != "" {
 		serviceExpl += fmt.Sprintf(" for %s connections", s.ConnState)
 	}
@@ -783,8 +788,10 @@ func (s *NetworkDisruptionServiceSpec) Explain() string {
 
 			portExpl = fmt.Sprintf("Port: (%s)", strings.Join(toPrint, "/"))
 		}
+
 		explanation += fmt.Sprintf(", but only on the ports: %s.", portExpl)
 	}
+
 	return explanation
 }
 
