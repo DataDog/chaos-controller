@@ -269,7 +269,23 @@ func (s *NetworkHTTPFilters) validatePaths(retErr error) error {
 }
 
 func (s *NetworkHTTPFilters) Explain() []string {
-	return []string{"TODO"}
+	explanation := []string{}
+	if len(s.Methods) > 0 {
+		methodExpl := "\tRequests using the HTTP methods "
+		for _, method := range s.Methods {
+			methodExpl += fmt.Sprintf("%s, ", method)
+		}
+		explanation = append(explanation, methodExpl)
+	}
+
+	if len(s.Paths) > 0 {
+		pathExpl := "\tRequests for the paths "
+		for _, path := range s.Paths {
+			pathExpl += fmt.Sprintf("\"%s\", ", path)
+		}
+		explanation = append(explanation, pathExpl)
+	}
+	return explanation
 }
 
 // Validate validates args for the given disruption
@@ -528,8 +544,50 @@ func (s *NetworkDisruptionCloudSpec) TransformToCloudMap() map[string][]NetworkD
 	return clouds
 }
 
+func (s NetworkDisruptionCloudServiceSpec) Explain() string {
+	serviceExpl := "\t\t"
+	if s.Flow == FlowIngress {
+		serviceExpl += "ACKS to incoming traffic from "
+	} else {
+		serviceExpl += "Outgoing traffic to "
+	}
+
+	serviceExpl += fmt.Sprintf("%s", s.ServiceName)
+	if s.Protocol != "" {
+		serviceExpl += fmt.Sprintf(" using protocol %s", s.Protocol)
+	}
+	if s.ConnState != "" {
+		serviceExpl += fmt.Sprintf(" for %s connections", s.ConnState)
+	}
+
+	return serviceExpl
+}
+
 func (s *NetworkDisruptionCloudSpec) Explain() []string {
-	return []string{"TODO"}
+	explanation := []string{}
+
+	if s.AWSServiceList != nil {
+		explanation = append(explanation, "\tOn the following AWS Services:")
+		for _, a := range *s.AWSServiceList {
+			explanation = append(explanation, a.Explain())
+		}
+	}
+
+	if s.GCPServiceList != nil {
+		explanation = append(explanation, "\tOn the following GCP Services:")
+		for _, a := range *s.GCPServiceList {
+			explanation = append(explanation, a.Explain())
+		}
+	}
+
+	if s.DatadogServiceList != nil {
+		explanation = append(explanation, "\tOn the following DataDog Services:")
+		for _, a := range *s.DatadogServiceList {
+			explanation = append(explanation, a.Explain())
+		}
+	}
+
+	return explanation
 }
 
 // NetworkDisruptionHostSpecFromString parses the given hosts to host specs
@@ -797,10 +855,15 @@ func (s *NetworkDisruptionSpec) Explain() []string {
 	}
 
 	if s.Cloud != nil {
+		explanation = append(explanation, "\tnetwork.cloud will apply filters so that the chosen network failures affects traffic between the target and the specified cloud services.")
+		explanation = append(explanation, "\tWe will use the cloud providers' published public ip ranges.")
 		explanation = append(explanation, s.Cloud.Explain()...)
 	}
 
 	if s.HTTP != nil {
+		explanation = append(explanation, "\tnetwork.http will apply filters so that the chosen network failure affects when the target makes any HTTP requests "+
+			"of the following methods to the following paths.")
+		explanation = append(explanation, "\tThis will _not_ work on https traffic, only http traffic.")
 		explanation = append(explanation, s.HTTP.Explain()...)
 	}
 
