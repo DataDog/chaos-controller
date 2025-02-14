@@ -137,6 +137,14 @@ type Reporting struct {
 	MinNotificationType eventtypes.NotificationType `json:"minNotificationType,omitempty"`
 }
 
+func (r *Reporting) Explain() string {
+	return fmt.Sprintf("While the disruption is ongoing, it will send slack messages for every event of severity %s or higher, "+
+		"to the slack channel with the ID (not name) %s, mentioning the purpose \"%s\"",
+		r.MinNotificationType,
+		r.SlackChannel,
+		r.Purpose)
+}
+
 // EmbeddedChaosAPI includes the library so it can be statically exported to chaosli
 //
 //go:embed *.go
@@ -873,6 +881,149 @@ func (s DisruptionSpec) DisruptionCount() int {
 	}
 
 	return count
+}
+
+// Explain returns a string explanation of this disruption spec
+func (s DisruptionSpec) Explain() []string {
+	var explanation []string
+	explanation = append(explanation, "Here's our best explanation of what this spec will do when run:")
+
+	durationExpl := s.Duration.Duration().String()
+	if s.Duration.Duration() == 0 {
+		durationExpl = "not set, so the default duration for your cluster will be used"
+	}
+
+	explanation = append(explanation, fmt.Sprintf("spec.duration is %s. After that amount of time, the disruption "+
+		"will stop and clean itself up. If it fails to clean up, an alert will be sent. If you want the disruption to stop early, "+
+		"just try to delete the disruption. All chaos-injector pods will immediately try to stop the failure.",
+		durationExpl,
+	))
+
+	if s.DryRun {
+		explanation = append(explanation, "spec.dryRun is set to true, meaning we will simulate a real disruption "+
+			"as best as possible, by creating the resource, picking targets, and creating chaos-injector pods, "+
+			"but we will not inject any actual failure.")
+	}
+
+	// s.Level can be "", which defaults to Pod
+	if s.Level != chaostypes.DisruptionLevelNode {
+		explanation = append(explanation, "spec.level is pod. We will pick pods as targets based on your selector, and inject the failure into the pods' containers.")
+	} else {
+		explanation = append(explanation, "spec.level is node. We will pick nodes as targets based on your selector, and inject the failure into the nodes, affecting all pods on those nodes.")
+	}
+
+	if s.Selector != nil {
+		explanation = append(explanation, fmt.Sprintf("This spec has the following selectors which will be used to target %ss with these labels:\n\t%s", s.Level, s.Selector.String()))
+	}
+
+	if s.AdvancedSelector != nil {
+		advancedSelectorExplanation := fmt.Sprintf("This spec has the following advanced selectors which will be used to target %ss based on their labels:\n", s.Level)
+
+		for _, selector := range s.AdvancedSelector {
+			advancedSelectorExplanation += fmt.Sprintf("\t%s\n", selector.String())
+		}
+
+		explanation = append(explanation, advancedSelectorExplanation)
+	}
+
+	if s.Filter != nil && s.Filter.Annotations != nil {
+		explanation = append(explanation, fmt.Sprintf("This spec has the following annotation filters which will be used to target %ss with these annotations.\n\t%s\n", s.Level, s.Filter.Annotations.String()))
+	}
+
+	if s.Containers != nil {
+		explanation = append(explanation, fmt.Sprintf("spec.containers is set, so this disruption will only inject the failure the following containers on the target pods\n\t%s\n", strings.Join(s.Containers, ",")))
+	}
+
+	if s.Pulse != nil {
+		explanation = append(explanation,
+			fmt.Sprintf("spec.pulse is set, so rather than a constant failure injection, after an initial delay of %s"+
+				" the disruption will alternate between an active injected state with a duration of %s,"+
+				" and an inactive dormant state with a duration of %s.\n",
+				s.Pulse.InitialDelay.Duration().String(),
+				s.Pulse.ActiveDuration.Duration().String(),
+				s.Pulse.DormantDuration.Duration().String()))
+	}
+
+	if s.OnInit {
+		explanation = append(explanation, fmt.Sprintf("spec.onInit is true. "+
+			"The disruptions will be launched during the initialization of the targeted pods."+
+			"This requires some extra setup on your end, please [read the full documentation](https://github.com/DataDog/chaos-controller/blob/main/docs/features.md#applying-a-disruption-on-pod-initialization)"))
+	}
+
+	countSuffix := ""
+	if s.Count.Type == intstr.Int {
+		countSuffix = fmt.Sprintf("exactly %d %ss. If it can't find that many targets, it will inject into as many as it discovers. "+
+			"If there are more than %d eligible targets, a random %d will be chosen.",
+			s.Count.IntValue(),
+			s.Level,
+			s.Count.IntValue(),
+			s.Count.IntValue(),
+		)
+		if s.Count.IntValue() == 100 {
+			countSuffix += " Your count is \"100\", but you almost certainly meant to specify \"100%\". The former means to find exactly 100 targets, the latter means to inject into all available targets."
+		} else {
+			countSuffix += " If it's more convenient, you can set spec.count to a % instead (just append the '%' character)."
+		}
+	} else {
+		countSuffix = fmt.Sprintf("%s percent of all eligible %ss found. "+
+			"If it's more convenient, you can set spec.count to an int intead of a percentage.",
+			s.Count.String(),
+			s.Level,
+		)
+	}
+
+	explanation = append(explanation, fmt.Sprintf("spec.count is %s, so the disruption will try to target %s",
+		s.Count.String(),
+		countSuffix,
+	))
+
+	if s.StaticTargeting {
+		explanation = append(explanation, fmt.Sprintf("spec.staticTargeting is true, so after we pick an initial set of targets and inject, "+
+			"we will not attempt to inject into any new targets that appear while the disruption is ongoing."))
+	} else {
+		explanation = append(explanation, "By default we will continually compare the injected target count "+
+			"to your defined spec.count, and add/remove targets as needed, e.g., with a count of \"100%\", if new targets "+
+			"are scheduled, we will inject into them as well. "+
+			"If you want a different behavior, trying setting spec.staticTargeting to true.")
+	}
+
+	if s.Reporting != nil {
+		explanation = append(explanation, s.Reporting.Explain())
+	}
+
+	if s.NodeFailure != nil {
+		explanation = append(explanation, s.NodeFailure.Explain()...)
+	}
+
+	if s.ContainerFailure != nil {
+		explanation = append(explanation, s.ContainerFailure.Explain()...)
+	}
+
+	if s.Network != nil {
+		explanation = append(explanation, s.Network.Explain()...)
+	}
+
+	if s.CPUPressure != nil {
+		explanation = append(explanation, s.CPUPressure.Explain()...)
+	}
+
+	if s.DiskPressure != nil {
+		explanation = append(explanation, s.DiskPressure.Explain()...)
+	}
+
+	if s.DiskFailure != nil {
+		explanation = append(explanation, s.DiskFailure.Explain()...)
+	}
+
+	if s.DNS != nil {
+		explanation = append(explanation, s.DNS.Explain()...)
+	}
+
+	if s.GRPC != nil {
+		explanation = append(explanation, s.GRPC.Explain()...)
+	}
+
+	return explanation
 }
 
 // RemoveDeadTargets removes targets not found in matchingTargets from the targets list

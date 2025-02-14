@@ -268,6 +268,30 @@ func (s *NetworkHTTPFilters) validatePaths(retErr error) error {
 	return retErr
 }
 
+func (s *NetworkHTTPFilters) Explain() []string {
+	explanation := []string{}
+
+	if len(s.Methods) > 0 {
+		methodExpl := "\tRequests using the HTTP methods "
+		for _, method := range s.Methods {
+			methodExpl += fmt.Sprintf("%s, ", method)
+		}
+
+		explanation = append(explanation, methodExpl)
+	}
+
+	if len(s.Paths) > 0 {
+		pathExpl := "\tRequests for the paths "
+		for _, path := range s.Paths {
+			pathExpl += fmt.Sprintf("\"%s\", ", path)
+		}
+
+		explanation = append(explanation, pathExpl)
+	}
+
+	return explanation
+}
+
 // Validate validates args for the given disruption
 func (s *NetworkDisruptionSpec) Validate() (retErr error) {
 	if k8sClient != nil {
@@ -524,6 +548,53 @@ func (s *NetworkDisruptionCloudSpec) TransformToCloudMap() map[string][]NetworkD
 	return clouds
 }
 
+func (s NetworkDisruptionCloudServiceSpec) Explain() string {
+	serviceExpl := "\t\t"
+	if s.Flow == FlowIngress {
+		serviceExpl += "ACKS to incoming traffic from "
+	} else {
+		serviceExpl += "Outgoing traffic to "
+	}
+
+	serviceExpl += s.ServiceName
+	if s.Protocol != "" {
+		serviceExpl += fmt.Sprintf(" using protocol %s", s.Protocol)
+	}
+
+	if s.ConnState != "" {
+		serviceExpl += fmt.Sprintf(" for %s connections", s.ConnState)
+	}
+
+	return serviceExpl
+}
+
+func (s *NetworkDisruptionCloudSpec) Explain() []string {
+	explanation := []string{}
+
+	if s.AWSServiceList != nil {
+		explanation = append(explanation, "\tOn the following AWS Services:")
+		for _, a := range *s.AWSServiceList {
+			explanation = append(explanation, a.Explain())
+		}
+	}
+
+	if s.GCPServiceList != nil {
+		explanation = append(explanation, "\tOn the following GCP Services:")
+		for _, a := range *s.GCPServiceList {
+			explanation = append(explanation, a.Explain())
+		}
+	}
+
+	if s.DatadogServiceList != nil {
+		explanation = append(explanation, "\tOn the following DataDog Services:")
+		for _, a := range *s.DatadogServiceList {
+			explanation = append(explanation, a.Explain())
+		}
+	}
+
+	return explanation
+}
+
 // NetworkDisruptionHostSpecFromString parses the given hosts to host specs
 // The expected format for hosts is <host>;<port>;<protocol>;<flow>;<connState>
 func NetworkDisruptionHostSpecFromString(hosts []string) ([]NetworkDisruptionHostSpec, error) {
@@ -631,6 +702,30 @@ func (h NetworkDisruptionHostSpec) Validate() error {
 	return nil
 }
 
+func (h NetworkDisruptionHostSpec) Explain() string {
+	hostExplanation := ""
+
+	if h.Flow == FlowIngress {
+		fmt.Println("ACKS to incoming traffic. [See the docs for info](https://github.com/DataDog/chaos-controller/blob/main/docs/network_disruption/flow.md#q-why-are-there-limitations-on-ingress) ")
+	} else {
+		fmt.Println("Outgoing traffic ")
+	}
+
+	if len(h.Host) != 0 {
+		hostExplanation += fmt.Sprintf("to Host: %s ", h.Host)
+	}
+
+	if h.Port != 0 {
+		hostExplanation += fmt.Sprintf("on Port: %d ", h.Port)
+	}
+
+	if len(h.Protocol) != 0 {
+		hostExplanation += fmt.Sprintf("using Protocol: %s ", h.Protocol)
+	}
+
+	return hostExplanation
+}
+
 func (s NetworkDisruptionServiceSpec) ExtractAffectedPortsInServicePorts(k8sService *v1.Service) ([]v1.ServicePort, []NetworkDisruptionServicePortSpec) {
 	if len(s.Ports) == 0 {
 		return k8sService.Spec.Ports, nil
@@ -674,6 +769,32 @@ func (s NetworkDisruptionServiceSpec) ExtractAffectedPortsInServicePorts(k8sServ
 	return goodPorts, notFoundPorts
 }
 
+func (s *NetworkDisruptionServiceSpec) Explain() string {
+	explanation := fmt.Sprintf("The service %s in the namespace %s", s.Name, s.Namespace)
+
+	if len(s.Ports) > 0 {
+		portExpl := ""
+
+		for _, port := range s.Ports {
+			toPrint := []string{}
+
+			if port.Port != 0 {
+				toPrint = append(toPrint, strconv.Itoa(port.Port))
+			}
+
+			if port.Name != "" {
+				toPrint = append(toPrint, port.Name)
+			}
+
+			portExpl = fmt.Sprintf("Port: (%s)", strings.Join(toPrint, "/"))
+		}
+
+		explanation += fmt.Sprintf(", but only on the ports: %s.", portExpl)
+	}
+
+	return explanation
+}
+
 // UpdateHostsOnCloudDisruption from a cloud spec disruption, get all ip ranges of services provided and appends them into the s.Hosts slice
 func (s *NetworkDisruptionSpec) UpdateHostsOnCloudDisruption(cloudManager cloudservice.CloudServicesProvidersManager) error {
 	if s == nil || s.Cloud == nil {
@@ -713,4 +834,75 @@ func (s *NetworkDisruptionSpec) UpdateHostsOnCloudDisruption(cloudManager clouds
 	}
 
 	return nil
+}
+
+func (s *NetworkDisruptionSpec) Explain() []string {
+	explanation := []string{""}
+	explanation = append(explanation, "spec.network will apply tc rules on every target, causing a failure on specific network traffic. You can filter what network "+
+		"traffic is affected, using network.hosts, network.services, or network.allowedHosts. If you specify none of those, all outgoing traffic will be impacted.")
+
+	if s.Drop != 0 {
+		explanation = append(explanation, fmt.Sprintf("\tnetwork.drop applies a packet drop of %d percent.", s.Drop))
+	}
+
+	if s.Corrupt != 0 {
+		explanation = append(explanation, fmt.Sprintf("\tnetwork.corrupt will corrupt %d percent of packets.", s.Corrupt))
+	}
+
+	if s.Delay != 0 {
+		explanation = append(explanation, fmt.Sprintf("\tnetwork.delay applies a delay of %d ms to all packets.", s.Delay))
+
+		if s.DelayJitter != 0 {
+			explanation = append(explanation, fmt.Sprintf("\tnetwork.delayJitter applies a jitter of up to %d ms to the delay value to normally distribute the delay.", s.DelayJitter))
+		}
+	}
+
+	if s.BandwidthLimit != 0 {
+		explanation = append(explanation, fmt.Sprintf("\tnetwork.bandwidthLimit applies a bandwidth limit of %d ms to the filtered connections.", s.BandwidthLimit))
+	}
+
+	if s.Cloud != nil {
+		explanation = append(explanation, "\tnetwork.cloud will apply filters so that the chosen network failures affects traffic between the target and the specified cloud services.")
+		explanation = append(explanation, "\tWe will use the cloud providers' published public ip ranges.")
+		explanation = append(explanation, s.Cloud.Explain()...)
+	}
+
+	if s.HTTP != nil {
+		explanation = append(explanation, "\tnetwork.http will apply filters so that the chosen network failure affects when the target makes any HTTP requests "+
+			"of the following methods to the following paths.")
+		explanation = append(explanation, "\tThis will _not_ work on https traffic, only http traffic.")
+		explanation = append(explanation, s.HTTP.Explain()...)
+	}
+
+	if len(s.Hosts) != 0 {
+		explanation = append(explanation, "\tnetwork.hosts will apply filters so that the chosen network failure affects the traffic between the target and the following groups:")
+		for _, host := range s.Hosts {
+			explanation = append(explanation, host.Explain())
+		}
+	}
+
+	if len(s.Services) != 0 {
+		explanation = append(explanation, "\tnetwork.services is a convenience feature for targeting kubernetes services in the _same kubernetes cluster_. The chaos-controller will handle "+
+			"contacting the kubernetes API and finding up to date info on the specified services' IPs and ports. If you want to target services in other clusters, you'll need to refer to them by hostname "+
+			"and use network.hosts. We won't realize until the disruption has started that the specified services don't exist in the same k8s cluster. ")
+		explanation = append(explanation, "\tnetwork.services will apply filters so that the chosen network failure affects the traffic between the target and the following services:")
+
+		for _, service := range s.Services {
+			explanation = append(explanation, service.Explain())
+		}
+	}
+
+	if len(s.AllowedHosts) > 0 {
+		explanation = append(explanation, "\tnetwork.allowedHosts will apply filters so that the chosen network failure does not affect traffic between the target and the following groups, "+
+			"taking precedence over network.hosts:")
+		for _, host := range s.AllowedHosts {
+			explanation = append(explanation, host.Explain())
+		}
+	}
+
+	if s.DisableDefaultAllowedHosts {
+		explanation = append(explanation, "\tnetwork.disableDefaultAllowedHosts will remove the default list of excluded hosts from disruptions, and will allow you to prevent targets from reaching the k8s api.")
+	}
+
+	return explanation
 }

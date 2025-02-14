@@ -148,3 +148,32 @@ func (s GRPCDisruptionSpec) GenerateArgs() []string {
 
 	return args
 }
+
+func (s GRPCDisruptionSpec) Explain() []string {
+	explanation := []string{"",
+		"spec.grpc will activate the chaos interceptor on the targeted grpc server, replacing responses with specified errors.",
+		"This disruption type can only work on grpc servers, not on the clients, " +
+			"and requires [the server to cooperate by installing the chaos interceptor]" +
+			"(https://github.com/DataDog/chaos-controller/blob/main/docs/grpc_disruption/instructions.md)",
+		"The following endpoints will be intercepted:",
+	}
+
+	for _, endpt := range s.Endpoints {
+		var spoof string
+
+		if endpt.ErrorToReturn != "" {
+			spoof = endpt.ErrorToReturn
+		} else {
+			spoof = endpt.OverrideToReturn
+		}
+
+		queryPercentExpl := fmt.Sprintf("%d%%", endpt.QueryPercent)
+		if endpt.QueryPercent == 0 {
+			queryPercentExpl = "up to 100% (evenly divided across all alterations on this endpoint)"
+		}
+
+		explanation = append(explanation, fmt.Sprintf("\t\tThe endpoint %s will return %s %s of the time", endpt.TargetEndpoint, spoof, queryPercentExpl))
+	}
+
+	return explanation
+}
