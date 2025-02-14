@@ -959,7 +959,11 @@ func (s DisruptionSpec) Explain() []string {
 			s.Count.IntValue(),
 			s.Count.IntValue(),
 		)
-		countSuffix += " If it's more convenient, you can set spec.count to a % instead (just append the '%' character)."
+		if s.Count.IntValue() == 100 {
+			countSuffix += " Your count is \"100\", but you almost certainly meant to specify \"100%\". The former means to find exactly 100 targets, the latter means to inject into all available targets."
+		} else {
+			countSuffix += " If it's more convenient, you can set spec.count to a % instead (just append the '%' character)."
+		}
 	} else {
 		countSuffix = fmt.Sprintf("%s percent of all eligible %ss found. "+
 			"If it's more convenient, you can set spec.count to an int intead of a percentage.",
