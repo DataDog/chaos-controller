@@ -887,11 +887,13 @@ func (s DisruptionSpec) DisruptionCount() int {
 func (s DisruptionSpec) Explain() []string {
 	if err := s.Validate(); err != nil {
 		retErr := []string{"We were not able to explain this spec as it is not valid."}
+
 		if merr, ok := err.(*multierror.Error); ok {
 			for _, e := range merr.Errors {
 				retErr = append(retErr, e.Error())
 			}
 		}
+
 		return retErr
 	}
 
