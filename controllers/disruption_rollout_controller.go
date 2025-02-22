@@ -77,7 +77,7 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, nil
 	}
 
-	disruptions, err := GetChildDisruptions(ctx, r.Client, r.log, instance.Namespace, DisruptionRolloutNameLabel, instance.Name)
+	disruptions, err := chaosv1beta1.GetChildDisruptions(ctx, r.Client, r.log, instance.Namespace, chaosv1beta1.DisruptionRolloutNameLabel, instance.Name)
 	if err != nil {
 		return ctrl.Result{}, nil
 	}
@@ -138,7 +138,7 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 	// Create disruption
 	scheduledTime := time.Now()
-	disruption, err := CreateDisruptionFromTemplate(ctx, r.Client, r.Scheme, instance, &instance.Spec.TargetResource, &instance.Spec.DisruptionTemplate, scheduledTime, r.log)
+	disruption, err := chaosv1beta1.CreateDisruptionFromTemplate(ctx, r.Client, r.Scheme, instance, &instance.Spec.TargetResource, &instance.Spec.DisruptionTemplate, scheduledTime, r.log)
 
 	if err != nil {
 		r.log.Warnw("unable to construct disruption from template", "err", err)
@@ -173,7 +173,7 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 // updateLastScheduleTime updates the LastScheduleTime in the status of a DisruptionRollout instance
 // based on the most recent schedule time among the given disruptions.
 func (r *DisruptionRolloutReconciler) updateLastScheduleTime(ctx context.Context, instance *chaosv1beta1.DisruptionRollout, disruptions *chaosv1beta1.DisruptionList) error {
-	mostRecentScheduleTime := GetMostRecentScheduleTime(r.log, disruptions) // find the last run so we can update the status
+	mostRecentScheduleTime := chaosv1beta1.GetMostRecentScheduleTime(r.log, disruptions) // find the last run so we can update the status
 	if !mostRecentScheduleTime.IsZero() {
 		instance.Status.LastScheduleTime = &metav1.Time{Time: mostRecentScheduleTime}
 		return r.Client.Status().Update(ctx, instance)
@@ -189,7 +189,7 @@ func (r *DisruptionRolloutReconciler) updateLastScheduleTime(ctx context.Context
 // - error: Represents any error that occurred during the execution of the function.
 func (r *DisruptionRolloutReconciler) updateTargetResourcePreviouslyMissing(ctx context.Context, instance *chaosv1beta1.DisruptionRollout) (bool, bool, error) {
 	disruptionRolloutDeleted := false
-	targetResourceExists, err := CheckTargetResourceExists(ctx, r.Client, &instance.Spec.TargetResource, instance.Namespace)
+	targetResourceExists, err := chaosv1beta1.CheckTargetResourceExists(ctx, r.Client, &instance.Spec.TargetResource, instance.Namespace)
 
 	if err != nil {
 		return targetResourceExists, disruptionRolloutDeleted, err

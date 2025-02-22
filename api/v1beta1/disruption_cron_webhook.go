@@ -6,6 +6,7 @@
 package v1beta1
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,6 +16,7 @@ import (
 	cLog "github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/o11y/metrics"
 	"github.com/DataDog/chaos-controller/utils"
+
 	"github.com/robfig/cron"
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -119,6 +121,22 @@ func (d *DisruptionCron) ValidateCreate() (_ admission.Warnings, err error) {
 
 	if err = d.validateMinimumFrequency(minimumCronFrequency); err != nil {
 		return nil, err
+	}
+
+	var exists bool
+
+	// CheckTargetResourceExists doesn't return apierrors.NotFound. Which means if there is an error,
+	// we could not determine if the target existed, and should allow the Create.
+	if exists, err = CheckTargetResourceExists(context.Background(), k8sClient, &d.Spec.TargetResource, d.Namespace); err != nil {
+		log.Errorw("error checking if target resource exists", "error", err)
+	} else if !exists {
+		log.Warnw("rejecting disruption cron because target does not exist",
+			"targetName", d.Spec.TargetResource.Name,
+			"targetKind", d.Spec.TargetResource.Kind,
+			"error", err)
+
+		return nil, fmt.Errorf("rejecting disruption cron because target %s %s/%s does not exist",
+			d.Spec.TargetResource.Kind, d.Namespace, d.Spec.TargetResource.Name)
 	}
 
 	// send informative event to disruption cron to broadcast
