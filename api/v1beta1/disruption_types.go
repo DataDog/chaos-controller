@@ -885,7 +885,7 @@ func (s DisruptionSpec) DisruptionCount() int {
 
 // Explain returns a string explanation of this disruption spec
 func (s DisruptionSpec) Explain() []string {
-	if err := s.Validate(); err != nil {
+	if err := s.ValidateSelectorsOptional(false); err != nil {
 		retErr := []string{"We were not able to explain this spec as it is not valid."}
 
 		if merr, ok := err.(*multierror.Error); ok {
