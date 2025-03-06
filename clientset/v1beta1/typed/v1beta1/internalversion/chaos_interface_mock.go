@@ -120,7 +120,7 @@ func (_c *ChaosInterfaceMock_Disruptions_Call) RunAndReturn(run func(string) Dis
 	return _c
 }
 
-// RESTClient provides a mock function with given fields:
+// RESTClient provides a mock function with no fields
 func (_m *ChaosInterfaceMock) RESTClient() rest.Interface {
 	ret := _m.Called()
 

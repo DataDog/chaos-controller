@@ -21,7 +21,7 @@ func (_m *SinkMock) EXPECT() *SinkMock_Expecter {
 	return &SinkMock_Expecter{mock: &_m.Mock}
 }
 
-// GetSinkName provides a mock function with given fields:
+// GetSinkName provides a mock function with no fields
 func (_m *SinkMock) GetSinkName() string {
 	ret := _m.Called()
 
@@ -66,7 +66,7 @@ func (_c *SinkMock_GetSinkName_Call) RunAndReturn(run func() string) *SinkMock_G
 	return _c
 }
 
-// Stop provides a mock function with given fields:
+// Stop provides a mock function with no fields
 func (_m *SinkMock) Stop() {
 	_m.Called()
 }
@@ -94,7 +94,7 @@ func (_c *SinkMock_Stop_Call) Return() *SinkMock_Stop_Call {
 }
 
 func (_c *SinkMock_Stop_Call) RunAndReturn(run func()) *SinkMock_Stop_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

@@ -21,7 +21,7 @@ func (_m *UnsafeDisruptionListenerServerMock) EXPECT() *UnsafeDisruptionListener
 	return &UnsafeDisruptionListenerServerMock_Expecter{mock: &_m.Mock}
 }
 
-// mustEmbedUnimplementedDisruptionListenerServer provides a mock function with given fields:
+// mustEmbedUnimplementedDisruptionListenerServer provides a mock function with no fields
 func (_m *UnsafeDisruptionListenerServerMock) mustEmbedUnimplementedDisruptionListenerServer() {
 	_m.Called()
 }
@@ -49,7 +49,7 @@ func (_c *UnsafeDisruptionListenerServerMock_mustEmbedUnimplementedDisruptionLis
 }
 
 func (_c *UnsafeDisruptionListenerServerMock_mustEmbedUnimplementedDisruptionListenerServer_Call) RunAndReturn(run func()) *UnsafeDisruptionListenerServerMock_mustEmbedUnimplementedDisruptionListenerServer_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

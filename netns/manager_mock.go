@@ -21,7 +21,7 @@ func (_m *ManagerMock) EXPECT() *ManagerMock_Expecter {
 	return &ManagerMock_Expecter{mock: &_m.Mock}
 }
 
-// Enter provides a mock function with given fields:
+// Enter provides a mock function with no fields
 func (_m *ManagerMock) Enter() error {
 	ret := _m.Called()
 
@@ -66,7 +66,7 @@ func (_c *ManagerMock_Enter_Call) RunAndReturn(run func() error) *ManagerMock_En
 	return _c
 }
 
-// Exit provides a mock function with given fields:
+// Exit provides a mock function with no fields
 func (_m *ManagerMock) Exit() error {
 	ret := _m.Called()
 

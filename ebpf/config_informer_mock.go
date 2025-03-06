@@ -21,7 +21,7 @@ func (_m *ConfigInformerMock) EXPECT() *ConfigInformerMock_Expecter {
 	return &ConfigInformerMock_Expecter{mock: &_m.Mock}
 }
 
-// GetKernelFeatures provides a mock function with given fields:
+// GetKernelFeatures provides a mock function with no fields
 func (_m *ConfigInformerMock) GetKernelFeatures() (Features, error) {
 	ret := _m.Called()
 
@@ -76,7 +76,7 @@ func (_c *ConfigInformerMock_GetKernelFeatures_Call) RunAndReturn(run func() (Fe
 	return _c
 }
 
-// GetMapTypes provides a mock function with given fields:
+// GetMapTypes provides a mock function with no fields
 func (_m *ConfigInformerMock) GetMapTypes() MapTypes {
 	ret := _m.Called()
 
@@ -121,7 +121,7 @@ func (_c *ConfigInformerMock_GetMapTypes_Call) RunAndReturn(run func() MapTypes)
 	return _c
 }
 
-// GetRequiredSystemConfig provides a mock function with given fields:
+// GetRequiredSystemConfig provides a mock function with no fields
 func (_m *ConfigInformerMock) GetRequiredSystemConfig() KernelParams {
 	ret := _m.Called()
 
@@ -168,7 +168,7 @@ func (_c *ConfigInformerMock_GetRequiredSystemConfig_Call) RunAndReturn(run func
 	return _c
 }
 
-// IsKernelConfigAvailable provides a mock function with given fields:
+// IsKernelConfigAvailable provides a mock function with no fields
 func (_m *ConfigInformerMock) IsKernelConfigAvailable() bool {
 	ret := _m.Called()
 
@@ -213,7 +213,7 @@ func (_c *ConfigInformerMock_IsKernelConfigAvailable_Call) RunAndReturn(run func
 	return _c
 }
 
-// ValidateRequiredSystemConfig provides a mock function with given fields:
+// ValidateRequiredSystemConfig provides a mock function with no fields
 func (_m *ConfigInformerMock) ValidateRequiredSystemConfig() error {
 	ret := _m.Called()
 

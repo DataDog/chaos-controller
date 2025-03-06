@@ -144,7 +144,7 @@ func (_c *DisruptionListenerServerMock_ResetDisruptions_Call) RunAndReturn(run f
 	return _c
 }
 
-// mustEmbedUnimplementedDisruptionListenerServer provides a mock function with given fields:
+// mustEmbedUnimplementedDisruptionListenerServer provides a mock function with no fields
 func (_m *DisruptionListenerServerMock) mustEmbedUnimplementedDisruptionListenerServer() {
 	_m.Called()
 }
@@ -172,7 +172,7 @@ func (_c *DisruptionListenerServerMock_mustEmbedUnimplementedDisruptionListenerS
 }
 
 func (_c *DisruptionListenerServerMock_mustEmbedUnimplementedDisruptionListenerServer_Call) RunAndReturn(run func()) *DisruptionListenerServerMock_mustEmbedUnimplementedDisruptionListenerServer_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

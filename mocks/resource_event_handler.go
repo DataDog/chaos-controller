@@ -51,7 +51,7 @@ func (_c *ResourceEventHandlerMock_OnAdd_Call) Return() *ResourceEventHandlerMoc
 }
 
 func (_c *ResourceEventHandlerMock_OnAdd_Call) RunAndReturn(run func(interface{}, bool)) *ResourceEventHandlerMock_OnAdd_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -84,7 +84,7 @@ func (_c *ResourceEventHandlerMock_OnDelete_Call) Return() *ResourceEventHandler
 }
 
 func (_c *ResourceEventHandlerMock_OnDelete_Call) RunAndReturn(run func(interface{})) *ResourceEventHandlerMock_OnDelete_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -118,7 +118,7 @@ func (_c *ResourceEventHandlerMock_OnUpdate_Call) Return() *ResourceEventHandler
 }
 
 func (_c *ResourceEventHandlerMock_OnUpdate_Call) RunAndReturn(run func(interface{}, interface{})) *ResourceEventHandlerMock_OnUpdate_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

@@ -74,7 +74,7 @@ func (_c *DisruptionsWatchersManagerMock_CreateAllWatchers_Call) RunAndReturn(ru
 	return _c
 }
 
-// RemoveAllExpiredWatchers provides a mock function with given fields:
+// RemoveAllExpiredWatchers provides a mock function with no fields
 func (_m *DisruptionsWatchersManagerMock) RemoveAllExpiredWatchers() {
 	_m.Called()
 }
@@ -102,11 +102,11 @@ func (_c *DisruptionsWatchersManagerMock_RemoveAllExpiredWatchers_Call) Return()
 }
 
 func (_c *DisruptionsWatchersManagerMock_RemoveAllExpiredWatchers_Call) RunAndReturn(run func()) *DisruptionsWatchersManagerMock_RemoveAllExpiredWatchers_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
-// RemoveAllOrphanWatchers provides a mock function with given fields:
+// RemoveAllOrphanWatchers provides a mock function with no fields
 func (_m *DisruptionsWatchersManagerMock) RemoveAllOrphanWatchers() error {
 	ret := _m.Called()
 
@@ -180,7 +180,7 @@ func (_c *DisruptionsWatchersManagerMock_RemoveAllWatchers_Call) Return() *Disru
 }
 
 func (_c *DisruptionsWatchersManagerMock_RemoveAllWatchers_Call) RunAndReturn(run func(*v1beta1.Disruption)) *DisruptionsWatchersManagerMock_RemoveAllWatchers_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

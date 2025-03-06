@@ -67,7 +67,7 @@ func (_c *RuntimeMock_GOMAXPROCS_Call) RunAndReturn(run func(int) int) *RuntimeM
 	return _c
 }
 
-// LockOSThread provides a mock function with given fields:
+// LockOSThread provides a mock function with no fields
 func (_m *RuntimeMock) LockOSThread() {
 	_m.Called()
 }
@@ -95,11 +95,11 @@ func (_c *RuntimeMock_LockOSThread_Call) Return() *RuntimeMock_LockOSThread_Call
 }
 
 func (_c *RuntimeMock_LockOSThread_Call) RunAndReturn(run func()) *RuntimeMock_LockOSThread_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
-// UnlockOSThread provides a mock function with given fields:
+// UnlockOSThread provides a mock function with no fields
 func (_m *RuntimeMock) UnlockOSThread() {
 	_m.Called()
 }
@@ -127,7 +127,7 @@ func (_c *RuntimeMock_UnlockOSThread_Call) Return() *RuntimeMock_UnlockOSThread_
 }
 
 func (_c *RuntimeMock_UnlockOSThread_Call) RunAndReturn(run func()) *RuntimeMock_UnlockOSThread_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

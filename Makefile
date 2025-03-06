@@ -70,7 +70,7 @@ GOLANGCI_LINT_INSTALLED_VERSION = $(shell (golangci-lint --version || echo "") |
 CONTROLLER_GEN_VERSION = v0.14.0
 CONTROLLER_GEN_INSTALLED_VERSION = $(shell (controller-gen --version || echo "") | awk '{ print $$2 }')
 
-MOCKERY_VERSION = 2.43.2
+MOCKERY_VERSION = 2.53.0
 MOCKERY_ARCH = $(GOARCH)
 ifeq (amd64,$(GOARCH))
 MOCKERY_ARCH = x86_64

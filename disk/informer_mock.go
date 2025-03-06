@@ -21,7 +21,7 @@ func (_m *InformerMock) EXPECT() *InformerMock_Expecter {
 	return &InformerMock_Expecter{mock: &_m.Mock}
 }
 
-// Major provides a mock function with given fields:
+// Major provides a mock function with no fields
 func (_m *InformerMock) Major() int {
 	ret := _m.Called()
 
@@ -66,7 +66,7 @@ func (_c *InformerMock_Major_Call) RunAndReturn(run func() int) *InformerMock_Ma
 	return _c
 }
 
-// Source provides a mock function with given fields:
+// Source provides a mock function with no fields
 func (_m *InformerMock) Source() string {
 	ret := _m.Called()
 

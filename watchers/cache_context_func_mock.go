@@ -25,7 +25,7 @@ func (_m *CacheContextFuncMock) EXPECT() *CacheContextFuncMock_Expecter {
 	return &CacheContextFuncMock_Expecter{mock: &_m.Mock}
 }
 
-// Execute provides a mock function with given fields:
+// Execute provides a mock function with no fields
 func (_m *CacheContextFuncMock) Execute() (context.Context, context.CancelFunc) {
 	ret := _m.Called()
 

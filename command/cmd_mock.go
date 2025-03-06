@@ -21,7 +21,7 @@ func (_m *CmdMock) EXPECT() *CmdMock_Expecter {
 	return &CmdMock_Expecter{mock: &_m.Mock}
 }
 
-// DryRun provides a mock function with given fields:
+// DryRun provides a mock function with no fields
 func (_m *CmdMock) DryRun() bool {
 	ret := _m.Called()
 
@@ -66,7 +66,7 @@ func (_c *CmdMock_DryRun_Call) RunAndReturn(run func() bool) *CmdMock_DryRun_Cal
 	return _c
 }
 
-// ExitCode provides a mock function with given fields:
+// ExitCode provides a mock function with no fields
 func (_m *CmdMock) ExitCode() int {
 	ret := _m.Called()
 
@@ -111,7 +111,7 @@ func (_c *CmdMock_ExitCode_Call) RunAndReturn(run func() int) *CmdMock_ExitCode_
 	return _c
 }
 
-// PID provides a mock function with given fields:
+// PID provides a mock function with no fields
 func (_m *CmdMock) PID() int {
 	ret := _m.Called()
 
@@ -156,7 +156,7 @@ func (_c *CmdMock_PID_Call) RunAndReturn(run func() int) *CmdMock_PID_Call {
 	return _c
 }
 
-// Start provides a mock function with given fields:
+// Start provides a mock function with no fields
 func (_m *CmdMock) Start() error {
 	ret := _m.Called()
 
@@ -201,7 +201,7 @@ func (_c *CmdMock_Start_Call) RunAndReturn(run func() error) *CmdMock_Start_Call
 	return _c
 }
 
-// String provides a mock function with given fields:
+// String provides a mock function with no fields
 func (_m *CmdMock) String() string {
 	ret := _m.Called()
 
@@ -246,7 +246,7 @@ func (_c *CmdMock_String_Call) RunAndReturn(run func() string) *CmdMock_String_C
 	return _c
 }
 
-// Wait provides a mock function with given fields:
+// Wait provides a mock function with no fields
 func (_m *CmdMock) Wait() error {
 	ret := _m.Called()
 

@@ -24,7 +24,7 @@ func (_m *InjectorMock) EXPECT() *InjectorMock_Expecter {
 	return &InjectorMock_Expecter{mock: &_m.Mock}
 }
 
-// Clean provides a mock function with given fields:
+// Clean provides a mock function with no fields
 func (_m *InjectorMock) Clean() error {
 	ret := _m.Called()
 
@@ -69,7 +69,7 @@ func (_c *InjectorMock_Clean_Call) RunAndReturn(run func() error) *InjectorMock_
 	return _c
 }
 
-// GetDisruptionKind provides a mock function with given fields:
+// GetDisruptionKind provides a mock function with no fields
 func (_m *InjectorMock) GetDisruptionKind() types.DisruptionKindName {
 	ret := _m.Called()
 
@@ -114,7 +114,7 @@ func (_c *InjectorMock_GetDisruptionKind_Call) RunAndReturn(run func() types.Dis
 	return _c
 }
 
-// Inject provides a mock function with given fields:
+// Inject provides a mock function with no fields
 func (_m *InjectorMock) Inject() error {
 	ret := _m.Called()
 
@@ -159,7 +159,7 @@ func (_c *InjectorMock_Inject_Call) RunAndReturn(run func() error) *InjectorMock
 	return _c
 }
 
-// TargetName provides a mock function with given fields:
+// TargetName provides a mock function with no fields
 func (_m *InjectorMock) TargetName() string {
 	ret := _m.Called()
 
@@ -233,7 +233,7 @@ func (_c *InjectorMock_UpdateConfig_Call) Return() *InjectorMock_UpdateConfig_Ca
 }
 
 func (_c *InjectorMock_UpdateConfig_Call) RunAndReturn(run func(Config)) *InjectorMock_UpdateConfig_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

@@ -61,7 +61,7 @@ func (_c *WatcherMetricsAdapterMock_OnChange_Call) Return() *WatcherMetricsAdapt
 }
 
 func (_c *WatcherMetricsAdapterMock_OnChange_Call) RunAndReturn(run func(*v1beta1.Disruption, string, *v1.Pod, *v1.Node, bool, bool, WatcherEventType)) *WatcherMetricsAdapterMock_OnChange_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

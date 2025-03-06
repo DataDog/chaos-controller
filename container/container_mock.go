@@ -21,7 +21,7 @@ func (_m *ContainerMock) EXPECT() *ContainerMock_Expecter {
 	return &ContainerMock_Expecter{mock: &_m.Mock}
 }
 
-// ID provides a mock function with given fields:
+// ID provides a mock function with no fields
 func (_m *ContainerMock) ID() string {
 	ret := _m.Called()
 
@@ -66,7 +66,7 @@ func (_c *ContainerMock_ID_Call) RunAndReturn(run func() string) *ContainerMock_
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *ContainerMock) Name() string {
 	ret := _m.Called()
 
@@ -111,7 +111,7 @@ func (_c *ContainerMock_Name_Call) RunAndReturn(run func() string) *ContainerMoc
 	return _c
 }
 
-// PID provides a mock function with given fields:
+// PID provides a mock function with no fields
 func (_m *ContainerMock) PID() uint32 {
 	ret := _m.Called()
 
@@ -156,7 +156,7 @@ func (_c *ContainerMock_PID_Call) RunAndReturn(run func() uint32) *ContainerMock
 	return _c
 }
 
-// Runtime provides a mock function with given fields:
+// Runtime provides a mock function with no fields
 func (_m *ContainerMock) Runtime() Runtime {
 	ret := _m.Called()
 

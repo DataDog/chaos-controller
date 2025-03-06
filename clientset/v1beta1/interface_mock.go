@@ -25,7 +25,7 @@ func (_m *InterfaceMock) EXPECT() *InterfaceMock_Expecter {
 	return &InterfaceMock_Expecter{mock: &_m.Mock}
 }
 
-// Chaos provides a mock function with given fields:
+// Chaos provides a mock function with no fields
 func (_m *InterfaceMock) Chaos() internalversion.ChaosInterface {
 	ret := _m.Called()
 
@@ -72,7 +72,7 @@ func (_c *InterfaceMock_Chaos_Call) RunAndReturn(run func() internalversion.Chao
 	return _c
 }
 
-// Discovery provides a mock function with given fields:
+// Discovery provides a mock function with no fields
 func (_m *InterfaceMock) Discovery() discovery.DiscoveryInterface {
 	ret := _m.Called()
 
