@@ -24,7 +24,7 @@ func (_m *WatcherMock) EXPECT() *WatcherMock_Expecter {
 	return &WatcherMock_Expecter{mock: &_m.Mock}
 }
 
-// Clean provides a mock function with given fields:
+// Clean provides a mock function with no fields
 func (_m *WatcherMock) Clean() {
 	_m.Called()
 }
@@ -52,11 +52,11 @@ func (_c *WatcherMock_Clean_Call) Return() *WatcherMock_Clean_Call {
 }
 
 func (_c *WatcherMock_Clean_Call) RunAndReturn(run func()) *WatcherMock_Clean_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
-// GetCacheSource provides a mock function with given fields:
+// GetCacheSource provides a mock function with no fields
 func (_m *WatcherMock) GetCacheSource() (source.SyncingSource, error) {
 	ret := _m.Called()
 
@@ -113,7 +113,7 @@ func (_c *WatcherMock_GetCacheSource_Call) RunAndReturn(run func() (source.Synci
 	return _c
 }
 
-// GetConfig provides a mock function with given fields:
+// GetConfig provides a mock function with no fields
 func (_m *WatcherMock) GetConfig() WatcherConfig {
 	ret := _m.Called()
 
@@ -158,7 +158,7 @@ func (_c *WatcherMock_GetConfig_Call) RunAndReturn(run func() WatcherConfig) *Wa
 	return _c
 }
 
-// GetContextTuple provides a mock function with given fields:
+// GetContextTuple provides a mock function with no fields
 func (_m *WatcherMock) GetContextTuple() (CtxTuple, error) {
 	ret := _m.Called()
 
@@ -213,7 +213,7 @@ func (_c *WatcherMock_GetContextTuple_Call) RunAndReturn(run func() (CtxTuple, e
 	return _c
 }
 
-// GetName provides a mock function with given fields:
+// GetName provides a mock function with no fields
 func (_m *WatcherMock) GetName() string {
 	ret := _m.Called()
 
@@ -258,7 +258,7 @@ func (_c *WatcherMock_GetName_Call) RunAndReturn(run func() string) *WatcherMock
 	return _c
 }
 
-// IsExpired provides a mock function with given fields:
+// IsExpired provides a mock function with no fields
 func (_m *WatcherMock) IsExpired() bool {
 	ret := _m.Called()
 
@@ -303,7 +303,7 @@ func (_c *WatcherMock_IsExpired_Call) RunAndReturn(run func() bool) *WatcherMock
 	return _c
 }
 
-// Start provides a mock function with given fields:
+// Start provides a mock function with no fields
 func (_m *WatcherMock) Start() error {
 	ret := _m.Called()
 

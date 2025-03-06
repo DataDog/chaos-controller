@@ -21,7 +21,7 @@ func (_m *BackgroundCmdMock) EXPECT() *BackgroundCmdMock_Expecter {
 	return &BackgroundCmdMock_Expecter{mock: &_m.Mock}
 }
 
-// DryRun provides a mock function with given fields:
+// DryRun provides a mock function with no fields
 func (_m *BackgroundCmdMock) DryRun() bool {
 	ret := _m.Called()
 
@@ -66,7 +66,7 @@ func (_c *BackgroundCmdMock_DryRun_Call) RunAndReturn(run func() bool) *Backgrou
 	return _c
 }
 
-// KeepAlive provides a mock function with given fields:
+// KeepAlive provides a mock function with no fields
 func (_m *BackgroundCmdMock) KeepAlive() {
 	_m.Called()
 }
@@ -94,11 +94,11 @@ func (_c *BackgroundCmdMock_KeepAlive_Call) Return() *BackgroundCmdMock_KeepAliv
 }
 
 func (_c *BackgroundCmdMock_KeepAlive_Call) RunAndReturn(run func()) *BackgroundCmdMock_KeepAlive_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
-// Start provides a mock function with given fields:
+// Start provides a mock function with no fields
 func (_m *BackgroundCmdMock) Start() error {
 	ret := _m.Called()
 
@@ -143,7 +143,7 @@ func (_c *BackgroundCmdMock_Start_Call) RunAndReturn(run func() error) *Backgrou
 	return _c
 }
 
-// Stop provides a mock function with given fields:
+// Stop provides a mock function with no fields
 func (_m *BackgroundCmdMock) Stop() error {
 	ret := _m.Called()
 

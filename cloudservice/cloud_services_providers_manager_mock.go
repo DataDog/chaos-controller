@@ -179,7 +179,7 @@ func (_c *CloudServicesProvidersManagerMock_GetServicesIPRanges_Call) RunAndRetu
 	return _c
 }
 
-// PullIPRanges provides a mock function with given fields:
+// PullIPRanges provides a mock function with no fields
 func (_m *CloudServicesProvidersManagerMock) PullIPRanges() error {
 	ret := _m.Called()
 
@@ -224,7 +224,7 @@ func (_c *CloudServicesProvidersManagerMock_PullIPRanges_Call) RunAndReturn(run 
 	return _c
 }
 
-// StartPeriodicPull provides a mock function with given fields:
+// StartPeriodicPull provides a mock function with no fields
 func (_m *CloudServicesProvidersManagerMock) StartPeriodicPull() {
 	_m.Called()
 }
@@ -252,11 +252,11 @@ func (_c *CloudServicesProvidersManagerMock_StartPeriodicPull_Call) Return() *Cl
 }
 
 func (_c *CloudServicesProvidersManagerMock_StartPeriodicPull_Call) RunAndReturn(run func()) *CloudServicesProvidersManagerMock_StartPeriodicPull_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
-// StopPeriodicPull provides a mock function with given fields:
+// StopPeriodicPull provides a mock function with no fields
 func (_m *CloudServicesProvidersManagerMock) StopPeriodicPull() {
 	_m.Called()
 }
@@ -284,7 +284,7 @@ func (_c *CloudServicesProvidersManagerMock_StopPeriodicPull_Call) Return() *Clo
 }
 
 func (_c *CloudServicesProvidersManagerMock_StopPeriodicPull_Call) RunAndReturn(run func()) *CloudServicesProvidersManagerMock_StopPeriodicPull_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

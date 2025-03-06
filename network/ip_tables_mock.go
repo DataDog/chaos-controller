@@ -21,7 +21,7 @@ func (_m *IPTablesMock) EXPECT() *IPTablesMock_Expecter {
 	return &IPTablesMock_Expecter{mock: &_m.Mock}
 }
 
-// Clear provides a mock function with given fields:
+// Clear provides a mock function with no fields
 func (_m *IPTablesMock) Clear() error {
 	ret := _m.Called()
 
@@ -116,7 +116,7 @@ func (_c *IPTablesMock_Intercept_Call) RunAndReturn(run func(string, string, str
 	return _c
 }
 
-// LogConntrack provides a mock function with given fields:
+// LogConntrack provides a mock function with no fields
 func (_m *IPTablesMock) LogConntrack() error {
 	ret := _m.Called()
 

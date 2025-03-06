@@ -144,7 +144,7 @@ func (_c *ChaosDogfoodServerMock_Order_Call) RunAndReturn(run func(context.Conte
 	return _c
 }
 
-// mustEmbedUnimplementedChaosDogfoodServer provides a mock function with given fields:
+// mustEmbedUnimplementedChaosDogfoodServer provides a mock function with no fields
 func (_m *ChaosDogfoodServerMock) mustEmbedUnimplementedChaosDogfoodServer() {
 	_m.Called()
 }
@@ -172,7 +172,7 @@ func (_c *ChaosDogfoodServerMock_mustEmbedUnimplementedChaosDogfoodServer_Call) 
 }
 
 func (_c *ChaosDogfoodServerMock_mustEmbedUnimplementedChaosDogfoodServer_Call) RunAndReturn(run func()) *ChaosDogfoodServerMock_mustEmbedUnimplementedChaosDogfoodServer_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

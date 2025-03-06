@@ -27,7 +27,7 @@ func (_m *SinkMock) EXPECT() *SinkMock_Expecter {
 	return &SinkMock_Expecter{mock: &_m.Mock}
 }
 
-// Close provides a mock function with given fields:
+// Close provides a mock function with no fields
 func (_m *SinkMock) Close() error {
 	ret := _m.Called()
 
@@ -72,7 +72,7 @@ func (_c *SinkMock_Close_Call) RunAndReturn(run func() error) *SinkMock_Close_Ca
 	return _c
 }
 
-// GetPrefix provides a mock function with given fields:
+// GetPrefix provides a mock function with no fields
 func (_m *SinkMock) GetPrefix() string {
 	ret := _m.Called()
 
@@ -117,7 +117,7 @@ func (_c *SinkMock_GetPrefix_Call) RunAndReturn(run func() string) *SinkMock_Get
 	return _c
 }
 
-// GetSinkName provides a mock function with given fields:
+// GetSinkName provides a mock function with no fields
 func (_m *SinkMock) GetSinkName() string {
 	ret := _m.Called()
 
@@ -1006,7 +1006,7 @@ func (_c *SinkMock_MetricPodsGauge_Call) RunAndReturn(run func(float64) error) *
 	return _c
 }
 
-// MetricReconcile provides a mock function with given fields:
+// MetricReconcile provides a mock function with no fields
 func (_m *SinkMock) MetricReconcile() error {
 	ret := _m.Called()
 
@@ -1146,7 +1146,7 @@ func (_c *SinkMock_MetricReinjected_Call) RunAndReturn(run func(bool, string, []
 	return _c
 }
 
-// MetricRestart provides a mock function with given fields:
+// MetricRestart provides a mock function with no fields
 func (_m *SinkMock) MetricRestart() error {
 	ret := _m.Called()
 

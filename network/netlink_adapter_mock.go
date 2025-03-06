@@ -24,7 +24,7 @@ func (_m *NetlinkAdapterMock) EXPECT() *NetlinkAdapterMock_Expecter {
 	return &NetlinkAdapterMock_Expecter{mock: &_m.Mock}
 }
 
-// DefaultRoutes provides a mock function with given fields:
+// DefaultRoutes provides a mock function with no fields
 func (_m *NetlinkAdapterMock) DefaultRoutes() ([]NetlinkRoute, error) {
 	ret := _m.Called()
 

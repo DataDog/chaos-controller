@@ -24,7 +24,7 @@ func (_m *ManagerMock) EXPECT() *ManagerMock_Expecter {
 	return &ManagerMock_Expecter{mock: &_m.Mock}
 }
 
-// IsCgroupV2 provides a mock function with given fields:
+// IsCgroupV2 provides a mock function with no fields
 func (_m *ManagerMock) IsCgroupV2() bool {
 	ret := _m.Called()
 
@@ -172,7 +172,7 @@ func (_c *ManagerMock_Read_Call) RunAndReturn(run func(string, string) (string, 
 	return _c
 }
 
-// ReadCPUSet provides a mock function with given fields:
+// ReadCPUSet provides a mock function with no fields
 func (_m *ManagerMock) ReadCPUSet() (cpuset.CPUSet, error) {
 	ret := _m.Called()
 

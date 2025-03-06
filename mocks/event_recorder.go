@@ -69,7 +69,7 @@ func (_c *EventRecorderMock_AnnotatedEventf_Call) Return() *EventRecorderMock_An
 }
 
 func (_c *EventRecorderMock_AnnotatedEventf_Call) RunAndReturn(run func(runtime.Object, map[string]string, string, string, string, ...interface{})) *EventRecorderMock_AnnotatedEventf_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -105,7 +105,7 @@ func (_c *EventRecorderMock_Event_Call) Return() *EventRecorderMock_Event_Call {
 }
 
 func (_c *EventRecorderMock_Event_Call) RunAndReturn(run func(runtime.Object, string, string, string)) *EventRecorderMock_Event_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -152,7 +152,7 @@ func (_c *EventRecorderMock_Eventf_Call) Return() *EventRecorderMock_Eventf_Call
 }
 
 func (_c *EventRecorderMock_Eventf_Call) RunAndReturn(run func(runtime.Object, string, string, string, ...interface{})) *EventRecorderMock_Eventf_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

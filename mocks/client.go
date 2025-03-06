@@ -521,7 +521,7 @@ func (_c *K8SClientMock_Patch_Call) RunAndReturn(run func(context.Context, clien
 	return _c
 }
 
-// RESTMapper provides a mock function with given fields:
+// RESTMapper provides a mock function with no fields
 func (_m *K8SClientMock) RESTMapper() meta.RESTMapper {
 	ret := _m.Called()
 
@@ -568,7 +568,7 @@ func (_c *K8SClientMock_RESTMapper_Call) RunAndReturn(run func() meta.RESTMapper
 	return _c
 }
 
-// Scheme provides a mock function with given fields:
+// Scheme provides a mock function with no fields
 func (_m *K8SClientMock) Scheme() *runtime.Scheme {
 	ret := _m.Called()
 
@@ -615,7 +615,7 @@ func (_c *K8SClientMock_Scheme_Call) RunAndReturn(run func() *runtime.Scheme) *K
 	return _c
 }
 
-// Status provides a mock function with given fields:
+// Status provides a mock function with no fields
 func (_m *K8SClientMock) Status() client.SubResourceWriter {
 	ret := _m.Called()
 

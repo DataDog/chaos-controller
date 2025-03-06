@@ -21,7 +21,7 @@ func (_m *instCGroupManagerMock) EXPECT() *instCGroupManagerMock_Expecter {
 	return &instCGroupManagerMock_Expecter{mock: &_m.Mock}
 }
 
-// GetPaths provides a mock function with given fields:
+// GetPaths provides a mock function with no fields
 func (_m *instCGroupManagerMock) GetPaths() map[string]string {
 	ret := _m.Called()
 

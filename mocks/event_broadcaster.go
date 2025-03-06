@@ -80,7 +80,7 @@ func (_c *EventBroadcasterMock_NewRecorder_Call) RunAndReturn(run func(*runtime.
 	return _c
 }
 
-// Shutdown provides a mock function with given fields:
+// Shutdown provides a mock function with no fields
 func (_m *EventBroadcasterMock) Shutdown() {
 	_m.Called()
 }
@@ -108,7 +108,7 @@ func (_c *EventBroadcasterMock_Shutdown_Call) Return() *EventBroadcasterMock_Shu
 }
 
 func (_c *EventBroadcasterMock_Shutdown_Call) RunAndReturn(run func()) *EventBroadcasterMock_Shutdown_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

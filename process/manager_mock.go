@@ -139,7 +139,7 @@ func (_c *ManagerMock_Find_Call) RunAndReturn(run func(int) (*os.Process, error)
 	return _c
 }
 
-// Prioritize provides a mock function with given fields:
+// Prioritize provides a mock function with no fields
 func (_m *ManagerMock) Prioritize() error {
 	ret := _m.Called()
 
@@ -184,7 +184,7 @@ func (_c *ManagerMock_Prioritize_Call) RunAndReturn(run func() error) *ManagerMo
 	return _c
 }
 
-// ProcessID provides a mock function with given fields:
+// ProcessID provides a mock function with no fields
 func (_m *ManagerMock) ProcessID() int {
 	ret := _m.Called()
 
@@ -275,9 +275,9 @@ func (_c *ManagerMock_SetAffinity_Call) RunAndReturn(run func([]int) error) *Man
 	return _c
 }
 
-// Signal provides a mock function with given fields: process, signal
-func (_m *ManagerMock) Signal(process *os.Process, signal os.Signal) error {
-	ret := _m.Called(process, signal)
+// Signal provides a mock function with given fields: _a0, signal
+func (_m *ManagerMock) Signal(_a0 *os.Process, signal os.Signal) error {
+	ret := _m.Called(_a0, signal)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Signal")
@@ -285,7 +285,7 @@ func (_m *ManagerMock) Signal(process *os.Process, signal os.Signal) error {
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(*os.Process, os.Signal) error); ok {
-		r0 = rf(process, signal)
+		r0 = rf(_a0, signal)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -299,13 +299,13 @@ type ManagerMock_Signal_Call struct {
 }
 
 // Signal is a helper method to define mock.On call
-//   - process *os.Process
+//   - _a0 *os.Process
 //   - signal os.Signal
-func (_e *ManagerMock_Expecter) Signal(process interface{}, signal interface{}) *ManagerMock_Signal_Call {
-	return &ManagerMock_Signal_Call{Call: _e.mock.On("Signal", process, signal)}
+func (_e *ManagerMock_Expecter) Signal(_a0 interface{}, signal interface{}) *ManagerMock_Signal_Call {
+	return &ManagerMock_Signal_Call{Call: _e.mock.On("Signal", _a0, signal)}
 }
 
-func (_c *ManagerMock_Signal_Call) Run(run func(process *os.Process, signal os.Signal)) *ManagerMock_Signal_Call {
+func (_c *ManagerMock_Signal_Call) Run(run func(_a0 *os.Process, signal os.Signal)) *ManagerMock_Signal_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(*os.Process), args[1].(os.Signal))
 	})
@@ -322,7 +322,7 @@ func (_c *ManagerMock_Signal_Call) RunAndReturn(run func(*os.Process, os.Signal)
 	return _c
 }
 
-// ThreadID provides a mock function with given fields:
+// ThreadID provides a mock function with no fields
 func (_m *ManagerMock) ThreadID() int {
 	ret := _m.Called()
 

@@ -35,7 +35,7 @@ func (_m *RuntimeControllerMock) EXPECT() *RuntimeControllerMock_Expecter {
 	return &RuntimeControllerMock_Expecter{mock: &_m.Mock}
 }
 
-// GetLogger provides a mock function with given fields:
+// GetLogger provides a mock function with no fields
 func (_m *RuntimeControllerMock) GetLogger() logr.Logger {
 	ret := _m.Called()
 

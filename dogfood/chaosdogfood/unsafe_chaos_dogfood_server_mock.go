@@ -21,7 +21,7 @@ func (_m *UnsafeChaosDogfoodServerMock) EXPECT() *UnsafeChaosDogfoodServerMock_E
 	return &UnsafeChaosDogfoodServerMock_Expecter{mock: &_m.Mock}
 }
 
-// mustEmbedUnimplementedChaosDogfoodServer provides a mock function with given fields:
+// mustEmbedUnimplementedChaosDogfoodServer provides a mock function with no fields
 func (_m *UnsafeChaosDogfoodServerMock) mustEmbedUnimplementedChaosDogfoodServer() {
 	_m.Called()
 }
@@ -49,7 +49,7 @@ func (_c *UnsafeChaosDogfoodServerMock_mustEmbedUnimplementedChaosDogfoodServer_
 }
 
 func (_c *UnsafeChaosDogfoodServerMock_mustEmbedUnimplementedChaosDogfoodServer_Call) RunAndReturn(run func()) *UnsafeChaosDogfoodServerMock_mustEmbedUnimplementedChaosDogfoodServer_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

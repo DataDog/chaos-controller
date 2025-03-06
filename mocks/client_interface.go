@@ -26,7 +26,7 @@ func (_m *ClientStatsdMock) EXPECT() *ClientStatsdMock_Expecter {
 	return &ClientStatsdMock_Expecter{mock: &_m.Mock}
 }
 
-// Close provides a mock function with given fields:
+// Close provides a mock function with no fields
 func (_m *ClientStatsdMock) Close() error {
 	ret := _m.Called()
 
@@ -263,7 +263,7 @@ func (_c *ClientStatsdMock_Event_Call) RunAndReturn(run func(*statsd.Event) erro
 	return _c
 }
 
-// Flush provides a mock function with given fields:
+// Flush provides a mock function with no fields
 func (_m *ClientStatsdMock) Flush() error {
 	ret := _m.Called()
 

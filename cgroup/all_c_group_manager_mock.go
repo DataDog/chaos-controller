@@ -68,7 +68,7 @@ func (_c *allCGroupManagerMock_EnterPid_Call) RunAndReturn(run func(map[string]s
 	return _c
 }
 
-// GetPaths provides a mock function with given fields:
+// GetPaths provides a mock function with no fields
 func (_m *allCGroupManagerMock) GetPaths() map[string]string {
 	ret := _m.Called()
 

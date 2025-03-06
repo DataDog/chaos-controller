@@ -56,7 +56,7 @@ func (_c *SafemodeMock_Init_Call) Return() *SafemodeMock_Init_Call {
 }
 
 func (_c *SafemodeMock_Init_Call) RunAndReturn(run func(v1beta1.Disruption, client.Client)) *SafemodeMock_Init_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

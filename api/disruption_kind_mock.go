@@ -21,7 +21,7 @@ func (_m *DisruptionKindMock) EXPECT() *DisruptionKindMock_Expecter {
 	return &DisruptionKindMock_Expecter{mock: &_m.Mock}
 }
 
-// GenerateArgs provides a mock function with given fields:
+// GenerateArgs provides a mock function with no fields
 func (_m *DisruptionKindMock) GenerateArgs() []string {
 	ret := _m.Called()
 
@@ -68,7 +68,7 @@ func (_c *DisruptionKindMock_GenerateArgs_Call) RunAndReturn(run func() []string
 	return _c
 }
 
-// Validate provides a mock function with given fields:
+// Validate provides a mock function with no fields
 func (_m *DisruptionKindMock) Validate() error {
 	ret := _m.Called()
 

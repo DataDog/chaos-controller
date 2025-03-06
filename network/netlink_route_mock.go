@@ -25,7 +25,7 @@ func (_m *NetlinkRouteMock) EXPECT() *NetlinkRouteMock_Expecter {
 	return &NetlinkRouteMock_Expecter{mock: &_m.Mock}
 }
 
-// Gateway provides a mock function with given fields:
+// Gateway provides a mock function with no fields
 func (_m *NetlinkRouteMock) Gateway() net.IP {
 	ret := _m.Called()
 
@@ -72,7 +72,7 @@ func (_c *NetlinkRouteMock_Gateway_Call) RunAndReturn(run func() net.IP) *Netlin
 	return _c
 }
 
-// Link provides a mock function with given fields:
+// Link provides a mock function with no fields
 func (_m *NetlinkRouteMock) Link() NetlinkLink {
 	ret := _m.Called()
 

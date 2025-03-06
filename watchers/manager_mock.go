@@ -115,7 +115,7 @@ func (_c *ManagerMock_GetWatcher_Call) RunAndReturn(run func(string) Watcher) *M
 	return _c
 }
 
-// RemoveAllWatchers provides a mock function with given fields:
+// RemoveAllWatchers provides a mock function with no fields
 func (_m *ManagerMock) RemoveAllWatchers() {
 	_m.Called()
 }
@@ -143,11 +143,11 @@ func (_c *ManagerMock_RemoveAllWatchers_Call) Return() *ManagerMock_RemoveAllWat
 }
 
 func (_c *ManagerMock_RemoveAllWatchers_Call) RunAndReturn(run func()) *ManagerMock_RemoveAllWatchers_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
-// RemoveExpiredWatchers provides a mock function with given fields:
+// RemoveExpiredWatchers provides a mock function with no fields
 func (_m *ManagerMock) RemoveExpiredWatchers() {
 	_m.Called()
 }
@@ -175,11 +175,11 @@ func (_c *ManagerMock_RemoveExpiredWatchers_Call) Return() *ManagerMock_RemoveEx
 }
 
 func (_c *ManagerMock_RemoveExpiredWatchers_Call) RunAndReturn(run func()) *ManagerMock_RemoveExpiredWatchers_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
-// RemoveOrphanWatchers provides a mock function with given fields:
+// RemoveOrphanWatchers provides a mock function with no fields
 func (_m *ManagerMock) RemoveOrphanWatchers() {
 	_m.Called()
 }
@@ -207,7 +207,7 @@ func (_c *ManagerMock_RemoveOrphanWatchers_Call) Return() *ManagerMock_RemoveOrp
 }
 
 func (_c *ManagerMock_RemoveOrphanWatchers_Call) RunAndReturn(run func()) *ManagerMock_RemoveOrphanWatchers_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

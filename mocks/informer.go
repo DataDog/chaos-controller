@@ -189,7 +189,7 @@ func (_c *CacheInformerMock_AddIndexers_Call) RunAndReturn(run func(cache.Indexe
 	return _c
 }
 
-// HasSynced provides a mock function with given fields:
+// HasSynced provides a mock function with no fields
 func (_m *CacheInformerMock) HasSynced() bool {
 	ret := _m.Called()
 
@@ -234,7 +234,7 @@ func (_c *CacheInformerMock_HasSynced_Call) RunAndReturn(run func() bool) *Cache
 	return _c
 }
 
-// IsStopped provides a mock function with given fields:
+// IsStopped provides a mock function with no fields
 func (_m *CacheInformerMock) IsStopped() bool {
 	ret := _m.Called()
 

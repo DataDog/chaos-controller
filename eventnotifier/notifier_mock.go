@@ -28,7 +28,7 @@ func (_m *NotifierMock) EXPECT() *NotifierMock_Expecter {
 	return &NotifierMock_Expecter{mock: &_m.Mock}
 }
 
-// GetNotifierName provides a mock function with given fields:
+// GetNotifierName provides a mock function with no fields
 func (_m *NotifierMock) GetNotifierName() string {
 	ret := _m.Called()
 

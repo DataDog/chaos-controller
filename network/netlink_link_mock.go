@@ -21,7 +21,7 @@ func (_m *NetlinkLinkMock) EXPECT() *NetlinkLinkMock_Expecter {
 	return &NetlinkLinkMock_Expecter{mock: &_m.Mock}
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *NetlinkLinkMock) Name() string {
 	ret := _m.Called()
 
@@ -112,7 +112,7 @@ func (_c *NetlinkLinkMock_SetTxQLen_Call) RunAndReturn(run func(int) error) *Net
 	return _c
 }
 
-// TxQLen provides a mock function with given fields:
+// TxQLen provides a mock function with no fields
 func (_m *NetlinkLinkMock) TxQLen() int {
 	ret := _m.Called()
 
