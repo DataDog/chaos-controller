@@ -224,6 +224,18 @@ var _ = Describe("Tc", func() {
 		})
 	})
 
+	Describe("AddFlowerFilter", func() {
+		JustBeforeEach(func() {
+			Expect(tcRunner.AddFlowerFilter(ifaces, parent, handle, flowid)).Should(Succeed())
+		})
+
+		Context("add a cgroup filter", func() {
+			It("should execute", func() {
+				tcExecuter.AssertCalled(GinkgoT(), "Run", []string{"filter", "add", "dev", "lo", "protocol", "ip", "root", "flower", "flowid", "1:2"})
+			})
+		})
+	})
+
 	Describe("AddOutputLimit", func() {
 		JustBeforeEach(func() {
 			Expect(tcRunner.AddOutputLimit(ifaces, parent, handle, 12345)).Should(Succeed())
