@@ -62,7 +62,6 @@ type TrafficController interface {
 	AddFilter(ifaces []string, parent string, handle string, srcIP, dstIP *net.IPNet, srcPort, dstPort int, prot protocol, state connState, flowid string) (uint32, error)
 	DeleteFilter(iface string, priority uint32) error
 	AddFlowerFilter(ifaces []string, parent string, handle string, flowid string) error
-	AddFwFilter(ifaces []string, parent string, handle string, flowid string) error
 	AddBPFFilter(ifaces []string, parent string, obj string, flowid string, section string) error
 	ConfigBPFFilter(cmd executor, args ...string) error
 	AddOutputLimit(ifaces []string, parent string, handle string, bytesPerSec uint) error
@@ -247,17 +246,6 @@ func (t *tc) AddBPFFilter(ifaces []string, parent string, obj string, flowid str
 func (t *tc) DeleteFilter(iface string, priority uint32) error {
 	if _, _, err := t.executer.Run([]string{"filter", "delete", "dev", iface, "priority", fmt.Sprintf("%d", priority)}); err != nil {
 		return err
-	}
-
-	return nil
-}
-
-// AddFwFilter generates a tc filter of kind "fw"
-func (t *tc) AddFwFilter(ifaces []string, parent string, handle string, flowid string) error {
-	for _, iface := range ifaces {
-		if _, _, err := t.executer.Run(buildCmd("filter", iface, parent, "ip", 0, handle, "fw", "flowid "+flowid)); err != nil {
-			return err
-		}
 	}
 
 	return nil

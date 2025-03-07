@@ -191,55 +191,6 @@ func (_c *TrafficControllerMock_AddFlowerFilter_Call) RunAndReturn(run func([]st
 	return _c
 }
 
-// AddFwFilter provides a mock function with given fields: ifaces, parent, handle, flowid
-func (_m *TrafficControllerMock) AddFwFilter(ifaces []string, parent string, handle string, flowid string) error {
-	ret := _m.Called(ifaces, parent, handle, flowid)
-
-	if len(ret) == 0 {
-		panic("no return value specified for AddFwFilter")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func([]string, string, string, string) error); ok {
-		r0 = rf(ifaces, parent, handle, flowid)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// TrafficControllerMock_AddFwFilter_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddFwFilter'
-type TrafficControllerMock_AddFwFilter_Call struct {
-	*mock.Call
-}
-
-// AddFwFilter is a helper method to define mock.On call
-//   - ifaces []string
-//   - parent string
-//   - handle string
-//   - flowid string
-func (_e *TrafficControllerMock_Expecter) AddFwFilter(ifaces interface{}, parent interface{}, handle interface{}, flowid interface{}) *TrafficControllerMock_AddFwFilter_Call {
-	return &TrafficControllerMock_AddFwFilter_Call{Call: _e.mock.On("AddFwFilter", ifaces, parent, handle, flowid)}
-}
-
-func (_c *TrafficControllerMock_AddFwFilter_Call) Run(run func(ifaces []string, parent string, handle string, flowid string)) *TrafficControllerMock_AddFwFilter_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].([]string), args[1].(string), args[2].(string), args[3].(string))
-	})
-	return _c
-}
-
-func (_c *TrafficControllerMock_AddFwFilter_Call) Return(_a0 error) *TrafficControllerMock_AddFwFilter_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *TrafficControllerMock_AddFwFilter_Call) RunAndReturn(run func([]string, string, string, string) error) *TrafficControllerMock_AddFwFilter_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // AddNetem provides a mock function with given fields: ifaces, parent, handle, delay, delayJitter, drop, corrupt, duplicate
 func (_m *TrafficControllerMock) AddNetem(ifaces []string, parent string, handle string, delay time.Duration, delayJitter time.Duration, drop int, corrupt int, duplicate int) error {
 	ret := _m.Called(ifaces, parent, handle, delay, delayJitter, drop, corrupt, duplicate)
