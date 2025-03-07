@@ -61,7 +61,7 @@ type TrafficController interface {
 	AddPrio(ifaces []string, parent string, handle string, bands uint32, priomap [16]uint32) error
 	AddFilter(ifaces []string, parent string, handle string, srcIP, dstIP *net.IPNet, srcPort, dstPort int, prot protocol, state connState, flowid string) (uint32, error)
 	DeleteFilter(iface string, priority uint32) error
-	AddFwFilter(ifaces []string, parent string, handle string, flowid string) error
+	AddFlowerFilter(ifaces []string, parent string, handle string, flowid string) error
 	AddBPFFilter(ifaces []string, parent string, obj string, flowid string, section string) error
 	ConfigBPFFilter(cmd executor, args ...string) error
 	AddOutputLimit(ifaces []string, parent string, handle string, bytesPerSec uint) error
@@ -251,10 +251,10 @@ func (t *tc) DeleteFilter(iface string, priority uint32) error {
 	return nil
 }
 
-// AddFwFilter generates a cgroup filter
-func (t *tc) AddFwFilter(ifaces []string, parent string, handle string, flowid string) error {
+// AddFlowerFilter generates a tc filter of kind "flower"
+func (t *tc) AddFlowerFilter(ifaces []string, parent string, handle string, flowid string) error {
 	for _, iface := range ifaces {
-		if _, _, err := t.executer.Run(buildCmd("filter", iface, parent, "ip", 0, handle, "fw", "flowid "+flowid)); err != nil {
+		if _, _, err := t.executer.Run(buildCmd("filter", iface, parent, "ip", 0, handle, "flower", "flowid "+flowid)); err != nil {
 			return err
 		}
 	}
