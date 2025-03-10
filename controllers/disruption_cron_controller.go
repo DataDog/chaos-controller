@@ -14,6 +14,7 @@ import (
 	cLog "github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/o11y/metrics"
 	chaostypes "github.com/DataDog/chaos-controller/types"
+	"k8s.io/client-go/tools/record"
 
 	"github.com/robfig/cron"
 	"go.uber.org/zap"
@@ -31,6 +32,7 @@ type DisruptionCronReconciler struct {
 	Scheme                         *runtime.Scheme
 	BaseLog                        *zap.SugaredLogger
 	log                            *zap.SugaredLogger
+	Recorder                       record.EventRecorder
 	MetricsSink                    metrics.Sink
 	FinalizerDeletionDelay         time.Duration
 	TargetResourceMissingThreshold time.Duration
@@ -359,4 +361,16 @@ func (r *DisruptionCronReconciler) handleMetricSinkError(err error) {
 	if err != nil {
 		r.log.Errorw("error sending a metric", "error", err)
 	}
+}
+
+func (r *DisruptionCronReconciler) recordEventOnDisruptionCron(instance *chaosv1beta1.DisruptionCron, eventReason chaosv1beta1.EventReason, optionalMessage string) {
+	disEvent := chaosv1beta1.Events[eventReason]
+	message := disEvent.OnDisruptionTemplateMessage
+
+	if optionalMessage != "" {
+		message = fmt.Sprintf(disEvent.OnDisruptionTemplateMessage, optionalMessage)
+	}
+
+	r.Recorder.Event(instance, disEvent.Type, string(disEvent.Reason), message)
+
 }
