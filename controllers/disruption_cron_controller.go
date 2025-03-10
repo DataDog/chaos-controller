@@ -259,13 +259,18 @@ func (r *DisruptionCronReconciler) updateTargetResourcePreviouslyMissing(ctx con
 
 		if instance.Status.TargetResourcePreviouslyMissing == nil {
 			r.log.Warnw("target is missing for the first time, updating status")
+			r.recordEventOnDisruptionCron(instance, chaosv1beta1.EventDisruptionCronTargetMissing,
+				fmt.Sprintf("%s cannot be found, if this persists for %s, we will delete the disruption cron.", instance.Spec.TargetResource.String(), r.TargetResourceMissingThreshold.String()))
 
 			return targetResourceExists, disruptionCronDeleted, r.handleTargetResourceFirstMissing(ctx, instance)
 		}
 
 		if time.Since(instance.Status.TargetResourcePreviouslyMissing.Time) > r.TargetResourceMissingThreshold {
-			r.log.Warnw("target has been missing for over one day, deleting this schedule",
+			r.log.Warnw(fmt.Sprintf("target has been missing for over %s, deleting this schedule", r.TargetResourceMissingThreshold.String()),
+				"error", err,
 				"timeMissing", time.Since(instance.Status.TargetResourcePreviouslyMissing.Time))
+			r.recordEventOnDisruptionCron(instance, chaosv1beta1.EventDisruptionCronTargetMissing,
+				fmt.Sprintf("%s could not be found for %s, we will delete this disruption cron.", instance.Spec.TargetResource.String(), r.TargetResourceMissingThreshold.String()))
 
 			disruptionCronDeleted = true
 
