@@ -41,6 +41,7 @@ var (
 	disruptionCronPermittedUserGroups      map[string]struct{}
 	disruptionCronPermittedUserGroupString string
 	disruptionCronMetricsSink              metrics.Sink
+	requireDisruptionCronTarget            bool
 	defaultCronDelayedStartTolerance       time.Duration
 	minimumCronFrequency                   time.Duration
 )
@@ -64,6 +65,7 @@ func (d *DisruptionCron) SetupWebhookWithManager(setupWebhookConfig utils.SetupW
 	defaultCronDelayedStartTolerance = setupWebhookConfig.DefaultCronDelayedStartTolerance
 	minimumCronFrequency = setupWebhookConfig.MinimumCronFrequency
 	defaultDuration = setupWebhookConfig.DefaultDurationFlag
+	requireDisruptionCronTarget = setupWebhookConfig.RequireDisruptionCronTarget
 
 	return ctrl.NewWebhookManagedBy(setupWebhookConfig.Manager).
 		For(d).
@@ -123,20 +125,22 @@ func (d *DisruptionCron) ValidateCreate() (_ admission.Warnings, err error) {
 		return nil, err
 	}
 
-	var exists bool
+	if requireDisruptionCronTarget {
+		var exists bool
 
-	// CheckTargetResourceExists doesn't return apierrors.NotFound. Which means if there is an error,
-	// we could not determine if the target existed, and should allow the Create.
-	if exists, err = CheckTargetResourceExists(context.Background(), k8sClient, &d.Spec.TargetResource, d.Namespace); err != nil {
-		log.Errorw("error checking if target resource exists", "error", err)
-	} else if !exists {
-		log.Warnw("rejecting disruption cron because target does not exist",
-			"targetName", d.Spec.TargetResource.Name,
-			"targetKind", d.Spec.TargetResource.Kind,
-			"error", err)
+		// CheckTargetResourceExists doesn't return apierrors.NotFound. Which means if there is an error,
+		// we could not determine if the target existed, and should allow the Create.
+		if exists, err = CheckTargetResourceExists(context.Background(), k8sClient, &d.Spec.TargetResource, d.Namespace); err != nil {
+			log.Errorw("error checking if target resource exists", "error", err)
+		} else if !exists {
+			log.Warnw("rejecting disruption cron because target does not exist",
+				"targetName", d.Spec.TargetResource.Name,
+				"targetKind", d.Spec.TargetResource.Kind,
+				"error", err)
 
-		return nil, fmt.Errorf("rejecting disruption cron because target %s %s/%s does not exist",
-			d.Spec.TargetResource.Kind, d.Namespace, d.Spec.TargetResource.Name)
+			return nil, fmt.Errorf("rejecting disruption cron because target %s %s/%s does not exist",
+				d.Spec.TargetResource.Kind, d.Namespace, d.Spec.TargetResource.Name)
+		}
 	}
 
 	// send informative event to disruption cron to broadcast

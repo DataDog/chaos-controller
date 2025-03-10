@@ -410,6 +410,7 @@ func main() {
 			DefaultCronDelayedStartTolerance: cfg.Controller.DefaultCronDelayedStartTolerance,
 			MinimumCronFrequency:             cfg.Controller.MinimumCronFrequency,
 			DefaultDurationFlag:              cfg.Controller.DefaultDuration,
+			RequireDisruptionCronTarget:      cfg.Controller.RequireDisruptionCronTarget,
 			MetricsSink:                      disruptionCronMetricsSink,
 		}
 

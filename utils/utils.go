@@ -50,6 +50,7 @@ type SetupWebhookWithManagerConfig struct {
 	EnableSafemodeFlag               bool
 	AllowNodeLevel                   bool
 	AllowNodeFailure                 bool
+	RequireDisruptionCronTarget      bool
 	DisabledDisruptions              []string
 	DeleteOnlyFlag                   bool
 	HandlerEnabledFlag               bool
