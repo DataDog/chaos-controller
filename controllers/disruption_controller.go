@@ -98,7 +98,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	defer func(tsStart time.Time) {
 		tags := []string{}
 		if instance.Name != "" {
-			tags = append(tags, "disruptionName:"+instance.Name, "namespace:"+instance.Namespace)
+			tags = append(tags, "disruptionName:"+instance.Name, "disruptionNamespace:"+instance.Namespace)
 		}
 
 		r.handleMetricSinkError(r.MetricsSink.MetricReconcileDuration(time.Since(tsStart), tags))
