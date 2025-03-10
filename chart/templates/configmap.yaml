@@ -84,6 +84,7 @@ data:
         allowNodeLevel: {{ .Values.controller.safeMode.allowNodeLevel }}
         allowNodeFailure: {{ .Values.controller.safeMode.allowNodeFailure }}
       disruptionCronEnabled: {{ .Values.controller.disruptionCronEnabled }}
+      requireDisruptionCronTarget: {{ .Values.controller.requireDisruptionCronTarget | default false }}
       disruptionRolloutEnabled: {{ .Values.controller.disruptionRolloutEnabled }}
       disruptionDeletionTimeout: {{ .Values.controller.disruptionDeletionTimeout }}
       disabledDisruptions:
