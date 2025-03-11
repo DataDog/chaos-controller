@@ -377,5 +377,4 @@ func (r *DisruptionCronReconciler) recordEventOnDisruptionCron(instance *chaosv1
 	}
 
 	r.Recorder.Event(instance, disEvent.Type, string(disEvent.Reason), message)
-
 }
