@@ -278,7 +278,7 @@ var Events = map[EventReason]Event{
 	EventDisruptionCronTargetMissing: {
 		Type:                        corev1.EventTypeWarning,
 		Reason:                      EventDisruptionCronTargetMissing,
-		OnDisruptionTemplateMessage: "DisruptionCron target cannot be found, we are unable to launch disruptions",
+		OnDisruptionTemplateMessage: "DisruptionCron is unable to launch a disruption, because %s",
 		Category:                    DisruptionCronEvent,
 	},
 	EventDisruptionCleaned: {
