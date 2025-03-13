@@ -9,6 +9,7 @@ metadata:
   namespace: datadog-agent
 spec:
   global:
+    clusterName: operator-lima-cluster
     logLevel: debug
     site: datadoghq.com
     credentials:
