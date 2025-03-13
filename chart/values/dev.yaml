@@ -6,6 +6,8 @@
 controller:
   enableSafeguards: false
   leaderElection: false
+  minimumCronFrequency: 30s
+  expiredDisruptionGCDelay: 1m
   resources: # resources assigned to the controller pod. may need to be increased when deploying to larger scale clusters
     cpu: 1
     memory: 2Gi

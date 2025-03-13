@@ -9,7 +9,7 @@ metadata:
   name: network-drop
   namespace: chaos-demo
 spec:
-  schedule: "*/15 * * * *"
+  schedule: "*/2 * * * *"
   targetResource:
     kind: deployment
     name: demo-curl
