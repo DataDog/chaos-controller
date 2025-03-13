@@ -388,7 +388,8 @@ func main() {
 			Client:  mgr.GetClient(),
 			BaseLog: logger,
 			Scheme:  mgr.GetScheme(),
-			// new metrics sink for cron controller
+			// separate metrics sink and recorder for cron controller
+			Recorder:                       disruptionCronRecorder,
 			MetricsSink:                    disruptionCronMetricsSink,
 			FinalizerDeletionDelay:         cfg.Controller.FinalizerDeletionDelay,
 			TargetResourceMissingThreshold: cfg.Controller.TargetResourceMissingThreshold,

@@ -86,9 +86,10 @@ const (
 	EventDisrupted                 EventReason = "Disrupted"
 
 	// DisruptionCron related events
-	EventDisruptionCronCreated EventReason = "DisruptionCronCreated"
-	EventDisruptionCronUpdated EventReason = "DisruptionCronUpdated"
-	EventDisruptionCronDeleted EventReason = "DisruptionCronDeleted"
+	EventDisruptionCronCreated       EventReason = "DisruptionCronCreated"
+	EventDisruptionCronUpdated       EventReason = "DisruptionCronUpdated"
+	EventDisruptionCronDeleted       EventReason = "DisruptionCronDeleted"
+	EventDisruptionCronTargetMissing EventReason = "DisruptionCronTargetMissing"
 
 	// Injection related events
 	// Warning events
@@ -272,6 +273,12 @@ var Events = map[EventReason]Event{
 		Type:                        corev1.EventTypeNormal,
 		Reason:                      EventDisruptionCronDeleted,
 		OnDisruptionTemplateMessage: "DisruptionCron deleted",
+		Category:                    DisruptionCronEvent,
+	},
+	EventDisruptionCronTargetMissing: {
+		Type:                        corev1.EventTypeWarning,
+		Reason:                      EventDisruptionCronTargetMissing,
+		OnDisruptionTemplateMessage: "DisruptionCron is unable to launch a disruption, because %s",
 		Category:                    DisruptionCronEvent,
 	},
 	EventDisruptionCleaned: {

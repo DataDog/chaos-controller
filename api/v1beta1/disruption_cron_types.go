@@ -86,6 +86,10 @@ type TargetResourceSpec struct {
 	Name string `json:"name"`
 }
 
+func (trs TargetResourceSpec) String() string {
+	return fmt.Sprintf("%s/%s", trs.Kind, trs.Name)
+}
+
 // DisruptionCronStatus defines the observed state of DisruptionCron
 type DisruptionCronStatus struct {
 	// The last time when the disruption was last successfully scheduled.

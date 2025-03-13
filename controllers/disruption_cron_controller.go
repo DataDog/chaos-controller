@@ -19,6 +19,7 @@ import (
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -31,6 +32,7 @@ type DisruptionCronReconciler struct {
 	Scheme                         *runtime.Scheme
 	BaseLog                        *zap.SugaredLogger
 	log                            *zap.SugaredLogger
+	Recorder                       record.EventRecorder
 	MetricsSink                    metrics.Sink
 	FinalizerDeletionDelay         time.Duration
 	TargetResourceMissingThreshold time.Duration
@@ -257,13 +259,18 @@ func (r *DisruptionCronReconciler) updateTargetResourcePreviouslyMissing(ctx con
 
 		if instance.Status.TargetResourcePreviouslyMissing == nil {
 			r.log.Warnw("target is missing for the first time, updating status")
+			r.recordEventOnDisruptionCron(instance, chaosv1beta1.EventDisruptionCronTargetMissing,
+				fmt.Sprintf("%s cannot be found, if this persists for %s, we will delete the disruption cron.", instance.Spec.TargetResource.String(), r.TargetResourceMissingThreshold.String()))
 
 			return targetResourceExists, disruptionCronDeleted, r.handleTargetResourceFirstMissing(ctx, instance)
 		}
 
 		if time.Since(instance.Status.TargetResourcePreviouslyMissing.Time) > r.TargetResourceMissingThreshold {
-			r.log.Warnw("target has been missing for over one day, deleting this schedule",
+			r.log.Warnw(fmt.Sprintf("target has been missing for over %s, deleting this schedule", r.TargetResourceMissingThreshold.String()),
+				"error", err,
 				"timeMissing", time.Since(instance.Status.TargetResourcePreviouslyMissing.Time))
+			r.recordEventOnDisruptionCron(instance, chaosv1beta1.EventDisruptionCronTargetMissing,
+				fmt.Sprintf("%s could not be found for %s, we will delete this disruption cron.", instance.Spec.TargetResource.String(), r.TargetResourceMissingThreshold.String()))
 
 			disruptionCronDeleted = true
 
@@ -359,4 +366,15 @@ func (r *DisruptionCronReconciler) handleMetricSinkError(err error) {
 	if err != nil {
 		r.log.Errorw("error sending a metric", "error", err)
 	}
+}
+
+func (r *DisruptionCronReconciler) recordEventOnDisruptionCron(instance *chaosv1beta1.DisruptionCron, eventReason chaosv1beta1.EventReason, optionalMessage string) {
+	disEvent := chaosv1beta1.Events[eventReason]
+	message := disEvent.OnDisruptionTemplateMessage
+
+	if optionalMessage != "" {
+		message = fmt.Sprintf(disEvent.OnDisruptionTemplateMessage, optionalMessage)
+	}
+
+	r.Recorder.Event(instance, disEvent.Type, string(disEvent.Reason), message)
 }
