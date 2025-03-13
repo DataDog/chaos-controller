@@ -22,6 +22,7 @@ import (
 	"github.com/DataDog/chaos-controller/o11y/tracer"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/DataDog/chaos-controller/utils"
+
 	"github.com/hashicorp/go-multierror"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
@@ -244,9 +245,8 @@ func (r *Disruption) ValidateCreate() (_ admission.Warnings, err error) {
 		}
 	}
 
-	// send validation metric
-	if err := metricsSink.MetricValidationCreated(r.getMetricsTags()); err != nil {
-		log.Errorw("error sending a metric", "error", err)
+	if mErr := metricsSink.MetricValidationCreated(r.getMetricsTags()); mErr != nil {
+		log.Errorw("error sending a metric", "error", mErr)
 	}
 
 	// send informative event to disruption to broadcast
@@ -351,9 +351,8 @@ You first need to remove those chaos pods (and potentially their finalizers) to 
 		return nil, err
 	}
 
-	// send validation metric
-	if err := metricsSink.MetricValidationUpdated(r.getMetricsTags()); err != nil {
-		log.Errorw("error sending a metric", "error", err)
+	if mErr := metricsSink.MetricValidationUpdated(r.getMetricsTags()); mErr != nil {
+		log.Errorw("error sending a metric", "error", mErr)
 	}
 
 	return nil, nil
@@ -361,9 +360,8 @@ You first need to remove those chaos pods (and potentially their finalizers) to 
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
 func (r *Disruption) ValidateDelete() (admission.Warnings, error) {
-	// send validation metric
-	if err := metricsSink.MetricValidationDeleted(r.getMetricsTags()); err != nil {
-		logger.Errorw("error sending a metric", "error", err)
+	if mErr := metricsSink.MetricValidationDeleted(r.getMetricsTags()); mErr != nil {
+		logger.Errorw("error sending a metric", "error", mErr)
 	}
 
 	return nil, nil
