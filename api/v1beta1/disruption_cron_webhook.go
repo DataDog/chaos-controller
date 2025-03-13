@@ -15,6 +15,7 @@ import (
 	cLog "github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/o11y/metrics"
 	"github.com/DataDog/chaos-controller/utils"
+
 	"github.com/robfig/cron"
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -121,8 +122,8 @@ func (d *DisruptionCron) ValidateCreate() (_ admission.Warnings, err error) {
 		return nil, err
 	}
 
-	if err := metricsSink.MetricValidationCreated(metricTags); err != nil {
-		log.Errorw("error sending a metric", "error", err)
+	if mErr := metricsSink.MetricValidationCreated(metricTags); mErr != nil {
+		log.Errorw("error sending a metric", "error", mErr)
 	}
 
 	// send informative event to disruption cron to broadcast
@@ -167,8 +168,8 @@ func (d *DisruptionCron) ValidateUpdate(oldObject runtime.Object) (_ admission.W
 		}
 	}
 
-	if err := metricsSink.MetricValidationUpdated(metricTags); err != nil {
-		log.Errorw("error sending a metric", "error", err)
+	if mErr := metricsSink.MetricValidationUpdated(metricTags); mErr != nil {
+		log.Errorw("error sending a metric", "error", mErr)
 	}
 
 	// send informative event to disruption cron to broadcast
@@ -185,8 +186,8 @@ func (d *DisruptionCron) ValidateDelete() (warnings admission.Warnings, err erro
 	// During the validation of the deletion the timestamp does not exist so we need to set it before emitting the event
 	d.DeletionTimestamp = &metav1.Time{Time: time.Now()}
 
-	if err := metricsSink.MetricValidationDeleted(d.getMetricsTags()); err != nil {
-		log.Errorw("error sending a metric", "error", err)
+	if mErr := metricsSink.MetricValidationDeleted(d.getMetricsTags()); mErr != nil {
+		log.Errorw("error sending a metric", "error", mErr)
 	}
 
 	// send informative event to disruption cron to broadcast
