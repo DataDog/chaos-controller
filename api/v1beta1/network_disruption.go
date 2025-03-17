@@ -13,10 +13,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/DataDog/chaos-controller/cloudservice"
-	"github.com/DataDog/chaos-controller/cloudservice/types"
 	"github.com/hashicorp/go-multierror"
 	v1 "k8s.io/api/core/v1"
+
+	"github.com/DataDog/chaos-controller/cloudservice"
+	"github.com/DataDog/chaos-controller/cloudservice/types"
 )
 
 const (
@@ -122,6 +123,7 @@ type NetworkDisruptionServicePortSpec struct {
 
 type NetworkDisruptionCloudSpec struct {
 	AWSServiceList     *[]NetworkDisruptionCloudServiceSpec `json:"aws,omitempty" chaos_validate:"omitempty,dive"`
+	AzureServiceList   *[]NetworkDisruptionCloudServiceSpec `json:"azure,omitempty" chaos_validate:"omitempty,dive"`
 	GCPServiceList     *[]NetworkDisruptionCloudServiceSpec `json:"gcp,omitempty" chaos_validate:"omitempty,dive"`
 	DatadogServiceList *[]NetworkDisruptionCloudServiceSpec `json:"datadog,omitempty" chaos_validate:"omitempty,dive"`
 }
@@ -477,6 +479,10 @@ func (s *NetworkDisruptionSpec) Format() string {
 			services = append(services, *s.Cloud.AWSServiceList...)
 		}
 
+		if s.Cloud.AzureServiceList != nil {
+			services = append(services, *s.Cloud.AzureServiceList...)
+		}
+
 		if s.Cloud.DatadogServiceList != nil {
 			services = append(services, *s.Cloud.DatadogServiceList...)
 		}
@@ -522,8 +528,8 @@ func (s *NetworkDisruptionSpec) HasHTTPFilters() bool {
 }
 
 func (s *NetworkDisruptionCloudSpec) Validate() error {
-	if s.GCPServiceList == nil && s.DatadogServiceList == nil && s.AWSServiceList == nil {
-		return fmt.Errorf("if network.cloud is specified, at least one of cloud.aws, cloud.gcp, or cloud.datadog must be set")
+	if s.GCPServiceList == nil && s.DatadogServiceList == nil && s.AWSServiceList == nil && s.AzureServiceList == nil {
+		return fmt.Errorf("if network.cloud is specified, at least one of cloud.aws, cloud.azure, cloud.gcp, or cloud.datadog must be set")
 	}
 
 	return nil
@@ -535,6 +541,10 @@ func (s *NetworkDisruptionCloudSpec) TransformToCloudMap() map[string][]NetworkD
 
 	if s.AWSServiceList != nil {
 		clouds["AWS"] = *s.AWSServiceList
+	}
+
+	if s.AzureServiceList != nil {
+		clouds["Azure"] = *s.AzureServiceList
 	}
 
 	if s.GCPServiceList != nil {
@@ -574,6 +584,13 @@ func (s *NetworkDisruptionCloudSpec) Explain() []string {
 	if s.AWSServiceList != nil {
 		explanation = append(explanation, "\tOn the following AWS Services:")
 		for _, a := range *s.AWSServiceList {
+			explanation = append(explanation, a.Explain())
+		}
+	}
+
+	if s.AzureServiceList != nil {
+		explanation = append(explanation, "\tOn the following Azure Services:")
+		for _, a := range *s.AzureServiceList {
 			explanation = append(explanation, a.Explain())
 		}
 	}

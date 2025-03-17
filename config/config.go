@@ -498,6 +498,18 @@ func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osAr
 		return cfg, err
 	}
 
+	mainFS.BoolVar(&cfg.Controller.CloudProviders.Azure.Enabled, "cloud-providers-azure-enabled", true, "Enable Azure cloud provider disruptions (defaults to true, is overridden by --cloud-providers-disable-all)")
+
+	if err := viper.BindPFlag("controller.cloudProviders.azure.enabled", mainFS.Lookup("cloud-providers-azure-enabled")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.StringVar(&cfg.Controller.CloudProviders.Azure.IPRangesURL, "cloud-providers-azure-iprangesurl", "", "Configure the cloud provider URL to the IP ranges file used by the disruption")
+
+	if err := viper.BindPFlag("controller.cloudProviders.azure.ipRangesURL", mainFS.Lookup("cloud-providers-azure-iprangesurl")); err != nil {
+		return cfg, err
+	}
+
 	mainFS.BoolVar(&cfg.Controller.CloudProviders.GCP.Enabled, "cloud-providers-gcp-enabled", true, "Enable GCP cloud provider disruptions (defaults to true, is overridden by --cloud-providers-disable-all)")
 
 	if err := viper.BindPFlag("controller.cloudProviders.gcp.enabled", mainFS.Lookup("cloud-providers-gcp-enabled")); err != nil {

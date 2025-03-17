@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/DataDog/chaos-controller/cloudservice/aws"
+	"github.com/DataDog/chaos-controller/cloudservice/azure"
 	"github.com/DataDog/chaos-controller/cloudservice/datadog"
 	"github.com/DataDog/chaos-controller/cloudservice/gcp"
 	"github.com/DataDog/chaos-controller/cloudservice/types"
@@ -105,6 +106,10 @@ func New(log *zap.SugaredLogger, config types.CloudProviderConfigs, httpClientMo
 			provider.CloudProviderIPRangeManager = aws.New()
 			provider.Conf.Enabled = config.AWS.Enabled
 			provider.Conf.IPRangesURL = config.AWS.IPRangesURL
+		case types.CloudProviderAzure:
+			provider.CloudProviderIPRangeManager = azure.New()
+			provider.Conf.Enabled = config.Azure.Enabled
+			provider.Conf.IPRangesURL = config.Azure.IPRangesURL
 		case types.CloudProviderGCP:
 			provider.CloudProviderIPRangeManager = gcp.New()
 			provider.Conf.Enabled = config.GCP.Enabled

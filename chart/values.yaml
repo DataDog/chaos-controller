@@ -59,6 +59,9 @@ controller:
     aws: # aws cloud provider config
       enabled: true # enable the provider
       ipRangesURL: "https://ip-ranges.amazonaws.com/ip-ranges.json" # URL to the IP ranges file (format must be the expected one, defaults is the public file provided by the cloud provider)
+    azure: #azure cloud provider config
+      enabled: false
+      ipRangesURL: "https://management.azure.com/subscriptions/{subscriptionId}/providers/Microsoft.Network/locations/{location}/serviceTags?api-version=2024-05-01" # See https://learn.microsoft.com/en-us/azure/virtual-network/service-tags-overview#use-the-service-tag-discovery-api for details on how to set subscriptionId and location
     gcp: # gcp cloud provider config
       enabled: true # enable the provider
       ipRangesURL: "https://www.gstatic.com/ipranges/goog.json" # URL to the IP ranges file (format must be the expected one, defaults is the public file provided by the cloud provider)

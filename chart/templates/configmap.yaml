@@ -48,6 +48,9 @@ data:
         aws:
           enabled: {{ .Values.controller.cloudProviders.aws.enabled }}
           ipRangesURL: {{ .Values.controller.cloudProviders.aws.ipRangesURL }}
+        azure:
+          enabled: {{ .Values.controller.cloudProviders.azure.enabled }}
+          ipRangesURL: {{ .Values.controller.cloudProviders.azure.ipRangesURL }}
         gcp:
           enabled: {{ .Values.controller.cloudProviders.gcp.enabled }}
           ipRangesURL: {{ .Values.controller.cloudProviders.gcp.ipRangesURL }}

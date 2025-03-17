@@ -13,6 +13,7 @@ const (
 	CloudProviderDatadog CloudProviderName = "Datadog"
 	CloudProviderGCP     CloudProviderName = "GCP"
 	CloudProviderAWS     CloudProviderName = "AWS"
+	CloudProviderAzure   CloudProviderName = "Azure"
 )
 
 var (
@@ -40,4 +41,5 @@ type CloudProviderConfigs struct {
 	AWS          CloudProviderConfig `json:"aws" yaml:"aws"`
 	GCP          CloudProviderConfig `json:"gcp" yaml:"gcp"`
 	Datadog      CloudProviderConfig `json:"datadog" yaml:"datadog"`
+	Azure        CloudProviderConfig `json:"azure" yaml:"azure"`
 }
