@@ -150,9 +150,3 @@ handler:
   resources:
     cpu: 10m
     memory: 5Mi
-
-proxy:
-  image:
-    registry: gcr.io
-    repo: kubebuilder/kube-rbac-proxy
-    tag: v0.4.1
