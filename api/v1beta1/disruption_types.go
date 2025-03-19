@@ -957,7 +957,7 @@ func (s DisruptionSpec) Explain() []string {
 	}
 
 	if s.OnInit {
-		explanation = append(explanation, fmt.Sprintf("spec.onInit is true. "+
+		explanation = append(explanation, fmt.Sprint("spec.onInit is true. "+
 			"The disruptions will be launched during the initialization of the targeted pods."+
 			"This requires some extra setup on your end, please [read the full documentation](https://github.com/DataDog/chaos-controller/blob/main/docs/features.md#applying-a-disruption-on-pod-initialization)"))
 	}
@@ -990,7 +990,7 @@ func (s DisruptionSpec) Explain() []string {
 	))
 
 	if s.StaticTargeting {
-		explanation = append(explanation, fmt.Sprintf("spec.staticTargeting is true, so after we pick an initial set of targets and inject, "+
+		explanation = append(explanation, fmt.Sprint("spec.staticTargeting is true, so after we pick an initial set of targets and inject, "+
 			"we will not attempt to inject into any new targets that appear while the disruption is ongoing."))
 	} else {
 		explanation = append(explanation, "By default we will continually compare the injected target count "+
