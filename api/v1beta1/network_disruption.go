@@ -251,7 +251,7 @@ func (s *NetworkHTTPFilters) validatePaths(retErr error) error {
 		visitedPaths[path] = visitedPath
 
 		if isMultiplePath && path == DefaultHTTPPathFilter {
-			retErr = multierror.Append(retErr, fmt.Errorf(HTTPPathsFilterErrorPrefix+"no needs to define other paths if the / path is defined because it already catches all paths"))
+			retErr = multierror.Append(retErr, errors.New(HTTPPathsFilterErrorPrefix+"no needs to define other paths if the / path is defined because it already catches all paths"))
 		}
 
 		if err := path.validate(); err != nil {
