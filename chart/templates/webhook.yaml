@@ -18,11 +18,8 @@ metadata:
   name: chaos-controller
 webhooks:
 - clientConfig:
-  {{- if not .Values.controller.webhook.generateCert }}
-    caBundle: Cg==
-  {{- else }}
-    caBundle: {{ b64enc $ca.Cert }}
-  {{- end }}
+    # must NOT specify caBundle here, as of k8s 1.31:
+    # Updates to CustomResourceDefinition are no longer allowed to transition a valid `caBundle` field to an invalid `caBundle` field
     service:
       name: chaos-controller-webhook-service
       namespace: {{ .Values.chaosNamespace }}
@@ -54,11 +51,8 @@ metadata:
   name: chaos-controller-disruptioncrons
 webhooks:
 - clientConfig:
-  {{- if not .Values.controller.webhook.generateCert }}
-    caBundle: Cg==
-  {{- else }}
-    caBundle: {{ b64enc $ca.Cert }}
-  {{- end }}
+    # must NOT specify caBundle here, as of k8s 1.31:
+    # Updates to CustomResourceDefinition are no longer allowed to transition a valid `caBundle` field to an invalid `caBundle` field
     service:
       name: chaos-controller-webhook-service
       namespace: {{ .Values.chaosNamespace }}
@@ -90,11 +84,8 @@ metadata:
   name: chaos-controller-disruptioncrons
 webhooks:
   - clientConfig:
-  {{- if not .Values.controller.webhook.generateCert }}
-      caBundle: Cg==
-  {{- else }}
-      caBundle: {{ b64enc $ca.Cert }}
-  {{- end }}
+      # must NOT specify caBundle here, as of k8s 1.31:
+      # Updates to CustomResourceDefinition are no longer allowed to transition a valid `caBundle` field to an invalid `caBundle` field
       service:
         name: chaos-controller-webhook-service
         namespace: {{ .Values.chaosNamespace }}
@@ -123,11 +114,8 @@ metadata:
   name: chaos-controller
 webhooks:
 - clientConfig:
-  {{- if not .Values.controller.webhook.generateCert }}
-    caBundle: Cg==
-  {{- else }}
-    caBundle: {{ b64enc $ca.Cert }}
-  {{- end }}
+    # must NOT specify caBundle here, as of k8s 1.31:
+    # Updates to CustomResourceDefinition are no longer allowed to transition a valid `caBundle` field to an invalid `caBundle` field
     service:
       name: chaos-controller-webhook-service
       namespace: {{ .Values.chaosNamespace }}
@@ -157,11 +145,8 @@ metadata:
   name: chaos-controller-pod-chaos-handler
 webhooks:
 - clientConfig:
-  {{- if not .Values.controller.webhook.generateCert }}
-    caBundle: Cg==
-  {{- else }}
-    caBundle: {{ b64enc $ca.Cert }}
-  {{- end }}
+    # must NOT specify caBundle here, as of k8s 1.31:
+    # Updates to CustomResourceDefinition are no longer allowed to transition a valid `caBundle` field to an invalid `caBundle` field
     service:
       name: chaos-controller-webhook-service
       namespace: {{ .Values.chaosNamespace }}
@@ -196,11 +181,8 @@ metadata:
   name: chaos-controller-user-info
 webhooks:
 - clientConfig:
-  {{- if not .Values.controller.webhook.generateCert }}
-    caBundle: Cg==
-  {{- else }}
-    caBundle: {{ b64enc $ca.Cert }}
-  {{- end }}
+    # must NOT specify caBundle here, as of k8s 1.31:
+    # Updates to CustomResourceDefinition are no longer allowed to transition a valid `caBundle` field to an invalid `caBundle` field
     service:
       name: chaos-controller-webhook-service
       namespace: {{ .Values.chaosNamespace }}
@@ -237,11 +219,8 @@ metadata:
   name: chaos-controller-disruption-span-context
 webhooks:
 - clientConfig:
-  {{- if not .Values.controller.webhook.generateCert }}
-    caBundle: Cg==
-  {{- else }}
-    caBundle: {{ b64enc $ca.Cert }}
-  {{- end }}
+    # must NOT specify caBundle here, as of k8s 1.31:
+    # Updates to CustomResourceDefinition are no longer allowed to transition a valid `caBundle` field to an invalid `caBundle` field
     service:
       name: chaos-controller-webhook-service
       namespace: {{ .Values.chaosNamespace }}
