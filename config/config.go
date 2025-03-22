@@ -11,6 +11,9 @@ import (
 	"os"
 	"time"
 
+	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
+	"github.com/DataDog/chaos-controller/eventnotifier"
+
 	"github.com/cenkalti/backoff"
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/pflag"
@@ -20,9 +23,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
-
-	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
-	"github.com/DataDog/chaos-controller/eventnotifier"
 )
 
 type config struct {
@@ -52,6 +52,7 @@ type controllerConfig struct {
 	ProfilerSink                     string                          `json:"profilerSink" yaml:"profilerSink"`
 	TracerSink                       string                          `json:"tracerSink" yaml:"tracerSink"`
 	DisruptionCronEnabled            bool                            `json:"disruptionCronEnabled" yaml:"disruptionCronEnabled"`
+	RequireDisruptionCronTarget      bool                            `json:"requireDisruptionCronTarget" yaml:"requireDisruptionCronTarget"`
 	DisruptionRolloutEnabled         bool                            `json:"disruptionRolloutEnabled" yaml:"disruptionRolloutEnabled"`
 	DisruptionDeletionTimeout        time.Duration                   `json:"disruptionDeletionTimeout" yaml:"disruptionDeletionTimeout"`
 	FinalizerDeletionDelay           time.Duration                   `json:"finalizerDeletionDelay" yaml:"finalizerDeletionDelay"`
@@ -549,6 +550,12 @@ func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osAr
 	mainFS.BoolVar(&cfg.Controller.DisruptionCronEnabled, "disruption-cron-enabled", false, "Enable the DisruptionCron CRD and its controller")
 
 	if err := viper.BindPFlag("controller.disruptionCronEnabled", mainFS.Lookup("disruption-cron-enabled")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.BoolVar(&cfg.Controller.RequireDisruptionCronTarget, "require-disruption-cron-target", false, "Reject disruption crons on create if their target cannot be found")
+
+	if err := viper.BindPFlag("controller.requireDisruptionCronTarget", mainFS.Lookup("require-disruption-cron-target")); err != nil {
 		return cfg, err
 	}
 
