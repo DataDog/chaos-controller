@@ -889,7 +889,12 @@ func handleMetricError(err error) {
 // retryNotifyHandler is called when the cleanup fails
 // it logs the error and the time to wait before the next retry
 func retryNotifyHandler(err error, delay time.Duration) {
-	log.Errorw("disruption cleanup failed", "error", err)
+	if v1beta1.IsUpdateConflictError(err) {
+		log.Infow("a retryable error occured during disruption cleanup", "error", err)
+	} else {
+		log.Errorw("disruption cleanup failed", "error", err)
+	}
+
 	log.Infof("retrying cleanup in %s", delay.String())
 }
 
