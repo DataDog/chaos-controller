@@ -9,11 +9,12 @@ import (
 	"fmt"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/DataDog/chaos-controller/o11y/metrics/datadog"
 	"github.com/DataDog/chaos-controller/o11y/metrics/noop"
 	"github.com/DataDog/chaos-controller/o11y/metrics/types"
 	chaostypes "github.com/DataDog/chaos-controller/types"
-	"go.uber.org/zap"
 )
 
 // Sink describes a metric sink
@@ -56,13 +57,10 @@ type Sink interface {
 	// MetricDisruptionOngoingDuration indicates the duration between a Disruption's creation timestamp, and the current time.
 	// This is emitted approximately every one minute
 	MetricDisruptionOngoingDuration(duration time.Duration, tags []string) error
-	// MetricStuckOnRemoval is emitted once per minute per disruption, if that disruption is "stuck on removal", i.e.,
+	// MetricStuckOnRemovalCurrent is emitted once per minute counting the number of disruptions _per namespace_
+	// that are "stuck on removal", i.e.,
 	// we have attempted to clean and delete the disruption, but that has not worked, and a human needs to intervene.
-	MetricStuckOnRemoval(tags []string) error
-	// MetricStuckOnRemovalGauge is emitted once per minute counting the total number of disruptions that are
-	// "stuck on removal", i.e., we have attempted to clean and delete the disruption, but that has not worked,
-	// and a human needs to intervene.
-	MetricStuckOnRemovalGauge(gauge float64) error
+	MetricStuckOnRemovalCurrent(gauge float64, tags []string) error
 	// MetricDisruptionsGauge is emitted once per minute counting the total number of ongoing disruptions per namespace,
 	// or if we fail to determine the namespaced metrics, simply the total number of disruptions found
 	MetricDisruptionsGauge(gauge float64, tags []string) error

@@ -9,9 +9,10 @@ import (
 	"fmt"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/DataDog/chaos-controller/o11y/metrics/types"
 	chaostypes "github.com/DataDog/chaos-controller/types"
-	"go.uber.org/zap"
 )
 
 // Sink describes a no-op sink
@@ -128,19 +129,11 @@ func (n Sink) MetricPodsCreated(target, instanceName, namespace string, succeed 
 	return nil
 }
 
-// MetricStuckOnRemoval is emitted once per minute per disruption, if that disruption is "stuck on removal", i.e.,
+// MetricStuckOnRemovalCurrent is emitted once per minute counting the number of disruptions _per namespace_
+// that are "stuck on removal", i.e.,
 // we have attempted to clean and delete the disruption, but that has not worked, and a human needs to intervene.
-func (n Sink) MetricStuckOnRemoval(tags []string) error {
-	fmt.Println("NOOP: MetricStuckOnRemoval +1")
-
-	return nil
-}
-
-// MetricStuckOnRemovalGauge is emitted once per minute counting the total number of disruptions that are
-// "stuck on removal", i.e., we have attempted to clean and delete the disruption, but that has not worked,
-// and a human needs to intervene.
-func (n Sink) MetricStuckOnRemovalGauge(gauge float64) error {
-	n.log.Debugf("NOOP: MetricStuckOnRemovalGauge %f\n", gauge)
+func (n Sink) MetricStuckOnRemovalCurrent(gauge float64, tags []string) error {
+	fmt.Println("NOOP: MetricStuckOnRemovalCurrent +1")
 
 	return nil
 }
