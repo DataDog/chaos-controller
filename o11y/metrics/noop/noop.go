@@ -133,7 +133,7 @@ func (n Sink) MetricPodsCreated(target, instanceName, namespace string, succeed 
 // that are "stuck on removal", i.e.,
 // we have attempted to clean and delete the disruption, but that has not worked, and a human needs to intervene.
 func (n Sink) MetricStuckOnRemovalCurrent(gauge float64, tags []string) error {
-	fmt.Println("NOOP: MetricStuckOnRemovalCurrent +1")
+	n.log.Debugf("NOOP: MetricStuckOnRemovalCurrent %f %s\n", gauge, tags)
 
 	return nil
 }
