@@ -24,16 +24,6 @@ import (
 	"strings"
 	"time"
 
-	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/cloudservice"
-	cLog "github.com/DataDog/chaos-controller/log"
-	"github.com/DataDog/chaos-controller/o11y/metrics"
-	"github.com/DataDog/chaos-controller/o11y/tracer"
-	"github.com/DataDog/chaos-controller/safemode"
-	"github.com/DataDog/chaos-controller/services"
-	"github.com/DataDog/chaos-controller/targetselector"
-	chaostypes "github.com/DataDog/chaos-controller/types"
-	"github.com/DataDog/chaos-controller/watchers"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -56,6 +46,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/cloudservice"
+	cLog "github.com/DataDog/chaos-controller/log"
+	"github.com/DataDog/chaos-controller/o11y/metrics"
+	"github.com/DataDog/chaos-controller/o11y/tracer"
+	"github.com/DataDog/chaos-controller/safemode"
+	"github.com/DataDog/chaos-controller/services"
+	"github.com/DataDog/chaos-controller/targetselector"
+	chaostypes "github.com/DataDog/chaos-controller/types"
+	"github.com/DataDog/chaos-controller/watchers"
 )
 
 // DisruptionReconciler reconciles a Disruption object
@@ -1054,7 +1055,7 @@ func (r *DisruptionReconciler) ReportMetrics(ctx context.Context) {
 			if d.Status.IsStuckOnRemoval {
 				stuckOnRemoval++
 
-				if err := r.MetricsSink.MetricStuckOnRemoval([]string{"disruptionName:" + d.Name, "namespace:" + d.Namespace}); err != nil {
+				if err := r.MetricsSink.MetricStuckOnRemovalCurrent(1, []string{"disruptionName:" + d.Name, "disruptionNamespace:" + d.Namespace}); err != nil {
 					r.BaseLog.Errorw("error sending stuck_on_removal metric", "error", err)
 				}
 			}
@@ -1069,11 +1070,6 @@ func (r *DisruptionReconciler) ReportMetrics(ctx context.Context) {
 			r.handleMetricSinkError(r.MetricsSink.MetricDisruptionOngoingDuration(time.Since(d.ObjectMeta.CreationTimestamp.Time), []string{"disruptionName:" + d.Name, "namespace:" + d.Namespace}))
 
 			namespaces[d.Namespace]++
-		}
-
-		// send metrics
-		if err := r.MetricsSink.MetricStuckOnRemovalGauge(float64(stuckOnRemoval)); err != nil {
-			r.BaseLog.Errorw("error sending stuck_on_removal_total metric", "error", err)
 		}
 
 		if len(namespaces) > 0 {
