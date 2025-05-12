@@ -1192,17 +1192,17 @@ func (_c *SinkMock_MetricRestart_Call) RunAndReturn(run func() error) *SinkMock_
 	return _c
 }
 
-// MetricStuckOnRemoval provides a mock function with given fields: tags
-func (_m *SinkMock) MetricStuckOnRemoval(tags []string) error {
-	ret := _m.Called(tags)
+// MetricStuckOnRemovalCurrent provides a mock function with given fields: gauge, tags
+func (_m *SinkMock) MetricStuckOnRemovalCurrent(gauge float64, tags []string) error {
+	ret := _m.Called(gauge, tags)
 
 	if len(ret) == 0 {
-		panic("no return value specified for MetricStuckOnRemoval")
+		panic("no return value specified for MetricStuckOnRemovalCurrent")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func([]string) error); ok {
-		r0 = rf(tags)
+	if rf, ok := ret.Get(0).(func(float64, []string) error); ok {
+		r0 = rf(gauge, tags)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -1210,76 +1210,31 @@ func (_m *SinkMock) MetricStuckOnRemoval(tags []string) error {
 	return r0
 }
 
-// SinkMock_MetricStuckOnRemoval_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MetricStuckOnRemoval'
-type SinkMock_MetricStuckOnRemoval_Call struct {
+// SinkMock_MetricStuckOnRemovalCurrent_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MetricStuckOnRemovalCurrent'
+type SinkMock_MetricStuckOnRemovalCurrent_Call struct {
 	*mock.Call
 }
 
-// MetricStuckOnRemoval is a helper method to define mock.On call
-//   - tags []string
-func (_e *SinkMock_Expecter) MetricStuckOnRemoval(tags interface{}) *SinkMock_MetricStuckOnRemoval_Call {
-	return &SinkMock_MetricStuckOnRemoval_Call{Call: _e.mock.On("MetricStuckOnRemoval", tags)}
-}
-
-func (_c *SinkMock_MetricStuckOnRemoval_Call) Run(run func(tags []string)) *SinkMock_MetricStuckOnRemoval_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].([]string))
-	})
-	return _c
-}
-
-func (_c *SinkMock_MetricStuckOnRemoval_Call) Return(_a0 error) *SinkMock_MetricStuckOnRemoval_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *SinkMock_MetricStuckOnRemoval_Call) RunAndReturn(run func([]string) error) *SinkMock_MetricStuckOnRemoval_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// MetricStuckOnRemovalGauge provides a mock function with given fields: gauge
-func (_m *SinkMock) MetricStuckOnRemovalGauge(gauge float64) error {
-	ret := _m.Called(gauge)
-
-	if len(ret) == 0 {
-		panic("no return value specified for MetricStuckOnRemovalGauge")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(float64) error); ok {
-		r0 = rf(gauge)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// SinkMock_MetricStuckOnRemovalGauge_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MetricStuckOnRemovalGauge'
-type SinkMock_MetricStuckOnRemovalGauge_Call struct {
-	*mock.Call
-}
-
-// MetricStuckOnRemovalGauge is a helper method to define mock.On call
+// MetricStuckOnRemovalCurrent is a helper method to define mock.On call
 //   - gauge float64
-func (_e *SinkMock_Expecter) MetricStuckOnRemovalGauge(gauge interface{}) *SinkMock_MetricStuckOnRemovalGauge_Call {
-	return &SinkMock_MetricStuckOnRemovalGauge_Call{Call: _e.mock.On("MetricStuckOnRemovalGauge", gauge)}
+//   - tags []string
+func (_e *SinkMock_Expecter) MetricStuckOnRemovalCurrent(gauge interface{}, tags interface{}) *SinkMock_MetricStuckOnRemovalCurrent_Call {
+	return &SinkMock_MetricStuckOnRemovalCurrent_Call{Call: _e.mock.On("MetricStuckOnRemovalCurrent", gauge, tags)}
 }
 
-func (_c *SinkMock_MetricStuckOnRemovalGauge_Call) Run(run func(gauge float64)) *SinkMock_MetricStuckOnRemovalGauge_Call {
+func (_c *SinkMock_MetricStuckOnRemovalCurrent_Call) Run(run func(gauge float64, tags []string)) *SinkMock_MetricStuckOnRemovalCurrent_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(float64))
+		run(args[0].(float64), args[1].([]string))
 	})
 	return _c
 }
 
-func (_c *SinkMock_MetricStuckOnRemovalGauge_Call) Return(_a0 error) *SinkMock_MetricStuckOnRemovalGauge_Call {
+func (_c *SinkMock_MetricStuckOnRemovalCurrent_Call) Return(_a0 error) *SinkMock_MetricStuckOnRemovalCurrent_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *SinkMock_MetricStuckOnRemovalGauge_Call) RunAndReturn(run func(float64) error) *SinkMock_MetricStuckOnRemovalGauge_Call {
+func (_c *SinkMock_MetricStuckOnRemovalCurrent_Call) RunAndReturn(run func(float64, []string) error) *SinkMock_MetricStuckOnRemovalCurrent_Call {
 	_c.Call.Return(run)
 	return _c
 }
