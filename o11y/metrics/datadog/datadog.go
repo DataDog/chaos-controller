@@ -10,9 +10,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/DataDog/datadog-go/statsd"
+
 	"github.com/DataDog/chaos-controller/o11y/metrics/types"
 	chaostypes "github.com/DataDog/chaos-controller/types"
-	"github.com/DataDog/datadog-go/statsd"
 )
 
 const (
@@ -163,17 +164,11 @@ func (d Sink) MetricPodsCreated(target, instanceName, namespace string, succeed 
 	return d.metricWithStatus(d.prefix+"pods.created", tags)
 }
 
-// MetricStuckOnRemoval is emitted once per minute per disruption, if that disruption is "stuck on removal", i.e.,
+// MetricStuckOnRemovalCurrent is emitted once per minute counting the number of disruptions _per namespace_
+// that are "stuck on removal", i.e.,
 // we have attempted to clean and delete the disruption, but that has not worked, and a human needs to intervene.
-func (d Sink) MetricStuckOnRemoval(tags []string) error {
-	return d.metricWithStatus(d.prefix+"disruptions.stuck_on_removal", tags)
-}
-
-// MetricStuckOnRemovalGauge is emitted once per minute counting the total number of disruptions that are
-// "stuck on removal", i.e., we have attempted to clean and delete the disruption, but that has not worked,
-// and a human needs to intervene.
-func (d Sink) MetricStuckOnRemovalGauge(gauge float64) error {
-	return d.client.Gauge(d.prefix+"disruptions.stuck_on_removal_total", gauge, []string{}, 1)
+func (d Sink) MetricStuckOnRemovalCurrent(gauge float64, tags []string) error {
+	return d.client.Gauge(d.prefix+"disruptions.stuck_on_removal_current", gauge, tags, 1)
 }
 
 // MetricDisruptionsGauge is emitted once per minute counting the total number of ongoing disruptions per namespace,
