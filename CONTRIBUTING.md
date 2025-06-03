@@ -77,8 +77,8 @@ Just define `export LIMA_INSTANCE=$(whoami | tr "." "-")` into your `.zshrc` or 
 
 In case you have a Datadog account and want to install the Datadog Agent into your local cluster to retrieve logs/metrics/traces from it:
 
-- Create an API key [here](https://app.datadoghq.com/organization-settings/api-keys)
-- Create an APP key [here](https://app.datadoghq.com/organization-settings/application-keys)
+- Use the API key 'dev chaos-engineering', or create an API key [here](https://app.datadoghq.com/organization-settings/api-keys)
+- Use the APP key 'dev chaos-engineering', or create an APP key [here](https://app.datadoghq.com/organization-settings/application-keys)
 - Store them securely and add them to your `.zshrc`:
 
 > NB: it is recommended to properly tag/isolate your local workload from your PROD workload, check with your Datadog account admin how to adapt tagging accordingly and confirmm which configuration should be applied to your Datadog Agent
