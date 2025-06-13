@@ -1,0 +1,5 @@
+schema-version: v1
+rulesets:
+  - go-best-practices
+  - go-security
+  - github-actions
