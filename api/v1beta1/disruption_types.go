@@ -124,8 +124,7 @@ type Reporting struct {
 	// It's expected to follow slack naming conventions https://api.slack.com/methods/conversations.create#naming or slack channel ID format
 	// +kubebuilder:validation:MaxLength=80
 	// +kubebuilder:validation:Pattern=(^[a-z0-9-_]+$)|(^C[A-Z0-9]+$)
-	// +kubebuilder:validation:Required
-	SlackChannel string `json:"slackChannel,omitempty" chaos_validate:"required"`
+	SlackChannel string `json:"slackChannel,omitempty"`
 	// Purpose determines contextual informations about the disruption
 	// a brief context to determines disruption goal
 	// +kubebuilder:validation:MinLength=10
@@ -138,8 +137,7 @@ type Reporting struct {
 	// SlackUserEmail is the email of the user to send reporting information to
 	// It's used to automatically send the users disruption errors
 	// +kubebuilder:validation:Email
-	// +kubebuilder:validation:Required
-	SlackUserEmail string `json:"slackUserEmail,omitempty" chaos_validate:"required"`
+	SlackUserEmail string `json:"slackUserEmail,omitempty"`
 }
 
 func (r *Reporting) Explain() string {
