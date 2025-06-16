@@ -536,6 +536,11 @@ spec:
                           maxLength: 80
                           pattern: (^[a-z0-9-_]+$)|(^C[A-Z0-9]+$)
                           type: string
+                        slackUserEmail:
+                          description: |-
+                            SlackUserEmail is the email of the user to send reporting information to
+                            It's used to automatically send the users disruption errors
+                          type: string
                       type: object
                     selector:
                       additionalProperties:

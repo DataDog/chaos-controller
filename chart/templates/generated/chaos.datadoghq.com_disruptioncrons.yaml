@@ -535,6 +535,11 @@ spec:
                           maxLength: 80
                           pattern: (^[a-z0-9-_]+$)|(^C[A-Z0-9]+$)
                           type: string
+                        slackUserEmail:
+                          description: |-
+                            SlackUserEmail is the email of the user to send reporting information to
+                            It's used to automatically send the users disruption errors
+                          type: string
                       type: object
                     selector:
                       additionalProperties:
@@ -653,6 +658,11 @@ spec:
                         It's expected to follow slack naming conventions https://api.slack.com/methods/conversations.create#naming or slack channel ID format
                       maxLength: 80
                       pattern: (^[a-z0-9-_]+$)|(^C[A-Z0-9]+$)
+                      type: string
+                    slackUserEmail:
+                      description: |-
+                        SlackUserEmail is the email of the user to send reporting information to
+                        It's used to automatically send the users disruption errors
                       type: string
                   type: object
                 schedule:

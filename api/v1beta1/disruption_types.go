@@ -135,7 +135,7 @@ type Reporting struct {
 	// In order of importance it's Info, Success, Warning, Error
 	// Default level is considered Success, meaning all info will be ignored
 	MinNotificationType eventtypes.NotificationType `json:"minNotificationType,omitempty"`
-	// SlackUserEmail is the email of the user from the Chaos UI
+	// SlackUserEmail is the email of the user to send reporting information to
 	// It's used to automatically send the users disruption errors
 	// +kubebuilder:validation:Email
 	// +kubebuilder:validation:Required
