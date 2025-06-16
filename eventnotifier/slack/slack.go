@@ -41,7 +41,7 @@ type slackMessage struct {
 	BodyText    string
 	BodyBlock   slack.SectionBlock
 	InfoBlocks  []*slack.TextBlockObject
-	UserInfo    authv1.UserInfo
+	UserEmail   string
 }
 
 type NotifierSlackConfig struct {
@@ -180,16 +180,17 @@ func (n *Notifier) notifyForDisruptionCron(disruptionCron *v1beta1.DisruptionCro
 }
 
 func (n *Notifier) sendMessageToUserChannel(slackMsg slackMessage, logger *zap.SugaredLogger) error {
-	emailAddr, err := mail.ParseAddress(slackMsg.UserInfo.Username)
-	if err != nil {
-		logger.Infow("username could not be parsed as an email address", "err", err, "username", slackMsg.UserInfo.Username)
+	// emailAddr, err := mail.ParseAddress(slackMsg.UserInfo.Username)
+	// if err != nil {
+	// 	logger.Infow("username could not be parsed as an email address", "err", err, "username", slackMsg.UserInfo.Username)
 
-		return nil
-	}
+	// 	return nil
+	// }
+	// emailAddr = slackMsg.UserEmail
 
-	p1, err := n.client.GetUserByEmail(emailAddr.Address)
+	p1, err := n.client.GetUserByEmail(slackMsg.UserEmail)
 	if err != nil {
-		logger.Warnw("user not found", "userAddress", emailAddr.Address, "error", err)
+		logger.Warnw("user not found", "userAddress", slackMsg.UserEmail, "error", err)
 
 		return nil
 	}
@@ -199,8 +200,8 @@ func (n *Notifier) sendMessageToUserChannel(slackMsg slackMessage, logger *zap.S
 
 func (n *Notifier) sendMessageToChannel(slackChannel string, slackMsg slackMessage) error {
 	userName := infoNotAvailable
-	if slackMsg.UserInfo.Username != "" {
-		userName = slackMsg.UserInfo.Username
+	if slackMsg.UserEmail != "" {
+		userName = slackMsg.UserEmail
 	}
 
 	_, _, err := n.client.PostMessage(slackChannel,
@@ -228,19 +229,41 @@ func (n *Notifier) buildSlackMessage(obj client.Object, event corev1.Event, noti
 	infoBlocks := n.buildSlackBlocks(obj, notifType, reporting)
 
 	var (
-		userInfo authv1.UserInfo
-		err      error
+		userEmail string
+		userInfo  authv1.UserInfo
+		err       error
 	)
+
+	//two options: make this entire thing apart of a condition so if email doesn't exist then do this current
+	//otherwise if email doees exist, some code logic and rather than user info I return slack message with just email
+	//however its entirely possible I can't do that so I have to look at what slack message is expecting
 
 	switch d := obj.(type) {
 	case *v1beta1.Disruption:
+		if d.Spec.Reporting.SlackUserEmail != "" {
+			userEmail = d.Spec.Reporting.SlackUserEmail
+		}
+
 		userInfo, err = d.UserInfo()
 	case *v1beta1.DisruptionCron:
+		if d.Spec.Reporting.SlackUserEmail != "" {
+			userEmail = d.Spec.Reporting.SlackUserEmail
+		}
 		userInfo, err = d.UserInfo()
 	}
 
 	if err != nil {
 		logger.Warnw("unable to retrieve user info", "error", err)
+	}
+
+	if userEmail == "" {
+		userEmailAddress, err := mail.ParseAddress(userInfo.Username)
+
+		userEmail = userEmailAddress.Address
+
+		if err != nil {
+			logger.Warnw("unable to retrieve user info", "error", err)
+		}
 	}
 
 	return slackMessage{
@@ -249,7 +272,7 @@ func (n *Notifier) buildSlackMessage(obj client.Object, event corev1.Event, noti
 		BodyText:    bodyText,
 		BodyBlock:   *bodyBlock,
 		InfoBlocks:  infoBlocks,
-		UserInfo:    userInfo,
+		UserEmail:   userEmail,
 		UserName:    fmt.Sprintf("%s Status Bot", obj.GetObjectKind().GroupVersionKind().Kind),
 	}
 }
