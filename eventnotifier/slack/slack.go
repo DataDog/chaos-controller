@@ -256,18 +256,18 @@ func (n *Notifier) buildSlackMessage(obj client.Object, event corev1.Event, noti
 		logger.Warnw("unable to retrieve user info", "error", err)
 	}
 
-	// if userEmail == "" {
-	// 	userEmailAddress, err := mail.ParseAddress(userInfo.Username)
+	if userEmail == "" {
+		userEmailAddress, err := mail.ParseAddress(userInfo.Username)
 
-	// 	userEmail = userEmailAddress.Address
+		userEmail = userEmailAddress.Address
 
-	// 	if err != nil {
-	// 		logger.Warnw("unable to retrieve user info", "error", err)
-	// 	}
-	// }
+		if err != nil {
+			logger.Warnw("unable to retrieve user info", "error", err)
+		}
+	}
 
 	//do the parse regardless to make sure we have a valid email
-	userEmailAddress, err := mail.ParseAddress(userInfo.Username)
+	userEmailAddress, err := mail.ParseAddress(userEmail)
 
 	userEmail = userEmailAddress.Address
 
