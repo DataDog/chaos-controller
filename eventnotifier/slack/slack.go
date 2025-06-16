@@ -300,3 +300,5 @@ func (n *Notifier) buildSlackBlocks(object client.Object, notifType types.Notifi
 
 	return textBlocks
 }
+
+//to see why my changes aren't being found
