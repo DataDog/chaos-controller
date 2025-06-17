@@ -239,13 +239,13 @@ func (n *Notifier) buildSlackMessage(obj client.Object, event corev1.Event, noti
 
 	switch d := obj.(type) {
 	case *v1beta1.Disruption:
-		if d.Spec.Reporting.SlackUserEmail != "" {
+		if nil != d.Spec.Reporting && d.Spec.Reporting.SlackUserEmail != "" {
 			userEmail = d.Spec.Reporting.SlackUserEmail
 		}
 
 		userInfo, err = d.UserInfo()
 	case *v1beta1.DisruptionCron:
-		if d.Spec.Reporting.SlackUserEmail != "" {
+		if nil != d.Spec.Reporting && d.Spec.Reporting.SlackUserEmail != "" {
 			userEmail = d.Spec.Reporting.SlackUserEmail
 		}
 		userInfo, err = d.UserInfo()
@@ -256,22 +256,7 @@ func (n *Notifier) buildSlackMessage(obj client.Object, event corev1.Event, noti
 	}
 
 	if userEmail == "" {
-		userEmailAddress, err := mail.ParseAddress(userInfo.Username)
-
-		userEmail = userEmailAddress.Address
-
-		if err != nil {
-			logger.Warnw("unable to retrieve user info", "error", err)
-		}
-	}
-
-	//do the parse regardless to make sure we have a valid email
-	userEmailAddress, err := mail.ParseAddress(userEmail)
-
-	userEmail = userEmailAddress.Address
-
-	if err != nil {
-		logger.Warnw("unable to retrieve user info", "error", err)
+		userEmail = userInfo.Username
 	}
 
 	return slackMessage{
