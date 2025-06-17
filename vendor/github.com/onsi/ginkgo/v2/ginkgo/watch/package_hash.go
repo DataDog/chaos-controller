@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"regexp"
-	"strings"
 	"time"
 )
 
@@ -80,10 +79,6 @@ func (p *PackageHash) computeHashes() (codeHash string, codeModifiedTime time.Ti
 			continue
 		}
 
-		if isHiddenFile(info) {
-			continue
-		}
-
 		if goTestRegExp.MatchString(info.Name()) {
 			testHash += p.hashForFileInfo(info)
 			if info.ModTime().After(testModifiedTime) {
@@ -106,10 +101,6 @@ func (p *PackageHash) computeHashes() (codeHash string, codeModifiedTime time.Ti
 	}
 
 	return
-}
-
-func isHiddenFile(info os.FileInfo) bool {
-	return strings.HasPrefix(info.Name(), ".") || strings.HasPrefix(info.Name(), "_")
 }
 
 func (p *PackageHash) hashForFileInfo(info os.FileInfo) string {

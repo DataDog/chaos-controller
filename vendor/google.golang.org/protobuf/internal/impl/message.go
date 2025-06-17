@@ -14,6 +14,7 @@ import (
 
 	"google.golang.org/protobuf/internal/genid"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
 )
 
 // MessageInfo provides protobuf related functionality for a given Go type
@@ -29,8 +30,8 @@ type MessageInfo struct {
 	// Desc is the underlying message descriptor type and must be populated.
 	Desc protoreflect.MessageDescriptor
 
-	// Deprecated: Exporter will be removed the next time we bump
-	// protoimpl.GenVersion. See https://github.com/golang/protobuf/issues/1640
+	// Exporter must be provided in a purego environment in order to provide
+	// access to unexported fields.
 	Exporter exporter
 
 	// OneofWrappers is list of pointers to oneof wrapper struct types.
@@ -78,9 +79,6 @@ func (mi *MessageInfo) initOnce() {
 	if mi.initDone == 1 {
 		return
 	}
-	if opaqueInitHook(mi) {
-		return
-	}
 
 	t := mi.GoReflectType
 	if t.Kind() != reflect.Ptr && t.Elem().Kind() != reflect.Struct {
@@ -119,6 +117,7 @@ type (
 
 var (
 	sizecacheType       = reflect.TypeOf(SizeCache(0))
+	weakFieldsType      = reflect.TypeOf(WeakFields(nil))
 	unknownFieldsAType  = reflect.TypeOf(unknownFieldsA(nil))
 	unknownFieldsBType  = reflect.TypeOf(unknownFieldsB(nil))
 	extensionFieldsType = reflect.TypeOf(ExtensionFields(nil))
@@ -127,13 +126,12 @@ var (
 type structInfo struct {
 	sizecacheOffset offset
 	sizecacheType   reflect.Type
+	weakOffset      offset
+	weakType        reflect.Type
 	unknownOffset   offset
 	unknownType     reflect.Type
 	extensionOffset offset
 	extensionType   reflect.Type
-
-	lazyOffset     offset
-	presenceOffset offset
 
 	fieldsByNumber        map[protoreflect.FieldNumber]reflect.StructField
 	oneofsByName          map[protoreflect.Name]reflect.StructField
@@ -144,10 +142,9 @@ type structInfo struct {
 func (mi *MessageInfo) makeStructInfo(t reflect.Type) structInfo {
 	si := structInfo{
 		sizecacheOffset: invalidOffset,
+		weakOffset:      invalidOffset,
 		unknownOffset:   invalidOffset,
 		extensionOffset: invalidOffset,
-		lazyOffset:      invalidOffset,
-		presenceOffset:  invalidOffset,
 
 		fieldsByNumber:        map[protoreflect.FieldNumber]reflect.StructField{},
 		oneofsByName:          map[protoreflect.Name]reflect.StructField{},
@@ -160,23 +157,24 @@ fieldLoop:
 		switch f := t.Field(i); f.Name {
 		case genid.SizeCache_goname, genid.SizeCacheA_goname:
 			if f.Type == sizecacheType {
-				si.sizecacheOffset = offsetOf(f)
+				si.sizecacheOffset = offsetOf(f, mi.Exporter)
 				si.sizecacheType = f.Type
+			}
+		case genid.WeakFields_goname, genid.WeakFieldsA_goname:
+			if f.Type == weakFieldsType {
+				si.weakOffset = offsetOf(f, mi.Exporter)
+				si.weakType = f.Type
 			}
 		case genid.UnknownFields_goname, genid.UnknownFieldsA_goname:
 			if f.Type == unknownFieldsAType || f.Type == unknownFieldsBType {
-				si.unknownOffset = offsetOf(f)
+				si.unknownOffset = offsetOf(f, mi.Exporter)
 				si.unknownType = f.Type
 			}
 		case genid.ExtensionFields_goname, genid.ExtensionFieldsA_goname, genid.ExtensionFieldsB_goname:
 			if f.Type == extensionFieldsType {
-				si.extensionOffset = offsetOf(f)
+				si.extensionOffset = offsetOf(f, mi.Exporter)
 				si.extensionType = f.Type
 			}
-		case "lazyFields", "XXX_lazyUnmarshalInfo":
-			si.lazyOffset = offsetOf(f)
-		case "XXX_presence":
-			si.presenceOffset = offsetOf(f)
 		default:
 			for _, s := range strings.Split(f.Tag.Get("protobuf"), ",") {
 				if len(s) > 0 && strings.Trim(s, "0123456789") == "" {
@@ -246,6 +244,9 @@ func (mi *MessageInfo) Message(i int) protoreflect.MessageType {
 	mi.init()
 	fd := mi.Desc.Fields().Get(i)
 	switch {
+	case fd.IsWeak():
+		mt, _ := protoregistry.GlobalTypes.FindMessageByName(fd.Message().FullName())
+		return mt
 	case fd.IsMap():
 		return mapEntryType{fd.Message(), mi.fieldTypes[fd.Number()]}
 	default:

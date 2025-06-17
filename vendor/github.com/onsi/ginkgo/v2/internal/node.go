@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
-	"sync"
 	"time"
+
+	"sync"
 
 	"github.com/onsi/ginkgo/v2/types"
 )
@@ -15,8 +16,8 @@ var _global_node_id_counter = uint(0)
 var _global_id_mutex = &sync.Mutex{}
 
 func UniqueNodeID() uint {
-	// There's a reace in the internal integration tests if we don't make
-	// accessing _global_node_id_counter safe across goroutines.
+	//There's a reace in the internal integration tests if we don't make
+	//accessing _global_node_id_counter safe across goroutines.
 	_global_id_mutex.Lock()
 	defer _global_id_mutex.Unlock()
 	_global_node_id_counter += 1
@@ -43,8 +44,8 @@ type Node struct {
 	SynchronizedAfterSuiteProc1Body              func(SpecContext)
 	SynchronizedAfterSuiteProc1BodyHasContext    bool
 
-	ReportEachBody  func(SpecContext, types.SpecReport)
-	ReportSuiteBody func(SpecContext, types.Report)
+	ReportEachBody  func(types.SpecReport)
+	ReportSuiteBody func(types.Report)
 
 	MarkedFocus             bool
 	MarkedPending           bool
@@ -84,7 +85,7 @@ const SuppressProgressReporting = suppressProgressReporting(true)
 type FlakeAttempts uint
 type MustPassRepeatedly uint
 type Offset uint
-type Done chan<- any // Deprecated Done Channel for asynchronous testing
+type Done chan<- interface{} // Deprecated Done Channel for asynchronous testing
 type Labels []string
 type PollProgressInterval time.Duration
 type PollProgressAfter time.Duration
@@ -110,9 +111,9 @@ func UnionOfLabels(labels ...Labels) Labels {
 	return out
 }
 
-func PartitionDecorations(args ...any) ([]any, []any) {
-	decorations := []any{}
-	remainingArgs := []any{}
+func PartitionDecorations(args ...interface{}) ([]interface{}, []interface{}) {
+	decorations := []interface{}{}
+	remainingArgs := []interface{}{}
 	for _, arg := range args {
 		if isDecoration(arg) {
 			decorations = append(decorations, arg)
@@ -123,7 +124,7 @@ func PartitionDecorations(args ...any) ([]any, []any) {
 	return decorations, remainingArgs
 }
 
-func isDecoration(arg any) bool {
+func isDecoration(arg interface{}) bool {
 	switch t := reflect.TypeOf(arg); {
 	case t == nil:
 		return false
@@ -168,7 +169,7 @@ func isDecoration(arg any) bool {
 	}
 }
 
-func isSliceOfDecorations(slice any) bool {
+func isSliceOfDecorations(slice interface{}) bool {
 	vSlice := reflect.ValueOf(slice)
 	if vSlice.Len() == 0 {
 		return false
@@ -184,7 +185,7 @@ func isSliceOfDecorations(slice any) bool {
 var contextType = reflect.TypeOf(new(context.Context)).Elem()
 var specContextType = reflect.TypeOf(new(SpecContext)).Elem()
 
-func NewNode(deprecationTracker *types.DeprecationTracker, nodeType types.NodeType, text string, args ...any) (Node, []error) {
+func NewNode(deprecationTracker *types.DeprecationTracker, nodeType types.NodeType, text string, args ...interface{}) (Node, []error) {
 	baseOffset := 2
 	node := Node{
 		ID:                   UniqueNodeID(),
@@ -207,8 +208,8 @@ func NewNode(deprecationTracker *types.DeprecationTracker, nodeType types.NodeTy
 
 	args = unrollInterfaceSlice(args)
 
-	remainingArgs := []any{}
-	// First get the CodeLocation up-to-date
+	remainingArgs := []interface{}{}
+	//First get the CodeLocation up-to-date
 	for _, arg := range args {
 		switch v := arg.(type) {
 		case Offset:
@@ -223,12 +224,12 @@ func NewNode(deprecationTracker *types.DeprecationTracker, nodeType types.NodeTy
 	labelsSeen := map[string]bool{}
 	trackedFunctionError := false
 	args = remainingArgs
-	remainingArgs = []any{}
-	// now process the rest of the args
+	remainingArgs = []interface{}{}
+	//now process the rest of the args
 	for _, arg := range args {
 		switch t := reflect.TypeOf(arg); {
 		case t == reflect.TypeOf(float64(0)):
-			break // ignore deprecated timeouts
+			break //ignore deprecated timeouts
 		case t == reflect.TypeOf(Focus):
 			node.MarkedFocus = bool(arg.(focusType))
 			if !nodeType.Is(types.NodeTypesForContainerAndIt) {
@@ -241,9 +242,6 @@ func NewNode(deprecationTracker *types.DeprecationTracker, nodeType types.NodeTy
 			}
 		case t == reflect.TypeOf(Serial):
 			node.MarkedSerial = bool(arg.(serialType))
-			if !labelsSeen["Serial"] {
-				node.Labels = append(node.Labels, "Serial")
-			}
 			if !nodeType.Is(types.NodeTypesForContainerAndIt) {
 				appendError(types.GinkgoErrors.InvalidDecoratorForNodeType(node.CodeLocation, nodeType, "Serial"))
 			}
@@ -327,12 +325,7 @@ func NewNode(deprecationTracker *types.DeprecationTracker, nodeType types.NodeTy
 				node.Body = func(SpecContext) { body() }
 			} else if nodeType.Is(types.NodeTypeReportBeforeEach | types.NodeTypeReportAfterEach) {
 				if node.ReportEachBody == nil {
-					if fn, ok := arg.(func(types.SpecReport)); ok {
-						node.ReportEachBody = func(_ SpecContext, r types.SpecReport) { fn(r) }
-					} else {
-						node.ReportEachBody = arg.(func(SpecContext, types.SpecReport))
-						node.HasContext = true
-					}
+					node.ReportEachBody = arg.(func(types.SpecReport))
 				} else {
 					appendError(types.GinkgoErrors.MultipleBodyFunctions(node.CodeLocation, nodeType))
 					trackedFunctionError = true
@@ -340,12 +333,7 @@ func NewNode(deprecationTracker *types.DeprecationTracker, nodeType types.NodeTy
 				}
 			} else if nodeType.Is(types.NodeTypeReportBeforeSuite | types.NodeTypeReportAfterSuite) {
 				if node.ReportSuiteBody == nil {
-					if fn, ok := arg.(func(types.Report)); ok {
-						node.ReportSuiteBody = func(_ SpecContext, r types.Report) { fn(r) }
-					} else {
-						node.ReportSuiteBody = arg.(func(SpecContext, types.Report))
-						node.HasContext = true
-					}
+					node.ReportSuiteBody = arg.(func(types.Report))
 				} else {
 					appendError(types.GinkgoErrors.MultipleBodyFunctions(node.CodeLocation, nodeType))
 					trackedFunctionError = true
@@ -407,7 +395,7 @@ func NewNode(deprecationTracker *types.DeprecationTracker, nodeType types.NodeTy
 		}
 	}
 
-	// validations
+	//validations
 	if node.MarkedPending && node.MarkedFocus {
 		appendError(types.GinkgoErrors.InvalidDeclarationOfFocusedAndPending(node.CodeLocation, nodeType))
 	}
@@ -451,7 +439,7 @@ func NewNode(deprecationTracker *types.DeprecationTracker, nodeType types.NodeTy
 
 var doneType = reflect.TypeOf(make(Done))
 
-func extractBodyFunction(deprecationTracker *types.DeprecationTracker, cl types.CodeLocation, arg any) (func(SpecContext), bool) {
+func extractBodyFunction(deprecationTracker *types.DeprecationTracker, cl types.CodeLocation, arg interface{}) (func(SpecContext), bool) {
 	t := reflect.TypeOf(arg)
 	if t.NumOut() > 0 || t.NumIn() > 1 {
 		return nil, false
@@ -477,7 +465,7 @@ func extractBodyFunction(deprecationTracker *types.DeprecationTracker, cl types.
 
 var byteType = reflect.TypeOf([]byte{})
 
-func extractSynchronizedBeforeSuiteProc1Body(arg any) (func(SpecContext) []byte, bool) {
+func extractSynchronizedBeforeSuiteProc1Body(arg interface{}) (func(SpecContext) []byte, bool) {
 	t := reflect.TypeOf(arg)
 	v := reflect.ValueOf(arg)
 
@@ -505,7 +493,7 @@ func extractSynchronizedBeforeSuiteProc1Body(arg any) (func(SpecContext) []byte,
 	}, hasContext
 }
 
-func extractSynchronizedBeforeSuiteAllProcsBody(arg any) (func(SpecContext, []byte), bool) {
+func extractSynchronizedBeforeSuiteAllProcsBody(arg interface{}) (func(SpecContext, []byte), bool) {
 	t := reflect.TypeOf(arg)
 	v := reflect.ValueOf(arg)
 	hasContext, hasByte := false, false
@@ -536,11 +524,11 @@ func extractSynchronizedBeforeSuiteAllProcsBody(arg any) (func(SpecContext, []by
 
 var errInterface = reflect.TypeOf((*error)(nil)).Elem()
 
-func NewCleanupNode(deprecationTracker *types.DeprecationTracker, fail func(string, types.CodeLocation), args ...any) (Node, []error) {
+func NewCleanupNode(deprecationTracker *types.DeprecationTracker, fail func(string, types.CodeLocation), args ...interface{}) (Node, []error) {
 	decorations, remainingArgs := PartitionDecorations(args...)
 	baseOffset := 2
 	cl := types.NewCodeLocation(baseOffset)
-	finalArgs := []any{}
+	finalArgs := []interface{}{}
 	for _, arg := range decorations {
 		switch t := reflect.TypeOf(arg); {
 		case t == reflect.TypeOf(Offset(0)):
@@ -920,12 +908,12 @@ func (n Nodes) GetMaxMustPassRepeatedly() int {
 	return maxMustPassRepeatedly
 }
 
-func unrollInterfaceSlice(args any) []any {
+func unrollInterfaceSlice(args interface{}) []interface{} {
 	v := reflect.ValueOf(args)
 	if v.Kind() != reflect.Slice {
-		return []any{args}
+		return []interface{}{args}
 	}
-	out := []any{}
+	out := []interface{}{}
 	for i := 0; i < v.Len(); i++ {
 		el := reflect.ValueOf(v.Index(i).Interface())
 		if el.Kind() == reflect.Slice && el.Type() != reflect.TypeOf(Labels{}) {

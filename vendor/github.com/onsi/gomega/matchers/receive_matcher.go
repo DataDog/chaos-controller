@@ -3,7 +3,6 @@
 package matchers
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 
@@ -11,12 +10,12 @@ import (
 )
 
 type ReceiveMatcher struct {
-	Args          []any
+	Arg           interface{}
 	receivedValue reflect.Value
 	channelClosed bool
 }
 
-func (matcher *ReceiveMatcher) Match(actual any) (success bool, err error) {
+func (matcher *ReceiveMatcher) Match(actual interface{}) (success bool, err error) {
 	if !isChan(actual) {
 		return false, fmt.Errorf("ReceiveMatcher expects a channel.  Got:\n%s", format.Object(actual, 1))
 	}
@@ -30,38 +29,15 @@ func (matcher *ReceiveMatcher) Match(actual any) (success bool, err error) {
 
 	var subMatcher omegaMatcher
 	var hasSubMatcher bool
-	var resultReference any
 
-	// Valid arg formats are as follows, always with optional POINTER before
-	// optional MATCHER:
-	//   - Receive()
-	//   - Receive(POINTER)
-	//   - Receive(MATCHER)
-	//   - Receive(POINTER, MATCHER)
-	args := matcher.Args
-	if len(args) > 0 {
-		arg := args[0]
-		_, isSubMatcher := arg.(omegaMatcher)
-		if !isSubMatcher && reflect.ValueOf(arg).Kind() == reflect.Ptr {
-			// Consume optional POINTER arg first, if it ain't no matcher ;)
-			resultReference = arg
-			args = args[1:]
-		}
-	}
-	if len(args) > 0 {
-		arg := args[0]
-		subMatcher, hasSubMatcher = arg.(omegaMatcher)
+	if matcher.Arg != nil {
+		subMatcher, hasSubMatcher = (matcher.Arg).(omegaMatcher)
 		if !hasSubMatcher {
-			// At this point we assume the dev user wanted to assign a received
-			// value, so [POINTER,]MATCHER.
-			return false, fmt.Errorf("Cannot assign a value from the channel:\n%s\nTo:\n%s\nYou need to pass a pointer!", format.Object(actual, 1), format.Object(arg, 1))
+			argType := reflect.TypeOf(matcher.Arg)
+			if argType.Kind() != reflect.Ptr {
+				return false, fmt.Errorf("Cannot assign a value from the channel:\n%s\nTo:\n%s\nYou need to pass a pointer!", format.Object(actual, 1), format.Object(matcher.Arg, 1))
+			}
 		}
-		// Consume optional MATCHER arg.
-		args = args[1:]
-	}
-	if len(args) > 0 {
-		// If there are still args present, reject all.
-		return false, errors.New("Receive matcher expects at most an optional pointer and/or an optional matcher")
 	}
 
 	winnerIndex, value, open := reflect.Select([]reflect.SelectCase{
@@ -82,20 +58,16 @@ func (matcher *ReceiveMatcher) Match(actual any) (success bool, err error) {
 	}
 
 	if hasSubMatcher {
-		if !didReceive {
-			return false, nil
+		if didReceive {
+			matcher.receivedValue = value
+			return subMatcher.Match(matcher.receivedValue.Interface())
 		}
-		matcher.receivedValue = value
-		if match, err := subMatcher.Match(matcher.receivedValue.Interface()); err != nil || !match {
-			return match, err
-		}
-		// if we received a match, then fall through in order to handle an
-		// optional assignment of the received value to the specified reference.
+		return false, nil
 	}
 
 	if didReceive {
-		if resultReference != nil {
-			outValue := reflect.ValueOf(resultReference)
+		if matcher.Arg != nil {
+			outValue := reflect.ValueOf(matcher.Arg)
 
 			if value.Type().AssignableTo(outValue.Elem().Type()) {
 				outValue.Elem().Set(value)
@@ -105,7 +77,7 @@ func (matcher *ReceiveMatcher) Match(actual any) (success bool, err error) {
 				outValue.Elem().Set(value.Elem())
 				return true, nil
 			} else {
-				return false, fmt.Errorf("Cannot assign a value from the channel:\n%s\nType:\n%s\nTo:\n%s", format.Object(actual, 1), format.Object(value.Interface(), 1), format.Object(resultReference, 1))
+				return false, fmt.Errorf("Cannot assign a value from the channel:\n%s\nType:\n%s\nTo:\n%s", format.Object(actual, 1), format.Object(value.Interface(), 1), format.Object(matcher.Arg, 1))
 			}
 
 		}
@@ -115,12 +87,8 @@ func (matcher *ReceiveMatcher) Match(actual any) (success bool, err error) {
 	return false, nil
 }
 
-func (matcher *ReceiveMatcher) FailureMessage(actual any) (message string) {
-	var matcherArg any
-	if len(matcher.Args) > 0 {
-		matcherArg = matcher.Args[len(matcher.Args)-1]
-	}
-	subMatcher, hasSubMatcher := (matcherArg).(omegaMatcher)
+func (matcher *ReceiveMatcher) FailureMessage(actual interface{}) (message string) {
+	subMatcher, hasSubMatcher := (matcher.Arg).(omegaMatcher)
 
 	closedAddendum := ""
 	if matcher.channelClosed {
@@ -136,12 +104,8 @@ func (matcher *ReceiveMatcher) FailureMessage(actual any) (message string) {
 	return format.Message(actual, "to receive something."+closedAddendum)
 }
 
-func (matcher *ReceiveMatcher) NegatedFailureMessage(actual any) (message string) {
-	var matcherArg any
-	if len(matcher.Args) > 0 {
-		matcherArg = matcher.Args[len(matcher.Args)-1]
-	}
-	subMatcher, hasSubMatcher := (matcherArg).(omegaMatcher)
+func (matcher *ReceiveMatcher) NegatedFailureMessage(actual interface{}) (message string) {
+	subMatcher, hasSubMatcher := (matcher.Arg).(omegaMatcher)
 
 	closedAddendum := ""
 	if matcher.channelClosed {
@@ -157,7 +121,7 @@ func (matcher *ReceiveMatcher) NegatedFailureMessage(actual any) (message string
 	return format.Message(actual, "not to receive anything."+closedAddendum)
 }
 
-func (matcher *ReceiveMatcher) MatchMayChangeInTheFuture(actual any) bool {
+func (matcher *ReceiveMatcher) MatchMayChangeInTheFuture(actual interface{}) bool {
 	if !isChan(actual) {
 		return false
 	}

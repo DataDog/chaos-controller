@@ -1,7 +1,6 @@
 package ginkgo
 
 import (
-	"context"
 	"testing"
 
 	"github.com/onsi/ginkgo/v2/internal/testingtproxy"
@@ -15,11 +14,6 @@ GinkgoT() is analogous to *testing.T and implements the majority of *testing.T's
 
 GinkgoT() takes an optional offset argument that can be used to get the
 correct line number associated with the failure - though you do not need to use this if you call GinkgoHelper() or GinkgoT().Helper() appropriately
-
-GinkgoT() attempts to mimic the behavior of `testing.T` with the exception of the following:
-
-- Error/Errorf: failures in Ginkgo always immediately stop execution and there is no mechanism to log a failure without aborting the test.  As such Error/Errorf are equivalent to Fatal/Fatalf.
-- Parallel() is a no-op as Ginkgo's multi-process parallelism model is substantially different from go test's in-process model.
 
 You can learn more here: https://onsi.github.io/ginkgo/#using-third-party-libraries
 */
@@ -49,8 +43,6 @@ The portion of the interface returned by GinkgoT() that maps onto methods in the
 */
 type GinkgoTInterface interface {
 	Cleanup(func())
-	Chdir(dir string)
-	Context() context.Context
 	Setenv(kev, value string)
 	Error(args ...any)
 	Errorf(format string, args ...any)
@@ -129,12 +121,6 @@ type GinkgoTBWrapper struct {
 
 func (g *GinkgoTBWrapper) Cleanup(f func()) {
 	g.GinkgoT.Cleanup(f)
-}
-func (g *GinkgoTBWrapper) Chdir(dir string) {
-	g.GinkgoT.Chdir(dir)
-}
-func (g *GinkgoTBWrapper) Context() context.Context {
-	return g.GinkgoT.Context()
 }
 func (g *GinkgoTBWrapper) Error(args ...any) {
 	g.GinkgoT.Error(args...)

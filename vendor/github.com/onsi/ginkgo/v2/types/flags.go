@@ -24,8 +24,7 @@ type GinkgoFlag struct {
 	DeprecatedDocLink string
 	DeprecatedVersion string
 
-	ExportAs     string
-	AlwaysExport bool
+	ExportAs string
 }
 
 type GinkgoFlags []GinkgoFlag
@@ -92,7 +91,7 @@ func (gfs GinkgoFlagSections) Lookup(key string) (GinkgoFlagSection, bool) {
 
 type GinkgoFlagSet struct {
 	flags    GinkgoFlags
-	bindings any
+	bindings interface{}
 
 	sections            GinkgoFlagSections
 	extraGoFlagsSection GinkgoFlagSection
@@ -101,7 +100,7 @@ type GinkgoFlagSet struct {
 }
 
 // Call NewGinkgoFlagSet to create GinkgoFlagSet that creates and binds to it's own *flag.FlagSet
-func NewGinkgoFlagSet(flags GinkgoFlags, bindings any, sections GinkgoFlagSections) (GinkgoFlagSet, error) {
+func NewGinkgoFlagSet(flags GinkgoFlags, bindings interface{}, sections GinkgoFlagSections) (GinkgoFlagSet, error) {
 	return bindFlagSet(GinkgoFlagSet{
 		flags:    flags,
 		bindings: bindings,
@@ -110,7 +109,7 @@ func NewGinkgoFlagSet(flags GinkgoFlags, bindings any, sections GinkgoFlagSectio
 }
 
 // Call NewGinkgoFlagSet to create GinkgoFlagSet that extends an existing *flag.FlagSet
-func NewAttachedGinkgoFlagSet(flagSet *flag.FlagSet, flags GinkgoFlags, bindings any, sections GinkgoFlagSections, extraGoFlagsSection GinkgoFlagSection) (GinkgoFlagSet, error) {
+func NewAttachedGinkgoFlagSet(flagSet *flag.FlagSet, flags GinkgoFlags, bindings interface{}, sections GinkgoFlagSections, extraGoFlagsSection GinkgoFlagSection) (GinkgoFlagSet, error) {
 	return bindFlagSet(GinkgoFlagSet{
 		flags:               flags,
 		bindings:            bindings,
@@ -335,7 +334,7 @@ func (f GinkgoFlagSet) substituteUsage() {
 	fmt.Fprintln(f.flagSet.Output(), f.Usage())
 }
 
-func valueAtKeyPath(root any, keyPath string) (reflect.Value, bool) {
+func valueAtKeyPath(root interface{}, keyPath string) (reflect.Value, bool) {
 	if len(keyPath) == 0 {
 		return reflect.Value{}, false
 	}
@@ -432,8 +431,8 @@ func (ssv stringSliceVar) Set(s string) error {
 	return nil
 }
 
-// given a set of GinkgoFlags and bindings, generate flag arguments suitable to be passed to an application with that set of flags configured.
-func GenerateFlagArgs(flags GinkgoFlags, bindings any) ([]string, error) {
+//given a set of GinkgoFlags and bindings, generate flag arguments suitable to be passed to an application with that set of flags configured.
+func GenerateFlagArgs(flags GinkgoFlags, bindings interface{}) ([]string, error) {
 	result := []string{}
 	for _, flag := range flags {
 		name := flag.ExportAs
@@ -452,19 +451,19 @@ func GenerateFlagArgs(flags GinkgoFlags, bindings any) ([]string, error) {
 		iface := value.Interface()
 		switch value.Type() {
 		case reflect.TypeOf(string("")):
-			if iface.(string) != "" || flag.AlwaysExport {
+			if iface.(string) != "" {
 				result = append(result, fmt.Sprintf("--%s=%s", name, iface))
 			}
 		case reflect.TypeOf(int64(0)):
-			if iface.(int64) != 0 || flag.AlwaysExport {
+			if iface.(int64) != 0 {
 				result = append(result, fmt.Sprintf("--%s=%d", name, iface))
 			}
 		case reflect.TypeOf(float64(0)):
-			if iface.(float64) != 0 || flag.AlwaysExport {
+			if iface.(float64) != 0 {
 				result = append(result, fmt.Sprintf("--%s=%f", name, iface))
 			}
 		case reflect.TypeOf(int(0)):
-			if iface.(int) != 0 || flag.AlwaysExport {
+			if iface.(int) != 0 {
 				result = append(result, fmt.Sprintf("--%s=%d", name, iface))
 			}
 		case reflect.TypeOf(bool(true)):
@@ -472,7 +471,7 @@ func GenerateFlagArgs(flags GinkgoFlags, bindings any) ([]string, error) {
 				result = append(result, fmt.Sprintf("--%s", name))
 			}
 		case reflect.TypeOf(time.Duration(0)):
-			if iface.(time.Duration) != time.Duration(0) || flag.AlwaysExport {
+			if iface.(time.Duration) != time.Duration(0) {
 				result = append(result, fmt.Sprintf("--%s=%s", name, iface))
 			}
 

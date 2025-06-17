@@ -10,7 +10,7 @@ import (
 	"strings"
 	"text/template"
 
-	sprig "github.com/go-task/slim-sprig/v3"
+	sprig "github.com/go-task/slim-sprig"
 	"github.com/onsi/ginkgo/v2/ginkgo/command"
 	"github.com/onsi/ginkgo/v2/ginkgo/internal"
 	"github.com/onsi/ginkgo/v2/types"
@@ -174,7 +174,6 @@ func moduleName(modRoot string) string {
 	if err != nil {
 		return ""
 	}
-	defer modFile.Close()
 
 	mod := make([]byte, 128)
 	_, err = modFile.Read(mod)

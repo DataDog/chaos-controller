@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -10,6 +9,7 @@ import (
 	"github.com/onsi/ginkgo/v2/internal/parallel_support"
 	"github.com/onsi/ginkgo/v2/reporters"
 	"github.com/onsi/ginkgo/v2/types"
+	"golang.org/x/net/context"
 )
 
 type Phase uint
@@ -20,7 +20,7 @@ const (
 	PhaseRun
 )
 
-const ProgressReporterDeadline = 5 * time.Second
+var PROGRESS_REPORTER_DEADLING = 5 * time.Second
 
 type Suite struct {
 	tree               *TreeNode
@@ -370,7 +370,7 @@ func (suite *Suite) generateProgressReport(fullReport bool) types.ProgressReport
 	suite.selectiveLock.Lock()
 	defer suite.selectiveLock.Unlock()
 
-	deadline, cancel := context.WithTimeout(context.Background(), ProgressReporterDeadline)
+	deadline, cancel := context.WithTimeout(context.Background(), PROGRESS_REPORTER_DEADLING)
 	defer cancel()
 	var additionalReports []string
 	if suite.currentSpecContext != nil {
@@ -489,13 +489,8 @@ func (suite *Suite) runSpecs(description string, suiteLabels Labels, suitePath s
 			newGroup(suite).run(specs.AtIndices(groupedSpecIndices[groupedSpecIdx]))
 		}
 
-		if suite.config.FailOnPending && specs.HasAnySpecsMarkedPending() {
+		if specs.HasAnySpecsMarkedPending() && suite.config.FailOnPending {
 			suite.report.SpecialSuiteFailureReasons = append(suite.report.SpecialSuiteFailureReasons, "Detected pending specs and --fail-on-pending is set")
-			suite.report.SuiteSucceeded = false
-		}
-
-		if suite.config.FailOnEmpty && specs.CountWithoutSkip() == 0 {
-			suite.report.SpecialSuiteFailureReasons = append(suite.report.SpecialSuiteFailureReasons, "Detected no specs ran and --fail-on-empty is set")
 			suite.report.SuiteSucceeded = false
 		}
 	}
@@ -599,8 +594,8 @@ func (suite *Suite) reportEach(spec Spec, nodeType types.NodeType) {
 		suite.writer.Truncate()
 		suite.outputInterceptor.StartInterceptingOutput()
 		report := suite.currentSpecReport
-		nodes[i].Body = func(ctx SpecContext) {
-			nodes[i].ReportEachBody(ctx, report)
+		nodes[i].Body = func(SpecContext) {
+			nodes[i].ReportEachBody(report)
 		}
 		state, failure := suite.runNode(nodes[i], time.Time{}, spec.Nodes.BestTextFor(nodes[i]))
 
@@ -767,7 +762,7 @@ func (suite *Suite) runReportSuiteNode(node Node, report types.Report) {
 		report = report.Add(aggregatedReport)
 	}
 
-	node.Body = func(ctx SpecContext) { node.ReportSuiteBody(ctx, report) }
+	node.Body = func(SpecContext) { node.ReportSuiteBody(report) }
 	suite.currentSpecReport.State, suite.currentSpecReport.Failure = suite.runNode(node, time.Time{}, "")
 
 	suite.currentSpecReport.EndTime = time.Now()
@@ -845,7 +840,7 @@ func (suite *Suite) runNode(node Node, specDeadline time.Time, text string) (typ
 		timeoutInPlay = "node"
 	}
 	if (!deadline.IsZero() && deadline.Before(now)) || interruptStatus.Interrupted() {
-		// we're out of time already.  let's wait for a NodeTimeout if we have it, or GracePeriod if we don't
+		//we're out of time already.  let's wait for a NodeTimeout if we have it, or GracePeriod if we don't
 		if node.NodeTimeout > 0 {
 			deadline = now.Add(node.NodeTimeout)
 			timeoutInPlay = "node"
@@ -863,7 +858,7 @@ func (suite *Suite) runNode(node Node, specDeadline time.Time, text string) (typ
 	}
 
 	sc := NewSpecContext(suite)
-	defer sc.cancel(fmt.Errorf("spec has finished"))
+	defer sc.cancel()
 
 	suite.selectiveLock.Lock()
 	suite.currentSpecContext = sc
@@ -923,9 +918,9 @@ func (suite *Suite) runNode(node Node, specDeadline time.Time, text string) (typ
 				if outcomeFromRun != types.SpecStatePassed {
 					additionalFailure := types.AdditionalFailure{
 						State:   outcomeFromRun,
-						Failure: failure, // we make a copy - this will include all the configuration set up above...
+						Failure: failure, //we make a copy - this will include all the configuration set up above...
 					}
-					// ...and then we update the failure with the details from failureFromRun
+					//...and then we update the failure with the details from failureFromRun
 					additionalFailure.Failure.Location, additionalFailure.Failure.ForwardedPanic, additionalFailure.Failure.TimelineLocation = failureFromRun.Location, failureFromRun.ForwardedPanic, failureFromRun.TimelineLocation
 					additionalFailure.Failure.ProgressReport = types.ProgressReport{}
 					if outcome == types.SpecStateTimedout {
@@ -963,8 +958,8 @@ func (suite *Suite) runNode(node Node, specDeadline time.Time, text string) (typ
 
 			// tell the spec to stop.  it's important we generate the progress report first to make sure we capture where
 			// the spec is actually stuck
-			sc.cancel(fmt.Errorf("%s timeout occurred", timeoutInPlay))
-			// and now we wait for the grace period
+			sc.cancel()
+			//and now we wait for the grace period
 			gracePeriodChannel = time.After(gracePeriod)
 		case <-interruptStatus.Channel:
 			interruptStatus = suite.interruptHandler.Status()
@@ -990,7 +985,7 @@ func (suite *Suite) runNode(node Node, specDeadline time.Time, text string) (typ
 			}
 
 			progressReport = progressReport.WithoutOtherGoroutines()
-			sc.cancel(fmt.Errorf(interruptStatus.Message()))
+			sc.cancel()
 
 			if interruptStatus.Level == interrupt_handler.InterruptLevelBailOut {
 				if interruptStatus.ShouldIncludeProgressReport() {
