@@ -248,6 +248,7 @@ func (n *Notifier) buildSlackMessage(obj client.Object, event corev1.Event, noti
 		if nil != d.Spec.Reporting && d.Spec.Reporting.SlackUserEmail != "" {
 			userEmail = d.Spec.Reporting.SlackUserEmail
 		}
+
 		userInfo, err = d.UserInfo()
 	}
 
@@ -255,7 +256,11 @@ func (n *Notifier) buildSlackMessage(obj client.Object, event corev1.Event, noti
 		logger.Warnw("unable to retrieve user info", "error", err)
 	}
 
-	if userEmail == "" {
+	//ppotentially solves situation where userEmail is invalid
+
+	_, err = mail.ParseAddress(userEmail)
+	if err != nil {
+		logger.Infow("the slack user email is not a valid email address, falls back to userInfo", "err", err, "username", userEmail)
 		userEmail = userInfo.Username
 	}
 
