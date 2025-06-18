@@ -252,12 +252,12 @@ func (n *Notifier) buildSlackMessage(obj client.Object, event corev1.Event, noti
 		logger.Warnw("unable to retrieve user info", "error", err)
 	}
 
-	//initiates the fallback mechanism incase SlackUserEmail is empty or an invalid input
+	// initiates the fallback mechanism incase SlackUserEmail is empty or an invalid input
 	_, err = mail.ParseAddress(userEmail)
 	if err != nil {
 		logger.Infow("the slack user email is not a valid email address, falls back to userInfo", "err", err, "username", userEmail)
 
-		userEmail = userInfo.Username //falls back to the userInfo username
+		userEmail = userInfo.Username // falls back to the userInfo username
 	}
 
 	return slackMessage{
