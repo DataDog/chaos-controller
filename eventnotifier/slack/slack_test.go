@@ -1020,7 +1020,7 @@ var _ = Describe("Slack Notifier", func() {
 
 						})
 
-						When("the username is not configured but slackUserEmail is configured ", func() {
+						When("the userInfo username is not configured but SlackUserEmail is configured ", func() {
 							DescribeTable("should send a slack message the user chanel", func(obj k8sclient.Object, notifType types.NotificationType) {
 
 								// Arrange
@@ -1135,7 +1135,7 @@ var _ = Describe("Slack Notifier", func() {
 							)
 						})
 
-						When("the username and slackUserEmail are configure but differ in value", func() {
+						When("the UserInfo username and SlackUserEmail are configured but differ in value", func() {
 							DescribeTable("should prioritize utilizing the slackUserEmail", func(obj k8sclient.Object, notifType types.NotificationType) {
 								// Arrange
 
@@ -1264,7 +1264,6 @@ var _ = Describe("Slack Notifier", func() {
 								}, types.NotificationError),
 							)
 						})
-
 					})
 				})
 			})
@@ -1318,7 +1317,6 @@ var _ = Describe("Slack Notifier", func() {
 						switch d := obj.(type) {
 						case *v1beta1.Disruption:
 							Expect(d.SetUserInfo(expectedUserInfo)).To(Succeed())
-							// d.SetUserInfo(expectedUserInfo)
 							d.Spec.Reporting = expectedReporting
 						case *v1beta1.DisruptionCron:
 							Expect(d.SetUserInfo(expectedUserInfo)).To(Succeed())
@@ -1345,7 +1343,6 @@ var _ = Describe("Slack Notifier", func() {
 						).Return("", "", nil).Once()
 
 						//Act
-
 						err := notifier.Notify(obj,
 							corev1.Event{},
 							notifType,
@@ -1411,7 +1408,6 @@ var _ = Describe("Slack Notifier", func() {
 				Context("slackUserEmail differs from the userInfoUsername", func() {
 					DescribeTable("should prioritize utilizing the slackUserEmail", func(obj k8sclient.Object, notifType types.NotificationType) {
 						// Arrange
-
 						expectedUserInfo := v1.UserInfo{Username: "differingEmail@test.com"}
 						expectedSlackUserName := "jaden@test.com"
 						expectedReportingSlackChannel := "custom-slack-channel"

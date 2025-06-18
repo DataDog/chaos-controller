@@ -233,10 +233,6 @@ func (n *Notifier) buildSlackMessage(obj client.Object, event corev1.Event, noti
 		err       error
 	)
 
-	//two options: make this entire thing apart of a condition so if email doesn't exist then do this current
-	//otherwise if email doees exist, some code logic and rather than user info I return slack message with just email
-	//however its entirely possible I can't do that so I have to look at what slack message is expecting
-
 	switch d := obj.(type) {
 	case *v1beta1.Disruption:
 		if nil != d.Spec.Reporting && d.Spec.Reporting.SlackUserEmail != "" {
@@ -256,12 +252,12 @@ func (n *Notifier) buildSlackMessage(obj client.Object, event corev1.Event, noti
 		logger.Warnw("unable to retrieve user info", "error", err)
 	}
 
-	//ppotentially solves situation where userEmail is invalid
-
+	//initiates the fallback mechanism incase SlackUserEmail is empty or an invalid input
 	_, err = mail.ParseAddress(userEmail)
 	if err != nil {
 		logger.Infow("the slack user email is not a valid email address, falls back to userInfo", "err", err, "username", userEmail)
-		userEmail = userInfo.Username
+
+		userEmail = userInfo.Username //falls back to the userInfo username
 	}
 
 	return slackMessage{
