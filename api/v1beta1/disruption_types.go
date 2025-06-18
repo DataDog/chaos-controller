@@ -128,14 +128,12 @@ type Reporting struct {
 	// Purpose determines contextual informations about the disruption
 	// a brief context to determines disruption goal
 	// +kubebuilder:validation:MinLength=10
-	// +kubebuilder:validation:Required
 	Purpose string `json:"purpose,omitempty"`
 	// MinNotificationType is the minimal notification type we want to receive informations for
 	// In order of importance it's Info, Success, Warning, Error
 	// Default level is considered Success, meaning all info will be ignored
 	MinNotificationType eventtypes.NotificationType `json:"minNotificationType,omitempty"`
 	// SlackUserEmail is the email of the user to send reporting information to
-	// It's used to automatically send the users disruption errors
 	// +kubebuilder:validation:Email
 	SlackUserEmail string `json:"slackUserEmail,omitempty"`
 }
