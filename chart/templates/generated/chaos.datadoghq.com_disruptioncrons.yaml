@@ -537,7 +537,7 @@ spec:
                           type: string
                         slackUserEmail:
                           description: SlackUserEmail is the email of the user to send reporting information to
-                          maxLength: 80
+                          maxLength: 320
                           pattern: (^[a-z0-9-_]+$)|(^C[A-Z0-9]+$)
                           type: string
                       type: object
@@ -661,7 +661,7 @@ spec:
                       type: string
                     slackUserEmail:
                       description: SlackUserEmail is the email of the user to send reporting information to
-                      maxLength: 80
+                      maxLength: 320
                       pattern: (^[a-z0-9-_]+$)|(^C[A-Z0-9]+$)
                       type: string
                   type: object
