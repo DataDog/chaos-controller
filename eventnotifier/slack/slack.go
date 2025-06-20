@@ -257,7 +257,7 @@ func (n *Notifier) buildSlackMessage(obj client.Object, event corev1.Event, noti
 	if err != nil {
 		logger.Infow("the slack user email is not a valid email address, fall back to userInfo", "err", err, "username", userEmail)
 
-		userEmail = userInfo.Username // falls back to the userInfo username
+		userEmail = userInfo.Username // falls back to userInfo username
 	}
 
 	return slackMessage{
