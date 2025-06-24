@@ -1306,7 +1306,7 @@ var _ = Describe("Slack Notifier", func() {
 					)
 				})
 
-				Context("with the slack configuraiton in the resource and slackUserEmail is not valid", func() {
+				Context("with the slack configuration in the resource and slackUserEmail is not valid", func() {
 					DescribeTable("it should fallback to the userInfo user", func(obj k8sclient.Object, notifType types.NotificationType) {
 						expectedUserInfo := v1.UserInfo{Username: defaultUserInfoUserName}
 
