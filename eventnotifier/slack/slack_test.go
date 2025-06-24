@@ -1269,7 +1269,7 @@ var _ = Describe("Slack Notifier", func() {
 			})
 
 			When("the name of the user is not a valid address mail", func() {
-				Context("with the slack configurastion not in the resource and the invalud user is from userInfo", func() {
+				Context("with the slack configuration not in the resource and the invalid user is from userInfo", func() {
 					DescribeTable("it should not return the error", func(obj k8sclient.Object) {
 
 						// Arrange
