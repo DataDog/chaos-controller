@@ -1019,44 +1019,391 @@ var _ = Describe("Slack Notifier", func() {
 							)
 
 						})
+
+						When("the userInfo username is not configured but SlackUserEmail is configured ", func() {
+							DescribeTable("should send a slack message the user chanel", func(obj k8sclient.Object, notifType types.NotificationType) {
+
+								// Arrange
+								expectedSlackUserName := "jaden@test.com"
+								expectedReporting := &v1beta1.Reporting{
+									SlackUserEmail: expectedSlackUserName,
+								}
+
+								switch d := obj.(type) {
+								case *v1beta1.Disruption:
+									d.Spec.Reporting = expectedReporting
+								case *v1beta1.DisruptionCron:
+									d.Spec.Reporting = expectedReporting
+								}
+
+								By("not sending the message to the mirror slack channel")
+								slackNotifMock.AssertNotCalled(GinkgoT(), "PostMessage", defaultMirrorSlackChanelID, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+
+								expectedSlackUser := &slack.User{
+									ID:   uuid.New().String(),
+									Name: expectedSlackUserName,
+								}
+								slackNotifMock.EXPECT().GetUserByEmail(expectedSlackUserName).Return(expectedSlackUser, nil).Once()
+
+								By("sending the message to the slack user")
+								slackNotifMock.EXPECT().PostMessage(
+									expectedSlackUser.ID,
+									mock.AnythingOfType("slack.MsgOption"),
+									mock.AnythingOfType("slack.MsgOption"),
+									mock.AnythingOfType("slack.MsgOption"),
+									mock.AnythingOfType("slack.MsgOption"),
+									mock.AnythingOfType("slack.MsgOption"),
+								).Return("", "", nil).Once()
+
+								// Act
+								err := notifier.Notify(obj,
+									corev1.Event{},
+									notifType,
+								)
+
+								// Assert
+								Expect(err).ShouldNot(HaveOccurred())
+							},
+								Entry("a success notification with a disruption",
+									&v1beta1.Disruption{
+										TypeMeta: metav1.TypeMeta{
+											Kind: v1beta1.DisruptionKind,
+										},
+									},
+									types.NotificationSuccess,
+								),
+								Entry("a completion notification with a disruption",
+									&v1beta1.Disruption{
+										TypeMeta: metav1.TypeMeta{
+											Kind: v1beta1.DisruptionKind,
+										},
+									},
+									types.NotificationCompletion,
+								),
+
+								Entry("a unknown notification with a disruption",
+									&v1beta1.Disruption{
+										TypeMeta: metav1.TypeMeta{
+											Kind: v1beta1.DisruptionKind,
+										},
+									},
+									types.NotificationUnknown,
+								),
+
+								Entry("a warning notification with a disruption",
+									&v1beta1.Disruption{
+										TypeMeta: metav1.TypeMeta{
+											Kind: v1beta1.DisruptionKind,
+										},
+									},
+									types.NotificationWarning,
+								),
+
+								Entry("an error notification with a disruption",
+									&v1beta1.Disruption{
+										TypeMeta: metav1.TypeMeta{
+											Kind: v1beta1.DisruptionKind,
+										},
+									},
+									types.NotificationError,
+								),
+								Entry("a success notification with a disruptionCron", &v1beta1.DisruptionCron{
+									TypeMeta: metav1.TypeMeta{
+										Kind: v1beta1.DisruptionCronKind,
+									},
+								}, types.NotificationInfo),
+								Entry("a completion notification with a disruptionCron", &v1beta1.DisruptionCron{
+									TypeMeta: metav1.TypeMeta{
+										Kind: v1beta1.DisruptionCronKind,
+									},
+								}, types.NotificationCompletion),
+								Entry("a unknown notification with a disruptionCron", &v1beta1.DisruptionCron{
+									TypeMeta: metav1.TypeMeta{
+										Kind: v1beta1.DisruptionCronKind,
+									},
+								}, types.NotificationUnknown),
+								Entry("a warning notification with a disruptionCron", &v1beta1.DisruptionCron{
+									TypeMeta: metav1.TypeMeta{
+										Kind: v1beta1.DisruptionCronKind,
+									},
+								}, types.NotificationWarning),
+								Entry("an error notification with a disruptionCron", &v1beta1.DisruptionCron{
+									TypeMeta: metav1.TypeMeta{
+										Kind: v1beta1.DisruptionCronKind,
+									},
+								}, types.NotificationError),
+							)
+						})
+
+						When("the UserInfo username and SlackUserEmail are configured but differ in value", func() {
+							DescribeTable("should prioritize utilizing the slackUserEmail", func(obj k8sclient.Object, notifType types.NotificationType) {
+								// Arrange
+
+								expectedUserInfo := v1.UserInfo{Username: "differingEmail@test.com"}
+								expectedSlackUserName := "jaden@test.com"
+								expectedReportingSlackChannel := "custom-slack-channel"
+								expectedReporting := &v1beta1.Reporting{
+									SlackChannel:   expectedReportingSlackChannel,
+									SlackUserEmail: expectedSlackUserName,
+								}
+
+								switch d := obj.(type) {
+								case *v1beta1.Disruption:
+									d.Spec.Reporting = expectedReporting
+									Expect(d.SetUserInfo(expectedUserInfo)).To(Succeed())
+								case *v1beta1.DisruptionCron:
+									d.Spec.Reporting = expectedReporting
+									Expect(d.SetUserInfo(expectedUserInfo)).To(Succeed())
+								}
+
+								By("not sending the message to the mirror slack channel")
+								slackNotifMock.AssertNotCalled(GinkgoT(), "PostMessage", defaultMirrorSlackChanelID, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+
+								By("sending the message to the slack chanel from the reporting configuration")
+								slackNotifMock.EXPECT().PostMessage(
+									expectedReportingSlackChannel,
+									mock.AnythingOfType("slack.MsgOption"),
+									mock.AnythingOfType("slack.MsgOption"),
+									mock.AnythingOfType("slack.MsgOption"),
+									mock.AnythingOfType("slack.MsgOption"),
+									mock.AnythingOfType("slack.MsgOption"),
+								).Return("", "", nil).Once()
+
+								expectedSlackUser := &slack.User{
+									ID:   uuid.New().String(),
+									Name: expectedSlackUserName,
+								}
+								slackNotifMock.EXPECT().GetUserByEmail(expectedSlackUserName).Return(expectedSlackUser, nil).Once()
+
+								By("sending the message to the slack user")
+								slackNotifMock.EXPECT().PostMessage(
+									expectedSlackUser.ID,
+									mock.AnythingOfType("slack.MsgOption"),
+									mock.AnythingOfType("slack.MsgOption"),
+									mock.AnythingOfType("slack.MsgOption"),
+									mock.AnythingOfType("slack.MsgOption"),
+									mock.AnythingOfType("slack.MsgOption"),
+								).Return("", "", nil).Once()
+
+								// Act
+								err := notifier.Notify(obj,
+									corev1.Event{},
+									notifType,
+								)
+
+								// Assert
+								Expect(err).ShouldNot(HaveOccurred())
+							},
+								Entry("a success notification with a disruption",
+									&v1beta1.Disruption{
+										TypeMeta: metav1.TypeMeta{
+											Kind: v1beta1.DisruptionKind,
+										},
+									},
+									types.NotificationSuccess,
+								),
+								Entry("a completion notification with a disruption",
+									&v1beta1.Disruption{
+										TypeMeta: metav1.TypeMeta{
+											Kind: v1beta1.DisruptionKind,
+										},
+									},
+									types.NotificationCompletion,
+								),
+
+								Entry("a unknown notification with a disruption",
+									&v1beta1.Disruption{
+										TypeMeta: metav1.TypeMeta{
+											Kind: v1beta1.DisruptionKind,
+										},
+									},
+									types.NotificationUnknown,
+								),
+
+								Entry("a warning notification with a disruption",
+									&v1beta1.Disruption{
+										TypeMeta: metav1.TypeMeta{
+											Kind: v1beta1.DisruptionKind,
+										},
+									},
+									types.NotificationWarning,
+								),
+
+								Entry("an error notification with a disruption",
+									&v1beta1.Disruption{
+										TypeMeta: metav1.TypeMeta{
+											Kind: v1beta1.DisruptionKind,
+										},
+									},
+									types.NotificationError,
+								),
+								Entry("a success notification with a disruptionCron", &v1beta1.DisruptionCron{
+									TypeMeta: metav1.TypeMeta{
+										Kind: v1beta1.DisruptionCronKind,
+									},
+								}, types.NotificationInfo),
+								Entry("a completion notification with a disruptionCron", &v1beta1.DisruptionCron{
+									TypeMeta: metav1.TypeMeta{
+										Kind: v1beta1.DisruptionCronKind,
+									},
+								}, types.NotificationCompletion),
+								Entry("a unknown notification with a disruptionCron", &v1beta1.DisruptionCron{
+									TypeMeta: metav1.TypeMeta{
+										Kind: v1beta1.DisruptionCronKind,
+									},
+								}, types.NotificationUnknown),
+								Entry("a warning notification with a disruptionCron", &v1beta1.DisruptionCron{
+									TypeMeta: metav1.TypeMeta{
+										Kind: v1beta1.DisruptionCronKind,
+									},
+								}, types.NotificationWarning),
+								Entry("an error notification with a disruptionCron", &v1beta1.DisruptionCron{
+									TypeMeta: metav1.TypeMeta{
+										Kind: v1beta1.DisruptionCronKind,
+									},
+								}, types.NotificationError),
+							)
+						})
 					})
 				})
 			})
 
 			When("the name of the user is not a valid address mail", func() {
-				DescribeTable("it should not return the error", func(obj k8sclient.Object) {
-					// Arrange
-					expectedUserInfo := v1.UserInfo{Username: "not-an-valid-email"}
-					switch d := obj.(type) {
-					case *v1beta1.Disruption:
-						Expect(d.SetUserInfo(expectedUserInfo)).To(Succeed())
-					case *v1beta1.DisruptionCron:
-						Expect(d.SetUserInfo(expectedUserInfo)).To(Succeed())
-					}
+				Context("with the slack configuration not in the resource and the invalid user is from userInfo", func() {
+					DescribeTable("it should not return the error", func(obj k8sclient.Object) {
 
-					By("not sending the message to the mirror slack channel")
-					slackNotifMock.AssertNotCalled(GinkgoT(), "PostMessage", defaultMirrorSlackChanelID, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+						// Arrange
+						expectedUserInfo := v1.UserInfo{Username: "not-an-valid-email"}
+						switch d := obj.(type) {
+						case *v1beta1.Disruption:
+							Expect(d.SetUserInfo(expectedUserInfo)).To(Succeed())
+						case *v1beta1.DisruptionCron:
+							Expect(d.SetUserInfo(expectedUserInfo)).To(Succeed())
+						}
 
-					// Act
-					err := notifier.Notify(obj,
-						corev1.Event{},
-						types.NotificationWarning,
+						By("not sending the message to the mirror slack channel")
+						slackNotifMock.AssertNotCalled(GinkgoT(), "PostMessage", defaultMirrorSlackChanelID, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+
+						// Act
+						err := notifier.Notify(obj,
+							corev1.Event{},
+							types.NotificationWarning,
+						)
+
+						// Assert
+						Expect(err).ShouldNot(HaveOccurred())
+					},
+						Entry("a disruption", &v1beta1.Disruption{
+							TypeMeta: metav1.TypeMeta{
+								Kind: v1beta1.DisruptionKind,
+							},
+						}),
+						Entry("a disruptionCron", &v1beta1.DisruptionCron{
+							TypeMeta: metav1.TypeMeta{
+								Kind: v1beta1.DisruptionCronKind,
+							},
+						}),
+					)
+				})
+
+				Context("with the slack configuration in the resource and slackUserEmail is not valid", func() {
+					DescribeTable("it should fallback to the userInfo user", func(obj k8sclient.Object, notifType types.NotificationType) {
+						expectedUserInfo := v1.UserInfo{Username: defaultUserInfoUserName}
+
+						expectedReporting := &v1beta1.Reporting{
+							SlackUserEmail: "invalid",
+						}
+
+						switch d := obj.(type) {
+						case *v1beta1.Disruption:
+							Expect(d.SetUserInfo(expectedUserInfo)).To(Succeed())
+							d.Spec.Reporting = expectedReporting
+						case *v1beta1.DisruptionCron:
+							Expect(d.SetUserInfo(expectedUserInfo)).To(Succeed())
+							d.Spec.Reporting = expectedReporting
+						}
+
+						By("not sending the message to the mirror slack channel")
+						slackNotifMock.AssertNotCalled(GinkgoT(), "PostMessage", defaultMirrorSlackChanelID, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+
+						expectedSlackUser := &slack.User{
+							ID:   uuid.New().String(),
+							Name: expectedUserInfo.Username,
+						}
+						slackNotifMock.EXPECT().GetUserByEmail(expectedUserInfo.Username).Return(expectedSlackUser, nil).Once()
+
+						By("sending the message to the user")
+						slackNotifMock.EXPECT().PostMessage(
+							expectedSlackUser.ID,
+							mock.AnythingOfType("slack.MsgOption"),
+							mock.AnythingOfType("slack.MsgOption"),
+							mock.AnythingOfType("slack.MsgOption"),
+							mock.AnythingOfType("slack.MsgOption"),
+							mock.AnythingOfType("slack.MsgOption"),
+						).Return("", "", nil).Once()
+
+						//Act
+						err := notifier.Notify(obj,
+							corev1.Event{},
+							notifType,
+						)
+
+						Expect(err).ShouldNot(HaveOccurred())
+
+					},
+						Entry("a success notification with a disruption", &v1beta1.Disruption{
+							TypeMeta: metav1.TypeMeta{
+								Kind: v1beta1.DisruptionKind,
+							},
+						}, types.NotificationSuccess),
+						Entry("a completion notification with a disruption", &v1beta1.Disruption{
+							TypeMeta: metav1.TypeMeta{
+								Kind: v1beta1.DisruptionKind,
+							},
+						}, types.NotificationCompletion),
+						Entry("a unknown notification with a disruption", &v1beta1.Disruption{
+							TypeMeta: metav1.TypeMeta{
+								Kind: v1beta1.DisruptionKind,
+							},
+						}, types.NotificationUnknown),
+						Entry("a warning notification with a disruption", &v1beta1.Disruption{
+							TypeMeta: metav1.TypeMeta{
+								Kind: v1beta1.DisruptionKind,
+							},
+						}, types.NotificationWarning),
+						Entry("an error notification with a disruption", &v1beta1.Disruption{
+							TypeMeta: metav1.TypeMeta{
+								Kind: v1beta1.DisruptionKind,
+							},
+						}, types.NotificationError),
+						Entry("a success notification with a disruptionCron", &v1beta1.DisruptionCron{
+							TypeMeta: metav1.TypeMeta{
+								Kind: v1beta1.DisruptionCronKind,
+							},
+						}, types.NotificationInfo),
+						Entry("a completion notification with a disruptionCron", &v1beta1.DisruptionCron{
+							TypeMeta: metav1.TypeMeta{
+								Kind: v1beta1.DisruptionCronKind,
+							},
+						}, types.NotificationCompletion),
+						Entry("a unknown notification with a disruptionCron", &v1beta1.DisruptionCron{
+							TypeMeta: metav1.TypeMeta{
+								Kind: v1beta1.DisruptionCronKind,
+							},
+						}, types.NotificationUnknown),
+						Entry("a warning notification with a disruptionCron", &v1beta1.DisruptionCron{
+							TypeMeta: metav1.TypeMeta{
+								Kind: v1beta1.DisruptionCronKind,
+							},
+						}, types.NotificationWarning),
+						Entry("an error notification with a disruptionCron", &v1beta1.DisruptionCron{
+							TypeMeta: metav1.TypeMeta{
+								Kind: v1beta1.DisruptionCronKind,
+							},
+						}, types.NotificationError),
 					)
 
-					// Assert
-					Expect(err).ShouldNot(HaveOccurred())
-				},
-					Entry("a disruption", &v1beta1.Disruption{
-						TypeMeta: metav1.TypeMeta{
-							Kind: v1beta1.DisruptionKind,
-						},
-					}),
-					Entry("a disruptionCron", &v1beta1.DisruptionCron{
-						TypeMeta: metav1.TypeMeta{
-							Kind: v1beta1.DisruptionCronKind,
-						},
-					}),
-				)
+				})
 			})
 		})
 
