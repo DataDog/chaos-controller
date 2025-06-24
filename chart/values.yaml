@@ -36,8 +36,8 @@ controller:
     noop:
       enabled: true
     slack:
-      enabled: true
-      tokenFilepath: /etc/chaos-controller/slack/token
+      enabled: false
+      tokenFilepath: ""
       mirrorSlackChannelId: ""
     datadog:
       enabled: false

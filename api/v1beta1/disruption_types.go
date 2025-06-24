@@ -136,15 +136,29 @@ type Reporting struct {
 	// SlackUserEmail is the email of the user to send reporting information to
 	// +kubebuilder:validation:MaxLength=320
 	// +kubebuilder:validation:Pattern=(^[a-z0-9-_]+$)|(^C[A-Z0-9]+$)
-	SlackUserEmail string `json:"slackUserEmail,omitempty"`
+	SlackUserEmail string `json:"slackUserEmail,omitempty" chaos_validate:"email"`
 }
 
 func (r *Reporting) Explain() string {
-	return fmt.Sprintf("While the disruption is ongoing, it will send slack messages for every event of severity %s or higher, "+
-		"to the slack channel with the ID (not name) %s, mentioning the purpose \"%s\"",
-		r.MinNotificationType,
-		r.SlackChannel,
-		r.Purpose)
+	parts := []string{"While the disruption is ongoing, it will send Slack messages"}
+
+	if r.MinNotificationType != "" {
+		parts = append(parts, fmt.Sprintf("for every event of severity %s or higher", r.MinNotificationType))
+	}
+
+	if r.SlackChannel != "" {
+		parts = append(parts, fmt.Sprintf("to the Slack channel with the ID (not name) %s", r.SlackChannel))
+	}
+
+	if r.SlackUserEmail != "" {
+		parts = append(parts, fmt.Sprintf("and user %s", r.SlackUserEmail))
+	}
+
+	if r.Purpose != "" {
+		parts = append(parts, fmt.Sprintf("mentioning the purpose \"%s\"", r.Purpose))
+	}
+
+	return strings.Join(parts, ", ") + "."
 }
 
 // EmbeddedChaosAPI includes the library so it can be statically exported to chaosli
