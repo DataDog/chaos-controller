@@ -135,7 +135,7 @@ type Reporting struct {
 	MinNotificationType eventtypes.NotificationType `json:"minNotificationType,omitempty"`
 	// SlackUserEmail is the email of the user to send reporting information to
 	// +kubebuilder:validation:MaxLength=320
-	SlackUserEmail string `json:"slackUserEmail,omitempty" chaos_validate:"email"`
+	SlackUserEmail string `json:"slackUserEmail,omitempty" chaos_validate:"omitempty,email"`
 }
 
 func (r *Reporting) Explain() string {
