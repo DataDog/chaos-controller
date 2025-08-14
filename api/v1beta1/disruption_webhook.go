@@ -448,6 +448,12 @@ func (r *Disruption) initialSafetyNets() ([]string, error) {
 		responses = append(responses, "node failure disruptions are not allowed in this cluster, please use a disruption type or test elsewhere")
 	}
 
+	if !allowNodeLevel && r.Spec.NodeReplacement != nil {
+		logger.Debugw("the specified disruption is attempting a node replacement and will be rejected")
+
+		responses = append(responses, "node replacement disruptions are not allowed in this cluster as they require node level permissions, please enable allowNodeLevel or test elsewhere")
+	}
+
 	if !allowNodeLevel && r.Spec.Level == chaostypes.DisruptionLevelNode {
 		logger.Debugw("the specified disruption is applied at the node level and will be rejected")
 

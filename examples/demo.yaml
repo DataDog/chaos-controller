@@ -173,3 +173,66 @@ spec:
       protocol: TCP
   selector:
     app: demo-nginx
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: demo-storage
+  namespace: chaos-demo
+  labels:
+    app: demo-storage
+spec:
+  replicas: 1
+  serviceName: demo-storage
+  selector:
+    matchLabels:
+      app: demo-storage
+  template:
+    metadata:
+      labels:
+        app: demo-storage
+    spec:
+      containers:
+        - name: storage-monitor
+          image: alpine:latest
+          command: ["/bin/sh"]
+          args:
+            - -c
+            - |
+              echo "Storage monitoring container started"
+              # Create a test file to demonstrate persistence
+              echo "demo-storage-$(date)" > /mnt/shared/storage-info.txt
+              # Keep container running and periodically update the file
+              while true; do
+                echo "$(date): Storage is available" >> /mnt/shared/heartbeat.log
+                sleep 30
+              done
+          volumeMounts:
+            - mountPath: /mnt/shared
+              name: shared-storage
+          resources:
+            limits:
+              memory: 16Mi
+              cpu: 10m
+            requests:
+              memory: 16Mi
+              cpu: 10m
+  volumeClaimTemplates:
+    - metadata:
+        name: shared-storage
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-storage
+  namespace: chaos-demo
+spec:
+  clusterIP: None
+  selector:
+    app: demo-storage
