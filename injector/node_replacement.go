@@ -25,7 +25,6 @@ type nodeReplacementInjector struct {
 	k8sClientset    kubernetes.Interface
 	nodeName        string
 	cordoned        bool
-	processedPodUID string // UID of the pod we've already processed
 }
 
 // NodeReplacementInjectorConfig contains needed drivers to
@@ -50,7 +49,6 @@ func NewNodeReplacementInjector(spec v1beta1.NodeReplacementSpec, config NodeRep
 		k8sClientset:    config.K8sClient,
 		nodeName:        config.Disruption.TargetNodeName,
 		cordoned:        false,
-		processedPodUID: "",
 	}, nil
 }
 
@@ -81,40 +79,11 @@ func (i *nodeReplacementInjector) Inject() error {
 	// Step 2: Get the target pod and check if we've already processed it
 	targetPod, err := i.getTargetPod(ctx)
 	if err != nil {
-		// If we've already processed a pod before and now can't find the target,
-		// then the replacement already happened successfully
-		if i.processedPodUID != "" && fmt.Sprintf("%v", err) == fmt.Sprintf("target pod with IP %s not found on node %s", i.config.Disruption.TargetPodIP, i.nodeName) {
-			i.config.Log.Infow("target pod not found, node replacement already completed", "nodeName", i.nodeName, "processedPodUID", i.processedPodUID)
-			return nil
-		}
 		return fmt.Errorf("failed to get target pod: %w", err)
-	}
-
-	// Check if we've already processed this specific pod instance
-	if i.processedPodUID != "" && i.processedPodUID == string(targetPod.UID) {
-		i.config.Log.Infow("pod already processed, node replacement already completed", 
-			"nodeName", i.nodeName, 
-			"podName", targetPod.Name, 
-			"podUID", targetPod.UID,
-		)
-		return nil
-	}
-
-	// If we've already processed a different pod before, this is also idempotent completion
-	if i.processedPodUID != "" && i.processedPodUID != string(targetPod.UID) {
-		i.config.Log.Infow("different pod already processed, node replacement already completed", 
-			"nodeName", i.nodeName, 
-			"foundPodName", targetPod.Name, 
-			"foundPodUID", targetPod.UID,
-			"processedPodUID", i.processedPodUID,
-		)
-		return nil
 	}
 
 	i.config.Log.Infow("found target pod", "nodeName", i.nodeName, "podName", targetPod.Name, "podNamespace", targetPod.Namespace, "podUID", targetPod.UID)
 
-	// Remember this pod UID so we don't process it again
-	i.processedPodUID = string(targetPod.UID)
 
 	// Step 3: Delete PVCs if requested
 	if i.spec.DeleteStorage {
