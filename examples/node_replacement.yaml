@@ -13,7 +13,6 @@ spec:
   selector:
     app: demo-storage # target the StatefulSet pod which will auto-recreate its PVC
   count: 1
-  duration: 5m # duration for the disruption to remain active
   maxRuns: 1 # perform only 1 node replacement, then become idle
   nodeReplacement: # replace the target node by cordoning, deleting PVCs, and killing pods
     deleteStorage: true # delete PVCs associated with pods (default: true)

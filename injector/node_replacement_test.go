@@ -144,48 +144,172 @@ var _ = Describe("NodeReplacement", func() {
 			Expect(inj).ToNot(BeNil())
 		})
 
-	Describe("GetDisruptionKind", func() {
-		It("should return the correct disruption kind", func() {
-			Expected := chaostypes.DisruptionKindNodeReplacement
-			Actual := inj.GetDisruptionKind()
-			Expect(string(Actual)).To(Equal(string(Expected)))
-		})
-	})
-
-	Describe("TargetName", func() {
-		It("should return the target node name", func() {
-			Expect(inj.TargetName()).To(Equal(nodeName))
-		})
-	})
-
-	Describe("injection", func() {
-		JustBeforeEach(func() {
-			Expect(inj.Inject()).To(Succeed())
+		Describe("GetDisruptionKind", func() {
+			It("should return the correct disruption kind", func() {
+				Expected := chaostypes.DisruptionKindNodeReplacement
+				Actual := inj.GetDisruptionKind()
+				Expect(string(Actual)).To(Equal(string(Expected)))
+			})
 		})
 
-		Context("with default settings", func() {
-			It("should cordon the node", func() {
+		Describe("TargetName", func() {
+			It("should return the target node name", func() {
+				Expect(inj.TargetName()).To(Equal(nodeName))
+			})
+		})
+
+		Describe("injection", func() {
+			JustBeforeEach(func() {
+				Expect(inj.Inject()).To(Succeed())
+			})
+
+			Context("with default settings", func() {
+				It("should cordon the node", func() {
+					node, err := k8sClient.CoreV1().Nodes().Get(context.Background(), nodeName, metav1.GetOptions{})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(node.Spec.Unschedulable).To(BeTrue())
+				})
+
+				It("should delete the PVC when deleteStorage is true", func() {
+					_, err := k8sClient.CoreV1().PersistentVolumeClaims(namespace).Get(context.Background(), pvcName, metav1.GetOptions{})
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("not found"))
+				})
+
+				It("should delete the target pod", func() {
+					_, err := k8sClient.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("not found"))
+				})
+			})
+
+			Context("with deleteStorage disabled", func() {
+				BeforeEach(func() {
+					spec.DeleteStorage = false
+				})
+
+				It("should not delete the PVC", func() {
+					pvc, err := k8sClient.CoreV1().PersistentVolumeClaims(namespace).Get(context.Background(), pvcName, metav1.GetOptions{})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(pvc.Name).To(Equal(pvcName))
+				})
+
+				It("should still delete the target pod", func() {
+					_, err := k8sClient.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("not found"))
+				})
+			})
+
+			Context("with force delete enabled", func() {
+				BeforeEach(func() {
+					spec.ForceDelete = true
+				})
+
+				It("should delete the pod with zero grace period", func() {
+					// In a real cluster, this would use grace period 0, but fake client doesn't track this
+					// We verify the pod is deleted, which indicates the delete call was made
+					_, err := k8sClient.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("not found"))
+				})
+			})
+
+			Context("with custom grace period", func() {
+				var gracePeriod int64 = 30
+
+				BeforeEach(func() {
+					spec.GracePeriodSeconds = &gracePeriod
+				})
+
+				It("should delete the pod with custom grace period", func() {
+					// In a real cluster, this would use the custom grace period, but fake client doesn't track this
+					// We verify the pod is deleted, which indicates the delete call was made
+					_, err := k8sClient.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("not found"))
+				})
+			})
+		})
+
+		Describe("idempotency", func() {
+			Context("when the target pod no longer exists", func() {
+				JustBeforeEach(func() {
+					// First injection should work normally
+					Expect(inj.Inject()).To(Succeed())
+
+					// Create a new pod with same IP but different UID (simulating StatefulSet recreation)
+					newPod := targetPod.DeepCopy()
+					newPod.UID = types.UID("new-pod-uid-456")
+					_, err := k8sClient.CoreV1().Pods(namespace).Create(context.Background(), newPod, metav1.CreateOptions{})
+					Expect(err).ToNot(HaveOccurred())
+
+					// Second injection should be idempotent (not process the new pod with same IP)
+					Expect(inj.Inject()).To(Succeed())
+				})
+
+				It("should not process the same pod UID twice", func() {
+					// Verify the new pod still exists (wasn't processed again)
+					pod, err := k8sClient.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(string(pod.UID)).To(Equal("new-pod-uid-456"))
+				})
+			})
+		})
+
+		Describe("error handling", func() {
+			Context("when target pod IP is missing", func() {
+				BeforeEach(func() {
+					config.Disruption.TargetPodIP = ""
+				})
+
+				It("should return an error during injection", func() {
+					err := inj.Inject()
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("target pod IP is required"))
+				})
+			})
+
+			Context("when target pod does not exist", func() {
+				BeforeEach(func() {
+					config.Disruption.TargetPodIP = "1.2.3.4" // Non-existent pod IP
+				})
+
+				It("should return an error during injection", func() {
+					err := inj.Inject()
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("target pod with IP 1.2.3.4 not found"))
+				})
+			})
+
+			Context("when node does not exist", func() {
+				BeforeEach(func() {
+					// Delete the node to simulate missing node
+					err := k8sClient.CoreV1().Nodes().Delete(context.Background(), nodeName, metav1.DeleteOptions{})
+					Expect(err).ToNot(HaveOccurred())
+				})
+
+				It("should return an error during injection", func() {
+					err := inj.Inject()
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("failed to get node"))
+				})
+			})
+		})
+
+		Describe("dry run mode", func() {
+			BeforeEach(func() {
+				config.Disruption.DryRun = true
+			})
+
+			JustBeforeEach(func() {
+				Expect(inj.Inject()).To(Succeed())
+			})
+
+			It("should not actually cordon the node", func() {
 				node, err := k8sClient.CoreV1().Nodes().Get(context.Background(), nodeName, metav1.GetOptions{})
 				Expect(err).ToNot(HaveOccurred())
-				Expect(node.Spec.Unschedulable).To(BeTrue())
-			})
-
-			It("should delete the PVC when deleteStorage is true", func() {
-				_, err := k8sClient.CoreV1().PersistentVolumeClaims(namespace).Get(context.Background(), pvcName, metav1.GetOptions{})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("not found"))
-			})
-
-			It("should delete the target pod", func() {
-				_, err := k8sClient.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("not found"))
-			})
-		})
-
-		Context("with deleteStorage disabled", func() {
-			BeforeEach(func() {
-				spec.DeleteStorage = false
+				Expect(node.Spec.Unschedulable).To(BeFalse())
 			})
 
 			It("should not delete the PVC", func() {
@@ -194,188 +318,64 @@ var _ = Describe("NodeReplacement", func() {
 				Expect(pvc.Name).To(Equal(pvcName))
 			})
 
-			It("should still delete the target pod", func() {
-				_, err := k8sClient.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("not found"))
-			})
-		})
-
-		Context("with force delete enabled", func() {
-			BeforeEach(func() {
-				spec.ForceDelete = true
-			})
-
-			It("should delete the pod with zero grace period", func() {
-				// In a real cluster, this would use grace period 0, but fake client doesn't track this
-				// We verify the pod is deleted, which indicates the delete call was made
-				_, err := k8sClient.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("not found"))
-			})
-		})
-
-		Context("with custom grace period", func() {
-			var gracePeriod int64 = 30
-
-			BeforeEach(func() {
-				spec.GracePeriodSeconds = &gracePeriod
-			})
-
-			It("should delete the pod with custom grace period", func() {
-				// In a real cluster, this would use the custom grace period, but fake client doesn't track this
-				// We verify the pod is deleted, which indicates the delete call was made
-				_, err := k8sClient.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("not found"))
-			})
-		})
-	})
-
-	Describe("idempotency", func() {
-		Context("when the target pod no longer exists", func() {
-			JustBeforeEach(func() {
-				// First injection should work normally
-				Expect(inj.Inject()).To(Succeed())
-
-				// Create a new pod with same IP but different UID (simulating StatefulSet recreation)
-				newPod := targetPod.DeepCopy()
-				newPod.UID = types.UID("new-pod-uid-456")
-				_, err := k8sClient.CoreV1().Pods(namespace).Create(context.Background(), newPod, metav1.CreateOptions{})
-				Expect(err).ToNot(HaveOccurred())
-
-				// Second injection should be idempotent (not process the new pod with same IP)
-				Expect(inj.Inject()).To(Succeed())
-			})
-
-			It("should not process the same pod UID twice", func() {
-				// Verify the new pod still exists (wasn't processed again)
+			It("should not delete the pod", func() {
 				pod, err := k8sClient.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
 				Expect(err).ToNot(HaveOccurred())
-				Expect(string(pod.UID)).To(Equal("new-pod-uid-456"))
-			})
-		})
-	})
-
-	Describe("error handling", func() {
-		Context("when target pod IP is missing", func() {
-			BeforeEach(func() {
-				config.Disruption.TargetPodIP = ""
-			})
-
-			It("should return an error during injection", func() {
-				err := inj.Inject()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("target pod IP is required"))
+				Expect(pod.Name).To(Equal(podName))
 			})
 		})
 
-		Context("when target pod does not exist", func() {
-			BeforeEach(func() {
-				config.Disruption.TargetPodIP = "1.2.3.4" // Non-existent pod IP
+		Describe("cleanup", func() {
+			Context("when node was cordoned by this injector", func() {
+				JustBeforeEach(func() {
+					// Inject first to cordon the node
+					Expect(inj.Inject()).To(Succeed())
+
+					// Verify node is cordoned
+					node, err := k8sClient.CoreV1().Nodes().Get(context.Background(), nodeName, metav1.GetOptions{})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(node.Spec.Unschedulable).To(BeTrue())
+
+					// Now clean up
+					Expect(inj.Clean()).To(Succeed())
+				})
+
+				It("should uncordon the node", func() {
+					node, err := k8sClient.CoreV1().Nodes().Get(context.Background(), nodeName, metav1.GetOptions{})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(node.Spec.Unschedulable).To(BeFalse())
+				})
 			})
 
-			It("should return an error during injection", func() {
-				err := inj.Inject()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("target pod with IP 1.2.3.4 not found"))
-			})
-		})
+			Context("when node was already uncordoned", func() {
+				BeforeEach(func() {
+					// Ensure node starts uncordoned
+					targetNode.Spec.Unschedulable = false
+				})
 
-		Context("when node does not exist", func() {
-			BeforeEach(func() {
-				// Delete the node to simulate missing node
-				err := k8sClient.CoreV1().Nodes().Delete(context.Background(), nodeName, metav1.DeleteOptions{})
-				Expect(err).ToNot(HaveOccurred())
+				It("should not return an error", func() {
+					Expect(inj.Clean()).To(Succeed())
+				})
 			})
 
-			It("should return an error during injection", func() {
-				err := inj.Inject()
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to get node"))
-			})
-		})
-	})
+			Context("in dry run mode", func() {
+				BeforeEach(func() {
+					config.Disruption.DryRun = true
+				})
 
-	Describe("dry run mode", func() {
-		BeforeEach(func() {
-			config.Disruption.DryRun = true
-		})
+				JustBeforeEach(func() {
+					// Inject and clean in dry run mode
+					Expect(inj.Inject()).To(Succeed())
+					Expect(inj.Clean()).To(Succeed())
+				})
 
-		JustBeforeEach(func() {
-			Expect(inj.Inject()).To(Succeed())
-		})
-
-		It("should not actually cordon the node", func() {
-			node, err := k8sClient.CoreV1().Nodes().Get(context.Background(), nodeName, metav1.GetOptions{})
-			Expect(err).ToNot(HaveOccurred())
-			Expect(node.Spec.Unschedulable).To(BeFalse())
-		})
-
-		It("should not delete the PVC", func() {
-			pvc, err := k8sClient.CoreV1().PersistentVolumeClaims(namespace).Get(context.Background(), pvcName, metav1.GetOptions{})
-			Expect(err).ToNot(HaveOccurred())
-			Expect(pvc.Name).To(Equal(pvcName))
-		})
-
-		It("should not delete the pod", func() {
-			pod, err := k8sClient.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
-			Expect(err).ToNot(HaveOccurred())
-			Expect(pod.Name).To(Equal(podName))
-		})
-	})
-
-	Describe("cleanup", func() {
-		Context("when node was cordoned by this injector", func() {
-			JustBeforeEach(func() {
-				// Inject first to cordon the node
-				Expect(inj.Inject()).To(Succeed())
-
-				// Verify node is cordoned
-				node, err := k8sClient.CoreV1().Nodes().Get(context.Background(), nodeName, metav1.GetOptions{})
-				Expect(err).ToNot(HaveOccurred())
-				Expect(node.Spec.Unschedulable).To(BeTrue())
-
-				// Now clean up
-				Expect(inj.Clean()).To(Succeed())
-			})
-
-			It("should uncordon the node", func() {
-				node, err := k8sClient.CoreV1().Nodes().Get(context.Background(), nodeName, metav1.GetOptions{})
-				Expect(err).ToNot(HaveOccurred())
-				Expect(node.Spec.Unschedulable).To(BeFalse())
+				It("should not modify the node", func() {
+					node, err := k8sClient.CoreV1().Nodes().Get(context.Background(), nodeName, metav1.GetOptions{})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(node.Spec.Unschedulable).To(BeFalse())
+				})
 			})
 		})
-
-		Context("when node was already uncordoned", func() {
-			BeforeEach(func() {
-				// Ensure node starts uncordoned
-				targetNode.Spec.Unschedulable = false
-			})
-
-			It("should not return an error", func() {
-				Expect(inj.Clean()).To(Succeed())
-			})
-		})
-
-		Context("in dry run mode", func() {
-			BeforeEach(func() {
-				config.Disruption.DryRun = true
-			})
-
-			JustBeforeEach(func() {
-				// Inject and clean in dry run mode
-				Expect(inj.Inject()).To(Succeed())
-				Expect(inj.Clean()).To(Succeed())
-			})
-
-			It("should not modify the node", func() {
-				node, err := k8sClient.CoreV1().Nodes().Get(context.Background(), nodeName, metav1.GetOptions{})
-				Expect(err).ToNot(HaveOccurred())
-				Expect(node.Spec.Unschedulable).To(BeFalse())
-			})
-		})
-	})
 
 	}) // End of "with valid config" context
 })

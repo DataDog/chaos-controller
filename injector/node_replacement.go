@@ -20,11 +20,11 @@ import (
 
 // nodeReplacementInjector describes a node replacement injector
 type nodeReplacementInjector struct {
-	spec            v1beta1.NodeReplacementSpec
-	config          NodeReplacementInjectorConfig
-	k8sClientset    kubernetes.Interface
-	nodeName        string
-	cordoned        bool
+	spec         v1beta1.NodeReplacementSpec
+	config       NodeReplacementInjectorConfig
+	k8sClientset kubernetes.Interface
+	nodeName     string
+	cordoned     bool
 }
 
 // NodeReplacementInjectorConfig contains needed drivers to
@@ -44,11 +44,11 @@ func NewNodeReplacementInjector(spec v1beta1.NodeReplacementSpec, config NodeRep
 	}
 
 	return &nodeReplacementInjector{
-		spec:            spec,
-		config:          config,
-		k8sClientset:    config.K8sClient,
-		nodeName:        config.Disruption.TargetNodeName,
-		cordoned:        false,
+		spec:         spec,
+		config:       config,
+		k8sClientset: config.K8sClient,
+		nodeName:     config.Disruption.TargetNodeName,
+		cordoned:     false,
 	}, nil
 }
 
@@ -84,7 +84,6 @@ func (i *nodeReplacementInjector) Inject() error {
 
 	i.config.Log.Infow("found target pod", "nodeName", i.nodeName, "podName", targetPod.Name, "podNamespace", targetPod.Namespace, "podUID", targetPod.UID)
 
-
 	// Step 3: Delete PVCs if requested
 	if i.spec.DeleteStorage {
 		if err := i.deletePVCs(ctx, []corev1.Pod{*targetPod}); err != nil {
@@ -97,7 +96,7 @@ func (i *nodeReplacementInjector) Inject() error {
 		return fmt.Errorf("failed to delete target pod: %w", err)
 	}
 
-	i.config.Log.Infow("node replacement injection completed successfully", 
+	i.config.Log.Infow("node replacement injection completed successfully",
 		"nodeName", i.nodeName,
 	)
 
