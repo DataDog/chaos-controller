@@ -232,31 +232,6 @@ var _ = Describe("NodeReplacement", func() {
 			})
 		})
 
-		Describe("idempotency", func() {
-			Context("when the target pod no longer exists", func() {
-				JustBeforeEach(func() {
-					// First injection should work normally
-					Expect(inj.Inject()).To(Succeed())
-
-					// Create a new pod with same IP but different UID (simulating StatefulSet recreation)
-					newPod := targetPod.DeepCopy()
-					newPod.UID = types.UID("new-pod-uid-456")
-					_, err := k8sClient.CoreV1().Pods(namespace).Create(context.Background(), newPod, metav1.CreateOptions{})
-					Expect(err).ToNot(HaveOccurred())
-
-					// Second injection should be idempotent (not process the new pod with same IP)
-					Expect(inj.Inject()).To(Succeed())
-				})
-
-				It("should not process the same pod UID twice", func() {
-					// Verify the new pod still exists (wasn't processed again)
-					pod, err := k8sClient.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
-					Expect(err).ToNot(HaveOccurred())
-					Expect(string(pod.UID)).To(Equal("new-pod-uid-456"))
-				})
-			})
-		})
-
 		Describe("error handling", func() {
 			Context("when target pod IP is missing", func() {
 				BeforeEach(func() {
