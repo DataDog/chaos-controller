@@ -7,9 +7,9 @@ package v1beta1
 
 import "strconv"
 
-// NodeReplacementSpec represents a node replacement disruption
-type NodeReplacementSpec struct {
-	// DeleteStorage determines if PVCs associated with pods on the target node should be deleted
+// PodReplacementSpec represents a pod replacement disruption
+type PodReplacementSpec struct {
+	// DeleteStorage determines if PVCs associated with the target pod should be deleted
 	// +kubebuilder:default=true
 	DeleteStorage bool `json:"deleteStorage,omitempty"`
 	// ForceDelete forces deletion of stuck pods by setting grace period to 0
@@ -20,14 +20,14 @@ type NodeReplacementSpec struct {
 }
 
 // Validate validates args for the given disruption
-func (s *NodeReplacementSpec) Validate() error {
+func (s *PodReplacementSpec) Validate() error {
 	return nil
 }
 
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
-func (s *NodeReplacementSpec) GenerateArgs() []string {
+func (s *PodReplacementSpec) GenerateArgs() []string {
 	args := []string{
-		"node-replacement",
+		"pod-replacement",
 		"inject",
 	}
 
@@ -46,16 +46,16 @@ func (s *NodeReplacementSpec) GenerateArgs() []string {
 	return args
 }
 
-func (s *NodeReplacementSpec) Explain() []string {
-	explanation := "spec.nodeReplacement will cordon the target node to prevent new pods from being scheduled, " +
-		"then delete pods running on that node to force them to reschedule on other nodes. "
+func (s *PodReplacementSpec) Explain() []string {
+	explanation := "spec.podReplacement will cordon the node hosting the target pod to prevent new pods from being scheduled, " +
+		"then delete the target pod to force it to reschedule. "
 
 	if s.DeleteStorage {
-		explanation += "PersistentVolumeClaims associated with the pods will also be deleted to simulate complete storage loss. "
+		explanation += "PersistentVolumeClaims associated with the pod will also be deleted to simulate complete storage loss. "
 	}
 
-	explanation += "This simulates a complete node replacement scenario where both compute and storage are lost. " +
-		"This will affect ALL pods on the target node."
+	explanation += "This simulates a complete pod replacement scenario where both the pod and its storage are recreated. " +
+		"Unlike node-level disruptions, this only affects the specifically targeted pod."
 
 	return []string{"", explanation}
 }

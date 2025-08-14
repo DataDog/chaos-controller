@@ -13,9 +13,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var nodeReplacementCmd = &cobra.Command{
-	Use:   "node-replacement",
-	Short: "Node replacement subcommands",
+var podReplacementCmd = &cobra.Command{
+	Use:   "pod-replacement",
+	Short: "Pod replacement subcommands",
 	Run:   injectAndWait,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		deleteStorage, _ := cmd.Flags().GetBool("delete-storage")
@@ -23,7 +23,7 @@ var nodeReplacementCmd = &cobra.Command{
 		gracePeriodSecondsStr, _ := cmd.Flags().GetString("grace-period-seconds")
 
 		// prepare spec
-		spec := v1beta1.NodeReplacementSpec{
+		spec := v1beta1.PodReplacementSpec{
 			DeleteStorage: deleteStorage,
 			ForceDelete:   forceDelete,
 		}
@@ -38,13 +38,13 @@ var nodeReplacementCmd = &cobra.Command{
 
 		// create injector
 		for _, config := range configs {
-			nodeReplacementConfig := injector.NodeReplacementInjectorConfig{
+			podReplacementConfig := injector.PodReplacementInjectorConfig{
 				Config: config,
 			}
 
-			inj, err := injector.NewNodeReplacementInjector(spec, nodeReplacementConfig)
+			inj, err := injector.NewPodReplacementInjector(spec, podReplacementConfig)
 			if err != nil {
-				log.Fatalw("error creating the node replacement injector", "error", err)
+				log.Fatalw("error creating the pod replacement injector", "error", err)
 			}
 
 			injectors = append(injectors, inj)
@@ -53,7 +53,7 @@ var nodeReplacementCmd = &cobra.Command{
 }
 
 func init() {
-	nodeReplacementCmd.Flags().Bool("delete-storage", true, "If specified, PVCs associated with pods on the node will be deleted")
-	nodeReplacementCmd.Flags().Bool("force-delete", false, "If specified, pods will be force deleted (grace period 0)")
-	nodeReplacementCmd.Flags().String("grace-period-seconds", "", "Grace period in seconds for pod deletion")
+	podReplacementCmd.Flags().Bool("delete-storage", true, "If specified, PVCs associated with the target pod will be deleted")
+	podReplacementCmd.Flags().Bool("force-delete", false, "If specified, the pod will be force deleted (grace period 0)")
+	podReplacementCmd.Flags().String("grace-period-seconds", "", "Grace period in seconds for pod deletion")
 }

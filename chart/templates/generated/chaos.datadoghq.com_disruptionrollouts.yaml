@@ -497,13 +497,15 @@ spec:
                         shutdown:
                           type: boolean
                       type: object
-                    nodeReplacement:
-                      description: NodeReplacementSpec represents a node replacement disruption
+                    onInit:
+                      type: boolean
+                    podReplacement:
+                      description: PodReplacementSpec represents a pod replacement disruption
                       nullable: true
                       properties:
                         deleteStorage:
                           default: true
-                          description: DeleteStorage determines if PVCs associated with pods on the target node should be deleted
+                          description: DeleteStorage determines if PVCs associated with the target pod should be deleted
                           type: boolean
                         forceDelete:
                           description: ForceDelete forces deletion of stuck pods by setting grace period to 0
@@ -515,8 +517,6 @@ spec:
                           format: int64
                           type: integer
                       type: object
-                    onInit:
-                      type: boolean
                     pulse:
                       description: DisruptionPulse contains the active disruption duration and the dormant disruption duration
                       nullable: true

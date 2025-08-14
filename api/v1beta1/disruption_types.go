@@ -84,7 +84,7 @@ type DisruptionSpec struct {
 	// +nullable
 	GRPC *GRPCDisruptionSpec `json:"grpc,omitempty"`
 	// +nullable
-	NodeReplacement *NodeReplacementSpec `json:"nodeReplacement,omitempty"`
+	PodReplacement *PodReplacementSpec `json:"podReplacement,omitempty"`
 	// +nullable
 	Reporting *Reporting `json:"reporting,omitempty"`
 }
@@ -694,24 +694,24 @@ func (s DisruptionSpec) validateGlobalDisruptionScope(requireSelectors bool) (re
 	}
 
 	// Rule: At least one disruption kind must be applied
-	if s.CPUPressure == nil && s.DiskPressure == nil && s.DiskFailure == nil && s.Network == nil && s.GRPC == nil && s.ContainerFailure == nil && s.NodeFailure == nil && s.NodeReplacement == nil && len(s.DNS) == 0 {
+	if s.CPUPressure == nil && s.DiskPressure == nil && s.DiskFailure == nil && s.Network == nil && s.GRPC == nil && s.ContainerFailure == nil && s.NodeFailure == nil && s.PodReplacement == nil && len(s.DNS) == 0 {
 		retErr = multierror.Append(retErr, errors.New("at least one disruption kind must be specified, please read the docs to see your options"))
 	}
 
-	// Rule: ContainerFailure, NodeFailure, and NodeReplacement disruptions are not compatible with other failure types
+	// Rule: ContainerFailure, NodeFailure, and PodReplacement disruptions are not compatible with other failure types
 	if s.ContainerFailure != nil {
-		if s.CPUPressure != nil || s.DiskPressure != nil || s.DiskFailure != nil || s.Network != nil || s.GRPC != nil || s.NodeFailure != nil || s.NodeReplacement != nil || len(s.DNS) > 0 {
+		if s.CPUPressure != nil || s.DiskPressure != nil || s.DiskFailure != nil || s.Network != nil || s.GRPC != nil || s.NodeFailure != nil || s.PodReplacement != nil || len(s.DNS) > 0 {
 			retErr = multierror.Append(retErr, errors.New("container failure disruptions are not compatible with other disruption kinds. The container failure will remove the impact of the other disruption types"))
 		}
 	}
 
 	if s.NodeFailure != nil {
-		if s.CPUPressure != nil || s.DiskPressure != nil || s.DiskFailure != nil || s.Network != nil || s.GRPC != nil || s.ContainerFailure != nil || s.NodeReplacement != nil || len(s.DNS) > 0 {
+		if s.CPUPressure != nil || s.DiskPressure != nil || s.DiskFailure != nil || s.Network != nil || s.GRPC != nil || s.ContainerFailure != nil || s.PodReplacement != nil || len(s.DNS) > 0 {
 			retErr = multierror.Append(retErr, errors.New("node failure disruptions are not compatible with other disruption kinds. The node failure will remove the impact of the other disruption types"))
 		}
 	}
 
-	if s.NodeReplacement != nil {
+	if s.PodReplacement != nil {
 		if s.CPUPressure != nil || s.DiskPressure != nil || s.DiskFailure != nil || s.Network != nil || s.GRPC != nil || s.ContainerFailure != nil || s.NodeFailure != nil || len(s.DNS) > 0 {
 			retErr = multierror.Append(retErr, errors.New("node replacement disruptions are not compatible with other disruption kinds. The node replacement will remove the impact of the other disruption types"))
 		}
@@ -721,7 +721,7 @@ func (s DisruptionSpec) validateGlobalDisruptionScope(requireSelectors bool) (re
 	if s.OnInit {
 		if s.CPUPressure != nil ||
 			s.NodeFailure != nil ||
-			s.NodeReplacement != nil ||
+			s.PodReplacement != nil ||
 			s.ContainerFailure != nil ||
 			s.DiskPressure != nil ||
 			s.GRPC != nil ||
@@ -771,7 +771,7 @@ func (s DisruptionSpec) validateGlobalDisruptionScope(requireSelectors bool) (re
 	// Rule: pulse compatibility
 	if s.Pulse != nil {
 		if s.Pulse.ActiveDuration.Duration() > 0 || s.Pulse.DormantDuration.Duration() > 0 {
-			if s.NodeFailure != nil || s.NodeReplacement != nil || s.ContainerFailure != nil {
+			if s.NodeFailure != nil || s.PodReplacement != nil || s.ContainerFailure != nil {
 				retErr = multierror.Append(retErr, errors.New("pulse is only compatible with network, cpu pressure, disk pressure, dns and grpc disruptions"))
 			}
 		}
@@ -826,8 +826,8 @@ func (s DisruptionSpec) DisruptionKindPicker(kind chaostypes.DisruptionKindName)
 		disruptionKind = s.DNS
 	case chaostypes.DisruptionKindGRPCDisruption:
 		disruptionKind = s.GRPC
-	case chaostypes.DisruptionKindNodeReplacement:
-		disruptionKind = s.NodeReplacement
+	case chaostypes.DisruptionKindPodReplacement:
+		disruptionKind = s.PodReplacement
 	case chaostypes.DisruptionKindDiskFailure:
 		disruptionKind = s.DiskFailure
 	}
@@ -908,7 +908,7 @@ func (s DisruptionSpec) DisruptionCount() int {
 		count++
 	}
 
-	if s.NodeReplacement != nil {
+	if s.PodReplacement != nil {
 		count++
 	}
 
@@ -1043,8 +1043,8 @@ func (s DisruptionSpec) Explain() []string {
 		explanation = append(explanation, s.NodeFailure.Explain()...)
 	}
 
-	if s.NodeReplacement != nil {
-		explanation = append(explanation, s.NodeReplacement.Explain()...)
+	if s.PodReplacement != nil {
+		explanation = append(explanation, s.PodReplacement.Explain()...)
 	}
 
 	if s.ContainerFailure != nil {
@@ -1133,9 +1133,9 @@ func (status *DisruptionStatus) HasTarget(searchTarget string) bool {
 }
 
 var NonReinjectableDisruptions = map[chaostypes.DisruptionKindName]struct{}{
-	chaostypes.DisruptionKindGRPCDisruption:  {},
-	chaostypes.DisruptionKindNodeFailure:     {},
-	chaostypes.DisruptionKindNodeReplacement: {},
+	chaostypes.DisruptionKindGRPCDisruption: {},
+	chaostypes.DisruptionKindNodeFailure:    {},
+	chaostypes.DisruptionKindPodReplacement: {},
 }
 
 func DisruptionIsNotReinjectable(kind chaostypes.DisruptionKindName) bool {
@@ -1148,7 +1148,7 @@ func DisruptionIsNotReinjectable(kind chaostypes.DisruptionKindName) bool {
 // the chaos pod. So once the chaos pod is gone, there's nothing left for us to clean.
 var NoSideEffectDisruptions = map[chaostypes.DisruptionKindName]struct{}{
 	chaostypes.DisruptionKindNodeFailure:      {},
-	chaostypes.DisruptionKindNodeReplacement:  {},
+	chaostypes.DisruptionKindPodReplacement:   {},
 	chaostypes.DisruptionKindContainerFailure: {},
 }
 
@@ -1166,12 +1166,12 @@ func ShouldSkipNodeFailureInjection(disKind chaostypes.DisruptionKindName, insta
 	return disKind == chaostypes.DisruptionKindNodeFailure && instance.Spec.StaticTargeting && injection.InjectionStatus != chaostypes.DisruptionTargetInjectionStatusNotInjected
 }
 
-// ShouldSkipNodeReplacementInjection returns true if we are attempting to inject a node replacement that has already been injected for this given target
+// ShouldSkipPodReplacementInjection returns true if we are attempting to inject a pod replacement that has already been injected for this given target
 // If we're using staticTargeting, we should never re-select a target whose InjectionStatus is anything other than NotInjected, as we may be
 // injecting into a pod that has been rescheduled onto a new node
-func ShouldSkipNodeReplacementInjection(disKind chaostypes.DisruptionKindName, instance *Disruption, injection TargetInjection) bool {
-	// we should never re-inject a static node replacement, as it may be targeting the same pod on a new node
-	return disKind == chaostypes.DisruptionKindNodeReplacement && instance.Spec.StaticTargeting && injection.InjectionStatus != chaostypes.DisruptionTargetInjectionStatusNotInjected
+func ShouldSkipPodReplacementInjection(disKind chaostypes.DisruptionKindName, instance *Disruption, injection TargetInjection) bool {
+	// we should never re-inject a static pod replacement, as it may be targeting the same pod on a new node
+	return disKind == chaostypes.DisruptionKindPodReplacement && instance.Spec.StaticTargeting && injection.InjectionStatus != chaostypes.DisruptionTargetInjectionStatusNotInjected
 }
 
 // TargetedContainers returns a map of containers with containerName as a key and containerID in the format '<type>://<container_id>' as a value

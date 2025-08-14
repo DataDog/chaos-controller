@@ -18,23 +18,23 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-// nodeReplacementInjector describes a node replacement injector
-type nodeReplacementInjector struct {
-	spec         v1beta1.NodeReplacementSpec
-	config       NodeReplacementInjectorConfig
+// podReplacementInjector describes a pod replacement injector
+type podReplacementInjector struct {
+	spec         v1beta1.PodReplacementSpec
+	config       PodReplacementInjectorConfig
 	k8sClientset kubernetes.Interface
 	nodeName     string
 	cordoned     bool
 }
 
-// NodeReplacementInjectorConfig contains needed drivers to
-// create a NodeReplacementInjector
-type NodeReplacementInjectorConfig struct {
+// PodReplacementInjectorConfig contains needed drivers to
+// create a PodReplacementInjector
+type PodReplacementInjectorConfig struct {
 	Config
 }
 
-// NewNodeReplacementInjector creates a NodeReplacementInjector object with the given config
-func NewNodeReplacementInjector(spec v1beta1.NodeReplacementSpec, config NodeReplacementInjectorConfig) (Injector, error) {
+// NewPodReplacementInjector creates a PodReplacementInjector object with the given config
+func NewPodReplacementInjector(spec v1beta1.PodReplacementSpec, config PodReplacementInjectorConfig) (Injector, error) {
 	if config.K8sClient == nil {
 		return nil, fmt.Errorf("k8sClient is required")
 	}
@@ -43,7 +43,7 @@ func NewNodeReplacementInjector(spec v1beta1.NodeReplacementSpec, config NodeRep
 		return nil, fmt.Errorf("target node name is required")
 	}
 
-	return &nodeReplacementInjector{
+	return &podReplacementInjector{
 		spec:         spec,
 		config:       config,
 		k8sClientset: config.K8sClient,
@@ -52,19 +52,19 @@ func NewNodeReplacementInjector(spec v1beta1.NodeReplacementSpec, config NodeRep
 	}, nil
 }
 
-func (i *nodeReplacementInjector) TargetName() string {
+func (i *podReplacementInjector) TargetName() string {
 	return i.config.TargetName()
 }
 
-func (i *nodeReplacementInjector) GetDisruptionKind() types.DisruptionKindName {
-	return types.DisruptionKindNodeReplacement
+func (i *podReplacementInjector) GetDisruptionKind() types.DisruptionKindName {
+	return types.DisruptionKindPodReplacement
 }
 
-// Inject performs the node replacement by cordoning the node, deleting PVCs, and killing pods
-func (i *nodeReplacementInjector) Inject() error {
+// Inject performs the pod replacement by cordoning the node, deleting PVCs, and killing the target pod
+func (i *podReplacementInjector) Inject() error {
 	ctx := context.Background()
 
-	i.config.Log.Infow("starting node replacement injection",
+	i.config.Log.Infow("starting pod replacement injection",
 		"nodeName", i.nodeName,
 		"deleteStorage", i.spec.DeleteStorage,
 		"forceDelete", i.spec.ForceDelete,
@@ -96,7 +96,7 @@ func (i *nodeReplacementInjector) Inject() error {
 		return fmt.Errorf("failed to delete target pod: %w", err)
 	}
 
-	i.config.Log.Infow("node replacement injection completed successfully",
+	i.config.Log.Infow("pod replacement injection completed successfully",
 		"nodeName", i.nodeName,
 	)
 
@@ -104,7 +104,7 @@ func (i *nodeReplacementInjector) Inject() error {
 }
 
 // cordonNode cordons the specified node to prevent new pods from being scheduled
-func (i *nodeReplacementInjector) cordonNode(ctx context.Context) error {
+func (i *podReplacementInjector) cordonNode(ctx context.Context) error {
 	if i.config.Disruption.DryRun {
 		i.config.Log.Infow("dry-run: would cordon node", "nodeName", i.nodeName)
 		return nil
@@ -136,11 +136,11 @@ func (i *nodeReplacementInjector) cordonNode(ctx context.Context) error {
 }
 
 // getTargetPod retrieves the specific target pod for this disruption
-func (i *nodeReplacementInjector) getTargetPod(ctx context.Context) (*corev1.Pod, error) {
-	// For node replacement, we want to target the specific pod that was selected
+func (i *podReplacementInjector) getTargetPod(ctx context.Context) (*corev1.Pod, error) {
+	// For pod replacement, we want to target the specific pod that was selected
 	// We can identify it using the target pod IP from the disruption config
 	if i.config.Disruption.TargetPodIP == "" {
-		return nil, fmt.Errorf("target pod IP is required for node replacement disruption")
+		return nil, fmt.Errorf("target pod IP is required for pod replacement disruption")
 	}
 
 	// List pods on the target node and find the one with matching IP
@@ -165,7 +165,7 @@ func (i *nodeReplacementInjector) getTargetPod(ctx context.Context) (*corev1.Pod
 }
 
 // deletePVCs deletes all PVCs associated with the pods
-func (i *nodeReplacementInjector) deletePVCs(ctx context.Context, pods []corev1.Pod) error {
+func (i *podReplacementInjector) deletePVCs(ctx context.Context, pods []corev1.Pod) error {
 	pvcNames := make(map[string]string) // PVC name -> namespace
 
 	// Collect PVC references from all pods
@@ -208,7 +208,7 @@ func (i *nodeReplacementInjector) deletePVCs(ctx context.Context, pods []corev1.
 }
 
 // deletePods deletes all pods with appropriate grace period
-func (i *nodeReplacementInjector) deletePods(ctx context.Context, pods []corev1.Pod) error {
+func (i *podReplacementInjector) deletePods(ctx context.Context, pods []corev1.Pod) error {
 	deleteOptions := metav1.DeleteOptions{}
 
 	if i.spec.GracePeriodSeconds != nil {
@@ -251,12 +251,12 @@ func (i *nodeReplacementInjector) deletePods(ctx context.Context, pods []corev1.
 }
 
 // UpdateConfig updates the injector configuration
-func (i *nodeReplacementInjector) UpdateConfig(config Config) {
+func (i *podReplacementInjector) UpdateConfig(config Config) {
 	i.config.Config = config
 }
 
 // Clean performs cleanup by uncordoning the node if we cordoned it
-func (i *nodeReplacementInjector) Clean() error {
+func (i *podReplacementInjector) Clean() error {
 	if !i.cordoned {
 		i.config.Log.Infow("node was not cordoned by this injector, skipping uncordon", "nodeName", i.nodeName)
 		return nil

@@ -22,12 +22,12 @@ import (
 	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
-var _ = Describe("NodeReplacement", func() {
+var _ = Describe("PodReplacement", func() {
 	var (
-		config     NodeReplacementInjectorConfig
+		config     PodReplacementInjectorConfig
 		k8sClient  kubernetes.Interface
 		inj        Injector
-		spec       v1beta1.NodeReplacementSpec
+		spec       v1beta1.PodReplacementSpec
 		targetNode *corev1.Node
 		targetPod  *corev1.Pod
 		targetPVC  *corev1.PersistentVolumeClaim
@@ -101,7 +101,7 @@ var _ = Describe("NodeReplacement", func() {
 		// Create fake Kubernetes client with test resources
 		k8sClient = fake.NewSimpleClientset(targetNode, targetPod, targetPVC)
 
-		config = NodeReplacementInjectorConfig{
+		config = PodReplacementInjectorConfig{
 			Config: Config{
 				Log:         log,
 				MetricsSink: ms,
@@ -109,13 +109,13 @@ var _ = Describe("NodeReplacement", func() {
 				Disruption: chaosapi.DisruptionArgs{
 					TargetNodeName: nodeName,
 					TargetPodIP:    podIP,
-					Level:          chaostypes.DisruptionLevelNode,
+					Level:          chaostypes.DisruptionLevelPod,
 					DryRun:         false,
 				},
 			},
 		}
 
-		spec = v1beta1.NodeReplacementSpec{
+		spec = v1beta1.PodReplacementSpec{
 			DeleteStorage:      true,
 			ForceDelete:        false,
 			GracePeriodSeconds: nil,
@@ -129,7 +129,7 @@ var _ = Describe("NodeReplacement", func() {
 			})
 
 			It("should return an error", func() {
-				_, err := NewNodeReplacementInjector(spec, config)
+				_, err := NewPodReplacementInjector(spec, config)
 				Expect(err).To(MatchError("target node name is required"))
 			})
 		})
@@ -139,22 +139,23 @@ var _ = Describe("NodeReplacement", func() {
 	Context("with valid config", func() {
 		JustBeforeEach(func() {
 			var err error
-			inj, err = NewNodeReplacementInjector(spec, config)
+			inj, err = NewPodReplacementInjector(spec, config)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(inj).ToNot(BeNil())
 		})
 
 		Describe("GetDisruptionKind", func() {
 			It("should return the correct disruption kind", func() {
-				Expected := chaostypes.DisruptionKindNodeReplacement
+				Expected := chaostypes.DisruptionKindPodReplacement
 				Actual := inj.GetDisruptionKind()
 				Expect(string(Actual)).To(Equal(string(Expected)))
 			})
 		})
 
 		Describe("TargetName", func() {
-			It("should return the target node name", func() {
-				Expect(inj.TargetName()).To(Equal(nodeName))
+			It("should return the target container name", func() {
+				// Pod-level disruptions target containers, not nodes
+				Expect(inj.TargetName()).To(Equal("unknown target name"))
 			})
 		})
 

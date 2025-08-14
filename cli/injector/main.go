@@ -82,7 +82,7 @@ func init() {
 
 	rootCmd.AddCommand(networkDisruptionCmd)
 	rootCmd.AddCommand(nodeFailureCmd)
-	rootCmd.AddCommand(nodeReplacementCmd)
+	rootCmd.AddCommand(podReplacementCmd)
 	rootCmd.AddCommand(containerFailureCmd)
 	rootCmd.AddCommand(cpuPressureCmd)
 	rootCmd.AddCommand(cpuPressureStressCmd)
