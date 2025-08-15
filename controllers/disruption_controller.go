@@ -627,6 +627,7 @@ func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *ch
 
 	// create injection pods
 	newPodsCreated := false
+
 	for _, targetChaosPod := range targetChaosPods {
 		// check if an injection pod already exists for the given (instance, namespace, disruption kind) tuple
 		found, err := r.ChaosPodService.GetChaosPodsOfDisruption(ctx, instance, targetChaosPod.Labels)

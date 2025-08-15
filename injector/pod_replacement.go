@@ -119,11 +119,13 @@ func (i *podReplacementInjector) cordonNode(ctx context.Context) error {
 	if node.Spec.Unschedulable {
 		i.config.Log.Infow("node is already cordoned", "nodeName", i.nodeName)
 		i.cordoned = true
+
 		return nil
 	}
 
 	// Cordon the node
 	node.Spec.Unschedulable = true
+
 	_, err = i.k8sClientset.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to cordon node %s: %w", i.nodeName, err)
@@ -227,6 +229,7 @@ func (i *podReplacementInjector) deletePods(ctx context.Context, pods []corev1.P
 				"namespace", pod.Namespace,
 				"gracePeriodSeconds", deleteOptions.GracePeriodSeconds,
 			)
+
 			continue
 		}
 
@@ -283,6 +286,7 @@ func (i *podReplacementInjector) Clean() error {
 
 	// Uncordon the node
 	node.Spec.Unschedulable = false
+
 	_, err = i.k8sClientset.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to uncordon node %s during cleanup: %w", i.nodeName, err)
