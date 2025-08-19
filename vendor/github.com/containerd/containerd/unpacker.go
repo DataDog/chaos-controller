@@ -28,13 +28,13 @@ import (
 	"time"
 
 	"github.com/containerd/containerd/content"
-	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/images"
-	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/mount"
 	"github.com/containerd/containerd/pkg/kmutex"
 	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/containerd/snapshots"
+	"github.com/containerd/errdefs"
+	"github.com/containerd/log"
 	"github.com/opencontainers/go-digest"
 	"github.com/opencontainers/image-spec/identity"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -141,13 +141,6 @@ func (u *unpacker) unpack(
 			return err
 		}
 		defer unlock()
-
-		if _, err := sn.Stat(ctx, chainID); err == nil {
-			// no need to handle
-			return nil
-		} else if !errdefs.IsNotFound(err) {
-			return fmt.Errorf("failed to stat snapshot %s: %w", chainID, err)
-		}
 
 		// inherits annotations which are provided as snapshot labels.
 		labels := snapshots.FilterInheritedLabels(desc.Annotations)

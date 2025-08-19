@@ -124,7 +124,6 @@ github.com/containerd/containerd,github.com/containerd/containerd/content,Apache
 github.com/containerd/containerd,github.com/containerd/containerd/content/proxy,Apache-2.0
 github.com/containerd/containerd,github.com/containerd/containerd/defaults,Apache-2.0
 github.com/containerd/containerd,github.com/containerd/containerd/diff,Apache-2.0
-github.com/containerd/containerd,github.com/containerd/containerd/errdefs,Apache-2.0
 github.com/containerd/containerd,github.com/containerd/containerd/events,Apache-2.0
 github.com/containerd/containerd,github.com/containerd/containerd/events/exchange,Apache-2.0
 github.com/containerd/containerd,github.com/containerd/containerd/filters,Apache-2.0
@@ -134,7 +133,6 @@ github.com/containerd/containerd,github.com/containerd/containerd/images/archive
 github.com/containerd/containerd,github.com/containerd/containerd/labels,Apache-2.0
 github.com/containerd/containerd,github.com/containerd/containerd/leases,Apache-2.0
 github.com/containerd/containerd,github.com/containerd/containerd/leases/proxy,Apache-2.0
-github.com/containerd/containerd,github.com/containerd/containerd/log,Apache-2.0
 github.com/containerd/containerd,github.com/containerd/containerd/mount,Apache-2.0
 github.com/containerd/containerd,github.com/containerd/containerd/namespaces,Apache-2.0
 github.com/containerd/containerd,github.com/containerd/containerd/oci,Apache-2.0
@@ -165,6 +163,7 @@ github.com/containerd/containerd,github.com/containerd/containerd/sys,Apache-2.0
 github.com/containerd/containerd,github.com/containerd/containerd/version,Apache-2.0
 github.com/containerd/continuity,github.com/containerd/continuity/fs,Apache-2.0
 github.com/containerd/continuity,github.com/containerd/continuity/sysx,Apache-2.0
+github.com/containerd/errdefs,github.com/containerd/errdefs,Apache-2.0
 github.com/containerd/fifo,github.com/containerd/fifo,Apache-2.0
 github.com/containerd/log,github.com/containerd/log,Apache-2.0
 github.com/containerd/ttrpc,github.com/containerd/ttrpc,Apache-2.0
@@ -313,6 +312,7 @@ github.com/moby/spdystream,github.com/moby/spdystream,Apache-2.0
 github.com/moby/spdystream,github.com/moby/spdystream/spdy,Apache-2.0
 github.com/moby/sys/mountinfo,github.com/moby/sys/mountinfo,Apache-2.0
 github.com/moby/sys/signal,github.com/moby/sys/signal,Apache-2.0
+github.com/moby/sys/user,github.com/moby/sys/user,Apache-2.0
 github.com/modern-go/concurrent,github.com/modern-go/concurrent,Apache-2.0
 github.com/modern-go/reflect2,github.com/modern-go/reflect2,Apache-2.0
 github.com/munnerz/goautoneg,github.com/munnerz/goautoneg,BSD-3-Clause
