@@ -7,11 +7,11 @@ apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
   name: network-delay
-  namespace: chaos-demo
+  namespace: chaos-engineering
 spec:
   level: pod
   selector:
-    app: demo-curl
+    service: chaos-test-resources
   count: 1
   network:
     delay: 1000 # delay (in milliseconds) to add to outgoing packets, 10% of jitter will be added by default
