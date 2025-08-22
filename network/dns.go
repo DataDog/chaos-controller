@@ -59,20 +59,23 @@ func (c dnsClient) Resolve(host string) ([]net.IP, error) {
 	names = append(names, nodeDNSConfig.NameList(host)...)
 
 	// do the request on the first configured dns resolver
-	dnsClient := dns.Client{}
 	response := &dns.Msg{}
 
 	err = retry.Do(func() error {
 		// query possible resolvers and fqdn based on servers and search domains specified in the dns configuration
 		for _, name := range names {
-			dnsMessage := dns.Msg{}
-			dnsMessage.SetQuestion(name, dns.TypeA)
+			response, err = c.resolve(name, "udp", resolvers)
 
-			for _, server := range resolvers {
-				response, _, err = dnsClient.Exchange(&dnsMessage, fmt.Sprintf("%s:53", server))
-				if response != nil && len(response.Answer) > 0 {
-					return nil
-				}
+			if response == nil {
+				continue
+			}
+
+			if response.Truncated {
+				response, err = c.resolve(name, "tcp", resolvers)
+			}
+
+			if response != nil && len(response.Answer) > 0 {
+				return nil
 			}
 		}
 
@@ -95,4 +98,27 @@ func (c dnsClient) Resolve(host string) ([]net.IP, error) {
 	}
 
 	return ips, nil
+}
+
+func (c dnsClient) resolve(hostName string, protocol string, resolvers []string) (response *dns.Msg, err error) {
+	client := dns.Client{}
+	dnsMessage := dns.Msg{}
+	dnsMessage.SetQuestion(hostName, dns.TypeA)
+	switch protocol {
+	case "tcp":
+		client.Net = "tcp"
+	case "udp":
+		client.Net = "udp"
+		// Increase EDNS buffer size to reduce truncation
+		// Refer to RFC 5966 https://www.rfc-editor.org/rfc/rfc5966
+		dnsMessage.SetEdns0(4096, true)
+	default:
+		return response, fmt.Errorf("unknown protocol %s. Supported protocols are tcp and udp", protocol)
+	}
+
+	for _, server := range resolvers {
+		response, _, err = client.Exchange(&dnsMessage, fmt.Sprintf("%s:53", server))
+	}
+
+	return response, err
 }
