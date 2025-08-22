@@ -64,9 +64,13 @@ func (c dnsClient) Resolve(host string) ([]net.IP, error) {
 
 	err = retry.Do(func() error {
 		// query possible resolvers and fqdn based on servers and search domains specified in the dns configuration
+		multiErr := &multierror.Error{}
 		for _, name := range names {
 			// try to resolve the given host as an A record
 			response, err = c.resolve(name, "udp", resolvers)
+			if err != nil {
+				multiErr = multierror.Append(multiErr, err)
+			}
 
 			if response == nil {
 				continue
@@ -75,6 +79,9 @@ func (c dnsClient) Resolve(host string) ([]net.IP, error) {
 			// if the response is truncated, retry with TCP
 			if response.Truncated {
 				response, err = c.resolve(name, "tcp", resolvers)
+				if err != nil {
+					multiErr = multierror.Append(multiErr, err)
+				}
 			}
 
 			if response != nil && len(response.Answer) > 0 {
@@ -82,7 +89,7 @@ func (c dnsClient) Resolve(host string) ([]net.IP, error) {
 			}
 		}
 
-		return err
+		return multiErr
 	}, retry.Attempts(3))
 	if err != nil {
 		return nil, fmt.Errorf("can't resolve the given hostname %s: %w", host, err)
