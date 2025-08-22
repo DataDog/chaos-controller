@@ -65,6 +65,7 @@ func (c dnsClient) Resolve(host string) ([]net.IP, error) {
 	err = retry.Do(func() error {
 		// query possible resolvers and fqdn based on servers and search domains specified in the dns configuration
 		multiErr := &multierror.Error{}
+
 		for _, name := range names {
 			// try to resolve the given host as an A record
 			response, err = c.resolve(name, "udp", resolvers)
