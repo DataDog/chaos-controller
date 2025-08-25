@@ -68,7 +68,7 @@ func (c dnsClient) Resolve(host string) ([]net.IP, error) {
 
 		for _, name := range names {
 			// try to resolve the given host as an A record
-			response, err = c.resolve(name, "tcp", resolvers)
+			response, err = c.resolve(name, "udp", resolvers)
 			if err != nil {
 				multiErr = multierror.Append(multiErr, err)
 			}
@@ -124,7 +124,7 @@ func (c dnsClient) resolve(hostName string, protocol string, resolvers []string)
 		client.Net = "udp"
 		// Increase EDNS buffer size to reduce truncation
 		// Refer to RFC 5966 https://www.rfc-editor.org/rfc/rfc5966
-		dnsMessage.SetEdns0(4096, true)
+		//dnsMessage.SetEdns0(4096, true)
 	default:
 		return nil, fmt.Errorf("unknown protocol %s. Supported protocols are tcp and udp", protocol)
 	}
