@@ -10,6 +10,7 @@ import (
 	"net"
 
 	"github.com/avast/retry-go"
+	"github.com/hashicorp/go-multierror"
 	"github.com/miekg/dns"
 )
 
@@ -59,24 +60,37 @@ func (c dnsClient) Resolve(host string) ([]net.IP, error) {
 	names = append(names, nodeDNSConfig.NameList(host)...)
 
 	// do the request on the first configured dns resolver
-	dnsClient := dns.Client{}
 	response := &dns.Msg{}
 
 	err = retry.Do(func() error {
 		// query possible resolvers and fqdn based on servers and search domains specified in the dns configuration
-		for _, name := range names {
-			dnsMessage := dns.Msg{}
-			dnsMessage.SetQuestion(name, dns.TypeA)
+		multiErr := &multierror.Error{}
 
-			for _, server := range resolvers {
-				response, _, err = dnsClient.Exchange(&dnsMessage, fmt.Sprintf("%s:53", server))
-				if response != nil && len(response.Answer) > 0 {
-					return nil
+		for _, name := range names {
+			// try to resolve the given host as an A record
+			response, err = c.resolve(name, "udp", resolvers)
+			if err != nil {
+				multiErr = multierror.Append(multiErr, err)
+			}
+
+			if response == nil {
+				continue
+			}
+
+			// if the response is truncated, retry with TCP
+			if response.Truncated {
+				response, err = c.resolve(name, "tcp", resolvers)
+				if err != nil {
+					multiErr = multierror.Append(multiErr, err)
 				}
+			}
+
+			if response != nil && len(response.Answer) > 0 {
+				return nil
 			}
 		}
 
-		return err
+		return multiErr
 	}, retry.Attempts(3))
 	if err != nil {
 		return nil, fmt.Errorf("can't resolve the given hostname %s: %w", host, err)
@@ -95,4 +109,36 @@ func (c dnsClient) Resolve(host string) ([]net.IP, error) {
 	}
 
 	return ips, nil
+}
+
+func (c dnsClient) resolve(hostName string, protocol string, resolvers []string) (response *dns.Msg, multiErr error) {
+	client := dns.Client{}
+
+	dnsMessage := dns.Msg{}
+	dnsMessage.SetQuestion(hostName, dns.TypeA)
+
+	switch protocol {
+	case "tcp":
+		client.Net = "tcp"
+	case "udp":
+		client.Net = "udp"
+		// Increase EDNS buffer size to reduce truncation
+		// Refer to RFC 5966 https://www.rfc-editor.org/rfc/rfc5966
+		dnsMessage.SetEdns0(4096, true)
+	default:
+		return nil, fmt.Errorf("unknown protocol %s. Supported protocols are tcp and udp", protocol)
+	}
+
+	for _, server := range resolvers {
+		var err error
+		response, _, err = client.Exchange(&dnsMessage, fmt.Sprintf("%s:53", server))
+
+		if response != nil && len(response.Answer) > 0 {
+			break
+		}
+
+		multiErr = multierror.Append(multiErr, err)
+	}
+
+	return response, multiErr
 }
