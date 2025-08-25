@@ -68,7 +68,7 @@ func (c dnsClient) Resolve(host string) ([]net.IP, error) {
 
 		for _, name := range names {
 			// try to resolve the given host as an A record
-			response, err = c.resolve(name, "udp", resolvers)
+			response, err = c.resolve(name, "tcp", resolvers)
 			if err != nil {
 				multiErr = multierror.Append(multiErr, err)
 			}
