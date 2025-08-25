@@ -89,7 +89,7 @@ type Sink interface {
 	// MetricOrphanFound increments when a chaos pod without a corresponding disruption resource is found
 	MetricOrphanFound(tags []string) error
 	// MetricTooLate reports when a scheduled Disruption misses its configured time to be run,
-	// specific to cron and rollout controllers
+	// specific to cron controllers
 	MetricTooLate(tags []string) error
 	// MetricTargetMissing reports anytime scheduled Disruption can not find its specified target
 	MetricTargetMissing(duration time.Duration, tags []string) error
@@ -101,7 +101,7 @@ type Sink interface {
 	MetricMissingTargetDeleted(tags []string) error
 	// MetricNextScheduledTime reports the duration until this scheduled Disruption's next scheduled disruption should run
 	MetricNextScheduledTime(time time.Duration, tags []string) error
-	// MetricDisruptionScheduled reports when a new disruption is scheduled by a cron or rollout
+	// MetricDisruptionScheduled reports when a new disruption is scheduled by a cron
 	MetricDisruptionScheduled(tags []string) error
 	// MetricPausedCron reports when a disruption cron has reconciled in a paused state
 	MetricPausedCron(tags []string) error

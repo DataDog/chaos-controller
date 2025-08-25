@@ -26,8 +26,7 @@ import (
 )
 
 const (
-	DisruptionCronNameLabel    = chaosv1beta1.GroupName + "/disruption-cron-name"
-	DisruptionRolloutNameLabel = chaosv1beta1.GroupName + "/disruption-rollout-name"
+	DisruptionCronNameLabel = chaosv1beta1.GroupName + "/disruption-cron-name"
 )
 
 // GetChildDisruptions retrieves disruptions associated with a resource by its label.
@@ -212,8 +211,6 @@ func generateDisruptionName(owner metav1.Object) string {
 	switch typedOwner := owner.(type) {
 	case *chaosv1beta1.DisruptionCron:
 		return fmt.Sprintf("disruption-cron-%s", typedOwner.GetName())
-	case *chaosv1beta1.DisruptionRollout:
-		return fmt.Sprintf("disruption-rollout-%s", typedOwner.GetName())
 	}
 
 	return ""
@@ -225,8 +222,6 @@ func getOwnerNameLabel(owner metav1.Object) string {
 	switch owner.(type) {
 	case *chaosv1beta1.DisruptionCron:
 		return DisruptionCronNameLabel
-	case *chaosv1beta1.DisruptionRollout:
-		return DisruptionRolloutNameLabel
 	}
 
 	return ""

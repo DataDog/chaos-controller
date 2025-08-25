@@ -221,7 +221,7 @@ func (n Sink) MetricWatcherCalls(tags []string) error {
 }
 
 // MetricTooLate reports when a scheduled Disruption misses its configured time to be run,
-// specific to cron and rollout controllers
+// specific to cron controllers
 func (n Sink) MetricTooLate(tags []string) error {
 	n.log.Debugf("NOOP: MetricTooLate %s\n", tags)
 

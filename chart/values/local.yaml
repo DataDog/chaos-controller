@@ -49,7 +49,6 @@ controller:
     host: ""
     port: 9443
   disruptionCronEnabled: true
-  disruptionRolloutEnabled: false
 injector:
   serviceAccount: chaos-injector
   chaosNamespace: chaos-engineering

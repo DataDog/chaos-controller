@@ -14,5 +14,4 @@ spec:
     app: demo-curl
   count: 1
   network:
-    delay: 1000 # delay (in milliseconds) to add to outgoing packets, 10% of jitter will be added by default
-    delayJitter: 5 # (optional) add X % (1-100) of delay as jitter to delay (+- X% ms to original delay), defaults to 10%
+    drop: 100 # delay (in milliseconds) to add to outgoing packets, 10% of jitter will be added by default
