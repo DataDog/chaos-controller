@@ -81,6 +81,8 @@ const (
 	DisruptionKindDNSDisruption = "dns-disruption"
 	// DisruptionKindGRPCDisruption is a grpc disruption
 	DisruptionKindGRPCDisruption = "grpc-disruption"
+	// DisruptionKindPodReplacement is a pod replacement disruption
+	DisruptionKindPodReplacement = "pod-replacement"
 
 	// DisruptionLevelPod is a disruption injected at the pod level
 	DisruptionLevelPod DisruptionLevel = "pod"
@@ -158,4 +160,5 @@ var DisruptionKindNames = []DisruptionKindName{
 	DisruptionKindDiskFailure,
 	DisruptionKindDNSDisruption,
 	DisruptionKindGRPCDisruption,
+	DisruptionKindPodReplacement,
 }

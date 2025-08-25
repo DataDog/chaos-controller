@@ -618,7 +618,16 @@ func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *ch
 		return nil
 	}
 
+	// Check maxRuns limit
+	if instance.Spec.MaxRuns != nil && instance.Status.RunCount >= *instance.Spec.MaxRuns {
+		r.log.Debugw("skipping creation of chaos pods, maximum runs reached", "runCount", instance.Status.RunCount, "maxRuns", *instance.Spec.MaxRuns)
+
+		return nil
+	}
+
 	// create injection pods
+	newPodsCreated := false
+
 	for _, targetChaosPod := range targetChaosPods {
 		// check if an injection pod already exists for the given (instance, namespace, disruption kind) tuple
 		found, err := r.ChaosPodService.GetChaosPodsOfDisruption(ctx, instance, targetChaosPod.Labels)
@@ -651,6 +660,9 @@ func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *ch
 			r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionChaosPodCreated, instance.Name, target)
 			r.recordEventOnTarget(ctx, instance, target, chaosv1beta1.EventDisrupted, targetChaosPod.Name, instance.Name)
 			r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(target, instance.Name, instance.Namespace, true))
+
+			// mark that we created new pods in this cycle
+			newPodsCreated = true
 		case 1:
 			r.log.Debugw("an injection pod is already existing for the selected target", "target", target, "chaosPod", found[0].Name)
 		default:
@@ -660,6 +672,17 @@ func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *ch
 			}
 
 			r.log.Errorw("multiple injection pods for one target found", "target", target, "chaosPods", strings.Join(chaosPodNames, ","), "chaosPodLabels", targetChaosPod.Labels)
+		}
+	}
+
+	// Increment run count if we created new pods in this cycle
+	if newPodsCreated {
+		instance.Status.RunCount++
+		r.log.Infow("incremented disruption run count", "runCount", instance.Status.RunCount, "disruptionName", instance.Name)
+
+		// Update the status in the cluster
+		if err := r.Client.Status().Update(ctx, instance); err != nil {
+			return fmt.Errorf("error updating disruption status with run count: %w", err)
 		}
 	}
 

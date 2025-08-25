@@ -448,6 +448,9 @@ func (r *Disruption) initialSafetyNets() ([]string, error) {
 		responses = append(responses, "node failure disruptions are not allowed in this cluster, please use a disruption type or test elsewhere")
 	}
 
+	// Pod replacement disruptions are pod-level and don't require node-level permissions
+	// They are allowed as long as the basic disruption requirements are met
+
 	if !allowNodeLevel && r.Spec.Level == chaostypes.DisruptionLevelNode {
 		logger.Debugw("the specified disruption is applied at the node level and will be rejected")
 
