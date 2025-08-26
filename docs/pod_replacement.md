@@ -115,3 +115,5 @@ spec:
 - If `gracePeriodSeconds` is specified, it overrides the pod's default grace period
 - If `forceDelete` is true, the grace period is set to 0 regardless of other settings
 - Graceful shutdown allows applications to clean up resources before termination
+
+Setting `gracePeriodSeconds` to 0 or using `forceDelete` doesn't necessarily mean the pod will be terminated successfully. If it fails, its possible for the pod to continue running on the cluster indefinitely. All it does is removes the pod from the API so that a new pod with the same name can replace it, and gives it a small grace period before being force killed. You can read more about this in the [k8s docs](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination-forced)

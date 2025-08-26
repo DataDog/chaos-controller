@@ -713,7 +713,11 @@ func (s DisruptionSpec) validateGlobalDisruptionScope(requireSelectors bool) (re
 
 	if s.PodReplacement != nil {
 		if s.CPUPressure != nil || s.DiskPressure != nil || s.DiskFailure != nil || s.Network != nil || s.GRPC != nil || s.ContainerFailure != nil || s.NodeFailure != nil || len(s.DNS) > 0 {
-			retErr = multierror.Append(retErr, errors.New("node replacement disruptions are not compatible with other disruption kinds. The node replacement will remove the impact of the other disruption types"))
+			retErr = multierror.Append(retErr, errors.New("pod replacement disruptions are not compatible with other disruption kinds. The pod replacement will remove the impact of the other disruption types"))
+		}
+		// Rule: container failure not possible if disruption is node-level
+		if s.Level == chaostypes.DisruptionLevelNode {
+			retErr = multierror.Append(retErr, errors.New("cannot execute a pod replacement because the level configuration is set to node"))
 		}
 	}
 
@@ -1164,14 +1168,6 @@ func DisruptionHasNoSideEffects(kind string) bool {
 func ShouldSkipNodeFailureInjection(disKind chaostypes.DisruptionKindName, instance *Disruption, injection TargetInjection) bool {
 	// we should never re-inject a static node failure, as it may be targeting the same pod on a new node
 	return disKind == chaostypes.DisruptionKindNodeFailure && instance.Spec.StaticTargeting && injection.InjectionStatus != chaostypes.DisruptionTargetInjectionStatusNotInjected
-}
-
-// ShouldSkipPodReplacementInjection returns true if we are attempting to inject a pod replacement that has already been injected for this given target
-// If we're using staticTargeting, we should never re-select a target whose InjectionStatus is anything other than NotInjected, as we may be
-// injecting into a pod that has been rescheduled onto a new node
-func ShouldSkipPodReplacementInjection(disKind chaostypes.DisruptionKindName, instance *Disruption, injection TargetInjection) bool {
-	// we should never re-inject a static pod replacement, as it may be targeting the same pod on a new node
-	return disKind == chaostypes.DisruptionKindPodReplacement && instance.Spec.StaticTargeting && injection.InjectionStatus != chaostypes.DisruptionTargetInjectionStatusNotInjected
 }
 
 // TargetedContainers returns a map of containers with containerName as a key and containerID in the format '<type>://<container_id>' as a value

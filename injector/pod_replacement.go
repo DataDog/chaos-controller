@@ -253,11 +253,6 @@ func (i *podReplacementInjector) deletePods(ctx context.Context, pods []corev1.P
 	return nil
 }
 
-// UpdateConfig updates the injector configuration
-func (i *podReplacementInjector) UpdateConfig(config Config) {
-	i.config.Config = config
-}
-
 // Clean performs cleanup by uncordoning the node if we cordoned it
 func (i *podReplacementInjector) Clean() error {
 	if !i.cordoned {
