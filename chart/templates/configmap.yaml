@@ -85,7 +85,6 @@ data:
         allowNodeLevel: {{ .Values.controller.safeMode.allowNodeLevel }}
         allowNodeFailure: {{ .Values.controller.safeMode.allowNodeFailure }}
       disruptionCronEnabled: {{ .Values.controller.disruptionCronEnabled }}
-      disruptionRolloutEnabled: {{ .Values.controller.disruptionRolloutEnabled }}
       disruptionDeletionTimeout: {{ .Values.controller.disruptionDeletionTimeout }}
       disabledDisruptions:
       {{- range $index, $kind := .Values.controller.disabledDisruptions }}

@@ -26,8 +26,7 @@ import (
 )
 
 const (
-	DisruptionCronNameLabel    = chaosv1beta1.GroupName + "/disruption-cron-name"
-	DisruptionRolloutNameLabel = chaosv1beta1.GroupName + "/disruption-rollout-name"
+	DisruptionCronNameLabel = chaosv1beta1.GroupName + "/disruption-cron-name"
 )
 
 // GetChildDisruptions retrieves disruptions associated with a resource by its label.
@@ -209,11 +208,8 @@ func GetMostRecentScheduleTime(log *zap.SugaredLogger, disruptions *chaosv1beta1
 // generateDisruptionName produces a disruption name based on the specific CR controller, that's invoking it.
 // It returns a formatted string name.
 func generateDisruptionName(owner metav1.Object) string {
-	switch typedOwner := owner.(type) {
-	case *chaosv1beta1.DisruptionCron:
+	if typedOwner, ok := owner.(*chaosv1beta1.DisruptionCron); ok {
 		return fmt.Sprintf("disruption-cron-%s", typedOwner.GetName())
-	case *chaosv1beta1.DisruptionRollout:
-		return fmt.Sprintf("disruption-rollout-%s", typedOwner.GetName())
 	}
 
 	return ""
@@ -222,11 +218,8 @@ func generateDisruptionName(owner metav1.Object) string {
 // getOwnerNameLabel derives the appropriate label for the owner CR.
 // It returns the label string.
 func getOwnerNameLabel(owner metav1.Object) string {
-	switch owner.(type) {
-	case *chaosv1beta1.DisruptionCron:
+	if _, ok := owner.(*chaosv1beta1.DisruptionCron); ok {
 		return DisruptionCronNameLabel
-	case *chaosv1beta1.DisruptionRollout:
-		return DisruptionRolloutNameLabel
 	}
 
 	return ""

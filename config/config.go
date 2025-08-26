@@ -52,7 +52,6 @@ type controllerConfig struct {
 	ProfilerSink                     string                          `json:"profilerSink" yaml:"profilerSink"`
 	TracerSink                       string                          `json:"tracerSink" yaml:"tracerSink"`
 	DisruptionCronEnabled            bool                            `json:"disruptionCronEnabled" yaml:"disruptionCronEnabled"`
-	DisruptionRolloutEnabled         bool                            `json:"disruptionRolloutEnabled" yaml:"disruptionRolloutEnabled"`
 	DisruptionDeletionTimeout        time.Duration                   `json:"disruptionDeletionTimeout" yaml:"disruptionDeletionTimeout"`
 	FinalizerDeletionDelay           time.Duration                   `json:"finalizerDeletionDelay" yaml:"finalizerDeletionDelay"`
 	TargetResourceMissingThreshold   time.Duration                   `json:"targetResourceMissingThreshold" yaml:"targetResourceMissingThreshold"`
@@ -552,12 +551,6 @@ func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osAr
 		return cfg, err
 	}
 
-	mainFS.BoolVar(&cfg.Controller.DisruptionRolloutEnabled, "disruption-rollout-enabled", false, "Enable the DisruptionRollout CRD and its controller")
-
-	if err := viper.BindPFlag("controller.disruptionRolloutEnabled", mainFS.Lookup("disruption-rollout-enabled")); err != nil {
-		return cfg, err
-	}
-
 	mainFS.DurationVar(&cfg.Controller.DisruptionDeletionTimeout, "disruption-deletion-timeout", DefaultDisruptionDeletionTimeout, "If the deletion time of the disruption is greater than the delete timeout, the disruption is marked as stuck on removal")
 
 	if err := viper.BindPFlag("controller.disruptionDeletionTimeout", mainFS.Lookup("disruption-deletion-timeout")); err != nil {
@@ -570,7 +563,7 @@ func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osAr
 		return cfg, err
 	}
 
-	mainFS.DurationVar(&cfg.Controller.TargetResourceMissingThreshold, "target-resource-missing-threshold", time.Hour*24, "Define the amount of time a cron or rollout will tolerate its target missing before self-deleting")
+	mainFS.DurationVar(&cfg.Controller.TargetResourceMissingThreshold, "target-resource-missing-threshold", time.Hour*24, "Define the amount of time a cron will tolerate its target missing before self-deleting")
 
 	if err := viper.BindPFlag("controller.targetResourceMissingThreshold", mainFS.Lookup("target-resource-missing-threshold")); err != nil {
 		return cfg, err

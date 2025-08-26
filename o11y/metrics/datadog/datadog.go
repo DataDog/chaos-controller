@@ -17,10 +17,9 @@ import (
 )
 
 const (
-	metricPrefixInjector          = "chaos.injector."
-	metricPrefixController        = "chaos.controller."
-	metricPrefixRolloutController = "chaos.rollout.controller."
-	metricPrefixCronController    = "chaos.cron.controller."
+	metricPrefixInjector       = "chaos.injector."
+	metricPrefixController     = "chaos.controller."
+	metricPrefixCronController = "chaos.cron.controller."
 )
 
 // Sink describes a Datadog sink (statsd)
@@ -54,8 +53,6 @@ func GetPrefixFromApp(app types.SinkApp) (string, error) {
 	switch app {
 	case types.SinkAppController:
 		return metricPrefixController, nil
-	case types.SinkAppRolloutController:
-		return metricPrefixRolloutController, nil
 	case types.SinkAppCronController:
 		return metricPrefixCronController, nil
 	case types.SinkAppInjector:
@@ -233,7 +230,7 @@ func (d Sink) MetricWatcherCalls(tags []string) error {
 }
 
 // MetricTooLate reports when a scheduled Disruption misses its configured time to be run,
-// specific to cron and rollout controllers
+// specific to cron controllers
 func (d Sink) MetricTooLate(tags []string) error {
 	return d.metricWithStatus(d.prefix+"schedule.too_late", tags)
 }

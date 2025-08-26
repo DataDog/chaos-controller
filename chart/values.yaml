@@ -72,7 +72,7 @@ controller:
   defaultCronDelayedStartTolerance: 15m
   minimumCronFrequency: 15m # a disruption cron with a spec.schedule that runs more often than this will be rejected.
   finalizerDeletionDelay: 20s
-  targetResourceMissingThreshold: 24h # duration after a cron or rollout self-delete if target is missing for this long
+  targetResourceMissingThreshold: 24h # duration after a cron self-delete if target is missing for this long
   expiredDisruptionGCDelay: 10m # time after a disruption expires before deleting it
   userInfoHook: true
   webhook: # admission webhook configuration
@@ -95,7 +95,6 @@ controller:
     memory: 300Mi
     ephemeralStorage: 1Gi
   disruptionCronEnabled: true
-  disruptionRolloutEnabled: false
   disruptionDeletionTimeout: 15m # The duration after which a disruption will be marked as "stuck on removal" if its removal process exceeds this duration.
   aggregateToClusterRole: false # If this is true two aggregated cluster roles are created for viewing and editing (https://kubernetes.io/docs/reference/access-authn-authz/rbac/#aggregated-clusterroles)
 # disabledDisruptions: # List of disruption kinds to disable at admission

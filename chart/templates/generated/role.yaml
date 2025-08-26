@@ -15,7 +15,6 @@ rules:
       - chaos.datadoghq.com
     resources:
       - disruptioncrons
-      - disruptionrollouts
       - disruptions
     verbs:
       - create
@@ -29,7 +28,6 @@ rules:
       - chaos.datadoghq.com
     resources:
       - disruptioncrons/finalizers
-      - disruptionrollouts/finalizers
       - disruptions/finalizers
     verbs:
       - update
@@ -37,7 +35,6 @@ rules:
       - chaos.datadoghq.com
     resources:
       - disruptioncrons/status
-      - disruptionrollouts/status
       - disruptions/status
     verbs:
       - get
