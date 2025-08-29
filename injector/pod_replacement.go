@@ -96,6 +96,11 @@ func (i *podReplacementInjector) Inject() error {
 		return fmt.Errorf("failed to delete target pod: %w", err)
 	}
 
+	// Step 5: Uncordon the node
+	if err := i.uncordonNode(ctx); err != nil {
+		return fmt.Errorf("failed to uncordon node %s: %w", i.nodeName, err)
+	}
+
 	i.config.Log.Infow("pod replacement injection completed successfully",
 		"nodeName", i.nodeName,
 	)
@@ -133,6 +138,42 @@ func (i *podReplacementInjector) cordonNode(ctx context.Context) error {
 
 	i.cordoned = true
 	i.config.Log.Infow("successfully cordoned node", "nodeName", i.nodeName)
+
+	return nil
+}
+
+// cordonNode cordons the specified node to prevent new pods from being scheduled
+func (i *podReplacementInjector) uncordonNode(ctx context.Context) error {
+	if !i.cordoned {
+		i.config.Log.Infow("node was not cordoned by this injector, skipping uncordon", "nodeName", i.nodeName)
+		return nil
+	}
+
+	if i.config.Disruption.DryRun {
+		i.config.Log.Infow("dry-run: would uncordon node", "nodeName", i.nodeName)
+		return nil
+	}
+
+	// Get the node
+	node, err := i.k8sClientset.CoreV1().Nodes().Get(ctx, i.nodeName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get node %s: %w", i.nodeName, err)
+	}
+
+	if !node.Spec.Unschedulable {
+		i.config.Log.Infow("node is already uncordoned", "nodeName", i.nodeName)
+		return nil
+	}
+
+	// Uncordon the node
+	node.Spec.Unschedulable = false
+
+	_, err = i.k8sClientset.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to uncordon node %s: %w", i.nodeName, err)
+	}
+
+	i.config.Log.Infow("successfully uncordoned node", "nodeName", i.nodeName)
 
 	return nil
 }
@@ -260,39 +301,12 @@ func (i *podReplacementInjector) UpdateConfig(config Config) {
 
 // Clean performs cleanup by uncordoning the node if we cordoned it
 func (i *podReplacementInjector) Clean() error {
-	if !i.cordoned {
-		i.config.Log.Infow("node was not cordoned by this injector, skipping uncordon", "nodeName", i.nodeName)
-		return nil
-	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	if i.config.Disruption.DryRun {
-		i.config.Log.Infow("dry-run: would uncordon node", "nodeName", i.nodeName)
-		return nil
+	if err := i.uncordonNode(ctx); err != nil {
+		return fmt.Errorf("failed to uncordon node during cleanup: %w", err)
 	}
-
-	// Get the node
-	node, err := i.k8sClientset.CoreV1().Nodes().Get(ctx, i.nodeName, metav1.GetOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to get node %s for cleanup: %w", i.nodeName, err)
-	}
-
-	if !node.Spec.Unschedulable {
-		i.config.Log.Infow("node is already uncordoned", "nodeName", i.nodeName)
-		return nil
-	}
-
-	// Uncordon the node
-	node.Spec.Unschedulable = false
-
-	_, err = i.k8sClientset.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to uncordon node %s during cleanup: %w", i.nodeName, err)
-	}
-
-	i.config.Log.Infow("successfully uncordoned node during cleanup", "nodeName", i.nodeName)
 
 	return nil
 }
