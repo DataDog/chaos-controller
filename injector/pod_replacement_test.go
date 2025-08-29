@@ -165,10 +165,10 @@ var _ = Describe("PodReplacement", func() {
 			})
 
 			Context("with default settings", func() {
-				It("should cordon the node", func() {
+				It("should uncordon the node after injection", func() {
 					node, err := k8sClient.CoreV1().Nodes().Get(context.Background(), nodeName, metav1.GetOptions{})
 					Expect(err).ToNot(HaveOccurred())
-					Expect(node.Spec.Unschedulable).To(BeTrue())
+					Expect(node.Spec.Unschedulable).To(BeFalse())
 				})
 
 				It("should delete the PVC when deleteStorage is true", func() {
@@ -302,35 +302,19 @@ var _ = Describe("PodReplacement", func() {
 		})
 
 		Describe("cleanup", func() {
-			Context("when node was cordoned by this injector", func() {
-				JustBeforeEach(func() {
-					// Inject first to cordon the node
-					Expect(inj.Inject()).To(Succeed())
-
-					// Verify node is cordoned
-					node, err := k8sClient.CoreV1().Nodes().Get(context.Background(), nodeName, metav1.GetOptions{})
-					Expect(err).ToNot(HaveOccurred())
-					Expect(node.Spec.Unschedulable).To(BeTrue())
-
-					// Now clean up
-					Expect(inj.Clean()).To(Succeed())
-				})
-
-				It("should uncordon the node", func() {
-					node, err := k8sClient.CoreV1().Nodes().Get(context.Background(), nodeName, metav1.GetOptions{})
-					Expect(err).ToNot(HaveOccurred())
-					Expect(node.Spec.Unschedulable).To(BeFalse())
-				})
-			})
-
-			Context("when node was already uncordoned", func() {
-				BeforeEach(func() {
+			Context("when cleanup is called without injection", func() {
+				It("should not modify the node", func() {
 					// Ensure node starts uncordoned
-					targetNode.Spec.Unschedulable = false
-				})
+					node, err := k8sClient.CoreV1().Nodes().Get(context.Background(), nodeName, metav1.GetOptions{})
+					Expect(err).ToNot(HaveOccurred())
+					originalState := node.Spec.Unschedulable
 
-				It("should not return an error", func() {
 					Expect(inj.Clean()).To(Succeed())
+
+					// Verify node state hasn't changed
+					node, err = k8sClient.CoreV1().Nodes().Get(context.Background(), nodeName, metav1.GetOptions{})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(node.Spec.Unschedulable).To(Equal(originalState))
 				})
 			})
 
@@ -345,7 +329,7 @@ var _ = Describe("PodReplacement", func() {
 					Expect(inj.Clean()).To(Succeed())
 				})
 
-				It("should not modify the node", func() {
+				It("should not modify the node during dry run", func() {
 					node, err := k8sClient.CoreV1().Nodes().Get(context.Background(), nodeName, metav1.GetOptions{})
 					Expect(err).ToNot(HaveOccurred())
 					Expect(node.Spec.Unschedulable).To(BeFalse())
