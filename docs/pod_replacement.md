@@ -8,6 +8,7 @@ The pod replacement disruption performs the following steps:
 1. **Cordon the node** - Marks the node as unschedulable to prevent new pods from being scheduled
 2. **Delete PVCs** (optional) - Removes PersistentVolumeClaims associated with the target pod
 3. **Delete the target pod** - Terminates the pod, forcing it to reschedule elsewhere
+4. **Uncordon the node** - Marks the node as schedulable again to allow new pods to be scheduled
 
 ## Configuration
 
