@@ -272,6 +272,12 @@ spec:
                         - pod
                         - node
                       type: string
+                    maxRuns:
+                      description: |-
+                        MaxRuns specifies the maximum number of times the disruption should be executed
+                        After this many runs, the disruption will become idle (default: unlimited for continuous disruptions)
+                      minimum: 1
+                      type: integer
                     network:
                       description: NetworkDisruptionSpec represents a network disruption injection
                       nullable: true
@@ -493,6 +499,24 @@ spec:
                       type: object
                     onInit:
                       type: boolean
+                    podReplacement:
+                      description: PodReplacementSpec represents a pod replacement disruption
+                      nullable: true
+                      properties:
+                        deleteStorage:
+                          default: true
+                          description: DeleteStorage determines if PVCs associated with the target pod should be deleted
+                          type: boolean
+                        forceDelete:
+                          description: ForceDelete forces deletion of stuck pods by setting grace period to 0
+                          type: boolean
+                        gracePeriodSeconds:
+                          description: |-
+                            GracePeriodSeconds specifies the grace period for pod deletion in seconds
+                            If not specified, uses the pod's default grace period
+                          format: int64
+                          type: integer
+                      type: object
                     pulse:
                       description: DisruptionPulse contains the active disruption duration and the dormant disruption duration
                       nullable: true

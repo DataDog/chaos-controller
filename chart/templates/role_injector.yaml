@@ -19,6 +19,7 @@ rules:
       - get
       - update
       - watch
+      - delete
   - apiGroups:
       - ""
     resources:
@@ -27,3 +28,19 @@ rules:
       - list
       - get
       - watch
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+    verbs:
+      - get
+      - list
+      - update
+  - apiGroups:
+      - ""
+    resources:
+      - persistentvolumeclaims
+    verbs:
+      - list
+      - get
+      - delete
