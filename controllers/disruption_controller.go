@@ -93,6 +93,9 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	// in the case we enable concurrent reconciling, we should create one logger instance per reconciling call
 	r.log = r.BaseLog.With(cLog.DisruptionNameKey, req.Name, cLog.DisruptionNamespaceKey, req.Namespace)
 
+	// inject contextual logger into context for propagation to dependencies
+	ctx = cLog.WithLogger(ctx, r.log)
+
 	// reconcile metrics
 	r.handleMetricSinkError(r.MetricsSink.MetricReconcile())
 
@@ -134,11 +137,11 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	if err := r.DisruptionsWatchersManager.RemoveAllOrphanWatchers(); err != nil {
+	if err := r.DisruptionsWatchersManager.RemoveAllOrphanWatchers(ctx); err != nil {
 		r.log.Errorw("error during the deletion of orphan watchers", "error", err)
 	}
 
-	if err := r.DisruptionsWatchersManager.CreateAllWatchers(instance, nil, nil); err != nil {
+	if err := r.DisruptionsWatchersManager.CreateAllWatchers(ctx, instance, nil, nil); err != nil {
 		r.log.Errorw("error during the creation of watchers", "error", err)
 	}
 
@@ -164,6 +167,9 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	// allows to sync logs with traces
 	r.log = r.log.With(r.TracerSink.GetLoggableTraceContext(reconcileSpan)...)
+
+	// update context with enhanced logger (now including trace context)
+	ctx = cLog.WithLogger(ctx, r.log)
 
 	// handle any chaos pods being deleted (either by the disruption deletion or by an external event)
 	if err := r.handleChaosPodsTermination(ctx, instance); err != nil {
@@ -198,7 +204,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				r.log.Infow("all chaos pods are cleaned up; removing disruption finalizer")
 				r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionFinished, "", "")
 
-				r.DisruptionsWatchersManager.RemoveAllWatchers(instance)
+				r.DisruptionsWatchersManager.RemoveAllWatchers(ctx, instance)
 				controllerutil.RemoveFinalizer(instance, chaostypes.DisruptionFinalizer)
 
 				if err := r.Client.Update(ctx, instance); err != nil {
@@ -523,7 +529,7 @@ func (r *DisruptionReconciler) startInjection(ctx context.Context, instance *cha
 	// on cloud disruption, update hosts
 	subspec := instance.Spec.DisruptionKindPicker(chaostypes.DisruptionKindNetworkDisruption)
 	if reflect.ValueOf(subspec).IsValid() && !reflect.ValueOf(subspec).IsNil() {
-		if err = instance.Spec.Network.UpdateHostsOnCloudDisruption(r.CloudService); err != nil {
+		if err = instance.Spec.Network.UpdateHostsOnCloudDisruption(ctx, r.CloudService); err != nil {
 			return err
 		}
 	}
@@ -638,7 +644,7 @@ func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *ch
 		// create injection pods if none have been found
 		switch len(found) {
 		case 0:
-			chaosPodArgs := r.ChaosPodService.GetPodInjectorArgs(targetChaosPod)
+			chaosPodArgs := r.ChaosPodService.GetPodInjectorArgs(ctx, targetChaosPod)
 			r.log.Infow("creating chaos pod", "target", target, "chaosPodArgs", chaosPodArgs)
 
 			// create the pod

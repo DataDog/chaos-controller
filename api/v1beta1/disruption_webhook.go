@@ -191,7 +191,11 @@ func (r *Disruption) ValidateCreate() (_ admission.Warnings, err error) {
 					serviceListNames = append(serviceListNames, service.ServiceName)
 				}
 
-				ipRangesPerService, err := cloudServicesProvidersManager.GetServicesIPRanges(cloudtypes.CloudProviderName(cloudName), serviceListNames)
+				ipRangesPerService, err := cloudServicesProvidersManager.GetServicesIPRanges(
+					cLog.WithLogger(ctx, logger),
+					cloudtypes.CloudProviderName(cloudName),
+					serviceListNames,
+				)
 				if err != nil {
 					return nil, err
 				}
@@ -270,6 +274,8 @@ func (r *Disruption) ValidateUpdate(old runtime.Object) (_ admission.Warnings, e
 	log := logger.With(cLog.DisruptionNameKey, r.Name, cLog.DisruptionNamespaceKey, r.Namespace)
 	log.Debugw("validating updated disruption", "spec", r.Spec)
 
+	ctx := cLog.WithLogger(context.Background(), log)
+
 	metricTags := r.getMetricsTags()
 
 	defer func() {
@@ -290,7 +296,13 @@ func (r *Disruption) ValidateUpdate(old runtime.Object) (_ admission.Warnings, e
 	// we should NOT always prevent finalizer removal because chaos controller reconcile loop will go through this mutating webhook when perfoming updates
 	// and need to be able to remove the finalizer to enable the disruption to be garbage collected on successful removal
 	if controllerutil.ContainsFinalizer(oldDisruption, chaostypes.DisruptionFinalizer) && !controllerutil.ContainsFinalizer(r, chaostypes.DisruptionFinalizer) {
-		oldPods, err := GetChaosPods(context.Background(), log, chaosNamespace, k8sClient, oldDisruption, nil)
+		oldPods, err := GetChaosPods(
+			ctx,
+			chaosNamespace,
+			k8sClient,
+			oldDisruption,
+			nil,
+		)
 		if err != nil {
 			return nil, fmt.Errorf("error getting disruption pods: %w", err)
 		}

@@ -8,19 +8,30 @@ package log_test
 import (
 	"os"
 
-	. "github.com/DataDog/chaos-controller/log"
+	"github.com/DataDog/chaos-controller/log"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+	"go.uber.org/zap/zaptest"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"go.uber.org/zap/zapcore"
 )
 
-var _ = Describe("Zap Logger", func() {
+var _ = Describe("Logger", func() {
+	var (
+		testLogger *zap.Logger
+	)
+
+	BeforeEach(func() {
+		testLogger = zaptest.NewLogger(GinkgoT())
+	})
+
 	Describe("NewZapLogger", func() {
 		Context("with the LOG_LEVEL env var unset", func() {
 			It("should use the default (DEBUG) log level", func() {
 				// Arrange
 				os.Unsetenv("LOG_LEVEL")
-				logger, err := NewZapLogger()
+				logger, err := log.NewZapLogger()
 
 				// Assert
 				By("not return an error")
@@ -35,7 +46,7 @@ var _ = Describe("Zap Logger", func() {
 			It("should use the DEBUG log level", func() {
 				// Arrange
 				os.Setenv("LOG_LEVEL", "DEBUG")
-				logger, err := NewZapLogger()
+				logger, err := log.NewZapLogger()
 
 				// Assert
 				By("not return an error")
@@ -50,7 +61,7 @@ var _ = Describe("Zap Logger", func() {
 			It("should use the INFO log level", func() {
 				// Arrange
 				os.Setenv("LOG_LEVEL", "INFO")
-				logger, err := NewZapLogger()
+				logger, err := log.NewZapLogger()
 
 				// Assert
 				By("not return an error")
@@ -65,7 +76,7 @@ var _ = Describe("Zap Logger", func() {
 			It("should use the ERROR log level", func() {
 				// Arrange
 				os.Setenv("LOG_LEVEL", "ERROR")
-				logger, err := NewZapLogger()
+				logger, err := log.NewZapLogger()
 
 				// Assert
 				By("not return an error")
@@ -80,7 +91,7 @@ var _ = Describe("Zap Logger", func() {
 			It("should use the ERROR log level", func() {
 				// Arrange
 				os.Setenv("LOG_LEVEL", "warn")
-				logger, err := NewZapLogger()
+				logger, err := log.NewZapLogger()
 
 				// Assert
 				By("not return an error")
@@ -95,7 +106,7 @@ var _ = Describe("Zap Logger", func() {
 			It("should use the default (DEBUG) log level", func() {
 				// Arrange
 				os.Setenv("LOG_LEVEL", "Invalid")
-				logger, err := NewZapLogger()
+				logger, err := log.NewZapLogger()
 
 				// Assert
 				By("not return an error")
@@ -110,7 +121,7 @@ var _ = Describe("Zap Logger", func() {
 			It("should use the INFO log level", func() {
 				// Arrange
 				os.Setenv("LOG_LEVEL", "")
-				logger, err := NewZapLogger()
+				logger, err := log.NewZapLogger()
 
 				// Assert
 				By("not return an error")
@@ -123,4 +134,49 @@ var _ = Describe("Zap Logger", func() {
 
 	})
 
+	Describe("WithLogger", func() {
+		Context("when adding a logger to context", func() {
+			It("should store the logger correctly", func(ctx SpecContext) {
+				// Arrange
+				logger := testLogger.Sugar()
+
+				// Act
+				ctxWithLogger := log.WithLogger(ctx, logger)
+
+				// Assert
+				By("storing the logger in the context and being able to retrieve it")
+				Expect(ctxWithLogger).ToNot(BeNil())
+				retrievedLogger := log.FromContext(ctxWithLogger)
+				Expect(retrievedLogger).To(Equal(logger))
+			})
+		})
+	})
+
+	Describe("FromContext", func() {
+		Context("when context has a logger", func() {
+			It("should return the contextual logger", func(ctx SpecContext) {
+				// Arrange
+				logger := testLogger.Sugar()
+				ctxWithLogger := log.WithLogger(ctx, logger)
+
+				// Act
+				retrievedLogger := log.FromContext(ctxWithLogger)
+
+				// Assert
+				By("returning the contextual logger from context")
+				Expect(retrievedLogger).To(Equal(logger))
+			})
+		})
+
+		Context("when context has no logger", func() {
+			It("should return a default logger", func(ctx SpecContext) {
+				// Act
+				retrievedLogger := log.FromContext(ctx)
+
+				// Assert
+				By("returning a default logger")
+				Expect(retrievedLogger).ToNot(BeNil())
+			})
+		})
+	})
 })

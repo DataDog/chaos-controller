@@ -76,6 +76,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	ctx := log.WithLogger(context.Background(), logger)
+
 	desugaredLogger := zapr.NewLogger(logger.Desugar())
 
 	// Set any singleton loggers of underlying libraries to use our zap logger
@@ -183,16 +185,15 @@ func main() {
 	}
 
 	// initialize the cloud provider manager which will handle ip ranges files updates
-	cloudProviderManager, err := cloudservice.New(logger, cfg.Controller.CloudProviders, nil)
+	cloudProviderManager, err := cloudservice.New(ctx, cfg.Controller.CloudProviders, nil)
 	if err != nil {
 		logger.Fatalw("error initializing CloudProviderManager", "error", err)
 	}
 
-	cloudProviderManager.StartPeriodicPull()
+	cloudProviderManager.StartPeriodicPull(ctx)
 
 	chaosPodService, err := services.NewChaosPodService(services.ChaosPodServiceConfig{
 		Client:         mgr.GetClient(),
-		Log:            logger,
 		ChaosNamespace: cfg.Injector.ChaosNamespace,
 		TargetSelector: targetSelector,
 		Injector: services.ChaosPodServiceInjectorConfig{
@@ -248,7 +249,7 @@ func main() {
 		ChaosNamespace: cfg.Injector.ChaosNamespace,
 	}
 	watcherFactory := watchers.NewWatcherFactory(watchersFactoryConfig)
-	disruptionReconciler.DisruptionsWatchersManager = watchers.NewDisruptionsWatchersManager(cont, watcherFactory, mgr.GetAPIReader(), logger)
+	disruptionReconciler.DisruptionsWatchersManager = watchers.NewDisruptionsWatchersManager(cont, watcherFactory, mgr.GetAPIReader())
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -260,7 +261,7 @@ func main() {
 			select {
 			case <-ticker.C:
 				logger.Debugw("Check if we need to remove any expired watchers...")
-				disruptionReconciler.DisruptionsWatchersManager.RemoveAllExpiredWatchers()
+				disruptionReconciler.DisruptionsWatchersManager.RemoveAllExpiredWatchers(ctx)
 
 			case <-ctx.Done():
 				// Context canceled, terminate the goroutine

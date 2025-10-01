@@ -61,7 +61,7 @@ var _ = Describe("Disruptions watchers manager", func() {
 		controllerMock := mocks.NewRuntimeControllerMock(GinkgoT())
 
 		// Act
-		disruptionsWatchersManager = watchers.NewDisruptionsWatchersManager(controllerMock, watcherFactoryMock, readerMock, logger)
+		disruptionsWatchersManager = watchers.NewDisruptionsWatchersManager(controllerMock, watcherFactoryMock, readerMock)
 
 		// Assert
 		By("return a DisruptionsWatchersManager")
@@ -90,9 +90,9 @@ var _ = Describe("Disruptions watchers manager", func() {
 				watchersManagerMock = watchers.NewManagerMock(GinkgoT())
 			})
 
-			JustBeforeEach(func() {
+			JustBeforeEach(func(ctx SpecContext) {
 				// Act
-				err = disruptionsWatchersManager.CreateAllWatchers(disruption, watchersManagerMock, cacheMock)
+				err = disruptionsWatchersManager.CreateAllWatchers(ctx, disruption, watchersManagerMock, cacheMock)
 			})
 
 			Context("nominal cases", func() {
@@ -119,7 +119,7 @@ var _ = Describe("Disruptions watchers manager", func() {
 				})
 
 				When("CreateAllWatchers method is recalled", func() {
-					It("should not recreate watchers", func() {
+					It("should not recreate watchers", func(ctx SpecContext) {
 						// Arrange / Assert
 						watchersManagerMock = watchers.NewManagerMock(GinkgoT())
 
@@ -128,7 +128,7 @@ var _ = Describe("Disruptions watchers manager", func() {
 						watchersManagerMock.EXPECT().GetWatcher(expectedChaosPodWatcherName).Return(chaosPodWatcherMock).Once()
 
 						// Act
-						Expect(disruptionsWatchersManager.CreateAllWatchers(disruption, watchersManagerMock, cacheMock)).Should(Succeed())
+						Expect(disruptionsWatchersManager.CreateAllWatchers(ctx, disruption, watchersManagerMock, cacheMock)).Should(Succeed())
 
 						// Assert
 						By("not call any methods of the watcher manager")
@@ -218,9 +218,9 @@ var _ = Describe("Disruptions watchers manager", func() {
 				disruption = &chaosv1beta1.Disruption{}
 			})
 
-			It("should return an error", func() {
+			It("should return an error", func(ctx SpecContext) {
 				// Act
-				err := disruptionsWatchersManager.CreateAllWatchers(disruption, watchersManagerMock, cacheMock)
+				err := disruptionsWatchersManager.CreateAllWatchers(ctx, disruption, watchersManagerMock, cacheMock)
 
 				// Assert
 				Expect(err).Should(HaveOccurred())
@@ -258,8 +258,8 @@ var _ = Describe("Disruptions watchers manager", func() {
 				watcherFactoryMock.EXPECT().NewDisruptionTargetWatcher(expectedDisruptionTargetWatcherName, mock.Anything, disruption, cacheMock).Return(watchers.NewWatcherMock(GinkgoT()), nil)
 			})
 
-			JustBeforeEach(func() {
-				Expect(disruptionsWatchersManager.CreateAllWatchers(disruption, watchersManagerMock, cacheMock)).Should(Succeed())
+			JustBeforeEach(func(ctx SpecContext) {
+				Expect(disruptionsWatchersManager.CreateAllWatchers(ctx, disruption, watchersManagerMock, cacheMock)).Should(Succeed())
 			})
 
 			Context("nominal cases", func() {
@@ -269,21 +269,21 @@ var _ = Describe("Disruptions watchers manager", func() {
 					watchersManagerMock.EXPECT().RemoveAllWatchers().Once()
 				})
 
-				It("should remove all watchers", func() {
+				It("should remove all watchers", func(ctx SpecContext) {
 					//	Action
-					disruptionsWatchersManager.RemoveAllWatchers(disruption)
+					disruptionsWatchersManager.RemoveAllWatchers(ctx, disruption)
 				})
 
 				When("the RemoveAllWatchers method is recalled", func() {
-					It("should do nothing", func() {
+					It("should do nothing", func(ctx SpecContext) {
 						// Arrange
-						disruptionsWatchersManager.RemoveAllWatchers(disruption)
+						disruptionsWatchersManager.RemoveAllWatchers(ctx, disruption)
 
 						watchersManagerMock.ExpectedCalls = nil
 						watchersManagerMock.Calls = nil
 
 						// Act
-						disruptionsWatchersManager.RemoveAllWatchers(disruption)
+						disruptionsWatchersManager.RemoveAllWatchers(ctx, disruption)
 
 						// Arrange
 						By("not call RemoveAllWatchers method of the watcherManager")
@@ -299,10 +299,10 @@ var _ = Describe("Disruptions watchers manager", func() {
 				watchersManagerMock.AssertNumberOfCalls(GinkgoT(), "RemoveAllWatchers", 0)
 			})
 
-			It("should do nothing", func() {
+			It("should do nothing", func(ctx SpecContext) {
 				disruption = &chaosv1beta1.Disruption{}
 
-				disruptionsWatchersManager.RemoveAllWatchers(disruption)
+				disruptionsWatchersManager.RemoveAllWatchers(ctx, disruption)
 			})
 		})
 	})
@@ -330,9 +330,9 @@ var _ = Describe("Disruptions watchers manager", func() {
 			}
 		})
 
-		JustBeforeEach(func() {
+		JustBeforeEach(func(ctx SpecContext) {
 			for _, disruption := range twoDisruptions {
-				Expect(disruptionsWatchersManager.CreateAllWatchers(disruption, watchersManagerMock, cacheMock)).To(Succeed())
+				Expect(disruptionsWatchersManager.CreateAllWatchers(ctx, disruption, watchersManagerMock, cacheMock)).To(Succeed())
 			}
 		})
 
@@ -343,8 +343,8 @@ var _ = Describe("Disruptions watchers manager", func() {
 				readerMock.EXPECT().Get(mock.Anything, mock.Anything, mock.Anything).Return(nil).Twice()
 			})
 
-			It("should do nothing", func() {
-				Expect(disruptionsWatchersManager.RemoveAllOrphanWatchers()).Should(Succeed())
+			It("should do nothing", func(ctx SpecContext) {
+				Expect(disruptionsWatchersManager.RemoveAllOrphanWatchers(ctx)).Should(Succeed())
 			})
 		})
 
@@ -365,21 +365,21 @@ var _ = Describe("Disruptions watchers manager", func() {
 				watchersManagerMock.EXPECT().RemoveAllWatchers().Twice()
 			})
 
-			It("should do nothing", func() {
-				Expect(disruptionsWatchersManager.RemoveAllOrphanWatchers()).Should(Succeed())
+			It("should do nothing", func(ctx SpecContext) {
+				Expect(disruptionsWatchersManager.RemoveAllOrphanWatchers(ctx)).Should(Succeed())
 			})
 
 			When("the function RemoveAllOrphanWatchers is recalled", func() {
-				It("should have removed the disruption", func() {
+				It("should have removed the disruption", func(ctx SpecContext) {
 					// Arrange
-					Expect(disruptionsWatchersManager.RemoveAllOrphanWatchers()).To(Succeed())
+					Expect(disruptionsWatchersManager.RemoveAllOrphanWatchers(ctx)).To(Succeed())
 					readerMock.ExpectedCalls = nil
 					readerMock.Calls = nil
 					watchersManagerMock.ExpectedCalls = nil
 					watchersManagerMock.Calls = nil
 
 					// Action
-					Expect(disruptionsWatchersManager.RemoveAllOrphanWatchers()).To(Succeed())
+					Expect(disruptionsWatchersManager.RemoveAllOrphanWatchers(ctx)).To(Succeed())
 
 					// Assert
 					By("not call any Get  method of the reader")
@@ -404,9 +404,9 @@ var _ = Describe("Disruptions watchers manager", func() {
 				readerMock.EXPECT().Get(mock.Anything, mock.Anything, mock.Anything).Return(&errorStatus).Twice()
 			})
 
-			It("should do nothing", func() {
+			It("should do nothing", func(ctx SpecContext) {
 				// Act
-				Expect(disruptionsWatchersManager.RemoveAllOrphanWatchers()).To(Succeed())
+				Expect(disruptionsWatchersManager.RemoveAllOrphanWatchers(ctx)).To(Succeed())
 
 				// Assert
 				By("not call the RemoveAllWatchers method of the watchersManager")
@@ -439,25 +439,25 @@ var _ = Describe("Disruptions watchers manager", func() {
 				}
 			})
 
-			JustBeforeEach(func() {
+			JustBeforeEach(func(ctx SpecContext) {
 				for _, disruption := range twoDisruptions {
-					Expect(disruptionsWatchersManager.CreateAllWatchers(disruption, watchersManagerMock, cacheMock)).To(Succeed())
+					Expect(disruptionsWatchersManager.CreateAllWatchers(ctx, disruption, watchersManagerMock, cacheMock)).To(Succeed())
 				}
 			})
 
-			It("should call twice the RemoveExpiredWatchers method of the watchersManager", func() {
+			It("should call twice the RemoveExpiredWatchers method of the watchersManager", func(ctx SpecContext) {
 				// Arrange / Assert
 				watchersManagerMock.EXPECT().RemoveExpiredWatchers().Twice()
 
 				// Act
-				disruptionsWatchersManager.RemoveAllExpiredWatchers()
+				disruptionsWatchersManager.RemoveAllExpiredWatchers(ctx)
 			})
 		})
 
 		Context("without disruption", func() {
-			It("should do nothing", func() {
+			It("should do nothing", func(ctx SpecContext) {
 				// Act
-				disruptionsWatchersManager.RemoveAllExpiredWatchers()
+				disruptionsWatchersManager.RemoveAllExpiredWatchers(ctx)
 
 				// Assert
 				By("not call the RemoveExpiredWatchers method of the watchersManager")
