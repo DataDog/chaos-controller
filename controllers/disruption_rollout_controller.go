@@ -13,6 +13,7 @@ import (
 
 	cLog "github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/o11y/metrics"
+	tagutil "github.com/DataDog/chaos-controller/o11y/tags"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"go.uber.org/zap"
@@ -46,7 +47,10 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	defer func(tsStart time.Time) {
 		tags := []string{}
 		if instance.Name != "" {
-			tags = append(tags, "disruptionRolloutName:"+instance.Name, "disruptionRolloutNamespace:"+instance.Namespace)
+			tags = append(tags,
+				tagutil.FormatTag(cLog.DisruptionRolloutNameKey, instance.Name),
+				tagutil.FormatTag(cLog.DisruptionRolloutNamespaceKey, instance.Namespace),
+			)
 		}
 
 		r.handleMetricSinkError(r.MetricsSink.MetricReconcileDuration(time.Since(tsStart), tags))
@@ -57,7 +61,11 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	DisruptionRolloutTags = []string{"disruptionRolloutName:" + instance.Name, "disruptionRolloutNamespace:", instance.Namespace, "targetName:", instance.Spec.TargetResource.Name}
+	DisruptionRolloutTags = []string{
+		tagutil.FormatTag(cLog.DisruptionRolloutNameKey, instance.Name),
+		tagutil.FormatTag(cLog.DisruptionRolloutNamespaceKey, instance.Namespace),
+		tagutil.FormatTag(cLog.TargetNameKey, instance.Spec.TargetResource.Name),
+	}
 
 	if !instance.DeletionTimestamp.IsZero() {
 		// Add finalizer here if required
@@ -151,7 +159,7 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, err
 	}
 
-	r.handleMetricSinkError(r.MetricsSink.MetricDisruptionScheduled(append(DisruptionRolloutTags, "disruptionName:"+disruption.Name)))
+	r.handleMetricSinkError(r.MetricsSink.MetricDisruptionScheduled(append(DisruptionRolloutTags, tagutil.FormatTag(cLog.DisruptionNameKey, disruption.Name))))
 
 	r.log.Infow("created Disruption for DisruptionRollout run", cLog.DisruptionNameKey, disruption.Name)
 

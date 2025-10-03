@@ -10,10 +10,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/DataDog/datadog-go/statsd"
-
+	cLog "github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/o11y/metrics/types"
+	tagutil "github.com/DataDog/chaos-controller/o11y/tags"
 	chaostypes "github.com/DataDog/chaos-controller/types"
+	"github.com/DataDog/datadog-go/statsd"
 )
 
 const (
@@ -33,7 +34,7 @@ type Sink struct {
 func New(app types.SinkApp) (Sink, error) {
 	url := os.Getenv("STATSD_URL")
 
-	instance, err := statsd.New(url, statsd.WithTags([]string{"app:" + string(app)}))
+	instance, err := statsd.New(url, statsd.WithTags([]string{tagutil.FormatTag("app", string(app))}))
 	if err != nil {
 		return Sink{}, err
 	}
@@ -84,7 +85,7 @@ func (d Sink) GetPrefix() string {
 // the `succeed` bool argument is false if there was an error while injecting.
 func (d Sink) MetricInjected(succeed bool, kind string, tags []string) error {
 	status := boolToStatus(succeed)
-	t := []string{"status:" + status, "kind:" + kind}
+	t := []string{tagutil.FormatTag("status", status), tagutil.FormatTag("kind", kind)}
 	t = append(t, tags...)
 
 	return d.metricWithStatus(d.prefix+"injected", t)
@@ -95,7 +96,7 @@ func (d Sink) MetricInjected(succeed bool, kind string, tags []string) error {
 // if the chaos-injector pod is performing any injection after its first, i.e., when using the pulse feature
 func (d Sink) MetricReinjected(succeed bool, kind string, tags []string) error {
 	status := boolToStatus(succeed)
-	t := []string{"status:" + status, "kind:" + kind}
+	t := []string{tagutil.FormatTag("status", status), tagutil.FormatTag("kind", kind)}
 	t = append(t, tags...)
 
 	return d.metricWithStatus(d.prefix+"reinjected", t)
@@ -105,7 +106,7 @@ func (d Sink) MetricReinjected(succeed bool, kind string, tags []string) error {
 // but expects to reinject, i.e., when using the spec.pulse feature
 func (d Sink) MetricCleanedForReinjection(succeed bool, kind string, tags []string) error {
 	status := boolToStatus(succeed)
-	t := []string{"status:" + status, "kind:" + kind}
+	t := []string{tagutil.FormatTag("status", status), tagutil.FormatTag("kind", kind)}
 	t = append(t, tags...)
 
 	return d.metricWithStatus(d.prefix+"cleaned_for_reinjection", t)
@@ -115,7 +116,7 @@ func (d Sink) MetricCleanedForReinjection(succeed bool, kind string, tags []stri
 // and does not intend to re-inject.
 func (d Sink) MetricCleaned(succeed bool, kind string, tags []string) error {
 	status := boolToStatus(succeed)
-	t := []string{"status:" + status, "kind:" + kind}
+	t := []string{tagutil.FormatTag("status", status), tagutil.FormatTag("kind", kind)}
 	t = append(t, tags...)
 
 	return d.metricWithStatus(d.prefix+"cleaned", t)
@@ -159,7 +160,7 @@ func (d Sink) MetricDisruptionOngoingDuration(duration time.Duration, tags []str
 // schedule a new chaos-injector pod. The `succeed` bool argument is false if there was an error returned.
 func (d Sink) MetricPodsCreated(target, instanceName, namespace string, succeed bool) error {
 	status := boolToStatus(succeed)
-	tags := []string{"target:" + target, "disruptionName:" + instanceName, "status:" + status, "disruptionNamespace:" + namespace}
+	tags := []string{tagutil.FormatTag("target", target), tagutil.FormatTag(cLog.DisruptionNameKey, instanceName), tagutil.FormatTag("status", status), tagutil.FormatTag(cLog.DisruptionNamespaceKey, namespace)}
 
 	return d.metricWithStatus(d.prefix+"pods.created", tags)
 }

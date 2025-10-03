@@ -16,6 +16,8 @@ import (
 	k8scontrollercache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	cLog "github.com/DataDog/chaos-controller/log"
 )
 
 type WatcherEventType string
@@ -175,13 +177,13 @@ func (w *watcher) Start() error {
 	// get informer from cache
 	info, err := w.cache.GetInformer(context.Background(), w.config.ObjectType)
 	if err != nil {
-		return fmt.Errorf("error getting informer from cache. Error: %w", err)
+		return fmt.Errorf("error getting informer from cache: %w", err)
 	}
 
 	// add event handler to informer
 	_, err = info.AddEventHandler(w.config.Handler)
 	if err != nil {
-		return fmt.Errorf("error adding event handler to the informer. Error: %w", err)
+		return fmt.Errorf("error adding event handler to the informer: %w", err)
 	}
 
 	// create context and cancel function for the watcher
@@ -191,7 +193,7 @@ func (w *watcher) Start() error {
 	// start the cache in a goroutine
 	go func() {
 		if err := w.cache.Start(cacheCtx); err != nil {
-			w.config.Log.Errorw("could not start the watcher", "error", err)
+			w.config.Log.Errorw("could not start the watcher", cLog.ErrorKey, err)
 		}
 	}()
 

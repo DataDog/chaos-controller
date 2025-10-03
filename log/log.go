@@ -25,6 +25,11 @@ const (
 	DisruptionCronNameKey      = DisruptionCronPrefixKey + "Name"
 	DisruptionCronNamespaceKey = DisruptionCronPrefixKey + "Namespace"
 
+	// DisruptionRollout
+	DisruptionRolloutPrefixKey    = "disruptionRollout"
+	DisruptionRolloutNameKey      = DisruptionRolloutPrefixKey + "Name"
+	DisruptionRolloutNamespaceKey = DisruptionRolloutPrefixKey + "Namespace"
+
 	// CloudServicesProvider
 	CloudServicesProviderPrefixKey = "cloudServicesProvider"
 	CloudProviderNameKey           = CloudServicesProviderPrefixKey + "Name"
@@ -32,8 +37,49 @@ const (
 	CloudProviderVersionKey        = CloudServicesProviderPrefixKey + "Version"
 
 	// Target
-	TargetNameKey  = "targetName"
-	TargetNodeName = "targetNodeName"
+	TargetNameKey               = "targetName"
+	TargetNodeName              = "targetNodeName"
+	TargetKindKey               = "targetKind"
+	TargetLabelsKey             = "targetLabels"
+	TargetDisruptedByKindsKey   = "targetDisruptedByKinds"
+	IntersectionOfKindsKey      = "intersectionOfKinds"
+	TargetNamespaceKey          = "targetNamespace"
+
+	// Pod
+	PodNameKey      = "podName"
+	PodNamespaceKey = "podNamespace"
+	PodUIDKey       = "podUID"
+
+	// Node
+	NodeNameKey = "nodeName"
+
+	// PVC
+	PVCNameKey = "pvcName"
+
+	// ChaosPod
+	ChaosPodNameKey           = "chaosPodName"
+	ChaosPodSpecKey           = "chaosPodSpec"
+	ChaosPodLabelsKey         = "chaosPodLabels"
+	ChaosPodsKey              = "chaosPods"
+	ChaosPodContainerCountKey = "chaosPodContainerCount"
+
+	// Common logging fields
+	ErrorKey              = "error"
+	EventKey              = "event"
+	EventTypeKey          = "eventType"
+	SinkKey               = "sink"
+	InjectionStatusKey    = "injectionStatus"
+	RunCountKey           = "runCount"
+	MaxRunsKey            = "maxRuns"
+	IndexedValueKey       = "indexedValue"
+	StatefulSetKey        = "StatefulSet"
+	DisruptionRolloutKey  = "DisruptionRollout"
+	WatcherKey            = "watcher"
+	WatcherNameKey        = "watcherName"
+	WatcherNamespaceKey   = "watcherNamespace"
+	EventMessageKey       = "eventMessage"
+	DisruptionKey         = "disruption"
+	ScheduleKey           = "schedule"
 )
 
 // contextKey is used to store logger in context
@@ -88,3 +134,4 @@ func FromContext(ctx context.Context) *zap.SugaredLogger {
 
 	return defaultLogger
 }
+

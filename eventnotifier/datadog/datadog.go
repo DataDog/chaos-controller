@@ -9,14 +9,16 @@ import (
 	"os"
 	"strings"
 
+	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
 	"github.com/DataDog/chaos-controller/eventnotifier/utils"
 	cLog "github.com/DataDog/chaos-controller/log"
+	tagutil "github.com/DataDog/chaos-controller/o11y/tags"
 	"github.com/DataDog/datadog-go/statsd"
-	"go.uber.org/zap"
-	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type NotifierDatadogConfig struct {
@@ -117,33 +119,33 @@ func (n *Notifier) buildDatadogEventTagsForDisruption(dis v1beta1.Disruption, ev
 	var additionalTags []string
 
 	if team := dis.Spec.Selector.Get("team"); team != "" {
-		additionalTags = append(additionalTags, "team:"+team)
+		additionalTags = append(additionalTags, tagutil.FormatTag("team", team))
 	}
 
 	if service := dis.Spec.Selector.Get("service"); service != "" {
-		additionalTags = append(additionalTags, "service:"+service)
+		additionalTags = append(additionalTags, tagutil.FormatTag("service", service))
 	}
 
 	if app := dis.Spec.Selector.Get("app"); app != "" {
-		additionalTags = append(additionalTags, "app:"+app)
+		additionalTags = append(additionalTags, tagutil.FormatTag("app", app))
 	}
 
-	additionalTags = append(additionalTags, "disruption_name:"+dis.Name)
+	additionalTags = append(additionalTags, tagutil.FormatTag("disruption_name", dis.Name))
 
 	if targetName, ok := event.Annotations["target_name"]; ok {
-		additionalTags = append(additionalTags, "target_name:"+targetName)
+		additionalTags = append(additionalTags, tagutil.FormatTag("target_name", targetName))
 	}
 
 	return additionalTags
 }
 
 func (n *Notifier) buildDatadogEventTagsForDisruptionCron(dis v1beta1.DisruptionCron, event corev1.Event) []string {
-	var additionalTags []string
-
-	additionalTags = append(additionalTags, "disruptioncron_name:"+dis.Name)
+	additionalTags := []string{
+		tagutil.FormatTag("disruptioncron_name", dis.Name),
+	}
 
 	if targetName, ok := event.Annotations["target_name"]; ok {
-		additionalTags = append(additionalTags, "target_name:"+targetName)
+		additionalTags = append(additionalTags, tagutil.FormatTag("target_name", targetName))
 	}
 
 	return additionalTags

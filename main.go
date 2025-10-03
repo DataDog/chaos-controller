@@ -92,19 +92,19 @@ func main() {
 
 	restConfig, err := rest.InClusterConfig()
 	if err != nil {
-		logger.Fatalw("error creating in-cluster rest config", "error", err)
+		logger.Fatalw("error creating in-cluster rest config", log.ErrorKey, err)
 	}
 
 	clientset, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
-		logger.Fatalw("error creating kubernetes clientset", "error", err)
+		logger.Fatalw("error creating kubernetes clientset", log.ErrorKey, err)
 	}
 
 	configMapClient := clientset.CoreV1().ConfigMaps(os.Getenv("POD_NAMESPACE"))
 
 	cfg, err := config.New(configMapClient, logger, os.Args[1:])
 	if err != nil {
-		logger.Fatalw("unable to create a valid configuration", "error", err)
+		logger.Fatalw("unable to create a valid configuration", log.ErrorKey, err)
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
@@ -124,7 +124,7 @@ func main() {
 	})
 
 	if err != nil {
-		logger.Fatalw("unable to start manager", "error", err)
+		logger.Fatalw("unable to start manager", log.ErrorKey, err)
 	}
 
 	broadcaster := eventbroadcaster.EventBroadcaster()
@@ -132,7 +132,7 @@ func main() {
 	// event notifiers
 	notifiers, err := eventnotifier.CreateNotifiers(cfg.Controller.Notifiers, logger)
 	if err != nil {
-		logger.Errorw("error(s) while creating notifiers", "error", err)
+		logger.Errorw("error(s) while creating notifiers", log.ErrorKey, err)
 	}
 
 	eventbroadcaster.RegisterNotifierSinks(mgr, broadcaster, notifiers, logger)
@@ -143,28 +143,28 @@ func main() {
 
 	profilerSink, err := profiler.GetSink(logger, profilertypes.SinkDriver(cfg.Controller.ProfilerSink))
 	if err != nil {
-		logger.Errorw("error while creating profiler sink, switching to noop", "error", err)
+		logger.Errorw("error while creating profiler sink, switching to noop", log.ErrorKey, err)
 
 		profilerSink, _ = profiler.GetSink(logger, profilertypes.SinkDriverNoop)
 	}
 	// handle profiler sink close on exit
 	defer func() {
-		logger.Infow("closing profiler sink client before exiting", "sink", profilerSink.GetSinkName())
+		logger.Infow("closing profiler sink client before exiting", log.SinkKey, profilerSink.GetSinkName())
 		profilerSink.Stop()
 	}()
 
 	tracerSink, err := tracer.GetSink(logger, tracertypes.SinkDriver(cfg.Controller.TracerSink))
 	if err != nil {
-		logger.Errorw("error while creating profiler sink, switching to noop", "error", err)
+		logger.Errorw("error while creating profiler sink, switching to noop", log.ErrorKey, err)
 
 		tracerSink, _ = tracer.GetSink(logger, tracertypes.SinkDriverNoop)
 	}
 	// handle tracer sink close on exit
 	defer func() {
-		logger.Infow("closing tracer sink client before exiting", "sink", tracerSink.GetSinkName())
+		logger.Infow("closing tracer sink client before exiting", log.SinkKey, tracerSink.GetSinkName())
 
 		if err := tracerSink.Stop(); err != nil {
-			logger.Errorw("error closing tracer sink client", "sink", metricsSink.GetSinkName(), "error", err)
+			logger.Errorw("error closing tracer sink client", log.SinkKey, metricsSink.GetSinkName(), log.ErrorKey, err)
 		}
 	}()
 
@@ -173,7 +173,7 @@ func main() {
 	otel.SetTextMapPropagator(propagation.TraceContext{})
 
 	if err = metricsSink.MetricRestart(); err != nil {
-		logger.Errorw("error sending MetricRestart", "sink", metricsSink.GetSinkName(), "error", err)
+		logger.Errorw("error sending MetricRestart", log.SinkKey, metricsSink.GetSinkName(), log.ErrorKey, err)
 	}
 
 	// target selector
@@ -187,7 +187,7 @@ func main() {
 	// initialize the cloud provider manager which will handle ip ranges files updates
 	cloudProviderManager, err := cloudservice.New(ctx, cfg.Controller.CloudProviders, nil)
 	if err != nil {
-		logger.Fatalw("error initializing CloudProviderManager", "error", err)
+		logger.Fatalw("error initializing CloudProviderManager", log.ErrorKey, err)
 	}
 
 	cloudProviderManager.StartPeriodicPull(ctx)
@@ -213,7 +213,7 @@ func main() {
 	})
 
 	if err != nil {
-		logger.Fatalw("error initializing ChaosPodService", "error", err)
+		logger.Fatalw("error initializing ChaosPodService", log.ErrorKey, err)
 	}
 
 	// create disruption reconciler
@@ -238,7 +238,7 @@ func main() {
 
 	cont, err := disruptionReconciler.SetupWithManager(mgr, kubeInformerFactory)
 	if err != nil {
-		logger.Fatalw("unable to create controller", "controller", chaosv1beta1.DisruptionKind, "error", err)
+		logger.Fatalw("unable to create controller", "controller", chaosv1beta1.DisruptionKind, log.ErrorKey, err)
 	}
 
 	watchersFactoryConfig := watchers.FactoryConfig{
@@ -292,7 +292,7 @@ func main() {
 			DeleteFunc: deploymentHandler.OnDelete,
 		})
 		if err != nil {
-			logger.Fatalw("unable to add event handler for Deployments", "error", err)
+			logger.Fatalw("unable to add event handler for Deployments", log.ErrorKey, err)
 		}
 
 		_, err = statefulsetInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -301,7 +301,7 @@ func main() {
 			DeleteFunc: statefulsetHandler.OnDelete,
 		})
 		if err != nil {
-			logger.Fatalw("unable to add event handler for StatefulSets", "error", err)
+			logger.Fatalw("unable to add event handler for StatefulSets", log.ErrorKey, err)
 		}
 
 		// wait for the deployment and statefulset informer caches to be synced
@@ -329,7 +329,7 @@ func main() {
 		defer closeMetricsSink(logger, disruptionRolloutReconciler.MetricsSink)
 
 		if err := disruptionRolloutReconciler.SetupWithManager(mgr); err != nil {
-			logger.Errorw("unable to create controller", "controller", "DisruptionRollout", "error", err)
+			logger.Errorw("unable to create controller", "controller", "DisruptionRollout", log.ErrorKey, err)
 			os.Exit(1) //nolint:gocritic
 		}
 
@@ -345,7 +345,7 @@ func main() {
 			return []string{targetResource}
 		})
 		if err != nil {
-			logger.Fatalw("unable to add index", "controller", "DisruptionRollout", "error", err)
+			logger.Fatalw("unable to add index", "controller", "DisruptionRollout", log.ErrorKey, err)
 		}
 	}
 
@@ -375,7 +375,7 @@ func main() {
 	logger.Debug("setup webhook for disruption")
 
 	if err = (&chaosv1beta1.Disruption{}).SetupWebhookWithManager(setupWebhookConfig); err != nil {
-		logger.Fatalw("unable to create webhook for disruption", "webhook", chaosv1beta1.DisruptionKind, "error", err)
+		logger.Fatalw("unable to create webhook for disruption", "webhook", chaosv1beta1.DisruptionKind, log.ErrorKey, err)
 	}
 
 	if cfg.Controller.DisruptionCronEnabled {
@@ -399,7 +399,7 @@ func main() {
 		defer closeMetricsSink(logger, disruptionCronReconciler.MetricsSink)
 
 		if err := disruptionCronReconciler.SetupWithManager(mgr); err != nil {
-			logger.Errorw("unable to create controller", "controller", "DisruptionCron", "error", err)
+			logger.Errorw("unable to create controller", "controller", "DisruptionCron", log.ErrorKey, err)
 			os.Exit(1) //nolint:gocritic
 		}
 
@@ -416,7 +416,7 @@ func main() {
 		}
 
 		if err = (&chaosv1beta1.DisruptionCron{}).SetupWebhookWithManager(disruptionCronSetupWebhookConfig); err != nil {
-			logger.Fatalw("unable to create webhook for disruption cron", "webhook", chaosv1beta1.DisruptionCronKind, "error", err)
+			logger.Fatalw("unable to create webhook for disruption cron", "webhook", chaosv1beta1.DisruptionCronKind, log.ErrorKey, err)
 		}
 	}
 
@@ -470,19 +470,19 @@ func main() {
 	if err := mgr.AddHealthzCheck("healthz", func(req *http.Request) error {
 		return mgr.GetWebhookServer().StartedChecker()(req)
 	}); err != nil {
-		logger.Fatalw("Unable to set up health check", "error", err)
+		logger.Fatalw("Unable to set up health check", log.ErrorKey, err)
 	}
 
 	if err := mgr.AddReadyzCheck("readyz", func(req *http.Request) error {
 		return mgr.GetWebhookServer().StartedChecker()(req)
 	}); err != nil {
-		logger.Fatalw("Unable to set up ready check", "error", err)
+		logger.Fatalw("Unable to set up ready check", log.ErrorKey, err)
 	}
 
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		stopCh <- struct{}{} // stop the informer
 
-		logger.Fatalw("problem running manager", "error", err)
+		logger.Fatalw("problem running manager", log.ErrorKey, err)
 	}
 }
 
@@ -490,7 +490,7 @@ func main() {
 func initMetricsSink(sink string, logger *zap.SugaredLogger, app metricstypes.SinkApp) metrics.Sink {
 	metricsSink, err := metrics.GetSink(logger, metricstypes.SinkDriver(sink), app)
 	if err != nil {
-		logger.Errorw("error while creating metric sink, switching to noop", "error", err)
+		logger.Errorw("error while creating metric sink, switching to noop", log.ErrorKey, err)
 
 		metricsSink, _ = metrics.GetSink(logger, metricstypes.SinkDriverNoop, app)
 	}
@@ -500,9 +500,9 @@ func initMetricsSink(sink string, logger *zap.SugaredLogger, app metricstypes.Si
 
 // handle metrics sink client close on exit
 func closeMetricsSink(logger *zap.SugaredLogger, metricsSink metrics.Sink) {
-	logger.Infow("closing metrics sink client before exiting", "sink", metricsSink.GetSinkName())
+	logger.Infow("closing metrics sink client before exiting", log.SinkKey, metricsSink.GetSinkName())
 
 	if err := metricsSink.Close(); err != nil {
-		logger.Errorw("error closing metrics sink client", "sink", metricsSink.GetSinkName(), "error", err)
+		logger.Errorw("error closing metrics sink client", log.SinkKey, metricsSink.GetSinkName(), log.ErrorKey, err)
 	}
 }

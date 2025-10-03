@@ -12,14 +12,6 @@ import (
 	"strings"
 	"time"
 
-	chaosapi "github.com/DataDog/chaos-controller/api"
-	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/config"
-	"github.com/DataDog/chaos-controller/env"
-	cLog "github.com/DataDog/chaos-controller/log"
-	"github.com/DataDog/chaos-controller/o11y/metrics"
-	"github.com/DataDog/chaos-controller/targetselector"
-	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/cenkalti/backoff"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -30,6 +22,16 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
+	chaosapi "github.com/DataDog/chaos-controller/api"
+	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/config"
+	"github.com/DataDog/chaos-controller/env"
+	cLog "github.com/DataDog/chaos-controller/log"
+	"github.com/DataDog/chaos-controller/o11y/metrics"
+	tagutil "github.com/DataDog/chaos-controller/o11y/tags"
+	"github.com/DataDog/chaos-controller/targetselector"
+	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
 // ChaosPodService is an interface that defines methods for managing chaos pods of a disruption on Kubernetes pods.
@@ -219,10 +221,10 @@ func (m *chaosPodService) HandleChaosPodTermination(ctx context.Context, disrupt
 // Returns true if deletion was successful, otherwise returns false.
 func (m *chaosPodService) DeletePod(ctx context.Context, pod corev1.Pod) bool {
 	logger := cLog.FromContext(ctx)
-	logger.Infow("terminating chaos pod to trigger cleanup", "chaosPod", pod.Name)
+	logger.Infow("terminating chaos pod to trigger cleanup", cLog.ChaosPodNameKey, pod.Name)
 
 	if err := m.deletePod(ctx, pod); err != nil {
-		logger.Errorw("Error terminating chaos pod", "error", err, "chaosPod", pod.Name)
+		logger.Errorw("Error terminating chaos pod", cLog.ErrorKey, err, cLog.ChaosPodNameKey, pod.Name)
 
 		return false
 	}
@@ -331,7 +333,7 @@ func (m *chaosPodService) GetPodInjectorArgs(ctx context.Context, chaosPod corev
 	chaosPodArgs := []string{}
 
 	if len(chaosPod.Spec.Containers) == 0 {
-		cLog.FromContext(ctx).Errorw("no containers found in chaos pod spec", "chaosPodSpec", chaosPod.Spec)
+		cLog.FromContext(ctx).Errorw("no containers found in chaos pod spec", cLog.ChaosPodSpecKey, chaosPod.Spec)
 
 		return chaosPodArgs
 	}
@@ -344,9 +346,9 @@ func (m *chaosPodService) GetPodInjectorArgs(ctx context.Context, chaosPod corev
 
 	if len(chaosPodArgs) == 0 {
 		cLog.FromContext(ctx).Warnw("unable to find the args for this chaos pod",
-			"chaosPodName", chaosPod.Name,
-			"chaosPodSpec", chaosPod.Spec,
-			"chaosPodContainerCount", len(chaosPod.Spec.Containers),
+			cLog.ChaosPodNameKey, chaosPod.Name,
+			cLog.ChaosPodSpecKey, chaosPod.Spec,
+			cLog.ChaosPodContainerCountKey, len(chaosPod.Spec.Containers),
 		)
 	}
 
@@ -388,20 +390,20 @@ func (m *chaosPodService) HandleOrphanedChaosPods(ctx context.Context, req ctrl.
 
 	for _, pod := range pods {
 		m.handleMetricSinkError(ctx, m.config.MetricsSink.MetricOrphanFound([]string{
-			"disruption:" + req.Name,
-			"chaosPod:" + pod.Name,
-			"namespace:" + req.Namespace,
+			tagutil.FormatTag(cLog.DisruptionNameKey, req.Name),
+			tagutil.FormatTag(cLog.DisruptionNamespaceKey, req.Namespace),
+			tagutil.FormatTag(cLog.ChaosPodNameKey, pod.Name),
 		}))
 
 		target := pod.Labels[chaostypes.TargetLabel]
 
 		var p corev1.Pod
 
-		logger.Infow("checking if we can clean up orphaned chaos pod", "chaosPod", pod.Name, cLog.TargetNameKey, target)
+		logger.Infow("checking if we can clean up orphaned chaos pod", cLog.ChaosPodNameKey, pod.Name, cLog.TargetNameKey, target)
 
 		// if target doesn't exist, we can try to clean up the chaos pod
 		if err = m.config.Client.Get(ctx, types.NamespacedName{Name: target, Namespace: req.Namespace}, &p); apierrors.IsNotFound(err) {
-			logger.Warnw("orphaned chaos pod detected, will attempt to delete", "chaosPod", pod.Name)
+			logger.Warnw("orphaned chaos pod detected, will attempt to delete", cLog.ChaosPodNameKey, pod.Name)
 
 			if err = m.removeFinalizerForChaosPod(ctx, &pod); err != nil {
 				continue
@@ -410,9 +412,9 @@ func (m *chaosPodService) HandleOrphanedChaosPods(ctx context.Context, req ctrl.
 			// if the chaos pod still exists after having its finalizer removed, delete it
 			if err = m.deletePod(ctx, pod); err != nil {
 				if chaosv1beta1.IsUpdateConflictError(err) {
-					logger.Infow("retryable error deleting orphaned chaos pod", "error", err, "chaosPod", pod.Name)
+					logger.Infow("retryable error deleting orphaned chaos pod", cLog.ErrorKey, err, cLog.ChaosPodNameKey, pod.Name)
 				} else {
-					logger.Errorw("error deleting orphaned chaos pod", "error", err, "chaosPod", pod.Name)
+					logger.Errorw("error deleting orphaned chaos pod", cLog.ErrorKey, err, cLog.ChaosPodNameKey, pod.Name)
 				}
 			}
 		}
@@ -651,9 +653,9 @@ func (m *chaosPodService) removeFinalizerForChaosPod(ctx context.Context, chaosP
 
 	if err := m.config.Client.Update(ctx, chaosPod); err != nil {
 		if chaosv1beta1.IsUpdateConflictError(err) {
-			cLog.FromContext(ctx).Debugw("cannot remove chaos pod finalizer, need to re-reconcile", "error", err)
+			cLog.FromContext(ctx).Debugw("cannot remove chaos pod finalizer, need to re-reconcile", cLog.ChaosPodNameKey, chaosPod.Name, cLog.ErrorKey, err)
 		} else {
-			cLog.FromContext(ctx).Errorw("error removing chaos pod finalizer", "error", err, "chaosPod", chaosPod.Name)
+			cLog.FromContext(ctx).Errorw("error removing chaos pod finalizer", cLog.ErrorKey, err, cLog.ChaosPodNameKey, chaosPod.Name)
 		}
 
 		return err
@@ -664,7 +666,7 @@ func (m *chaosPodService) removeFinalizerForChaosPod(ctx context.Context, chaosP
 
 func (m *chaosPodService) handleMetricSinkError(ctx context.Context, err error) {
 	if err != nil {
-		cLog.FromContext(ctx).Errorw("error sending a metric", "error", err)
+		cLog.FromContext(ctx).Errorw("error sending a metric", cLog.ErrorKey, err)
 	}
 }
 

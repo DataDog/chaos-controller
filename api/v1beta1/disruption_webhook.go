@@ -15,14 +15,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/DataDog/chaos-controller/cloudservice"
-	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
-	cLog "github.com/DataDog/chaos-controller/log"
-	"github.com/DataDog/chaos-controller/o11y/metrics"
-	"github.com/DataDog/chaos-controller/o11y/tracer"
-	chaostypes "github.com/DataDog/chaos-controller/types"
-	"github.com/DataDog/chaos-controller/utils"
-
 	"github.com/hashicorp/go-multierror"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
@@ -36,6 +28,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+
+	"github.com/DataDog/chaos-controller/cloudservice"
+	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
+	cLog "github.com/DataDog/chaos-controller/log"
+	"github.com/DataDog/chaos-controller/o11y/metrics"
+	tagutil "github.com/DataDog/chaos-controller/o11y/tags"
+	"github.com/DataDog/chaos-controller/o11y/tracer"
+	chaostypes "github.com/DataDog/chaos-controller/types"
+	"github.com/DataDog/chaos-controller/utils"
 )
 
 var (
@@ -382,8 +383,8 @@ func (r *Disruption) ValidateDelete() (admission.Warnings, error) {
 // getMetricsTags parses the disruption to generate metrics tags
 func (r *Disruption) getMetricsTags() []string {
 	tags := []string{
-		fmt.Sprintf("%s:%s", cLog.DisruptionNameKey, r.Name),
-		fmt.Sprintf("%s:%s", cLog.DisruptionNamespaceKey, r.Namespace),
+		tagutil.FormatTag(cLog.DisruptionNameKey, r.Name),
+		tagutil.FormatTag(cLog.DisruptionNamespaceKey, r.Namespace),
 	}
 
 	if userInfo, err := r.UserInfo(); !errors.Is(err, ErrNoUserInfo) {
@@ -391,11 +392,11 @@ func (r *Disruption) getMetricsTags() []string {
 			logger.Errorw("error retrieving user info from disruption, using empty user info", "error", err, cLog.DisruptionNameKey, r.Name, cLog.DisruptionNamespaceKey, r.Namespace)
 		}
 
-		tags = append(tags, "username:"+userInfo.Username)
+		tags = append(tags, tagutil.FormatTag("username", userInfo.Username))
 
 		// add groups
 		for _, group := range userInfo.Groups {
-			tags = append(tags, "group:"+group)
+			tags = append(tags, tagutil.FormatTag("group", group))
 		}
 	}
 
@@ -415,10 +416,10 @@ func (r *Disruption) getMetricsTags() []string {
 
 	// add kinds
 	for _, kind := range r.Spec.KindNames() {
-		tags = append(tags, "kind:"+string(kind))
+		tags = append(tags, tagutil.FormatTag("kind", string(kind)))
 	}
 
-	tags = append(tags, "level:"+string(r.Spec.Level))
+	tags = append(tags, tagutil.FormatTag("level", string(r.Spec.Level)))
 
 	return tags
 }

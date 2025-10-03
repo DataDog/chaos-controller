@@ -10,11 +10,6 @@ import (
 	"fmt"
 	"time"
 
-	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
-	cLog "github.com/DataDog/chaos-controller/log"
-	"github.com/DataDog/chaos-controller/o11y/metrics"
-	chaostypes "github.com/DataDog/chaos-controller/types"
-
 	"github.com/robfig/cron"
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,6 +18,12 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
+	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
+	cLog "github.com/DataDog/chaos-controller/log"
+	"github.com/DataDog/chaos-controller/o11y/metrics"
+	tagutil "github.com/DataDog/chaos-controller/o11y/tags"
+	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
 var DisruptionCronTags = []string{}
@@ -50,7 +51,10 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	defer func(tsStart time.Time) {
 		tags := []string{}
 		if instance.Name != "" {
-			tags = append(tags, "disruptionCronName:"+instance.Name, "disruptionCronNamespace:"+instance.Namespace)
+			tags = append(tags,
+				tagutil.FormatTag(cLog.DisruptionCronNameKey, instance.Name),
+				tagutil.FormatTag(cLog.DisruptionCronNamespaceKey, instance.Namespace),
+			)
 		}
 
 		r.handleMetricSinkError(r.MetricsSink.MetricReconcileDuration(time.Since(tsStart), tags))
@@ -62,7 +66,11 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	r.log.Infow("fetched last known history", "history", instance.Status.History)
-	DisruptionCronTags = []string{"disruptionCronName:" + instance.Name, "disruptionCronNamespace:" + instance.Namespace, "targetName:" + instance.Spec.TargetResource.Name}
+	DisruptionCronTags = []string{
+		tagutil.FormatTag(cLog.DisruptionCronNameKey, instance.Name),
+		tagutil.FormatTag(cLog.DisruptionCronNamespaceKey, instance.Namespace),
+		tagutil.FormatTag(cLog.TargetNameKey, instance.Spec.TargetResource.Name),
+	}
 
 	// DisruptionCron being deleted
 	if !instance.DeletionTimestamp.IsZero() {
@@ -104,7 +112,7 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	targetResourceExists, instanceDeleted, err := r.updateTargetResourcePreviouslyMissing(ctx, instance)
 	if err != nil {
 		// Log error and requeue if status update or deletion fails
-		r.log.Errorw("failed to handle target resource status", "err", err)
+		r.log.Errorw("failed to handle target resource status", cLog.ErrorKey, err)
 		return ctrl.Result{}, err
 	}
 
@@ -120,7 +128,7 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	// Update the DisruptionCron status with the time when the last disruption was successfully scheduled
 	if err := r.updateLastScheduleTime(ctx, instance, disruptions); err != nil {
-		r.log.Errorw("unable to update LastScheduleTime of DisruptionCron status", "err", err)
+		r.log.Errorw("unable to update LastScheduleTime of DisruptionCron status", cLog.ErrorKey, err)
 		return ctrl.Result{}, err
 	}
 
@@ -135,7 +143,7 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	// If multiple unmet start times exist, start the last one
 	missedRun, nextRun, err := r.getNextSchedule(instance, time.Now())
 	if err != nil {
-		r.log.Errorw("unable to figure out DisruptionCron schedule", "err", err)
+		r.log.Errorw("unable to figure out DisruptionCron schedule", cLog.ErrorKey, err)
 		// Don't requeue until schedule update is received
 		return ctrl.Result{}, nil
 	}
@@ -184,17 +192,17 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	disruption, err := CreateDisruptionFromTemplate(ctx, r.Client, r.Scheme, instance, &instance.Spec.TargetResource, &instance.Spec.DisruptionTemplate, missedRun, r.log)
 
 	if err != nil {
-		r.log.Warnw("unable to construct disruption from template", "err", err)
+		r.log.Warnw("unable to construct disruption from template", cLog.ErrorKey, err)
 		// Don't requeue until update to the spec is received
 		return scheduledResult, nil
 	}
 
 	if err := r.Client.Create(ctx, disruption); err != nil {
-		r.log.Warnw("unable to create Disruption for DisruptionCron", "disruption", disruption, "err", err)
+		r.log.Warnw("unable to create Disruption for DisruptionCron", cLog.DisruptionKey, disruption, cLog.ErrorKey, err)
 		return ctrl.Result{}, err
 	}
 
-	r.handleMetricSinkError(r.MetricsSink.MetricDisruptionScheduled(append(DisruptionCronTags, "disruptionName:"+disruption.Name)))
+	r.handleMetricSinkError(r.MetricsSink.MetricDisruptionScheduled(append(DisruptionCronTags, tagutil.FormatTag(cLog.DisruptionNameKey, disruption.Name))))
 
 	r.log.Infow("created Disruption for DisruptionCron run", cLog.DisruptionNameKey, disruption.Name)
 
@@ -219,10 +227,12 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	r.log.Debugw("updating instance Status lastScheduleTime and history",
-		"lastScheduleTime", instance.Status.LastScheduleTime, "history", instance.Status.History)
+		"lastScheduleTime", instance.Status.LastScheduleTime,
+		"history", instance.Status.History,
+	)
 
 	if err := r.Client.Status().Update(ctx, instance); err != nil {
-		r.log.Warnw("unable to update LastScheduleTime of DisruptionCron status", "err", err)
+		r.log.Warnw("unable to update LastScheduleTime of DisruptionCron status", cLog.ErrorKey, err)
 		return ctrl.Result{}, err
 	}
 
@@ -267,8 +277,9 @@ func (r *DisruptionCronReconciler) updateTargetResourcePreviouslyMissing(ctx con
 
 		if time.Since(instance.Status.TargetResourcePreviouslyMissing.Time) > r.TargetResourceMissingThreshold {
 			r.log.Warnw(fmt.Sprintf("target has been missing for over %s, deleting this schedule", r.TargetResourceMissingThreshold.String()),
-				"error", err,
-				"timeMissing", time.Since(instance.Status.TargetResourcePreviouslyMissing.Time))
+				cLog.ErrorKey, err,
+				"timeMissing", time.Since(instance.Status.TargetResourcePreviouslyMissing.Time),
+			)
 			r.recordEventOnDisruptionCron(instance, chaosv1beta1.EventDisruptionCronTargetMissing,
 				fmt.Sprintf("%s could not be found for %s, we will delete this disruption cron.", instance.Spec.TargetResource.String(), r.TargetResourceMissingThreshold.String()))
 
@@ -328,7 +339,7 @@ func (r *DisruptionCronReconciler) getNextSchedule(instance *chaosv1beta1.Disrup
 	sched, err := cron.ParseStandard(instance.Spec.Schedule)
 
 	if err != nil {
-		r.log.Errorw("Unparseable schedule", "schedule", instance.Spec.Schedule, "err", err)
+		r.log.Errorw("Unparseable schedule", cLog.ScheduleKey, instance.Spec.Schedule, cLog.ErrorKey, err)
 		return time.Time{}, time.Time{}, err
 	}
 
@@ -364,7 +375,7 @@ func (r *DisruptionCronReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // handleMetricSinkError logs the given metric sink error if it is not nil
 func (r *DisruptionCronReconciler) handleMetricSinkError(err error) {
 	if err != nil {
-		r.log.Errorw("error sending a metric", "error", err)
+		r.log.Errorw("error sending a metric", cLog.ErrorKey, err)
 	}
 }
 

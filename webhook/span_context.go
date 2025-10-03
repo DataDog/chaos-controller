@@ -39,15 +39,15 @@ func (m *SpanContextMutator) Handle(ctx context.Context, req admission.Request) 
 
 	// decode object
 	if err := m.Decoder.Decode(req, dis); err != nil {
-		m.Log.Errorw("error decoding disruption object", "error", err, cLog.DisruptionNameKey, req.Name, cLog.DisruptionNamespaceKey, req.Namespace)
+		m.Log.Errorw("error decoding disruption object", cLog.ErrorKey, err, cLog.DisruptionNameKey, req.Name, cLog.DisruptionNamespaceKey, req.Namespace)
 
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
 	ctx, disruptionSpan := otel.Tracer("").Start(ctx, "disruption", trace.WithNewRoot(), trace.WithAttributes(
-		attribute.String("disruption_name", dis.Name),
-		attribute.String("disruption_namespace", dis.Namespace),
-		attribute.String("disruption_user", req.UserInfo.Username),
+		attribute.String("disruption.name", dis.Name),
+		attribute.String("disruption.namespace", dis.Namespace),
+		attribute.String("disruption.user", req.UserInfo.Username),
 	))
 	defer disruptionSpan.End()
 
@@ -65,12 +65,12 @@ func (m *SpanContextMutator) Handle(ctx context.Context, req admission.Request) 
 	// writes the traceID and spanID in the annotations of the disruption
 	err := dis.SetSpanContext(ctx)
 	if err != nil {
-		m.Log.Errorw("error defining SpanContext", "error", err, cLog.DisruptionNameKey, dis.Name, cLog.DisruptionNamespaceKey, dis.Namespace)
+		m.Log.Errorw("error defining SpanContext", cLog.ErrorKey, err, cLog.DisruptionNameKey, dis.Name, cLog.DisruptionNamespaceKey, dis.Namespace)
 	}
 
 	marshaled, err := json.Marshal(dis)
 	if err != nil {
-		m.Log.Errorw("error encoding modified annotations", "error", err, cLog.DisruptionNameKey, dis.Name, cLog.DisruptionNamespaceKey, dis.Namespace)
+		m.Log.Errorw("error encoding modified annotations", cLog.ErrorKey, err, cLog.DisruptionNameKey, dis.Name, cLog.DisruptionNamespaceKey, dis.Namespace)
 
 		return admission.Errored(http.StatusInternalServerError, err)
 	}

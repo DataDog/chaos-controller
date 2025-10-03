@@ -9,12 +9,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/DataDog/chaos-controller/api/v1beta1"
-	cLog "github.com/DataDog/chaos-controller/log"
 	"k8s.io/apimachinery/pkg/types"
 	k8scontrollercache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+
+	"github.com/DataDog/chaos-controller/api/v1beta1"
+	cLog "github.com/DataDog/chaos-controller/log"
 )
 
 // DisruptionsWatchersManager defines the interface for a manager that can handle adding, removing Watchers for a disruption
@@ -98,7 +99,7 @@ func (d disruptionsWatchersManager) CreateAllWatchers(ctx context.Context, disru
 			return err
 		}
 
-		cLog.FromContext(ctx).Debugw("Watcher created", "watcherName", watcherName)
+		cLog.FromContext(ctx).Debugw("Watcher created", cLog.WatcherNameKey, watcherName)
 	}
 
 	return nil
@@ -144,8 +145,8 @@ func (d disruptionsWatchersManager) RemoveAllOrphanWatchers(ctx context.Context)
 			delete(d.watchersManagers, namespacedName)
 
 			cLog.FromContext(ctx).Infow("all watchers have been removed",
-				"watcherName", namespacedName.Name,
-				"watcherNamespace", namespacedName.Namespace,
+				cLog.WatcherNameKey, namespacedName.Name,
+				cLog.WatcherNamespaceKey, namespacedName.Namespace,
 			)
 		}
 	}

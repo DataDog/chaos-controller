@@ -12,8 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/DataDog/chaos-controller/api/v1beta1"
-	cLog "github.com/DataDog/chaos-controller/log"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,6 +19,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/DataDog/chaos-controller/api/v1beta1"
+	cLog "github.com/DataDog/chaos-controller/log"
 )
 
 // DisruptionTargetHandler struct used to manage what to do when changes occur on the watched objects in the cache
@@ -45,8 +46,8 @@ func (d DisruptionTargetHandler) OnAdd(obj interface{}, _ bool) {
 	d.log.Debugw("DisruptionTargetHandler ADD",
 		cLog.DisruptionNameKey, d.disruption.Name,
 		cLog.DisruptionNamespaceKey, d.disruption.Namespace,
-		"targetName", targetName,
-		"targetKind", targetKind,
+		cLog.TargetNameKey, targetName,
+		cLog.TargetKindKey, targetKind,
 	)
 
 	d.OnChangeHandleMetricsSink(pod, node, okPod, okNode, WatcherAddEvent)
@@ -62,8 +63,8 @@ func (d DisruptionTargetHandler) OnDelete(obj interface{}) {
 	d.log.Debugw("DisruptionTargetHandler DELETE",
 		cLog.DisruptionNameKey, d.disruption.Name,
 		cLog.DisruptionNamespaceKey, d.disruption.Namespace,
-		"targetName", targetName,
-		"targetKind", targetKind,
+		cLog.TargetNameKey, targetName,
+		cLog.TargetKindKey, targetKind,
 	)
 
 	d.OnChangeHandleMetricsSink(pod, node, okPod, okNode, WatcherDeleteEvent)
