@@ -146,7 +146,7 @@ func (m *chaosPodService) HandleChaosPodTermination(ctx context.Context, disrupt
 		}
 
 		// If the target is not in a good shape, proceed with cleanup phase.
-		cLog.FromContext(ctx).Infow("Target is not likely to be cleaned (either it does not exist anymore or it is not ready), the injector will TRY to clean it but will not take care about any failures", "target", target)
+		cLog.FromContext(ctx).Infow("Target is not likely to be cleaned (either it does not exist anymore or it is not ready), the injector will TRY to clean it but will not take care about any failures", cLog.TargetNameKey, target)
 
 		// Remove the finalizer for the chaos pod since cleanup won't be fully reliable.
 		err = m.removeFinalizerForChaosPod(ctx, chaosPod)
@@ -397,7 +397,7 @@ func (m *chaosPodService) HandleOrphanedChaosPods(ctx context.Context, req ctrl.
 
 		var p corev1.Pod
 
-		logger.Infow("checking if we can clean up orphaned chaos pod", "chaosPod", pod.Name, "target", target)
+		logger.Infow("checking if we can clean up orphaned chaos pod", "chaosPod", pod.Name, cLog.TargetNameKey, target)
 
 		// if target doesn't exist, we can try to clean up the chaos pod
 		if err = m.config.Client.Get(ctx, types.NamespacedName{Name: target, Namespace: req.Namespace}, &p); apierrors.IsNotFound(err) {

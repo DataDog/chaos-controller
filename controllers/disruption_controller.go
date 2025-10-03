@@ -645,7 +645,7 @@ func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *ch
 		switch len(found) {
 		case 0:
 			chaosPodArgs := r.ChaosPodService.GetPodInjectorArgs(ctx, targetChaosPod)
-			r.log.Infow("creating chaos pod", "target", target, "chaosPodArgs", chaosPodArgs)
+			r.log.Infow("creating chaos pod", cLog.TargetNameKey, target, "chaosPodArgs", chaosPodArgs)
 
 			// create the pod
 			if err = r.ChaosPodService.CreatePod(ctx, &targetChaosPod); err != nil {
@@ -657,7 +657,7 @@ func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *ch
 
 			// wait for the pod to be existing
 			if err := r.ChaosPodService.WaitForPodCreation(ctx, targetChaosPod); err != nil {
-				r.log.Errorw("error waiting for chaos pod to be created", "error", err, "chaosPod", targetChaosPod.Name, "target", target)
+				r.log.Errorw("error waiting for chaos pod to be created", "error", err, "chaosPod", targetChaosPod.Name, cLog.TargetNameKey, target)
 
 				continue
 			}
@@ -670,14 +670,14 @@ func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *ch
 			// mark that we created new pods in this cycle
 			newPodsCreated = true
 		case 1:
-			r.log.Debugw("an injection pod is already existing for the selected target", "target", target, "chaosPod", found[0].Name)
+			r.log.Debugw("an injection pod is already existing for the selected target", cLog.TargetNameKey, target, "chaosPod", found[0].Name)
 		default:
 			var chaosPodNames []string
 			for _, pod := range found {
 				chaosPodNames = append(chaosPodNames, pod.Name)
 			}
 
-			r.log.Errorw("multiple injection pods for one target found", "target", target, "chaosPods", strings.Join(chaosPodNames, ","), "chaosPodLabels", targetChaosPod.Labels)
+			r.log.Errorw("multiple injection pods for one target found", cLog.TargetNameKey, target, "chaosPods", strings.Join(chaosPodNames, ","), "chaosPodLabels", targetChaosPod.Labels)
 		}
 	}
 
@@ -772,7 +772,7 @@ func (r *DisruptionReconciler) handleChaosPodTermination(ctx context.Context, in
 
 		// if the chaos pod finalizer must not be removed and the chaos pod must not be deleted
 		// and the cleanup status must not be ignored, we are stuck and won't be able to remove the disruption
-		r.log.Infow("instance seems stuck on removal for this target, please check manually", "target", target, "chaosPod", chaosPod.Name)
+		r.log.Infow("instance seems stuck on removal for this target, please check manually", cLog.TargetNameKey, target, "chaosPod", chaosPod.Name)
 		r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionStuckOnRemoval, "", target)
 
 		instance.Status.IsStuckOnRemoval = true
@@ -976,7 +976,7 @@ func (r *DisruptionReconciler) recordEventOnTarget(ctx context.Context, instance
 		p := &corev1.Pod{}
 
 		if err := r.Client.Get(ctx, types.NamespacedName{Namespace: instance.Namespace, Name: target}, p); err != nil {
-			r.log.Errorw("event failed to be registered on target", "error", err, "target", target)
+			r.log.Errorw("event failed to be registered on target", "error", err, cLog.TargetNameKey, target)
 		}
 
 		o = p
@@ -984,7 +984,7 @@ func (r *DisruptionReconciler) recordEventOnTarget(ctx context.Context, instance
 		n := &corev1.Node{}
 
 		if err := r.Client.Get(ctx, types.NamespacedName{Name: target}, n); err != nil {
-			r.log.Errorw("event failed to be registered on target", "error", err, "target", target)
+			r.log.Errorw("event failed to be registered on target", "error", err, cLog.TargetNameKey, target)
 		}
 
 		o = n
@@ -1186,7 +1186,7 @@ func (r *DisruptionReconciler) getEligibleTargets(ctx context.Context, instance 
 		if anyChaosPodsRunning {
 			if !instance.Spec.AllowDisruptedTargets {
 				r.log.Infow(`disruption spec does not allow to use already disrupted targets with ANY kind of existing disruption, skipping...
-NB: you can specify "spec.allowDisruptedTargets: true" to allow a new disruption without any disruption kind intersection to target the same pod`, "target", target, "targetLabels", targetLabels)
+NB: you can specify "spec.allowDisruptedTargets: true" to allow a new disruption without any disruption kind intersection to target the same pod`, cLog.TargetNameKey, target, "targetLabels", targetLabels)
 
 				continue
 			}
@@ -1205,7 +1205,7 @@ NB: you can specify "spec.allowDisruptedTargets: true" to allow a new disruption
 			}
 
 			if len(intersectionOfKinds) != 0 {
-				r.log.Infow("target is already disrupted by at least one provided kind, skipping", "target", target, "targetLabels", targetLabels, "targetDisruptedByKinds", targetDisruptedByKinds, "intersectionOfKinds", intersectionOfKinds)
+				r.log.Infow("target is already disrupted by at least one provided kind, skipping", cLog.TargetNameKey, target, "targetLabels", targetLabels, "targetDisruptedByKinds", targetDisruptedByKinds, "intersectionOfKinds", intersectionOfKinds)
 
 				continue
 			}

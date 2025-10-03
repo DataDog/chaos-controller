@@ -261,7 +261,7 @@ func (d DisruptionTargetHandler) findNotifiableEvents(eventsToSend map[v1beta1.E
 				}
 
 				d.log.Debugw("warning event detected on target",
-					"target", targetName,
+					cLog.TargetNameKey, targetName,
 					"reason", event.Reason,
 					"message", event.Message,
 					"timestamp", event.LastTimestamp.Time.Unix(),
@@ -274,7 +274,7 @@ func (d DisruptionTargetHandler) findNotifiableEvents(eventsToSend map[v1beta1.E
 				eventsToSend[v1beta1.EventTargetPodRecoveredState] = true
 
 				d.log.Debugw("recovering event detected on target",
-					"target", targetName,
+					cLog.TargetNameKey, targetName,
 					"reason", event.Reason,
 					"message", event.Message,
 					"timestamp", event.LastTimestamp.Time.Unix(),
@@ -289,7 +289,7 @@ func (d DisruptionTargetHandler) findNotifiableEvents(eventsToSend map[v1beta1.E
 				eventsToSend[v1beta1.EventTargetNodeWarningState] = true
 
 				d.log.Debugw("warning event detected on target",
-					"target", targetName,
+					cLog.TargetNameKey, targetName,
 					"reason", event.Reason,
 					"message", event.Message,
 					"timestamp", event.LastTimestamp.Time.Unix(),
@@ -302,7 +302,7 @@ func (d DisruptionTargetHandler) findNotifiableEvents(eventsToSend map[v1beta1.E
 				eventsToSend[v1beta1.EventTargetNodeRecoveredState] = true
 
 				d.log.Debugw("recovering event detected on target",
-					"target", targetName,
+					cLog.TargetNameKey, targetName,
 					"reason", event.Reason,
 					"message", event.Message,
 					"timestamp", event.LastTimestamp.Time.Unix(),
@@ -330,7 +330,7 @@ func (d DisruptionTargetHandler) buildPodEventsToSend(oldPod corev1.Pod, newPod 
 			// Warning events
 			if container.RestartCount > (oldContainer.RestartCount + 2) {
 				d.log.Infow("container restart detected on target",
-					"target", fmt.Sprintf("%s/%s", newPod.Namespace, newPod.Name),
+					cLog.TargetNameKey, fmt.Sprintf("%s/%s", newPod.Namespace, newPod.Name),
 					"container", container.Name,
 					"restarts", container.RestartCount,
 				)
@@ -343,7 +343,7 @@ func (d DisruptionTargetHandler) buildPodEventsToSend(oldPod corev1.Pod, newPod 
 
 			if lastState != newState {
 				d.log.Infow("container state change detected on target",
-					"target", fmt.Sprintf("%s/%s", newPod.Namespace, newPod.Name),
+					cLog.TargetNameKey, fmt.Sprintf("%s/%s", newPod.Namespace, newPod.Name),
 					"container", container.Name,
 					"lastState", lastState,
 					"newState", newState,
@@ -397,7 +397,7 @@ func (d DisruptionTargetHandler) buildNodeEventsToSend(oldNode corev1.Node, newN
 
 			if newCondition.Status != oldCondition.Status {
 				d.log.Debugw("condition changed on target node",
-					"target", newNode.Name,
+					cLog.TargetNameKey, newNode.Name,
 					"conditionType", newCondition.Type,
 					"newStatus", newCondition.Status,
 					"oldStatus", oldCondition.Status,
@@ -443,7 +443,7 @@ func (d DisruptionTargetHandler) buildNodeEventsToSend(oldNode corev1.Node, newN
 
 	if newNode.Status.Phase != oldNode.Status.Phase {
 		d.log.Debugw("condition changed on target node",
-			"target", newNode.Name,
+			cLog.TargetNameKey, newNode.Name,
 			"newPhase", newNode.Status.Phase,
 			"oldPhase", oldNode.Status.Phase,
 		)

@@ -151,8 +151,8 @@ func initLogger() {
 	log = log.With(
 		logger.DisruptionNameKey, disruptionArgs.DisruptionName,
 		logger.DisruptionNamespaceKey, disruptionArgs.DisruptionNamespace,
-		"targetName", disruptionArgs.TargetName,
-		"targetNodeName", disruptionArgs.TargetNodeName,
+		logger.TargetNameKey, disruptionArgs.TargetName,
+		logger.TargetNodeName, disruptionArgs.TargetNodeName,
 	)
 
 	if parentPID != 0 {
@@ -308,7 +308,7 @@ func initConfig() {
 			Disruption:         disruptionArgs,
 			InjectorCtx:        injectorCtx,
 		}
-		config.Log = log.With("targetLevel", disruptionArgs.Level, "target", config.TargetName()) // targetName is already taken in the initLogger
+		config.Log = log.With("targetLevel", disruptionArgs.Level, logger.TargetNameKey, config.TargetName()) // targetName is already taken in the initLogger
 
 		configs = append(configs, config)
 	}
@@ -379,7 +379,7 @@ func inject(kind string, sendToMetrics bool, reinjection bool) bool {
 				}
 			}
 
-			log.Errorw("disruption injection failed", "error", err, "target", inj.TargetName())
+			log.Errorw("disruption injection failed", "error", err, logger.TargetNameKey, inj.TargetName())
 		} else {
 			if sendToMetrics {
 				if reinjection {

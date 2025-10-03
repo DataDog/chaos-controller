@@ -30,6 +30,10 @@ const (
 	CloudProviderNameKey           = CloudServicesProviderPrefixKey + "Name"
 	CloudProviderURLKey            = CloudServicesProviderPrefixKey + "URL"
 	CloudProviderVersionKey        = CloudServicesProviderPrefixKey + "Version"
+
+	// Target
+	TargetNameKey  = "targetName"
+	TargetNodeName = "targetNodeName"
 )
 
 // contextKey is used to store logger in context
