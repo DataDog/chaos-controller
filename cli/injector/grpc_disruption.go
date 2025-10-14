@@ -8,7 +8,7 @@ package main
 import (
 	"strconv"
 	"strings"
-	
+
 	"github.com/spf13/cobra"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
