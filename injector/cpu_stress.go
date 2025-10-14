@@ -114,12 +114,12 @@ func (c *cpuStressInjector) Clean() error {
 
 // stress run a cpu intensive operation on cpu until an exit signal is received
 func (c *cpuStressInjector) stress(cpu int) {
-	logger := c.config.Log.With(tags.CpuKey, cpu, tags.PercentageKey, c.percentage)
+	logger := c.config.Log.With(tags.CPUKey, cpu, tags.PercentageKey, c.percentage)
 
 	stressConfigurationCompleted := make(chan struct{}, 1)
 
 	go func() {
-		logger := logger.With(tags.ThreadIdKey, c.process.ThreadID())
+		logger := logger.With(tags.ThreadIDKey, c.process.ThreadID())
 
 		defer func() {
 			logger.Infow("Stress is stopping...")

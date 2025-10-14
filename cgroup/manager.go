@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
-	
+
 	"go.uber.org/zap"
 
 	"github.com/DataDog/chaos-controller/cpuset"

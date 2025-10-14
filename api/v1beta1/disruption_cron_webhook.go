@@ -80,6 +80,7 @@ func (d *DisruptionCron) Default() {
 			tagutil.DisruptionCronNameKey, d.Name,
 			tagutil.DisruptionCronNamespaceKey, d.Namespace,
 		)
+
 		d.Spec.DelayedStartTolerance = DisruptionDuration(defaultCronDelayedStartTolerance.String())
 	}
 }

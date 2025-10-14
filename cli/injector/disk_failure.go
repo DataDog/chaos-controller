@@ -7,7 +7,7 @@ package main
 
 import (
 	"github.com/spf13/cobra"
-	
+
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/injector"
 	"github.com/DataDog/chaos-controller/o11y/tags"

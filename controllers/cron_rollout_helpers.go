@@ -190,6 +190,7 @@ func getScheduledTimeForDisruption(ctx context.Context, disruption *chaosv1beta1
 			tags.ErrorKey, err,
 			tags.DisruptionNameKey, disruption.Name,
 		)
+
 		return time.Time{}
 	}
 

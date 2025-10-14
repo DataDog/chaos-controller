@@ -304,6 +304,7 @@ func (i *networkDisruptionInjector) Clean() error {
 					tags.TargetContainerIDKey, i.config.TargetContainer.ID(),
 					tags.ErrorKey, err,
 				)
+
 				return nil
 			}
 

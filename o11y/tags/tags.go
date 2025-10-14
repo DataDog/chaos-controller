@@ -189,7 +189,7 @@ const (
 
 	// System and process
 	AppKey              = "app"
-	CpuKey              = "cpu"
+	CPUKey              = "cpu"
 	DeviceKey           = "device"
 	DriverKey           = "driver"
 	ParentPidKey        = "parent_pid"
@@ -200,7 +200,7 @@ const (
 	StressPidKey        = "stress_pid"
 	SysrqPathKey        = "sysrq_path"
 	SysrqTriggerPathKey = "sysrq_trigger_path"
-	ThreadIdKey         = "thread_id"
+	ThreadIDKey         = "thread_id"
 
 	// Network and connectivity
 	BandwidthLimitKey      = "bandwidth_limit"
