@@ -131,7 +131,7 @@ func main() {
 	broadcaster := eventbroadcaster.EventBroadcaster()
 
 	// event notifiers
-	notifiers, err := eventnotifier.CreateNotifiers(cfg.Controller.Notifiers, logger)
+	notifiers, err := eventnotifier.CreateNotifiers(ctx, cfg.Controller.Notifiers, logger)
 	if err != nil {
 		logger.Errorw("error(s) while creating notifiers", tags.ErrorKey, err)
 	}

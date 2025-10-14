@@ -21,6 +21,7 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier"
 	notifTypes "github.com/DataDog/chaos-controller/eventnotifier/types"
+	cLog "github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/o11y/tags"
 )
 
@@ -46,6 +47,8 @@ func RegisterNotifierSinks(mgr ctrl.Manager, broadcaster record.EventBroadcaster
 func (s *NotifierSink) Create(event *corev1.Event) (*corev1.Event, error) {
 	s.logger.Debugw("CREATE event received:", tags.EventKey, event)
 
+	ctx := cLog.WithLogger(context.Background(), s.logger)
+
 	obj, err := s.getObject(event)
 	if err != nil {
 		s.logger.Debug(err) // Involved object is a target Pod or Node, we don't send notifications for these.
@@ -59,7 +62,7 @@ func (s *NotifierSink) Create(event *corev1.Event) (*corev1.Event, error) {
 		return event, nil
 	}
 
-	if err := s.notifier.Notify(obj, *event, notificationType); err != nil {
+	if err := s.notifier.Notify(ctx, obj, *event, notificationType); err != nil {
 		return event, fmt.Errorf("notifier: failed to notify: %w", err)
 	}
 

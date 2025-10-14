@@ -16,7 +16,6 @@ import (
 	"strings"
 
 	"github.com/slack-go/slack"
-	"go.uber.org/zap"
 	authv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -58,32 +57,30 @@ type Notifier struct {
 	client slackNotifier
 	common types.NotifiersCommonConfig
 	config NotifierSlackConfig
-	logger *zap.SugaredLogger
 }
 
 // New Slack Notifier
-func New(commonConfig types.NotifiersCommonConfig, slackConfig NotifierSlackConfig, logger *zap.SugaredLogger) (*Notifier, error) {
-	not := &Notifier{
+func New(ctx context.Context, commonConfig types.NotifiersCommonConfig, slackConfig NotifierSlackConfig) (*Notifier, error) {
+	notifier := &Notifier{
 		common: commonConfig,
 		config: slackConfig,
-		logger: logger,
 	}
 
-	tokenfile, err := os.Open(filepath.Clean(not.config.TokenFilepath))
+	tokenFile, err := os.Open(filepath.Clean(notifier.config.TokenFilepath))
 	if err != nil {
-		return nil, fmt.Errorf("slack token file not found: %w", err)
+		return nil, fmt.Errorf("slack token file notifier found: %w", err)
 	}
 
 	defer func() {
-		err := tokenfile.Close()
+		err := tokenFile.Close()
 		if err != nil {
-			not.logger.Warnw("unable to close token file", tags.ErrorKey, err)
+			cLog.FromContext(ctx).Warnw("unable to close token file", tags.ErrorKey, err)
 		}
 	}()
 
-	token, err := io.ReadAll(tokenfile)
+	token, err := io.ReadAll(tokenFile)
 	if err != nil {
-		return nil, fmt.Errorf("slack token file could not be read: %w", err)
+		return nil, fmt.Errorf("slack token file could notifier be read: %w", err)
 	}
 
 	stoken := string(token)
@@ -99,11 +96,9 @@ func New(commonConfig types.NotifiersCommonConfig, slackConfig NotifierSlackConf
 		return nil, fmt.Errorf("slack auth failed: %w", err)
 	}
 
-	not.client = slackClient
+	notifier.client = slackClient
 
-	not.logger.Info("notifier: slack notifier connected to workspace")
-
-	return not, nil
+	return notifier, nil
 }
 
 // GetNotifierName returns the driver's name
@@ -112,9 +107,7 @@ func (n *Notifier) GetNotifierName() string {
 }
 
 // Notify generates a notification for generic k8s events
-func (n *Notifier) Notify(obj client.Object, event corev1.Event, notifType types.NotificationType) error {
-	ctx := context.Background()
-
+func (n *Notifier) Notify(ctx context.Context, obj client.Object, event corev1.Event, notifType types.NotificationType) error {
 	switch d := obj.(type) {
 	case *v1beta1.Disruption:
 		return n.notifyForDisruption(ctx, d, event, notifType)
@@ -126,12 +119,12 @@ func (n *Notifier) Notify(obj client.Object, event corev1.Event, notifType types
 }
 
 func (n *Notifier) notifyForDisruption(ctx context.Context, dis *v1beta1.Disruption, event corev1.Event, notifType types.NotificationType) error {
-	logger := n.logger.With(
+	logger := cLog.FromContext(ctx).With(
 		tags.DisruptionNameKey, dis.Name,
 		tags.DisruptionNamespaceKey, dis.Namespace,
-		tags.EventKey, event.Type,
+		tags.EventTypeKey, event.Type,
+		tags.EventKey, event,
 	)
-
 	ctx = cLog.WithLogger(ctx, logger)
 
 	slackMsg := n.buildSlackMessage(ctx, dis, event, notifType, dis.Spec.Reporting)
@@ -171,13 +164,13 @@ func (n *Notifier) notifyForDisruption(ctx context.Context, dis *v1beta1.Disrupt
 }
 
 func (n *Notifier) notifyForDisruptionCron(ctx context.Context, disruptionCron *v1beta1.DisruptionCron, event corev1.Event, notifType types.NotificationType) error {
-	logger := n.logger.With(
+	logger := cLog.FromContext(ctx).With(
 		tags.DisruptionCronNameKey, disruptionCron.Name,
 		tags.DisruptionCronNamespaceKey, disruptionCron.Namespace,
-		tags.EventKey, event.Type,
+		tags.EventTypeKey, event.Type,
+		tags.EventKey, event,
 	)
-
-	ctx = cLog.WithLogger(context.Background(), logger)
+	ctx = cLog.WithLogger(ctx, logger)
 
 	slackMsg := n.buildSlackMessage(ctx, disruptionCron, event, notifType, disruptionCron.Spec.Reporting)
 

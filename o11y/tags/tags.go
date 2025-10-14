@@ -24,7 +24,7 @@ const (
 	DisruptionKindKey      = disruptionPrefixKey + "_kind"
 
 	// DisruptionCron
-	disruptionCronPrefixKey    = "disruption_cron"
+	disruptionCronPrefixKey    = "disruptioncron"
 	DisruptionCronNameKey      = disruptionCronPrefixKey + "_name"
 	DisruptionCronNamespaceKey = disruptionCronPrefixKey + "_namespace"
 
@@ -43,8 +43,10 @@ const (
 	ChaosPodArgsKey           = chaosPodPrefixKey + "_args"
 	ChaosPodContainerCountKey = chaosPodPrefixKey + "_container_count"
 
-	// Controller and Injection
-	ControllerKey      = "controller"
+	// Controller
+	ControllerKey = "controller"
+
+	// Injection
 	injectionPrefixKey = "injection"
 	InjectionStatusKey = injectionPrefixKey + "_status"
 
@@ -100,6 +102,7 @@ const (
 	servicePrefixKey    = "service"
 	ServiceNamespaceKey = servicePrefixKey + "_namespace"
 	ServiceNameKey      = servicePrefixKey + "_name"
+	ServiceKey          = servicePrefixKey
 
 	// PVC
 	pvcPrefixKey = "pvc"
@@ -229,44 +232,44 @@ const (
 	TcServiceFilterKey     = "tc_service_filter"
 
 	// Container and pod lifecycle
-	DeleteStorageKey         = "delete_storage"
-	ForceDeleteKey           = "force_delete"
-	GracePeriodSecondsKey    = "grace_period_seconds"
-	NewContainerExistsKey    = "new_container_exists"
-	NewContainerIDKey        = "new_container_id"
-	OldContainerIDKey        = "old_container_id"
-	RestartsKey              = "restarts"
+	DeleteStorageKey      = "delete_storage"
+	ForceDeleteKey        = "force_delete"
+	GracePeriodSecondsKey = "grace_period_seconds"
+	NewContainerExistsKey = "new_container_exists"
+	NewContainerIDKey     = "new_container_id"
+	OldContainerIDKey     = "old_container_id"
+	RestartsKey           = "restarts"
 
 	// State tracking
-	ConditionTypeKey     = "condition_type"
-	LastStateKey         = "last_state"
-	NewHashKey           = "new_hash"
-	NewPhaseKey          = "new_phase"
-	NewStateKey          = "new_state"
-	NewStatusKey         = "new_status"
-	NewTargetKindKey     = "new_target_kind"
-	NewTargetNameKey     = "new_target_name"
-	OldHashKey           = "old_hash"
-	OldPhaseKey          = "old_phase"
-	OldStatusKey         = "old_status"
-	OldTargetKindKey     = "old_target_kind"
-	OldTargetNameKey     = "old_target_name"
-	StatusKey            = "status"
+	ConditionTypeKey = "condition_type"
+	LastStateKey     = "last_state"
+	NewHashKey       = "new_hash"
+	NewPhaseKey      = "new_phase"
+	NewStateKey      = "new_state"
+	NewStatusKey     = "new_status"
+	NewTargetKindKey = "new_target_kind"
+	NewTargetNameKey = "new_target_name"
+	OldHashKey       = "old_hash"
+	OldPhaseKey      = "old_phase"
+	OldStatusKey     = "old_status"
+	OldTargetKindKey = "old_target_kind"
+	OldTargetNameKey = "old_target_name"
+	StatusKey        = "status"
 
 	// Metrics and counting
-	AssignedCpusKey               = "assigned_cpus"
-	BpsKey                        = "bps"
-	CalculatedPercentOfTotalKey   = "calculated_percent_of_total"
-	ClusterThresholdKey           = "cluster_threshold"
-	CountKey                      = "count"
-	FoundPodsKey                  = "found_pods"
-	NamespaceCountKey             = "namespace_count"
-	NamespaceThresholdKey         = "namespace_threshold"
-	NumActiveDisruptionsKey       = "num_active_disruptions"
-	PercentageKey                 = "percentage"
-	ProvidedValueKey              = "provided_value"
-	StressCountKey                = "stress_count"
-	TotalCountKey                 = "total_count"
+	AssignedCpusKey             = "assigned_cpus"
+	BpsKey                      = "bps"
+	CalculatedPercentOfTotalKey = "calculated_percent_of_total"
+	ClusterThresholdKey         = "cluster_threshold"
+	CountKey                    = "count"
+	FoundPodsKey                = "found_pods"
+	NamespaceCountKey           = "namespace_count"
+	NamespaceThresholdKey       = "namespace_threshold"
+	NumActiveDisruptionsKey     = "num_active_disruptions"
+	PercentageKey               = "percentage"
+	ProvidedValueKey            = "provided_value"
+	StressCountKey              = "stress_count"
+	TotalCountKey               = "total_count"
 
 	// Authentication and user management
 	GroupKey               = "group"
@@ -277,13 +280,14 @@ const (
 	UserAddressKey         = "user_address"
 	UserGroupsKey          = "user_groups"
 	UsernameKey            = "username"
+	TeamKey                = "team"
 
 	// Search and query
-	IntersectionOfKindsKey  = "intersection_of_kinds"
-	OffendingArgumentKey    = "offending_argument"
-	QueryPercentParsingKey  = "query_percent_parsing_fail"
-	SelectedTargetsKey      = "selected_targets"
-	ToFindKey               = "to_find"
+	IntersectionOfKindsKey = "intersection_of_kinds"
+	OffendingArgumentKey   = "offending_argument"
+	QueryPercentParsingKey = "query_percent_parsing_fail"
+	SelectedTargetsKey     = "selected_targets"
+	ToFindKey              = "to_find"
 
 	// Control and safety
 	AdmissionControllerKey = "admission_controller"

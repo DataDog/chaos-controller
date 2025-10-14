@@ -8,6 +8,8 @@
 package eventnotifier
 
 import (
+	"context"
+
 	mock "github.com/stretchr/testify/mock"
 	client "sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -75,7 +77,7 @@ func (_c *NotifierMock_GetNotifierName_Call) RunAndReturn(run func() string) *No
 }
 
 // Notify provides a mock function with given fields: _a0, _a1, _a2
-func (_m *NotifierMock) Notify(_a0 client.Object, _a1 v1.Event, _a2 types.NotificationType) error {
+func (_m *NotifierMock) Notify(ctx context.Context, _a0 client.Object, _a1 v1.Event, _a2 types.NotificationType) error {
 	ret := _m.Called(_a0, _a1, _a2)
 
 	if len(ret) == 0 {
