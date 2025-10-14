@@ -8,10 +8,11 @@
 package eventnotifier
 
 import (
-	"context"
+	context "context"
+
+	client "sigs.k8s.io/controller-runtime/pkg/client"
 
 	mock "github.com/stretchr/testify/mock"
-	client "sigs.k8s.io/controller-runtime/pkg/client"
 
 	types "github.com/DataDog/chaos-controller/eventnotifier/types"
 
@@ -76,17 +77,17 @@ func (_c *NotifierMock_GetNotifierName_Call) RunAndReturn(run func() string) *No
 	return _c
 }
 
-// Notify provides a mock function with given fields: _a0, _a1, _a2
-func (_m *NotifierMock) Notify(ctx context.Context, _a0 client.Object, _a1 v1.Event, _a2 types.NotificationType) error {
-	ret := _m.Called(_a0, _a1, _a2)
+// Notify provides a mock function with given fields: _a0, _a1, _a2, _a3
+func (_m *NotifierMock) Notify(_a0 context.Context, _a1 client.Object, _a2 v1.Event, _a3 types.NotificationType) error {
+	ret := _m.Called(_a0, _a1, _a2, _a3)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Notify")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(client.Object, v1.Event, types.NotificationType) error); ok {
-		r0 = rf(_a0, _a1, _a2)
+	if rf, ok := ret.Get(0).(func(context.Context, client.Object, v1.Event, types.NotificationType) error); ok {
+		r0 = rf(_a0, _a1, _a2, _a3)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -100,16 +101,17 @@ type NotifierMock_Notify_Call struct {
 }
 
 // Notify is a helper method to define mock.On call
-//   - _a0 client.Object
-//   - _a1 v1.Event
-//   - _a2 types.NotificationType
-func (_e *NotifierMock_Expecter) Notify(_a0 interface{}, _a1 interface{}, _a2 interface{}) *NotifierMock_Notify_Call {
-	return &NotifierMock_Notify_Call{Call: _e.mock.On("Notify", _a0, _a1, _a2)}
+//   - _a0 context.Context
+//   - _a1 client.Object
+//   - _a2 v1.Event
+//   - _a3 types.NotificationType
+func (_e *NotifierMock_Expecter) Notify(_a0 interface{}, _a1 interface{}, _a2 interface{}, _a3 interface{}) *NotifierMock_Notify_Call {
+	return &NotifierMock_Notify_Call{Call: _e.mock.On("Notify", _a0, _a1, _a2, _a3)}
 }
 
-func (_c *NotifierMock_Notify_Call) Run(run func(_a0 client.Object, _a1 v1.Event, _a2 types.NotificationType)) *NotifierMock_Notify_Call {
+func (_c *NotifierMock_Notify_Call) Run(run func(_a0 context.Context, _a1 client.Object, _a2 v1.Event, _a3 types.NotificationType)) *NotifierMock_Notify_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(client.Object), args[1].(v1.Event), args[2].(types.NotificationType))
+		run(args[0].(context.Context), args[1].(client.Object), args[2].(v1.Event), args[3].(types.NotificationType))
 	})
 	return _c
 }
@@ -119,7 +121,7 @@ func (_c *NotifierMock_Notify_Call) Return(_a0 error) *NotifierMock_Notify_Call 
 	return _c
 }
 
-func (_c *NotifierMock_Notify_Call) RunAndReturn(run func(client.Object, v1.Event, types.NotificationType) error) *NotifierMock_Notify_Call {
+func (_c *NotifierMock_Notify_Call) RunAndReturn(run func(context.Context, client.Object, v1.Event, types.NotificationType) error) *NotifierMock_Notify_Call {
 	_c.Call.Return(run)
 	return _c
 }
