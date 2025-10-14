@@ -13,6 +13,7 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/DataDog/chaos-controller/o11y/tags"
 	"github.com/tidwall/gjson"
 )
 
@@ -56,7 +57,7 @@ func (b bearerAuthTokenProvider) AuthToken(ctx context.Context) (string, error) 
 		req.Header.Add(headerKey, headerValue)
 	}
 
-	b.Logger.Debugw("sending request to get token", "req", fmt.Sprintf("%+v", req))
+	b.Logger.Debugw("sending request to get token", tags.ReqKey, fmt.Sprintf("%+v", req))
 
 	res, err := b.Client.Do(req)
 	if err != nil {
@@ -65,7 +66,7 @@ func (b bearerAuthTokenProvider) AuthToken(ctx context.Context) (string, error) 
 
 	defer func() {
 		if err = res.Body.Close(); err != nil {
-			b.Logger.Warnw("an error occurred while closing body after reading auth token", "error", err)
+			b.Logger.Warnw("an error occurred while closing body after reading auth token", tags.ErrorKey, err)
 		}
 	}()
 

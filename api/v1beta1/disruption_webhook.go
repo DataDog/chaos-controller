@@ -67,8 +67,8 @@ const SafemodeEnvironmentAnnotation = GroupName + "/environment"
 func (r *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebhookWithManagerConfig) error {
 	logger = &zap.SugaredLogger{}
 	*logger = *setupWebhookConfig.Logger.With(
-		"source", "admission-controller",
-		"admission-controller", "disruption-webhook",
+		tagutil.SourceKey, "admission-controller",
+		tagutil.AdmissionControllerKey, "disruption-webhook",
 	)
 	k8sClient = setupWebhookConfig.Manager.GetClient()
 	metricsSink = setupWebhookConfig.MetricsSink
@@ -115,26 +115,29 @@ var _ webhook.Validator = &Disruption{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *Disruption) ValidateCreate() (_ admission.Warnings, err error) {
-	log := logger.With(cLog.DisruptionNameKey, r.Name, cLog.DisruptionNamespaceKey, r.Namespace)
+	log := logger.With(
+		tagutil.DisruptionNameKey, r.Name,
+		tagutil.DisruptionNamespaceKey, r.Namespace,
+	)
 
 	metricTags := r.getMetricsTags()
 
 	defer func() {
 		if err != nil {
 			if mErr := metricsSink.MetricValidationFailed(metricTags); mErr != nil {
-				log.Errorw("error sending a metric", "error", mErr)
+				log.Errorw("error sending a metric", tagutil.ErrorKey, mErr)
 			}
 		}
 	}()
 
 	ctx, err := r.SpanContext(context.Background())
 	if err != nil {
-		log.Errorw("did not find span context", "err", err)
+		log.Errorw("did not find span context", tagutil.ErrorKey, err)
 	} else {
 		log = log.With(tracerSink.GetLoggableTraceContext(trace.SpanFromContext(ctx))...)
 	}
 
-	log.Infow("validating created disruption", "spec", r.Spec)
+	log.Infow("validating created disruption", tagutil.SpecKey, r.Spec)
 
 	// delete-only mode, reject everything trying to be created
 	if deleteOnly {
@@ -251,13 +254,13 @@ func (r *Disruption) ValidateCreate() (_ admission.Warnings, err error) {
 	}
 
 	if mErr := metricsSink.MetricValidationCreated(r.getMetricsTags()); mErr != nil {
-		log.Errorw("error sending a metric", "error", mErr)
+		log.Errorw("error sending a metric", tagutil.ErrorKey, mErr)
 	}
 
 	// send informative event to disruption to broadcast
 	disruptionJSON, err := json.Marshal(r)
 	if err != nil {
-		log.Errorw("failed to marshal disruption", "error", err)
+		log.Errorw("failed to marshal disruption", tagutil.ErrorKey, err)
 		return nil, nil
 	}
 
@@ -272,8 +275,11 @@ func (r *Disruption) ValidateCreate() (_ admission.Warnings, err error) {
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *Disruption) ValidateUpdate(old runtime.Object) (_ admission.Warnings, err error) {
-	log := logger.With(cLog.DisruptionNameKey, r.Name, cLog.DisruptionNamespaceKey, r.Namespace)
-	log.Debugw("validating updated disruption", "spec", r.Spec)
+	log := logger.With(
+		tagutil.DisruptionNameKey, r.Name,
+		tagutil.DisruptionNamespaceKey, r.Namespace,
+	)
+	log.Debugw("validating updated disruption", tagutil.SpecKey, r.Spec)
 
 	ctx := cLog.WithLogger(context.Background(), log)
 
@@ -282,7 +288,7 @@ func (r *Disruption) ValidateUpdate(old runtime.Object) (_ admission.Warnings, e
 	defer func() {
 		if err != nil {
 			if mErr := metricsSink.MetricValidationFailed(metricTags); mErr != nil {
-				log.Errorw("error sending a metric", "error", mErr)
+				log.Errorw("error sending a metric", tagutil.ErrorKey, mErr)
 			}
 		}
 	}()
@@ -348,10 +354,10 @@ You first need to remove those chaos pods (and potentially their finalizers) to 
 		}
 	}
 
-	log.Debugw("comparing disruption spec hashes", "oldHash", oldHash, "newHash", newHash)
+	log.Debugw("comparing disruption spec hashes", tagutil.OldHashKey, oldHash, tagutil.NewHashKey, newHash)
 
 	if oldHash != newHash {
-		log.Errorw("error when comparing disruption spec hashes", "oldHash", oldHash, "newHash", newHash)
+		log.Errorw("error when comparing disruption spec hashes", tagutil.OldHashKey, oldHash, tagutil.NewHashKey, newHash)
 
 		if oldDisruption.Spec.StaticTargeting {
 			return nil, fmt.Errorf("[StaticTargeting: true] a disruption spec cannot be updated, please delete and recreate it if needed")
@@ -365,7 +371,7 @@ You first need to remove those chaos pods (and potentially their finalizers) to 
 	}
 
 	if mErr := metricsSink.MetricValidationUpdated(r.getMetricsTags()); mErr != nil {
-		log.Errorw("error sending a metric", "error", mErr)
+		log.Errorw("error sending a metric", tagutil.ErrorKey, mErr)
 	}
 
 	return nil, nil
@@ -374,7 +380,7 @@ You first need to remove those chaos pods (and potentially their finalizers) to 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
 func (r *Disruption) ValidateDelete() (admission.Warnings, error) {
 	if mErr := metricsSink.MetricValidationDeleted(r.getMetricsTags()); mErr != nil {
-		logger.Errorw("error sending a metric", "error", mErr)
+		logger.Errorw("error sending a metric", tagutil.ErrorKey, mErr)
 	}
 
 	return nil, nil
@@ -383,20 +389,24 @@ func (r *Disruption) ValidateDelete() (admission.Warnings, error) {
 // getMetricsTags parses the disruption to generate metrics tags
 func (r *Disruption) getMetricsTags() []string {
 	tags := []string{
-		tagutil.FormatTag(cLog.DisruptionNameKey, r.Name),
-		tagutil.FormatTag(cLog.DisruptionNamespaceKey, r.Namespace),
+		tagutil.FormatTag(tagutil.DisruptionNameKey, r.Name),
+		tagutil.FormatTag(tagutil.DisruptionNamespaceKey, r.Namespace),
 	}
 
 	if userInfo, err := r.UserInfo(); !errors.Is(err, ErrNoUserInfo) {
 		if err != nil {
-			logger.Errorw("error retrieving user info from disruption, using empty user info", "error", err, cLog.DisruptionNameKey, r.Name, cLog.DisruptionNamespaceKey, r.Namespace)
+			logger.Errorw("error retrieving user info from disruption, using empty user info",
+				tagutil.ErrorKey, err,
+				tagutil.DisruptionNameKey, r.Name,
+				tagutil.DisruptionNamespaceKey, r.Namespace,
+			)
 		}
 
-		tags = append(tags, tagutil.FormatTag("username", userInfo.Username))
+		tags = append(tags, tagutil.FormatTag(tagutil.UsernameKey, userInfo.Username))
 
 		// add groups
 		for _, group := range userInfo.Groups {
-			tags = append(tags, tagutil.FormatTag("group", group))
+			tags = append(tags, tagutil.FormatTag(tagutil.GroupKey, group))
 		}
 	}
 
@@ -416,10 +426,10 @@ func (r *Disruption) getMetricsTags() []string {
 
 	// add kinds
 	for _, kind := range r.Spec.KindNames() {
-		tags = append(tags, tagutil.FormatTag("kind", string(kind)))
+		tags = append(tags, tagutil.FormatTag(tagutil.KindKey, string(kind)))
 	}
 
-	tags = append(tags, tagutil.FormatTag("level", string(r.Spec.Level)))
+	tags = append(tags, tagutil.FormatTag(tagutil.LevelKey, string(r.Spec.Level)))
 
 	return tags
 }
@@ -433,14 +443,14 @@ func (r *Disruption) initialSafetyNets() ([]string, error) {
 		if caught, response, err := safetyNetCountNotTooLarge(r); err != nil {
 			return nil, fmt.Errorf("error checking for countNotTooLarge safetynet: %w", err)
 		} else if caught {
-			logger.Debugw("the specified count represents a large percentage of targets in either the namespace or the kubernetes cluster", "SafetyNet Catch", "Generic")
+			logger.Debugw("the specified count represents a large percentage of targets in either the namespace or the kubernetes cluster", tagutil.SafetyNetCatchKey, "Generic")
 
 			responses = append(responses, response)
 		}
 
 		if r.Spec.Network != nil {
 			if caught := safetyNetMissingNetworkFilters(*r); caught {
-				logger.Debugw("the specified disruption either contains no Host or Service filters. This will result in all network traffic being affected.", "SafetyNet Catch", "Network")
+				logger.Debugw("the specified disruption either contains no Host or Service filters. This will result in all network traffic being affected.", tagutil.SafetyNetCatchKey, "Network")
 
 				responses = append(responses, "the specified disruption either contains no Host or Service filters. This will result in all network traffic being affected.")
 			}
@@ -448,7 +458,7 @@ func (r *Disruption) initialSafetyNets() ([]string, error) {
 
 		if r.Spec.DiskFailure != nil {
 			if caught := safetyNetAttemptsNodeRootDiskFailure(r); caught {
-				logger.Debugw("the specified disruption contains an invalid path.", "SafetyNet Catch", "DiskFailure")
+				logger.Debugw("the specified disruption contains an invalid path.", tagutil.SafetyNetCatchKey, "DiskFailure")
 
 				responses = append(responses, "the specified path for the disk failure disruption targeting a node must not be \"/\"")
 			}
@@ -610,15 +620,15 @@ func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 	}
 
 	logger.Debugw("comparing estimated target count to total existing targets",
-		cLog.DisruptionNameKey, r.Name,
-		cLog.DisruptionNamespaceKey, r.Namespace,
-		"namespaceThreshold", namespaceThreshold,
-		"clusterThreshold", clusterThreshold,
-		"estimatedEligibleTargetsCount", targetCount,
-		"namespaceCount", namespaceCount,
-		"totalCount", totalCount,
-		"calculatedPercentOfTotal", userCountVal/float64(totalCount),
-		"estimatedTargetCount", userCountVal,
+		tagutil.DisruptionNameKey, r.Name,
+		tagutil.DisruptionNamespaceKey, r.Namespace,
+		tagutil.NamespaceThresholdKey, namespaceThreshold,
+		tagutil.ClusterThresholdKey, clusterThreshold,
+		tagutil.EstimatedEligibleTargetsCountKey, targetCount,
+		tagutil.NamespaceCountKey, namespaceCount,
+		tagutil.TotalCountKey, totalCount,
+		tagutil.CalculatedPercentOfTotalKey, userCountVal/float64(totalCount),
+		tagutil.EstimatedTargetCountKey, userCountVal,
 	)
 
 	// we check to see if the count represents > namespaceThreshold (default 80) percent of all pods in the existing namespace

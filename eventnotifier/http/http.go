@@ -18,15 +18,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/eventnotifier/types"
-	"github.com/DataDog/chaos-controller/eventnotifier/utils"
-	cLog "github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/jsonapi"
 	"go.uber.org/zap"
 	authv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/eventnotifier/types"
+	"github.com/DataDog/chaos-controller/eventnotifier/utils"
+	cLog "github.com/DataDog/chaos-controller/log"
+	"github.com/DataDog/chaos-controller/o11y/tags"
 )
 
 type DisruptionConfig struct {
@@ -210,17 +212,20 @@ func splitHeaders(headers []string) (map[string]string, error) {
 // getUserDetails retrieves the user details associated with a given disruption.
 // It returns the username, the email address, and a JSON string of user groups.
 // On error, it logs a warning and returns empty values for the fields.
-func (n *Notifier) getUserDetails(uInfo authv1.UserInfo, logger *zap.SugaredLogger) (username, emailAddr, userGroups string) {
+func (n *Notifier) getUserDetails(ctx context.Context, uInfo authv1.UserInfo) (username, emailAddr, userGroups string) {
 	username = uInfo.Username
 	emailAddr, err := n.extractEmail(username)
 
 	if err != nil {
-		logger.Infow("http notifier: user info username is not a valid email address", "error", err, "username", username)
+		cLog.FromContext(ctx).Infow("http notifier: user info username is not a valid email address",
+			tags.ErrorKey, err,
+			tags.UsernameKey, username,
+		)
 	}
 
 	userGroups, err = n.marshalUserGroups(uInfo.Groups)
 	if err != nil {
-		logger.Warnw("http notifier: couldn't marshal user groups", "error", err)
+		cLog.FromContext(ctx).Warnw("http notifier: couldn't marshal user groups", tags.ErrorKey, err)
 	}
 
 	return username, emailAddr, userGroups
@@ -249,7 +254,9 @@ func (n *Notifier) marshalUserGroups(groups []string) (string, error) {
 func (n *Notifier) notifyDisruption(dis v1beta1.Disruption, event corev1.Event, notifType types.NotificationType) error {
 	logger := n.logger
 
-	logger.With(cLog.DisruptionNameKey, dis.Name, cLog.DisruptionNamespaceKey, dis.Namespace)
+	logger.With(tags.DisruptionNameKey, dis.Name, tags.DisruptionNamespaceKey, dis.Namespace)
+
+	ctx := cLog.WithLogger(context.Background(), logger)
 
 	if !n.disruptionConfig.Enabled {
 		return nil
@@ -257,10 +264,10 @@ func (n *Notifier) notifyDisruption(dis v1beta1.Disruption, event corev1.Event, 
 
 	userInfo, err := dis.UserInfo()
 	if err != nil {
-		n.logger.Warnw("http notifier: no user info in disruption", "error", err)
+		logger.Warnw("http notifier: no user info in disruption", tags.ErrorKey, err)
 	}
 
-	notifierEvent := n.buildEvent(&dis, userInfo, event, notifType, logger)
+	notifierEvent := n.buildEvent(ctx, &dis, userInfo, event, notifType)
 
 	disruptionStr, err := json.Marshal(dis)
 	if err != nil {
@@ -280,20 +287,22 @@ func (n *Notifier) notifyDisruption(dis v1beta1.Disruption, event corev1.Event, 
 
 	jsonNotif, err := jsonapi.Marshal(&notifierDisruptionEvent)
 	if err != nil {
-		logger.Warnw("http notifier: couldn't marshal notification", "notifierDisruptionEvent", notifierDisruptionEvent, "event", event)
+		logger.Warnw("http notifier: couldn't marshal notification", tags.NotifierDisruptionEventKey, notifierDisruptionEvent, tags.EventKey, event)
 
 		return fmt.Errorf("http notifier: couldn't marshal notification: %w", err)
 	}
 
-	logger.With("eventType", event.Type, "message", notifierDisruptionEvent.EventMessage)
+	logger.With(tags.EventKey, event.Type, tags.MessageKey, notifierDisruptionEvent.EventMessage)
 
-	return n.emitEvent(n.disruptionConfig.URL, jsonNotif, logger)
+	return n.emitEvent(ctx, n.disruptionConfig.URL, jsonNotif)
 }
 
 func (n *Notifier) notifyDisruptionCron(disruptionCron v1beta1.DisruptionCron, event corev1.Event, notifType types.NotificationType) error {
 	logger := n.logger
 
-	logger.With(cLog.DisruptionCronNameKey, disruptionCron.Name, cLog.DisruptionCronNamespaceKey, disruptionCron.Namespace)
+	logger.With(tags.DisruptionCronNameKey, disruptionCron.Name, tags.DisruptionCronNamespaceKey, disruptionCron.Namespace)
+
+	ctx := cLog.WithLogger(context.Background(), logger)
 
 	if !n.disruptionCronConfig.Enabled {
 		return nil
@@ -301,10 +310,10 @@ func (n *Notifier) notifyDisruptionCron(disruptionCron v1beta1.DisruptionCron, e
 
 	userInfo, err := disruptionCron.UserInfo()
 	if err != nil {
-		n.logger.Warnw("http notifier: no user info in disruptionCron", "error", err)
+		n.logger.Warnw("http notifier: no user info in disruptionCron", tags.ErrorKey, err)
 	}
 
-	notifierEvent := n.buildEvent(&disruptionCron, userInfo, event, notifType, logger)
+	notifierEvent := n.buildEvent(ctx, &disruptionCron, userInfo, event, notifType)
 
 	disruptionCronStr, err := json.Marshal(disruptionCron)
 	if err != nil {
@@ -318,17 +327,20 @@ func (n *Notifier) notifyDisruptionCron(disruptionCron v1beta1.DisruptionCron, e
 
 	jsonNotification, err := jsonapi.Marshal(&notifierDisruptionCronEvent)
 	if err != nil {
-		logger.Warnw("http notifier: couldn't marshal notification", "notifierDisruptionCronEvent", notifierDisruptionCronEvent, "event", event)
+		logger.Warnw("http notifier: couldn't marshal notification",
+			tags.NotifierDisruptionCronEventKey, notifierDisruptionCronEvent,
+			tags.EventKey, event,
+		)
 		return fmt.Errorf("http notifier: couldn't marshal notification: %w", err)
 	}
 
-	logger.With("eventType", event.Type, "message", notifierEvent.EventMessage)
+	ctx = cLog.WithLogger(ctx, logger.With(tags.EventKey, event.Type, tags.MessageKey, notifierEvent.EventMessage))
 
-	return n.emitEvent(n.disruptionCronConfig.URL, jsonNotification, logger)
+	return n.emitEvent(ctx, n.disruptionCronConfig.URL, jsonNotification)
 }
 
-func (n *Notifier) buildEvent(obj client.Object, uInfo authv1.UserInfo, event corev1.Event, notifType types.NotificationType, logger *zap.SugaredLogger) NotifierEvent {
-	username, userEmail, userGroups := n.getUserDetails(uInfo, logger)
+func (n *Notifier) buildEvent(ctx context.Context, obj client.Object, uInfo authv1.UserInfo, event corev1.Event, notifType types.NotificationType) NotifierEvent {
+	username, userEmail, userGroups := n.getUserDetails(ctx, uInfo)
 
 	return NotifierEvent{
 		ID:                 string(obj.GetUID()),
@@ -347,7 +359,7 @@ func (n *Notifier) buildEvent(obj client.Object, uInfo authv1.UserInfo, event co
 	}
 }
 
-func (n *Notifier) emitEvent(url string, jsonNotif []byte, logger *zap.SugaredLogger) error {
+func (n *Notifier) emitEvent(ctx context.Context, url string, jsonNotif []byte) error {
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jsonNotif))
 	if err != nil {
 		return fmt.Errorf("http notifier: couldn't send notification: %w", err)
@@ -358,7 +370,7 @@ func (n *Notifier) emitEvent(url string, jsonNotif []byte, logger *zap.SugaredLo
 	}
 
 	if n.authTokenProvider != nil {
-		token, err := n.authTokenProvider.AuthToken(context.Background())
+		token, err := n.authTokenProvider.AuthToken(ctx)
 		if err != nil {
 			return fmt.Errorf("http notifier: unable to retrieve auth token through helper: %w", err)
 		}
@@ -377,7 +389,7 @@ func (n *Notifier) emitEvent(url string, jsonNotif []byte, logger *zap.SugaredLo
 
 	defer func() {
 		if err = res.Body.Close(); err != nil {
-			logger.Warnw("http notifier: error closing body", "error", err)
+			cLog.FromContext(ctx).Warnw("http notifier: error closing body", tags.ErrorKey, err)
 		}
 	}()
 

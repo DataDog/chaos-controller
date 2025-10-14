@@ -6,9 +6,11 @@
 package main
 
 import (
+	"github.com/spf13/cobra"
+	
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/injector"
-	"github.com/spf13/cobra"
+	"github.com/DataDog/chaos-controller/o11y/tags"
 )
 
 var diskFailureCmd = &cobra.Command{
@@ -32,7 +34,7 @@ var diskFailureCmd = &cobra.Command{
 		for _, config := range configs {
 			inj, err := injector.NewDiskFailureInjector(spec, injector.DiskFailureInjectorConfig{Config: config})
 			if err != nil {
-				log.Fatalw("error initializing the disk failure injector", "error", err)
+				log.Fatalw("error initializing the disk failure injector", tags.ErrorKey, err)
 			}
 
 			if inj == nil {

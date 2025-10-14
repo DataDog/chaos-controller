@@ -21,7 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
-	cLog "github.com/DataDog/chaos-controller/log"
+	"github.com/DataDog/chaos-controller/o11y/tags"
 )
 
 // DisruptionTargetHandler struct used to manage what to do when changes occur on the watched objects in the cache
@@ -44,10 +44,10 @@ func (d DisruptionTargetHandler) OnAdd(obj interface{}, _ bool) {
 	targetName, targetKind := getTargetNameAndKind(obj)
 
 	d.log.Debugw("DisruptionTargetHandler ADD",
-		cLog.DisruptionNameKey, d.disruption.Name,
-		cLog.DisruptionNamespaceKey, d.disruption.Namespace,
-		cLog.TargetNameKey, targetName,
-		cLog.TargetKindKey, targetKind,
+		tags.DisruptionNameKey, d.disruption.Name,
+		tags.DisruptionNamespaceKey, d.disruption.Namespace,
+		tags.TargetNameKey, targetName,
+		tags.TargetKindKey, targetKind,
 	)
 
 	d.OnChangeHandleMetricsSink(pod, node, okPod, okNode, WatcherAddEvent)
@@ -61,10 +61,10 @@ func (d DisruptionTargetHandler) OnDelete(obj interface{}) {
 	targetName, targetKind := getTargetNameAndKind(obj)
 
 	d.log.Debugw("DisruptionTargetHandler DELETE",
-		cLog.DisruptionNameKey, d.disruption.Name,
-		cLog.DisruptionNamespaceKey, d.disruption.Namespace,
-		cLog.TargetNameKey, targetName,
-		cLog.TargetKindKey, targetKind,
+		tags.DisruptionNameKey, d.disruption.Name,
+		tags.DisruptionNamespaceKey, d.disruption.Namespace,
+		tags.TargetNameKey, targetName,
+		tags.TargetKindKey, targetKind,
 	)
 
 	d.OnChangeHandleMetricsSink(pod, node, okPod, okNode, WatcherDeleteEvent)
@@ -81,12 +81,12 @@ func (d DisruptionTargetHandler) OnUpdate(oldObj, newObj interface{}) {
 	newTargetName, newTargetKind := getTargetNameAndKind(newObj)
 
 	d.log.Debugw("DisruptionTargetHandler UPDATE",
-		cLog.DisruptionNameKey, d.disruption.Name,
-		cLog.DisruptionNamespaceKey, d.disruption.Namespace,
-		"oldTargetName", oldTargetName,
-		"oldTargetKind", oldTargetKind,
-		"newTargetName", newTargetName,
-		"newTargetKind", newTargetKind,
+		tags.DisruptionNameKey, d.disruption.Name,
+		tags.DisruptionNamespaceKey, d.disruption.Namespace,
+		tags.OldTargetNameKey, oldTargetName,
+		tags.OldTargetKindKey, oldTargetKind,
+		tags.NewTargetNameKey, newTargetName,
+		tags.NewTargetKindKey, newTargetKind,
 	)
 
 	d.OnChangeHandleMetricsSink(newPod, newNode, okNewPod, okNewNode, WatcherUpdateEvent)
@@ -114,7 +114,7 @@ func (d DisruptionTargetHandler) OnChangeHandleNotifierSink(oldPod, newPod *core
 
 		disruptionEvents, err := d.getEventsFromCurrentDisruption("Pod", newPod.ObjectMeta, d.disruption.CreationTimestamp.Time)
 		if err != nil {
-			d.log.Warnf("couldn't get the list of events from the target. Might not be able to notify on error changes: %s", err.Error())
+			d.log.Warnw("couldn't get the list of events from the target. Might not be able to notify on error changes", tags.ErrorKey, err)
 		}
 
 		// we detect and compute the error / warning events, status changes, conditions of the updated pod
@@ -124,7 +124,7 @@ func (d DisruptionTargetHandler) OnChangeHandleNotifierSink(oldPod, newPod *core
 
 		disruptionEvents, err := d.getEventsFromCurrentDisruption("Node", newNode.ObjectMeta, d.disruption.CreationTimestamp.Time)
 		if err != nil {
-			d.log.Warnf("couldn't get the list of events from the target. Might not be able to notify on error changes: %s", err.Error())
+			d.log.Warnw("couldn't get the list of events from the target. Might not be able to notify on error changes.", tags.ErrorKey, err)
 		}
 
 		// we detect and compute the error / warning events, status changes, conditions of the updated node
@@ -134,7 +134,7 @@ func (d DisruptionTargetHandler) OnChangeHandleNotifierSink(oldPod, newPod *core
 	}
 
 	// Send events to notifier / to disruption
-	lastEvents, _ := d.getEventsFromCurrentDisruption("disruption", d.disruption.ObjectMeta, d.disruption.CreationTimestamp.Time)
+	lastEvents, _ := d.getEventsFromCurrentDisruption(tags.DisruptionKey, d.disruption.ObjectMeta, d.disruption.CreationTimestamp.Time)
 
 	for eventReason, toSend := range eventsToSend {
 		if !toSend {
@@ -262,10 +262,10 @@ func (d DisruptionTargetHandler) findNotifiableEvents(eventsToSend map[v1beta1.E
 				}
 
 				d.log.Debugw("warning event detected on target",
-					cLog.TargetNameKey, targetName,
-					"reason", event.Reason,
-					"message", event.Message,
-					"timestamp", event.LastTimestamp.Time.Unix(),
+					tags.TargetNameKey, targetName,
+					tags.ReasonKey, event.Reason,
+					tags.MessageKey, event.Message,
+					tags.TimestampKey, event.LastTimestamp.Time.Unix(),
 				)
 			case event.Reason == "Started":
 				if recoverTimestamp == nil {
@@ -275,10 +275,10 @@ func (d DisruptionTargetHandler) findNotifiableEvents(eventsToSend map[v1beta1.E
 				eventsToSend[v1beta1.EventTargetPodRecoveredState] = true
 
 				d.log.Debugw("recovering event detected on target",
-					cLog.TargetNameKey, targetName,
-					"reason", event.Reason,
-					"message", event.Message,
-					"timestamp", event.LastTimestamp.Time.Unix(),
+					tags.TargetNameKey, targetName,
+					tags.ReasonKey, event.Reason,
+					tags.MessageKey, event.Message,
+					tags.TimestampKey, event.LastTimestamp.Time.Unix(),
 				)
 			case event.Reason == "Killing" && strings.Contains(event.Message, "Stopping container") && eventsToSend[v1beta1.EventTargetContainerWarningState]:
 				// this event indicates a safe killing of a container (can occur when we rollout or manually delete a pod for example)
@@ -290,10 +290,10 @@ func (d DisruptionTargetHandler) findNotifiableEvents(eventsToSend map[v1beta1.E
 				eventsToSend[v1beta1.EventTargetNodeWarningState] = true
 
 				d.log.Debugw("warning event detected on target",
-					cLog.TargetNameKey, targetName,
-					"reason", event.Reason,
-					"message", event.Message,
-					"timestamp", event.LastTimestamp.Time.Unix(),
+					tags.TargetNameKey, targetName,
+					tags.ReasonKey, event.Reason,
+					tags.MessageKey, event.Message,
+					tags.TimestampKey, event.LastTimestamp.Time.Unix(),
 				)
 			} else if event.Reason == "NodeReady" {
 				if recoverTimestamp == nil {
@@ -303,10 +303,10 @@ func (d DisruptionTargetHandler) findNotifiableEvents(eventsToSend map[v1beta1.E
 				eventsToSend[v1beta1.EventTargetNodeRecoveredState] = true
 
 				d.log.Debugw("recovering event detected on target",
-					cLog.TargetNameKey, targetName,
-					"reason", event.Reason,
-					"message", event.Message,
-					"timestamp", event.LastTimestamp.Time.Unix(),
+					tags.TargetNameKey, targetName,
+					tags.ReasonKey, event.Reason,
+					tags.MessageKey, event.Message,
+					tags.TimestampKey, event.LastTimestamp.Time.Unix(),
 				)
 			}
 		}
@@ -331,9 +331,9 @@ func (d DisruptionTargetHandler) buildPodEventsToSend(oldPod corev1.Pod, newPod 
 			// Warning events
 			if container.RestartCount > (oldContainer.RestartCount + 2) {
 				d.log.Infow("container restart detected on target",
-					cLog.TargetNameKey, fmt.Sprintf("%s/%s", newPod.Namespace, newPod.Name),
-					"container", container.Name,
-					"restarts", container.RestartCount,
+					tags.TargetNameKey, fmt.Sprintf("%s/%s", newPod.Namespace, newPod.Name),
+					tags.ContainerKey, container.Name,
+					tags.RestartsKey, container.RestartCount,
 				)
 
 				eventsToSend[v1beta1.EventTargetTooManyRestarts] = true
@@ -344,10 +344,10 @@ func (d DisruptionTargetHandler) buildPodEventsToSend(oldPod corev1.Pod, newPod 
 
 			if lastState != newState {
 				d.log.Infow("container state change detected on target",
-					cLog.TargetNameKey, fmt.Sprintf("%s/%s", newPod.Namespace, newPod.Name),
-					"container", container.Name,
-					"lastState", lastState,
-					"newState", newState,
+					tags.TargetNameKey, fmt.Sprintf("%s/%s", newPod.Namespace, newPod.Name),
+					tags.ContainerKey, container.Name,
+					tags.LastStateKey, lastState,
+					tags.NewStateKey, newState,
 				)
 
 				switch {
@@ -398,11 +398,11 @@ func (d DisruptionTargetHandler) buildNodeEventsToSend(oldNode corev1.Node, newN
 
 			if newCondition.Status != oldCondition.Status {
 				d.log.Debugw("condition changed on target node",
-					cLog.TargetNameKey, newNode.Name,
-					"conditionType", newCondition.Type,
-					"newStatus", newCondition.Status,
-					"oldStatus", oldCondition.Status,
-					"timestamp", newCondition.LastTransitionTime.Unix())
+					tags.TargetNameKey, newNode.Name,
+					tags.ConditionTypeKey, newCondition.Type,
+					tags.NewStatusKey, newCondition.Status,
+					tags.OldStatusKey, oldCondition.Status,
+					tags.TimestampKey, newCondition.LastTransitionTime.Unix())
 			}
 
 			if newCondition.Status == corev1.ConditionUnknown && oldCondition.Status != corev1.ConditionUnknown {
@@ -444,9 +444,9 @@ func (d DisruptionTargetHandler) buildNodeEventsToSend(oldNode corev1.Node, newN
 
 	if newNode.Status.Phase != oldNode.Status.Phase {
 		d.log.Debugw("condition changed on target node",
-			cLog.TargetNameKey, newNode.Name,
-			"newPhase", newNode.Status.Phase,
-			"oldPhase", oldNode.Status.Phase,
+			tags.TargetNameKey, newNode.Name,
+			tags.NewPhaseKey, newNode.Status.Phase,
+			tags.OldPhaseKey, oldNode.Status.Phase,
 		)
 
 		switch newNode.Status.Phase {

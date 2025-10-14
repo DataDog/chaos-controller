@@ -23,6 +23,7 @@ import (
 
 	cloudtypes "github.com/DataDog/chaos-controller/cloudservice/types"
 	"github.com/DataDog/chaos-controller/eventnotifier"
+	"github.com/DataDog/chaos-controller/o11y/tags"
 )
 
 type config struct {
@@ -582,7 +583,7 @@ func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osAr
 
 	// load configuration file if present first and add values to cfg struct
 	if configPath != "" {
-		logger.Infow("loading configuration file", "config", configPath)
+		logger.Infow("loading configuration file", tags.ConfigKey, configPath)
 
 		viper.SetConfigFile(configPath)
 
@@ -599,7 +600,7 @@ func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osAr
 				defer cancel()
 				configMap, err = client.Get(ctx, configMapOverrides, metav1.GetOptions{})
 				if err != nil {
-					logger.Debugw(fmt.Sprintf("failed to get %s configMap", configMapOverrides), "error", err)
+					logger.Debugw(fmt.Sprintf("failed to get %s configMap", configMapOverrides), tags.ErrorKey, err)
 				}
 				return err
 			},
@@ -625,7 +626,7 @@ func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osAr
 					configMap, err := client.Get(context.Background(), configMapOverrides, metav1.GetOptions{})
 
 					if err != nil {
-						logger.Errorw(fmt.Sprintf("error getting %s configMap", configMapOverrides), "error", err)
+						logger.Errorw(fmt.Sprintf("error getting %s configMap", configMapOverrides), tags.ErrorKey, err)
 						continue
 					}
 

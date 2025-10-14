@@ -8,9 +8,11 @@ package main
 import (
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/injector"
-	"github.com/spf13/cobra"
+	"github.com/DataDog/chaos-controller/o11y/tags"
 )
 
 var dnsDisruptionCmd = &cobra.Command{
@@ -24,12 +26,12 @@ var dnsDisruptionCmd = &cobra.Command{
 
 		// Each value passed to --host-record-pairs should be of the form `hostname;type;value`, e.g.
 		// `foo.bar.svc.cluster.local;A;10.0.0.0,10.0.0.13`
-		log.Infow("arguments to dnsDisruptionCmd", "host-record-pairs", rawHostRecordPairs)
+		log.Infow("arguments to dnsDisruptionCmd", tags.HostRecordPairsKey, rawHostRecordPairs)
 
 		for _, line := range rawHostRecordPairs {
 			split := strings.Split(line, ";")
 			if len(split) != 3 {
-				log.Fatalw("could not parse --host-record-pairs argument to dns-disruption", "offending argument", line)
+				log.Fatalw("could not parse --host-record-pairs argument to dns-disruption", tags.OffendingArgumentKey, line)
 				continue
 			}
 
@@ -52,7 +54,7 @@ var dnsDisruptionCmd = &cobra.Command{
 				},
 			)
 			if err != nil {
-				log.Fatalw("error initializing the DNS injector", "error", err)
+				log.Fatalw("error initializing the DNS injector", tags.ErrorKey, err)
 			}
 
 			injectors = append(injectors, inj)

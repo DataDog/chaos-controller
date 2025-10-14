@@ -13,6 +13,8 @@ import (
 	"github.com/opencontainers/runc/libcontainer/cgroups/fs2"
 	"github.com/opencontainers/runc/libcontainer/configs"
 	"go.uber.org/zap"
+
+	"github.com/DataDog/chaos-controller/o11y/tags"
 )
 
 type instManager struct {
@@ -35,7 +37,7 @@ func newAllCGroupManager(cgroupFile string, cgroupMount string, log *zap.Sugared
 
 	// prefix the cgroup path with the mount point path
 	for subsystem, path := range cgroupPaths {
-		log.Debugw("adding cgroup subsystem path to manager", "subsystem", subsystem, "path", path)
+		log.Debugw("adding cgroup subsystem path to manager", tags.SubsystemKey, subsystem, tags.PathKey, path)
 		cgroupPaths[subsystem] = filepath.Join(cgroupMount, subsystem, path)
 	}
 

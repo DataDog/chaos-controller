@@ -11,6 +11,7 @@ import (
 	"syscall"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/o11y/tags"
 	"github.com/DataDog/chaos-controller/process"
 	"github.com/DataDog/chaos-controller/types"
 )
@@ -66,7 +67,7 @@ func (i *containerFailureInjector) Inject() error {
 	}
 
 	// Send signal
-	i.config.Log.Infow("injecting a container failure", "signal", sig, "container", containerPid)
+	i.config.Log.Infow("injecting a container failure", tags.SignalKey, sig, tags.ContainerKey, containerPid)
 
 	if err := i.config.ProcessManager.Signal(proc, sig); err != nil {
 		return fmt.Errorf("error while sending the %s signal to container with PID %d: %w", sig, containerPid, err)

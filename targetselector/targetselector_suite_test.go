@@ -10,17 +10,9 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zaptest"
 )
-
-var logger *zap.SugaredLogger
 
 func TestTargetselector(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Targetselector Suite")
 }
-
-var _ = BeforeSuite(func(ctx SpecContext) {
-	logger = zaptest.NewLogger(GinkgoT()).Sugar()
-})

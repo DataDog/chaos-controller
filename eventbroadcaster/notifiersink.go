@@ -10,9 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/eventnotifier"
-	notifTypes "github.com/DataDog/chaos-controller/eventnotifier/types"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -20,6 +17,11 @@ import (
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/eventnotifier"
+	notifTypes "github.com/DataDog/chaos-controller/eventnotifier/types"
+	"github.com/DataDog/chaos-controller/o11y/tags"
 )
 
 type NotifierSink struct {
@@ -42,7 +44,7 @@ func RegisterNotifierSinks(mgr ctrl.Manager, broadcaster record.EventBroadcaster
 }
 
 func (s *NotifierSink) Create(event *corev1.Event) (*corev1.Event, error) {
-	s.logger.Debugw("CREATE event received:", "event", event)
+	s.logger.Debugw("CREATE event received:", tags.EventKey, event)
 
 	obj, err := s.getObject(event)
 	if err != nil {

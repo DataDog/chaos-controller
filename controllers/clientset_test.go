@@ -9,20 +9,21 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/DataDog/chaos-controller/api/v1beta1"
-	clientsetv1beta1 "github.com/DataDog/chaos-controller/clientset/v1beta1"
-	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/google/uuid"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/watch"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/DataDog/chaos-controller/api/v1beta1"
+	clientsetv1beta1 "github.com/DataDog/chaos-controller/clientset/v1beta1"
+	tagutil "github.com/DataDog/chaos-controller/o11y/tags"
+	chaostypes "github.com/DataDog/chaos-controller/types"
+
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
 func setupDisruption(disruptionName, namespaceName string) v1beta1.Disruption {
@@ -241,9 +242,9 @@ var _ = Describe("Disruption Client", func() {
 				// Assert
 				Eventually(func() watch.Event {
 					event := <-watcher.ResultChan()
-					log.Debugw("received event from watcher", "type", event.Type, "object", event.Object)
+					log.Debugw("received event from watcher", tagutil.TypeKey, event.Type, tagutil.ObjectKey, event.Object)
 					if event.Type == eventType {
-						log.Debugw("received event matches expected event type", "expected", eventType, "received", event.Type, "object", event.Object)
+						log.Debugw("received event matches expected event type", tagutil.ExpectedKey, eventType, tagutil.ReceivedKey, event.Type, tagutil.ObjectKey, event.Object)
 						return event
 					}
 					return watch.Event{}
@@ -407,9 +408,9 @@ var _ = Describe("DisruptionCron Client", func() {
 				// Assert
 				Eventually(func() watch.Event {
 					event := <-watcher.ResultChan()
-					log.Debugw("received event from watcher", "type", event.Type, "object", event.Object)
+					log.Debugw("received event from watcher", tagutil.TypeKey, event.Type, tagutil.ObjectKey, event.Object)
 					if event.Type == eventType {
-						log.Debugw("received event matches expected event type", "expected", eventType, "received", event.Type, "object", event.Object)
+						log.Debugw("received event matches expected event type", tagutil.ExpectedKey, eventType, tagutil.ReceivedKey, event.Type, tagutil.ObjectKey, event.Object)
 						return event
 					}
 					return watch.Event{}

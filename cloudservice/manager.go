@@ -19,6 +19,7 @@ import (
 	"github.com/DataDog/chaos-controller/cloudservice/gcp"
 	"github.com/DataDog/chaos-controller/cloudservice/types"
 	"github.com/DataDog/chaos-controller/log"
+	"github.com/DataDog/chaos-controller/o11y/tags"
 )
 
 // CloudServicesProvidersManager represents an interface for managing cloud service providers and their IP ranges.
@@ -116,7 +117,7 @@ func New(ctx context.Context, config types.CloudProviderConfigs, httpClientMock 
 		}
 
 		if !provider.Conf.Enabled {
-			logger.Debugw("a cloud provider was disabled", log.CloudProviderNameKey, cp)
+			logger.Debugw("a cloud provider was disabled", tags.CloudProviderNameKey, cp)
 
 			continue
 		}
@@ -125,7 +126,7 @@ func New(ctx context.Context, config types.CloudProviderConfigs, httpClientMock 
 	}
 
 	if err := manager.PullIPRanges(ctx); err != nil {
-		logger.Errorw("failed to pull IP ranges during initialization", "error", err)
+		logger.Errorw("failed to pull IP ranges during initialization", tags.ErrorKey, err)
 		return nil, err
 	}
 
@@ -135,7 +136,7 @@ func New(ctx context.Context, config types.CloudProviderConfigs, httpClientMock 
 // StartPeriodicPull go routine pulling every interval all ip ranges of all cloud providers set up.
 func (s *cloudServicesProvidersManager) StartPeriodicPull(ctx context.Context) {
 	logger := log.FromContext(ctx)
-	logger.Infow("starting periodic pull and parsing of the cloud provider ip ranges", "interval", s.periodicPullInterval.String())
+	logger.Infow("starting periodic pull and parsing of the cloud provider ip ranges", tags.IntervalKey, s.periodicPullInterval.String())
 
 	go func() {
 		for {
@@ -146,7 +147,7 @@ func (s *cloudServicesProvidersManager) StartPeriodicPull(ctx context.Context) {
 				}
 			case <-time.After(s.periodicPullInterval):
 				if err := s.PullIPRanges(ctx); err != nil {
-					logger.Errorw("an error occurred when pulling IP ranges", "error", err)
+					logger.Errorw("an error occurred when pulling IP ranges", tags.ErrorKey, err)
 				}
 			}
 		}
@@ -235,7 +236,7 @@ func (s *cloudServicesProvidersManager) pullIPRangesPerCloudProvider(ctx context
 		return fmt.Errorf("cloud provider %s does not exist", cloudProviderName)
 	}
 
-	logger.Debugw("pulling ip ranges from provider", log.CloudProviderNameKey, cloudProviderName, log.CloudProviderURLKey, provider.Conf.IPRangesURL)
+	logger.Debugw("pulling ip ranges from provider", tags.CloudProviderNameKey, cloudProviderName, tags.CloudProviderURLKey, provider.Conf.IPRangesURL)
 
 	unparsedIPRange, err := s.requestIPRangesFromProvider(provider.Conf.IPRangesURL)
 	if err != nil {
@@ -249,8 +250,8 @@ func (s *cloudServicesProvidersManager) pullIPRangesPerCloudProvider(ctx context
 		}
 
 		if !isNewVersion {
-			logger.Debugw("no changes of ip ranges", log.CloudProviderNameKey, cloudProviderName, log.CloudProviderVersionKey, provider.IPRangeInfo.Version)
-			logger.Debugw("finished pulling new version", log.CloudProviderNameKey, cloudProviderName, log.CloudProviderVersionKey, provider.IPRangeInfo.Version)
+			logger.Debugw("no changes of ip ranges", tags.CloudProviderNameKey, cloudProviderName, tags.CloudProviderVersionKey, provider.IPRangeInfo.Version)
+			logger.Debugw("finished pulling new version", tags.CloudProviderNameKey, cloudProviderName, tags.CloudProviderVersionKey, provider.IPRangeInfo.Version)
 
 			return nil
 		}
@@ -258,7 +259,7 @@ func (s *cloudServicesProvidersManager) pullIPRangesPerCloudProvider(ctx context
 
 	provider.IPRangeInfo, err = provider.CloudProviderIPRangeManager.ConvertToGenericIPRanges(unparsedIPRange)
 	if err == nil && provider.IPRangeInfo != nil {
-		logger.Debugw("successfully parsed new IP ranges", log.CloudProviderNameKey, cloudProviderName, log.CloudProviderVersionKey, provider.IPRangeInfo.Version)
+		logger.Debugw("successfully parsed new IP ranges", tags.CloudProviderNameKey, cloudProviderName, tags.CloudProviderVersionKey, provider.IPRangeInfo.Version)
 	}
 
 	for _, ipRangeList := range provider.Conf.ExtraIPRanges {

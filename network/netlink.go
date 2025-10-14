@@ -10,6 +10,7 @@ import (
 	"net"
 	"strings"
 
+	"github.com/DataDog/chaos-controller/o11y/tags"
 	"github.com/vishvananda/netlink"
 	"go.uber.org/zap"
 	"golang.org/x/sys/unix"
@@ -84,7 +85,7 @@ func (a netlinkAdapter) LinkList(useLocalhost bool, log *zap.SugaredLogger) ([]N
 	nlinks := []NetlinkLink{}
 
 	for _, link := range links {
-		log.Debugw("listing available links...", "linkName", link.Attrs().Name)
+		log.Debugw("listing available links...", tags.LinkNameKey, link.Attrs().Name)
 		// ignore non local ethernet interfaces according to
 		// the v197 systemd/udev naming standards
 		// https://systemd.io/PREDICTABLE_INTERFACE_NAMES/

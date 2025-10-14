@@ -9,11 +9,13 @@ import (
 	"context"
 	"fmt"
 
-	cLog "github.com/DataDog/chaos-controller/log"
-	chaostypes "github.com/DataDog/chaos-controller/types"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	
+	cLog "github.com/DataDog/chaos-controller/log"
+	"github.com/DataDog/chaos-controller/o11y/tags"
+	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
 // GetChaosPods returns chaos pods owned by the given instance and having the given labels
@@ -58,8 +60,8 @@ func GetChaosPods(ctx context.Context, chaosNamespace string, k8sClient client.C
 
 	// Get logger from context for debugging
 	cLog.FromContext(ctx).Debugw("searching for chaos pods with label selector...",
-		"labels", ls.String(),
-		"foundPods", podNames,
+		tags.LabelsKey, ls.String(),
+		tags.FoundPodsKey, podNames,
 	)
 
 	return pods.Items, nil

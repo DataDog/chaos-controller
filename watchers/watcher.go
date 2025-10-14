@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/DataDog/chaos-controller/o11y/tags"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/types"
 	k8sclientcache "k8s.io/client-go/tools/cache"
@@ -16,8 +17,6 @@ import (
 	k8scontrollercache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-
-	cLog "github.com/DataDog/chaos-controller/log"
 )
 
 type WatcherEventType string
@@ -193,7 +192,7 @@ func (w *watcher) Start() error {
 	// start the cache in a goroutine
 	go func() {
 		if err := w.cache.Start(cacheCtx); err != nil {
-			w.config.Log.Errorw("could not start the watcher", cLog.ErrorKey, err)
+			w.config.Log.Errorw("could not start the watcher", tags.ErrorKey, err)
 		}
 	}()
 

@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/DataDog/chaos-controller/o11y/tags"
 	"k8s.io/apimachinery/pkg/types"
 	k8scontrollercache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -99,7 +100,7 @@ func (d disruptionsWatchersManager) CreateAllWatchers(ctx context.Context, disru
 			return err
 		}
 
-		cLog.FromContext(ctx).Debugw("Watcher created", cLog.WatcherNameKey, watcherName)
+		cLog.FromContext(ctx).Debugw("Watcher created", tags.WatcherNameKey, watcherName)
 	}
 
 	return nil
@@ -145,8 +146,8 @@ func (d disruptionsWatchersManager) RemoveAllOrphanWatchers(ctx context.Context)
 			delete(d.watchersManagers, namespacedName)
 
 			cLog.FromContext(ctx).Infow("all watchers have been removed",
-				cLog.WatcherNameKey, namespacedName.Name,
-				cLog.WatcherNamespaceKey, namespacedName.Namespace,
+				tags.WatcherNameKey, namespacedName.Name,
+				tags.WatcherNamespaceKey, namespacedName.Namespace,
 			)
 		}
 	}

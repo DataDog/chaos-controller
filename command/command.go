@@ -15,8 +15,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/DataDog/chaos-controller/process"
 	"go.uber.org/zap"
+
+	"github.com/DataDog/chaos-controller/o11y/tags"
+	"github.com/DataDog/chaos-controller/process"
 )
 
 const (
@@ -158,14 +160,14 @@ func (w *backgroundCmd) Start() error {
 	}
 
 	w.err = chErr
-	w.log = w.log.With("pid", w.pid)
+	w.log = w.log.With(tags.PidKey, w.pid)
 
 	// Monitoring launched process in background to at least give visibility of exit
 	go func() {
 		w.log.Debug("new process created, monitoring newly created process exit status")
 
 		if err := <-w.err; err != nil {
-			w.log.Warnw("background command exited with an error", "error", err)
+			w.log.Warnw("background command exited with an error", tags.ErrorKey, err)
 		} else {
 			w.log.Info("background command exited successfully")
 		}
@@ -198,7 +200,7 @@ func (w *backgroundCmd) KeepAlive() {
 		for {
 			exit, err := w.sendSIGCONTSignal()
 			if err != nil {
-				w.log.Errorw("an error occurred when sending SIGCONT signal to process, stopping to monitor background process, ticker removed", "error", err)
+				w.log.Errorw("an error occurred when sending SIGCONT signal to process, stopping to monitor background process, ticker removed", tags.ErrorKey, err)
 				return
 			}
 
@@ -228,7 +230,7 @@ func (w *backgroundCmd) sendSIGCONTSignal() (exit bool, err error) {
 
 	proc, err := w.processManager.Find(w.pid)
 	if err != nil {
-		w.log.Errorw("an error occurred when trying to Find process, stopping to monitor background process, ticker removed", "error", err)
+		w.log.Errorw("an error occurred when trying to Find process, stopping to monitor background process, ticker removed", tags.ErrorKey, err)
 
 		w.resetTicker()
 
@@ -244,7 +246,7 @@ func (w *backgroundCmd) sendSIGCONTSignal() (exit bool, err error) {
 			return true, nil
 		}
 
-		w.log.Errorw("an error occurred when sending SIGCONT signal to process, stopping to monitor background process, ticker removed", "error", err)
+		w.log.Errorw("an error occurred when sending SIGCONT signal to process, stopping to monitor background process, ticker removed", tags.ErrorKey, err)
 
 		return false, err
 	}

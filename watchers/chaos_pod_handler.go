@@ -8,12 +8,12 @@ package watchers
 import (
 	"fmt"
 
+	"github.com/DataDog/chaos-controller/o11y/tags"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
-	cLog "github.com/DataDog/chaos-controller/log"
 )
 
 // ChaosPodHandler handles the lifecycle of chaos pods to send notifications if needed
@@ -98,10 +98,10 @@ func (w ChaosPodHandler) sendEvent(newPod *corev1.Pod) {
 	w.recorder.Event(w.disruption, eventType, string(eventReason), eventMessage)
 
 	w.log.Debugw("ChaosPodHandler UPDATE - Send event",
-		cLog.EventMessageKey, eventMessage,
-		cLog.EventTypeKey, eventType,
-		cLog.DisruptionNameKey, w.disruption.Name,
-		cLog.DisruptionNamespaceKey, w.disruption.Namespace,
-		cLog.ChaosPodNameKey, newPod.Name,
+		tags.DisruptionKey, eventMessage,
+		tags.EventTypeKey, eventType,
+		tags.DisruptionNameKey, w.disruption.Name,
+		tags.DisruptionNamespaceKey, w.disruption.Namespace,
+		tags.ChaosPodNameKey, newPod.Name,
 	)
 }

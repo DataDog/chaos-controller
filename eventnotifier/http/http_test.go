@@ -12,9 +12,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/eventnotifier/types"
-	"github.com/DataDog/chaos-controller/eventnotifier/utils"
 	"github.com/DataDog/jsonapi"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
@@ -24,6 +21,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apimachineryTypes "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	
+	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/eventnotifier/types"
+	"github.com/DataDog/chaos-controller/eventnotifier/utils"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"

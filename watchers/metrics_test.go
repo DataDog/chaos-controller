@@ -14,7 +14,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
-	cLog "github.com/DataDog/chaos-controller/log"
 	tagutil "github.com/DataDog/chaos-controller/o11y/tags"
 	"github.com/DataDog/chaos-controller/watchers"
 
@@ -47,22 +46,22 @@ var _ = Describe("Metrics", func() {
 		DescribeTable("success cases", func(pod *corev1.Pod, node *corev1.Node, okPod, okNode bool, event watchers.WatcherEventType) {
 			// Arrange
 			expectedTags := []string{
-				tagutil.FormatTag(cLog.DisruptionNameKey, disruption.Name),
-				tagutil.FormatTag(cLog.DisruptionNamespaceKey, disruption.Namespace),
-				tagutil.FormatTag(cLog.EventKey, string(event)),
-				tagutil.FormatTag(cLog.WatcherKey, watcherName),
+				tagutil.FormatTag(tagutil.DisruptionNameKey, disruption.Name),
+				tagutil.FormatTag(tagutil.DisruptionNamespaceKey, disruption.Namespace),
+				tagutil.FormatTag(tagutil.EventKey, string(event)),
+				tagutil.FormatTag(tagutil.WatcherNameKey, watcherName),
 			}
 
 			if okPod {
-				expectedTags = append(expectedTags, tagutil.FormatTag(cLog.TargetKindKey, "pod"),
-					tagutil.FormatTag(cLog.TargetNameKey, pod.Name),
-					tagutil.FormatTag(cLog.TargetNamespaceKey, pod.Namespace))
+				expectedTags = append(expectedTags, tagutil.FormatTag(tagutil.TargetKindKey, "pod"),
+					tagutil.FormatTag(tagutil.TargetNameKey, pod.Name),
+					tagutil.FormatTag(tagutil.TargetNamespaceKey, pod.Namespace))
 			} else if okNode {
-				expectedTags = append(expectedTags, tagutil.FormatTag(cLog.TargetKindKey, "node"),
-					tagutil.FormatTag(cLog.TargetNameKey, node.Name),
-					tagutil.FormatTag(cLog.TargetNamespaceKey, node.Namespace))
+				expectedTags = append(expectedTags, tagutil.FormatTag(tagutil.TargetKindKey, "node"),
+					tagutil.FormatTag(tagutil.TargetNameKey, node.Name),
+					tagutil.FormatTag(tagutil.TargetNamespaceKey, node.Namespace))
 			} else {
-				expectedTags = append(expectedTags, tagutil.FormatTag(cLog.TargetKindKey, "object"))
+				expectedTags = append(expectedTags, tagutil.FormatTag(tagutil.TargetKindKey, "object"))
 			}
 
 			metricsSinkMock := metrics.NewSinkMock(GinkgoT())

@@ -148,7 +148,7 @@ func (m *chaosPodService) HandleChaosPodTermination(ctx context.Context, disrupt
 		}
 
 		// If the target is not in a good shape, proceed with cleanup phase.
-		cLog.FromContext(ctx).Infow("Target is not likely to be cleaned (either it does not exist anymore or it is not ready), the injector will TRY to clean it but will not take care about any failures", cLog.TargetNameKey, target)
+		cLog.FromContext(ctx).Infow("Target is not likely to be cleaned (either it does not exist anymore or it is not ready), the injector will TRY to clean it but will not take care about any failures", tagutil.TargetNameKey, target)
 
 		// Remove the finalizer for the chaos pod since cleanup won't be fully reliable.
 		err = m.removeFinalizerForChaosPod(ctx, chaosPod)
@@ -221,10 +221,10 @@ func (m *chaosPodService) HandleChaosPodTermination(ctx context.Context, disrupt
 // Returns true if deletion was successful, otherwise returns false.
 func (m *chaosPodService) DeletePod(ctx context.Context, pod corev1.Pod) bool {
 	logger := cLog.FromContext(ctx)
-	logger.Infow("terminating chaos pod to trigger cleanup", cLog.ChaosPodNameKey, pod.Name)
+	logger.Infow("terminating chaos pod to trigger cleanup", tagutil.ChaosPodNameKey, pod.Name)
 
 	if err := m.deletePod(ctx, pod); err != nil {
-		logger.Errorw("Error terminating chaos pod", cLog.ErrorKey, err, cLog.ChaosPodNameKey, pod.Name)
+		logger.Errorw("Error terminating chaos pod", tagutil.ErrorKey, err, tagutil.ChaosPodNameKey, pod.Name)
 
 		return false
 	}
@@ -333,7 +333,7 @@ func (m *chaosPodService) GetPodInjectorArgs(ctx context.Context, chaosPod corev
 	chaosPodArgs := []string{}
 
 	if len(chaosPod.Spec.Containers) == 0 {
-		cLog.FromContext(ctx).Errorw("no containers found in chaos pod spec", cLog.ChaosPodSpecKey, chaosPod.Spec)
+		cLog.FromContext(ctx).Errorw("no containers found in chaos pod spec", tagutil.ChaosPodSpecKey, chaosPod.Spec)
 
 		return chaosPodArgs
 	}
@@ -346,9 +346,9 @@ func (m *chaosPodService) GetPodInjectorArgs(ctx context.Context, chaosPod corev
 
 	if len(chaosPodArgs) == 0 {
 		cLog.FromContext(ctx).Warnw("unable to find the args for this chaos pod",
-			cLog.ChaosPodNameKey, chaosPod.Name,
-			cLog.ChaosPodSpecKey, chaosPod.Spec,
-			cLog.ChaosPodContainerCountKey, len(chaosPod.Spec.Containers),
+			tagutil.ChaosPodNameKey, chaosPod.Name,
+			tagutil.ChaosPodSpecKey, chaosPod.Spec,
+			tagutil.ChaosPodContainerCountKey, len(chaosPod.Spec.Containers),
 		)
 	}
 
@@ -390,20 +390,20 @@ func (m *chaosPodService) HandleOrphanedChaosPods(ctx context.Context, req ctrl.
 
 	for _, pod := range pods {
 		m.handleMetricSinkError(ctx, m.config.MetricsSink.MetricOrphanFound([]string{
-			tagutil.FormatTag(cLog.DisruptionNameKey, req.Name),
-			tagutil.FormatTag(cLog.DisruptionNamespaceKey, req.Namespace),
-			tagutil.FormatTag(cLog.ChaosPodNameKey, pod.Name),
+			tagutil.FormatTag(tagutil.DisruptionNameKey, req.Name),
+			tagutil.FormatTag(tagutil.DisruptionNamespaceKey, req.Namespace),
+			tagutil.FormatTag(tagutil.ChaosPodNameKey, pod.Name),
 		}))
 
 		target := pod.Labels[chaostypes.TargetLabel]
 
 		var p corev1.Pod
 
-		logger.Infow("checking if we can clean up orphaned chaos pod", cLog.ChaosPodNameKey, pod.Name, cLog.TargetNameKey, target)
+		logger.Infow("checking if we can clean up orphaned chaos pod", tagutil.ChaosPodNameKey, pod.Name, tagutil.TargetNameKey, target)
 
 		// if target doesn't exist, we can try to clean up the chaos pod
 		if err = m.config.Client.Get(ctx, types.NamespacedName{Name: target, Namespace: req.Namespace}, &p); apierrors.IsNotFound(err) {
-			logger.Warnw("orphaned chaos pod detected, will attempt to delete", cLog.ChaosPodNameKey, pod.Name)
+			logger.Warnw("orphaned chaos pod detected, will attempt to delete", tagutil.ChaosPodNameKey, pod.Name)
 
 			if err = m.removeFinalizerForChaosPod(ctx, &pod); err != nil {
 				continue
@@ -412,9 +412,9 @@ func (m *chaosPodService) HandleOrphanedChaosPods(ctx context.Context, req ctrl.
 			// if the chaos pod still exists after having its finalizer removed, delete it
 			if err = m.deletePod(ctx, pod); err != nil {
 				if chaosv1beta1.IsUpdateConflictError(err) {
-					logger.Infow("retryable error deleting orphaned chaos pod", cLog.ErrorKey, err, cLog.ChaosPodNameKey, pod.Name)
+					logger.Infow("retryable error deleting orphaned chaos pod", tagutil.ErrorKey, err, tagutil.ChaosPodNameKey, pod.Name)
 				} else {
-					logger.Errorw("error deleting orphaned chaos pod", cLog.ErrorKey, err, cLog.ChaosPodNameKey, pod.Name)
+					logger.Errorw("error deleting orphaned chaos pod", tagutil.ErrorKey, err, tagutil.ChaosPodNameKey, pod.Name)
 				}
 			}
 		}
@@ -653,9 +653,9 @@ func (m *chaosPodService) removeFinalizerForChaosPod(ctx context.Context, chaosP
 
 	if err := m.config.Client.Update(ctx, chaosPod); err != nil {
 		if chaosv1beta1.IsUpdateConflictError(err) {
-			cLog.FromContext(ctx).Debugw("cannot remove chaos pod finalizer, need to re-reconcile", cLog.ChaosPodNameKey, chaosPod.Name, cLog.ErrorKey, err)
+			cLog.FromContext(ctx).Debugw("cannot remove chaos pod finalizer, need to re-reconcile", tagutil.ChaosPodNameKey, chaosPod.Name, tagutil.ErrorKey, err)
 		} else {
-			cLog.FromContext(ctx).Errorw("error removing chaos pod finalizer", cLog.ErrorKey, err, cLog.ChaosPodNameKey, chaosPod.Name)
+			cLog.FromContext(ctx).Errorw("error removing chaos pod finalizer", tagutil.ErrorKey, err, tagutil.ChaosPodNameKey, chaosPod.Name)
 		}
 
 		return err
@@ -666,7 +666,7 @@ func (m *chaosPodService) removeFinalizerForChaosPod(ctx context.Context, chaosP
 
 func (m *chaosPodService) handleMetricSinkError(ctx context.Context, err error) {
 	if err != nil {
-		cLog.FromContext(ctx).Errorw("error sending a metric", cLog.ErrorKey, err)
+		cLog.FromContext(ctx).Errorw("error sending a metric", tagutil.ErrorKey, err)
 	}
 }
 

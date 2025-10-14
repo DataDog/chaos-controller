@@ -10,6 +10,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/DataDog/chaos-controller/o11y/tags"
 	"github.com/DataDog/chaos-controller/process"
 	"github.com/DataDog/chaos-controller/types"
 )
@@ -57,7 +58,7 @@ func (c *cpuStressInjector) Inject() error {
 
 	stressPID := c.process.ProcessID()
 	stressCount := cpuset.Size()
-	c.config.Log = c.config.Log.With("stress_pid", stressPID, "stress_cpuset", cpuset)
+	c.config.Log = c.config.Log.With(tags.StressPidKey, stressPID, tags.StressCpusetKey, cpuset)
 
 	if err := c.config.Cgroup.Join(stressPID); err != nil {
 		return fmt.Errorf("unable to join cgroup for process '%d': %w", stressPID, err)
@@ -84,7 +85,7 @@ func (c *cpuStressInjector) Inject() error {
 
 func (c *cpuStressInjector) Clean() error {
 	stressCount := cap(c.exiters)
-	c.config.Log.Infow("Stopping all cpu stresses", "stress_count", stressCount)
+	c.config.Log.Infow("Stopping all cpu stresses", tags.StressCountKey, stressCount)
 
 	// we want to know when the stress are really completed
 	// stress will signal themselves through this channel
@@ -113,12 +114,12 @@ func (c *cpuStressInjector) Clean() error {
 
 // stress run a cpu intensive operation on cpu until an exit signal is received
 func (c *cpuStressInjector) stress(cpu int) {
-	logger := c.config.Log.With("cpu", cpu, "percentage", c.percentage)
+	logger := c.config.Log.With(tags.CpuKey, cpu, tags.PercentageKey, c.percentage)
 
 	stressConfigurationCompleted := make(chan struct{}, 1)
 
 	go func() {
-		logger := logger.With("thread_id", c.process.ThreadID())
+		logger := logger.With(tags.ThreadIdKey, c.process.ThreadID())
 
 		defer func() {
 			logger.Infow("Stress is stopping...")
@@ -144,14 +145,14 @@ func (c *cpuStressInjector) stress(cpu int) {
 		logger.Debug("stress locked on OSThread")
 
 		if err := c.process.SetAffinity([]int{cpu}); err != nil {
-			logger.Warnw("unable to set affinity to a specific cpu, thread might move to another CPU", "error", err)
+			logger.Warnw("unable to set affinity to a specific cpu, thread might move to another CPU", tags.ErrorKey, err)
 		}
 
 		totalDuration := 100 * time.Millisecond
 		cpuPressureOnDuration := time.Duration(math.Floor(float64(totalDuration) * float64(c.percentage) / float64(100)))
 		cpuPressureOffDuration := totalDuration - cpuPressureOnDuration
 
-		logger.Infow("stress is starting", "stress_duration", cpuPressureOnDuration, "pause_duration", cpuPressureOffDuration)
+		logger.Infow("stress is starting", tags.StressDurationKey, cpuPressureOnDuration, tags.PauseDurationKey, cpuPressureOffDuration)
 
 		stressConfigurationCompleted <- struct{}{}
 

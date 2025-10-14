@@ -8,9 +8,11 @@ package main
 import (
 	"time"
 
+	"github.com/spf13/cobra"
+
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/injector"
-	"github.com/spf13/cobra"
+	"github.com/DataDog/chaos-controller/o11y/tags"
 )
 
 var networkDisruptionCmd = &cobra.Command{
@@ -42,17 +44,17 @@ var networkDisruptionCmd = &cobra.Command{
 			if i == 0 {
 				parsedHosts, err := v1beta1.NetworkDisruptionHostSpecFromString(hosts)
 				if err != nil {
-					log.Fatalw("error parsing hosts", "error", err)
+					log.Fatalw("error parsing hosts", tags.ErrorKey, err)
 				}
 
 				parsedAllowedHosts, err := v1beta1.NetworkDisruptionHostSpecFromString(allowedHosts)
 				if err != nil {
-					log.Fatalw("error parsing allowed hosts", "error", err)
+					log.Fatalw("error parsing allowed hosts", tags.ErrorKey, err)
 				}
 
 				parsedServices, err := v1beta1.NetworkDisruptionServiceSpecFromString(services)
 				if err != nil {
-					log.Fatalw("error parsing services", "error", err)
+					log.Fatalw("error parsing services", tags.ErrorKey, err)
 				}
 
 				httpPaths := v1beta1.HTTPPaths{}
