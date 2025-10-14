@@ -723,13 +723,13 @@ var _ = Describe("NotifierSink", func() {
 						RunAndReturn(func(ctx context.Context, name types.NamespacedName, object client.Object, option ...client.GetOption) error {
 							switch objectKind {
 							case v1beta1.DisruptionKind:
-								object = &v1beta1.Disruption{
+								*object.(*v1beta1.Disruption) = v1beta1.Disruption{
 									TypeMeta: metav1.TypeMeta{
 										Kind: v1beta1.DisruptionKind,
 									},
 								}
 							case v1beta1.DisruptionCronKind:
-								object = &v1beta1.DisruptionCron{
+								*object.(*v1beta1.DisruptionCron) = v1beta1.DisruptionCron{
 									TypeMeta: metav1.TypeMeta{
 										Kind: v1beta1.DisruptionCronKind,
 									},
