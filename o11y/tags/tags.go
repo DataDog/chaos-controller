@@ -17,54 +17,48 @@ const (
 	// === CHAOS CONTROLLER CORE ENTITIES ===
 
 	// Disruption
-	disruptionPrefixKey    = "disruption"
-	DisruptionKey          = disruptionPrefixKey
-	DisruptionNameKey      = disruptionPrefixKey + "_name"
-	DisruptionNamespaceKey = disruptionPrefixKey + "_namespace"
-	DisruptionKindKey      = disruptionPrefixKey + "_kind"
+	DisruptionKey          = "disruption"
+	DisruptionNameKey      = "disruption_name"
+	DisruptionNamespaceKey = "disruption_namespace"
+	DisruptionKindKey      = "disruption_kind"
 
 	// DisruptionCron
-	disruptionCronPrefixKey    = "disruptioncron"
-	DisruptionCronNameKey      = disruptionCronPrefixKey + "_name"
-	DisruptionCronNamespaceKey = disruptionCronPrefixKey + "_namespace"
+	DisruptionCronNameKey      = "disruptioncron_name"
+	DisruptionCronNamespaceKey = "disruptioncron_namespace"
 
 	// DisruptionRollout
-	disruptionRolloutPrefixKey    = "disruption_rollout"
-	DisruptionRolloutNameKey      = disruptionRolloutPrefixKey + "_name"
-	DisruptionRolloutNamespaceKey = disruptionRolloutPrefixKey + "_namespace"
+	DisruptionRolloutNameKey      = "disruption_rollout_name"
+	DisruptionRolloutNamespaceKey = "disruption_rollout_namespace"
 
 	// ChaosPod
-	chaosPodPrefixKey         = "chaos_pod"
-	ChaosPodNameKey           = chaosPodPrefixKey + "_name"
-	ChaosPodNamespaceKey      = chaosPodPrefixKey + "_namespace"
-	ChaosPodSpecKey           = chaosPodPrefixKey + "_spec"
-	ChaosPodLabelsKey         = chaosPodPrefixKey + "_labels"
-	ChaosPodNamesKey          = chaosPodPrefixKey + "_names"
-	ChaosPodArgsKey           = chaosPodPrefixKey + "_args"
-	ChaosPodContainerCountKey = chaosPodPrefixKey + "_container_count"
+	ChaosPodNameKey           = "chaos_pod_name"
+	ChaosPodNamespaceKey      = "chaos_pod_namespace"
+	ChaosPodSpecKey           = "chaos_pod_spec"
+	ChaosPodLabelsKey         = "chaos_pod_labels"
+	ChaosPodNamesKey          = "chaos_pod_names"
+	ChaosPodArgsKey           = "chaos_pod_args"
+	ChaosPodContainerCountKey = "chaos_pod_container_count"
 
 	// Controller
 	ControllerKey = "controller"
 
 	// Injection
-	injectionPrefixKey = "injection"
-	InjectionStatusKey = injectionPrefixKey + "_status"
+	InjectionStatusKey = "injection_status"
 
 	// === KUBERNETES RESOURCES ===
 
 	// Target (generic resource being disrupted)
-	targetPrefixKey           = "target"
-	TargetNameKey             = targetPrefixKey + "_name"
-	TargetNodeNameKey         = targetPrefixKey + "_node_name"
-	TargetPodNameKey          = targetPrefixKey + "_pod_name"
-	TargetPodUIDKey           = targetPrefixKey + "_pod_uid"
-	TargetKindKey             = targetPrefixKey + "_kind"
-	TargetLabelsKey           = targetPrefixKey + "_labels"
-	TargetNamespaceKey        = targetPrefixKey + "_namespace"
-	TargetContainersKey       = targetPrefixKey + "_containers"
-	TargetContainerIDKey      = targetPrefixKey + "_container_id"
-	TargetDisruptedByKindsKey = targetPrefixKey + "_disrupted_by_kinds"
-	TargetLevelKey            = targetPrefixKey + "_level"
+	TargetNameKey             = "target_name"
+	TargetNodeNameKey         = "target_node_name"
+	TargetPodNameKey          = "target_pod_name"
+	TargetPodUIDKey           = "target_pod_uid"
+	TargetKindKey             = "target_kind"
+	TargetLabelsKey           = "target_labels"
+	TargetNamespaceKey        = "target_namespace"
+	TargetContainersKey       = "target_containers"
+	TargetContainerIDKey      = "target_container_id"
+	TargetDisruptedByKindsKey = "target_disrupted_by_kinds"
+	TargetLevelKey            = "target_level"
 	TargetsKey                = "targets"
 
 	// Target selection
@@ -76,55 +70,45 @@ const (
 	PotentialTargetsKey              = "potential_targets"
 
 	// Pod
-	podPrefixKey    = "pod"
-	PodNameKey      = podPrefixKey + "_name"
-	PodNamespaceKey = podPrefixKey + "_namespace"
+	PodNameKey      = "pod_name"
+	PodNamespaceKey = "pod_namespace"
 
 	// Container
-	containerPrefix  = "container"
-	ContainerIDKey   = containerPrefix + "_id"
-	ContainerNameKey = containerPrefix + "_name"
+	ContainerIDKey   = "container_id"
+	ContainerNameKey = "container_name"
 	ContainerKey     = "container"
 
 	// Node
-	nodePrefixKey = "node"
-	NodeNameKey   = nodePrefixKey + "_name"
+	NodeNameKey = "node_name"
 
 	// StatefulSet
-	statefulSetPrefixKey = "stateful_set"
-	StatefulSetNameKey   = statefulSetPrefixKey + "_name"
+	StatefulSetNameKey = "stateful_set_name"
 
 	// Deployment
-	deploymentPrefixKey = "deployment"
-	DeploymentNameKey   = deploymentPrefixKey + "_name"
+	DeploymentNameKey = "deployment_name"
 
 	// Service
-	servicePrefixKey    = "service"
-	ServiceNamespaceKey = servicePrefixKey + "_namespace"
-	ServiceNameKey      = servicePrefixKey + "_name"
-	ServiceKey          = servicePrefixKey
+	ServiceNamespaceKey = "service_namespace"
+	ServiceNameKey      = "service_name"
+	ServiceKey          = "service"
 
 	// PVC
-	pvcPrefixKey = "pvc"
-	PVCNameKey   = pvcPrefixKey + "_name"
+	PVCNameKey = "pvc_name"
 
 	// === OBSERVABILITY AND SYSTEM ===
 
 	// Watcher
-	watcherPrefix       = "watcher"
-	WatcherNameKey      = watcherPrefix + "_name"
-	WatcherNamespaceKey = watcherPrefix + "_namespace"
+	WatcherNameKey      = "watcher_name"
+	WatcherNamespaceKey = "watcher_namespace"
 
 	// Event notifications
-	notifierPrefix                 = "notifier"
-	NotifierDisruptionEventKey     = notifierPrefix + "_disruption_event"
-	NotifierDisruptionCronEventKey = notifierPrefix + "_disruption_cron_event"
+	NotifierDisruptionEventKey     = "notifier_disruption_event"
+	NotifierDisruptionCronEventKey = "notifier_disruption_cron_event"
 
 	// Cloud Services Provider
-	cloudServicesProviderPrefixKey = "cloud_services_provider"
-	CloudProviderNameKey           = cloudServicesProviderPrefixKey + "_name"
-	CloudProviderURLKey            = cloudServicesProviderPrefixKey + "_url"
-	CloudProviderVersionKey        = cloudServicesProviderPrefixKey + "_version"
+	CloudProviderNameKey    = "cloud_services_provider_name"
+	CloudProviderURLKey     = "cloud_services_provider_url"
+	CloudProviderVersionKey = "cloud_services_provider_version"
 
 	// === COMMON FIELDS ===
 
