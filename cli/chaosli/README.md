@@ -3,7 +3,9 @@
 The Chaos Controller CLI, `chaosli`, is meant to help create a more user friendly and digestible chaos-controller experience. The CLI pairs with your Disruption's definition, giving you information to give you a better sense of what is going on, and what will happen when you apply new disruptions. With features like explain and validation, it gives users, not only a better understanding, but a better experience with the controller.
 
 #### Table of Contents
+
 ---
+
 - Installation
 - Validate
 - Explain
@@ -14,10 +16,13 @@ The Chaos Controller CLI, `chaosli`, is meant to help create a more user friendl
 Download the `chaosli` binary for your operating system and architecture [from the latest release](https://github.com/DataDog/chaos-controller/releases/latest).
 
 ##### Requirements:
+
 - Have `go` installed (v. 1.18 or greater) and the local `$GOPATH` environment variable setup
 
 #### Validate
+
 ---
+
 Usage: `chaosli validate --path <path to disruption file>`
 
 Description: Validates your disruption file (location defined by `--path`) to make sure everything is correctly formatted, and all options have valid configurations.
@@ -30,11 +35,13 @@ Example:
 # network_delay.yaml in examples has a network disruption specified
 
 $ chaosli validate --path=../examples/network_delay.yaml
-Error: cannot apply an empty disruption - at least one of Network, DNS, DiskPressure, NodeFailure, ContainerFailure, CPUPressure fields is needed
+Error: cannot apply an empty disruption - at least one of Network, DiskPressure, NodeFailure, ContainerFailure, CPUPressure fields is needed
 ```
 
 #### Explain
+
 ---
+
 Usage: `chaosli explain --path <path to disruption file>`
 
 Description: Prints out a summary of the disruption (location defined by `--path`).
@@ -60,16 +67,21 @@ This Disruption...
 ```
 
 #### Creation
+
 ---
+
 Usage: `chaosli create --path <path to output generated disruption file>`
 
 Description: User friendly input process that helps you create your disruptions from scratch answering simple questions.
 
 #### Context
+
 ---
+
 Usage: `chaosli context --path <path to disruption file>`
 
-Description: Gives you context of the targets you intend to disrupt. Shares information regarding status of pods, containers, and nodes. Shares information regarding the state of pods, containers, and nodes as well. 
+Description: Gives you context of the targets you intend to disrupt. Shares information regarding status of pods, containers, and nodes. Shares information regarding the state of pods, containers, and nodes as well.
 
 #### Testing Locally
+
 Run `go run chaosli/main.go context --path <path to disruption file>`

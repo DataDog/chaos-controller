@@ -59,15 +59,6 @@ var _ = Describe("Disruption Controller", func() {
 					BandwidthLimit: 10000,
 				},
 				CPUPressure: &chaosv1beta1.CPUPressureSpec{},
-				DNS: []chaosv1beta1.HostRecordPair{
-					{
-						Hostname: "ctn",
-						Record: chaosv1beta1.DNSRecord{
-							Type:  "A",
-							Value: "10.0.0.1, 10.0.0.2 , 10.0.0.3",
-						},
-					},
-				},
 				GRPC: &chaosv1beta1.GRPCDisruptionSpec{
 					Port: 2000,
 					Endpoints: []chaosv1beta1.EndpointAlteration{
@@ -742,7 +733,6 @@ var _ = Describe("Disruption Controller", func() {
 				// let's have a quick disruption by default when we test expiration
 				disruption.Spec.Duration = shortDisruptionDuration
 				disruption.Spec.CPUPressure = nil
-				disruption.Spec.DNS = nil
 				disruption.Spec.GRPC = nil
 			})
 

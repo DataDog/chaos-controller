@@ -35,5 +35,3 @@ You can also have a look at the following use cases with examples of disruptions
 - [Disk pressure](/docs/disk_pressure.md)
   - [I want to throttle my pods disk reads](../examples/disk_pressure_read.yaml)
   - [I want to throttle my pods disk writes](../examples/disk_pressure_write.yaml)
-- [DNS resolution mocking](/docs/dns_disruption.md)
-  - [I want to fake my pods DNS resolutions](../examples/dns.yaml)

@@ -70,8 +70,6 @@ type ChaosPodServiceInjectorConfig struct {
 	Image                         string              // Image to be used for the injector.
 	Annotations, Labels           map[string]string   // Annotations and labels to be applied to injected pods.
 	NetworkDisruptionAllowedHosts []string            // List of hosts allowed during network disruption.
-	DNSDisruptionDNSServer        string              // DNS server to be used for DNS disruption.
-	DNSDisruptionKubeDNS          string              // KubeDNS server to be used for DNS disruption.
 	ImagePullSecrets              string              // Image pull secrets for the injector.
 	Tolerations                   []config.Toleration // Tolerations to be applied to injected pods.
 	LogLevel                      string
@@ -276,8 +274,6 @@ func (m *chaosPodService) GenerateChaosPodsOfDisruption(instance *chaosv1beta1.D
 			NotInjectedBefore:    notInjectedBefore,
 			MetricsSink:          m.config.MetricsSink.GetSinkName(),
 			AllowedHosts:         allowedHosts,
-			DNSServer:            m.config.Injector.DNSDisruptionDNSServer,
-			KubeDNS:              m.config.Injector.DNSDisruptionKubeDNS,
 			ChaosNamespace:       m.config.ChaosNamespace,
 		}
 

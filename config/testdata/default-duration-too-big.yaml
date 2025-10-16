@@ -58,9 +58,6 @@ injector:
   imagePullSecrets: some-pull-secret
   serviceAccount: chaos-injector-custom-sa
   chaosNamespace: chaos-engineering-custom-ns
-  dnsDisruption:
-    dnsServer: ""
-    kubeDns: "all"
 handler:
   enabled: true
   image: other.io/chaos-handler:not-latest-again

@@ -81,10 +81,6 @@ func (b *DisruptionBuilder) WithDisruptionKind(kind types.DisruptionKindName) *D
 				if b.Spec.DiskPressure == nil {
 					b.Spec.DiskPressure = &v1beta1.DiskPressureSpec{}
 				}
-			case types.DisruptionKindDNSDisruption:
-				if b.Spec.DNS == nil {
-					b.Spec.DNS = v1beta1.DNSDisruptionSpec{}
-				}
 			case types.DisruptionKindGRPCDisruption:
 				if b.Spec.GRPC == nil {
 					b.Spec.GRPC = &v1beta1.GRPCDisruptionSpec{}

@@ -45,11 +45,9 @@ const (
 	DefaultHostPathDirectory              = v1.HostPathDirectory
 	DefaultPathFile                       = v1.HostPathFile
 	DefaultImagePullSecrets               = "pull-secret"
-	DefaultInjectorServiceAccount         = "lorem"
-	DefaultInjectorImage                  = "image"
-	DefaultInjectorDNSDisruptionDNSServer = "8.8.8.8"
-	DefaultInjectorDNSDisruptionKubeDNS   = "9.9.9.9"
-	DefaultInjectorLogLevel               = "DEBUG"
+	DefaultInjectorServiceAccount = "lorem"
+	DefaultInjectorImage          = "image"
+	DefaultInjectorLogLevel       = "DEBUG"
 	DefaultMetricsSinkName                = "name"
 )
 
@@ -701,8 +699,6 @@ var _ = Describe("Chaos Pod Service", func() {
 			DefaultInjectorNetworkDisruptionAllowedHosts = []string{"10.10.10.10", "11.11.11.11"}
 			chaosPodServiceConfig.Injector = services.ChaosPodServiceInjectorConfig{
 				NetworkDisruptionAllowedHosts: DefaultInjectorNetworkDisruptionAllowedHosts,
-				DNSDisruptionDNSServer:        DefaultInjectorDNSDisruptionDNSServer,
-				DNSDisruptionKubeDNS:          DefaultInjectorDNSDisruptionKubeDNS,
 			}
 			pulseActiveDuration, pulseDormantDuration, pulseInitialDelay := time.Duration(0), time.Duration(0), time.Duration(0)
 			args = chaosapi.DisruptionArgs{
@@ -720,8 +716,6 @@ var _ = Describe("Chaos Pod Service", func() {
 				PulseDormantDuration: pulseDormantDuration,
 				MetricsSink:          DefaultMetricsSinkName,
 				AllowedHosts:         DefaultInjectorNetworkDisruptionAllowedHosts,
-				DNSServer:            DefaultInjectorDNSDisruptionDNSServer,
-				KubeDNS:              DefaultInjectorDNSDisruptionKubeDNS,
 				ChaosNamespace:       DefaultChaosNamespace,
 			}
 			metricsSinkMock.EXPECT().GetSinkName().Return(DefaultMetricsSinkName).Maybe()

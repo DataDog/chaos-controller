@@ -26,4 +26,4 @@ WORKDIR /app
 COPY --from=build /app/bin/chaosli/chaosli_bin ./chaosli_bin
 COPY --from=build /app/examples ./examples
 
-RUN ./chaosli_bin validate --path ./examples/dns.yaml
+RUN ./chaosli_bin validate --path ./examples/network_delay.yaml

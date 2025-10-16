@@ -13,7 +13,6 @@ import (
 	"github.com/DataDog/chaos-controller/cgroup"
 	"github.com/DataDog/chaos-controller/container"
 	"github.com/DataDog/chaos-controller/netns"
-	"github.com/DataDog/chaos-controller/network"
 	"github.com/DataDog/chaos-controller/o11y/metrics"
 	"github.com/DataDog/chaos-controller/types"
 	"go.uber.org/zap"
@@ -47,7 +46,6 @@ type Config struct {
 	Cgroup             cgroup.Manager
 	Netns              netns.Manager
 	K8sClient          kubernetes.Interface
-	DNS                network.DNSConfig
 	Disruption         chaosapi.DisruptionArgs
 	InjectorCtx        context.Context
 }

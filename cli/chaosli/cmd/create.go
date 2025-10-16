@@ -115,9 +115,8 @@ func createSpec() (v1beta1.DisruptionSpec, error) {
 func promptForKind(spec *v1beta1.DisruptionSpec) error {
 	initial := "Let's begin by choosing the type of disruption to apply! Which disruption kind would you like to add?"
 	followUp := "Would you like to add another disruption kind? It's not necessary, most disruptions involve only one kind. Select .. to finish adding kinds."
-	kinds := []string{"dns", "network", "cpu", "disk pressure", "node failure", "container failure", "disk failure"}
-	helpText := `The DNS disruption allows for overriding the A or CNAME records returned by DNS queries.
-The Network disruption allows for injecting a variety of different network issues into your target.
+	kinds := []string{"network", "cpu", "disk pressure", "node failure", "container failure", "disk failure"}
+	helpText := `The Network disruption allows for injecting a variety of different network issues into your target.
 The CPU and Disk disruptions apply cpu pressure or IO throttling to your target, respectively.
 Tne Node Failure disruption can either shutdown or restart the targeted node, or the node hosting the targeted pod.
 
@@ -134,21 +133,6 @@ Select one for more information on it.`
 		switch response {
 		case "..":
 			return nil
-		case "dns":
-			spec.DNS = getDNS()
-
-			if spec.DNS == nil {
-				continue
-			}
-
-			err := spec.DNS.Validate()
-			if err != nil {
-				fmt.Printf("There were some problems with your DNS disruption's spec: %v\n\n", err)
-
-				spec.DNS = nil
-
-				continue
-			}
 		case "network":
 			spec.Network = getNetwork()
 
@@ -362,44 +346,6 @@ func askObjectMeta() metav1.ObjectMeta {
 		Name:      name,
 		Namespace: namespace,
 	}
-}
-
-func getDNS() v1beta1.DNSDisruptionSpec {
-	if !confirmKind("DNS Disruption", "Overrides DNS resolution for specified hostnames with a MitM DNS attack. All other DNS requests will use the target's normal DNS resolver.") {
-		return nil
-	}
-
-	getHostRecordPair := func() v1beta1.HostRecordPair {
-		hrPair := v1beta1.HostRecordPair{}
-
-		hrPair.Hostname = getInput("Specify a hostname to target",
-			"When your target makes a DNS request for this hostname; the disruption will make sure the value you specify is returned, rather than the real record.",
-			survey.WithValidator(survey.Required),
-		)
-		hrPair.Record.Type, _ = selectInput("the type of DNS record to inject",
-			[]string{"A", "CNAME"},
-			"We only support these two types of DNS requests for now. An A record request gets back an IP for a hostname, while a CNAME request maps an alias domain name to the canonical name.")
-		helpText := "We're specifying an A record, so the value should be an IP address. You can specify multiple IP addresses, if desired. Simply delimit them with commas, no whitespace! The disruption will round-robin between the options."
-
-		if hrPair.Record.Type == "CNAME" {
-			helpText = "We're specifying a CNAME record, so the value should be a hostname to redirect to."
-		}
-
-		hrPair.Record.Value = getInput("What value would you like to inject into this DNS record?", helpText, survey.WithValidator(survey.Required))
-
-		return hrPair
-	}
-
-	fmt.Println("Let's specify a DNS record to inject!")
-
-	spec := v1beta1.DNSDisruptionSpec{}
-	spec = append(spec, getHostRecordPair())
-
-	for confirmOption("Would you like to override another DNS record?", "") {
-		spec = append(spec, getHostRecordPair())
-	}
-
-	return spec
 }
 
 func getDiskPressure() *v1beta1.DiskPressureSpec {
