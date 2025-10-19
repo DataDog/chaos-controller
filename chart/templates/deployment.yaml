@@ -50,6 +50,13 @@ spec:
             {{- if .Values.controller.configMapOverrides }}
             - --config-overrides=chaos-controller-overrides
             {{- end }}
+            - --client-go-qps={{ .Values.controller.clientGoQPS }}
+            - --client-go-burst={{ .Values.controller.clientGoBurst }}
+            {{- with .Values.controller.additionalArgs }}
+            {{- range . }}
+            - {{ . | quote }}
+            {{- end }}
+            {{- end }}
           env:
             - name: POD_NAMESPACE
               valueFrom:

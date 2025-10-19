@@ -7,6 +7,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"net/http"
 	"os"
@@ -61,7 +62,11 @@ import (
 //go:generate mockery  --config .local.mockery.yaml
 //go:generate mockery  --config .vendor.mockery.yaml
 
-var scheme = runtime.NewScheme()
+var (
+	clientGoQPS   = flag.Float64("client-go-qps", 20, "Number of queries per second client-go is allowed to make (default 20)")
+	clientGoBurst = flag.Int("client-go-burst", 30, "Allowed burst queries for client-go (default 30)")
+	scheme        = runtime.NewScheme()
+)
 
 func init() {
 	// +kubebuilder:scaffold:scheme
@@ -70,6 +75,7 @@ func init() {
 }
 
 func main() {
+	flag.Parse()
 	logger, err := log.NewZapLogger()
 	if err != nil {
 		ctrl.Log.WithName("setup").Error(err, "error creating controller logger")
@@ -105,7 +111,11 @@ func main() {
 		logger.Fatalw("unable to create a valid configuration", "error", err)
 	}
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	ctrlConfig := ctrl.GetConfigOrDie()
+	ctrlConfig.QPS = float32(*clientGoQPS)
+	ctrlConfig.Burst = *clientGoBurst
+
+	mgr, err := ctrl.NewManager(ctrlConfig, ctrl.Options{
 		Scheme:                 scheme,
 		HealthProbeBindAddress: cfg.Controller.HealthProbeBindAddr,
 		Metrics: metricsserver.Options{
