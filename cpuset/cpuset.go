@@ -307,21 +307,25 @@ func Parse(s string) (CPUSet, error) {
 		}
 
 		boundaries := strings.Split(r, "-")
-		if len(boundaries) == 1 {
+
+		switch len(boundaries) {
+		case 1:
 			// Handle ranges that consist of only one element like "34".
 			elem, err := strconv.Atoi(boundaries[0])
 			if err != nil {
 				return NewCPUSet(), err
 			}
+
 			if elem < 0 {
 				return NewCPUSet(), fmt.Errorf("invalid CPU number: %d (must be non-negative)", elem)
 			}
+
 			if elem >= maxCPUID {
 				return NewCPUSet(), fmt.Errorf("invalid CPU number: %d (must be less than %d)", elem, maxCPUID)
 			}
 
 			b.Add(elem)
-		} else if len(boundaries) == 2 {
+		case 2:
 			// Handle multi-element ranges like "0-5".
 			// Check for empty boundaries (e.g., "-5", "5-", "--5")
 			if boundaries[0] == "" || boundaries[1] == "" {
@@ -332,9 +336,11 @@ func Parse(s string) (CPUSet, error) {
 			if err != nil {
 				return NewCPUSet(), err
 			}
+
 			if start < 0 {
 				return NewCPUSet(), fmt.Errorf("invalid start CPU number: %d (must be non-negative)", start)
 			}
+
 			if start >= maxCPUID {
 				return NewCPUSet(), fmt.Errorf("invalid start CPU number: %d (must be less than %d)", start, maxCPUID)
 			}
@@ -343,9 +349,11 @@ func Parse(s string) (CPUSet, error) {
 			if err != nil {
 				return NewCPUSet(), err
 			}
+
 			if end < 0 {
 				return NewCPUSet(), fmt.Errorf("invalid end CPU number: %d (must be non-negative)", end)
 			}
+
 			if end >= maxCPUID {
 				return NewCPUSet(), fmt.Errorf("invalid end CPU number: %d (must be less than %d)", end, maxCPUID)
 			}
@@ -357,6 +365,7 @@ func Parse(s string) (CPUSet, error) {
 
 			// Validate range size to prevent memory exhaustion
 			rangeSize := end - start + 1
+
 			if rangeSize > maxRangeSize {
 				return NewCPUSet(), fmt.Errorf("invalid range %q: range size (%d) exceeds maximum allowed (%d)", r, rangeSize, maxRangeSize)
 			}
@@ -366,7 +375,7 @@ func Parse(s string) (CPUSet, error) {
 			for e := start; e <= end; e++ {
 				b.Add(e)
 			}
-		} else {
+		default:
 			// More than 2 boundaries means multiple dashes (e.g., "1-2-3")
 			return NewCPUSet(), fmt.Errorf("invalid range format %q: too many dashes", r)
 		}
