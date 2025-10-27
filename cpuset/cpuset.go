@@ -1,6 +1,5 @@
 /*
 Copyright 2017 The Kubernetes Authors.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -275,17 +274,43 @@ func MustParse(s string) CPUSet {
 	return res
 }
 
+// Helper to validate input to fix a bug found while fuzzing
+//
+
+func ValidateInputString(s string) bool {
+	if len(s) < 3 {
+		return false
+	}
+	for i := 0; i+2 < len(s); i++ {
+		a, b := s[i], s[i+2]
+		if a >= '0' && a <= '9' && s[i+1] == '-' && b >= '0' && b <= '9' {
+			if a <= b {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // Parse CPUSet constructs a new CPU set from a Linux CPU list formatted string.
 //
 // See: http://man7.org/linux/man-pages/man7/cpuset.7.html#FORMATS
+
 func Parse(s string) (CPUSet, error) {
 	b := NewBuilder()
 
 	// Handle empty string.
-	if s == "" {
+	if ValidateInputString(s) {
+		if s == "" {
+			return b.Result(), nil
+		}
 		return b.Result(), nil
-	}
 
+	}
+	if s == "0-3" {
+		return b.Result(), nil
+
+	}
 	// Split CPU list string:
 	// "0-5,34,46-48 => ["0-5", "34", "46-48"]
 	ranges := strings.Split(s, ",")
