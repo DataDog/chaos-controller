@@ -36,19 +36,19 @@ import (
 )
 
 const (
-	DefaultNamespace                      = "namespace"
-	DefaultChaosNamespace                 = "chaos-namespace"
-	DefaultDisruptionName                 = "name"
-	DefaultTargetName                     = "lorem"
-	DefaultTargetNodeName                 = "ipsum"
-	DefaultTargetPodIp                    = "10.10.10.10"
-	DefaultHostPathDirectory              = v1.HostPathDirectory
-	DefaultPathFile                       = v1.HostPathFile
-	DefaultImagePullSecrets               = "pull-secret"
+	DefaultNamespace              = "namespace"
+	DefaultChaosNamespace         = "chaos-namespace"
+	DefaultDisruptionName         = "name"
+	DefaultTargetName             = "lorem"
+	DefaultTargetNodeName         = "ipsum"
+	DefaultTargetPodIp            = "10.10.10.10"
+	DefaultHostPathDirectory      = v1.HostPathDirectory
+	DefaultPathFile               = v1.HostPathFile
+	DefaultImagePullSecrets       = "pull-secret"
 	DefaultInjectorServiceAccount = "lorem"
 	DefaultInjectorImage          = "image"
 	DefaultInjectorLogLevel       = "DEBUG"
-	DefaultMetricsSinkName                = "name"
+	DefaultMetricsSinkName        = "name"
 )
 
 var _ = Describe("Chaos Pod Service", func() {

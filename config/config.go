@@ -96,7 +96,7 @@ type Toleration struct {
 	TolerationSeconds *int64 `json:"tolerationSeconds,omitempty" yaml:"tolerationSeconds,omitempty"`
 }
 
-type injectorNetworkDisruptionConfig struct{
+type injectorNetworkDisruptionConfig struct {
 	AllowedHosts        []string      `json:"allowedHosts" yaml:"allowedHosts"`
 	HostResolveInterval time.Duration `json:"hostResolveInterval" yaml:"hostResolveInterval"`
 }
