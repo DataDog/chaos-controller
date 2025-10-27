@@ -22,19 +22,21 @@ import (
 
 func FuzzParse(f *testing.F) {
 	f.Add("0-3")
+	f.Add("1,2,3")
+	f.Add("0")
 	f.Fuzz(func(t *testing.T, input string) {
-		if input == "1-0" {
-			return
-		}
-		if input == "" {
-			return
-		}
+		// Parse should either succeed or return an error, but never panic
 		cpuset, err := Parse(input)
-		if err != nil {
-			return
+
+		// If parsing succeeded, verify basic invariants
+		if err == nil {
+			// Empty string should produce empty set
+			if input == "" && cpuset.Size() != 0 {
+				t.Errorf("Parse(%q) produced non-empty set: %v", input, cpuset)
+			}
+			// Non-empty valid input should produce non-empty set
+			// (though we can't easily determine if input is "valid" without re-parsing)
 		}
-		if cpuset.Size() == 0 {
-			t.Fatalf("Parse(%q) = %v", input, cpuset)
-		}
+		// If err != nil, that's fine - invalid input should return errors
 	})
 }

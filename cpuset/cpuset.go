@@ -274,48 +274,33 @@ func MustParse(s string) CPUSet {
 	return res
 }
 
-// Helper to validate input to fix a bug found while fuzzing
-//
-
-func ValidateInputString(s string) bool {
-	if len(s) < 3 {
-		return false
-	}
-	for i := 0; i+2 < len(s); i++ {
-		a, b := s[i], s[i+2]
-		if a >= '0' && a <= '9' && s[i+1] == '-' && b >= '0' && b <= '9' {
-			if a <= b {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 // Parse CPUSet constructs a new CPU set from a Linux CPU list formatted string.
 //
 // See: http://man7.org/linux/man-pages/man7/cpuset.7.html#FORMATS
 
 func Parse(s string) (CPUSet, error) {
+	// Maximum reasonable CPU ID (current systems have far fewer CPUs than this)
+	const maxCPUID = 8192
+	// Maximum reasonable range size to prevent memory exhaustion
+	const maxRangeSize = 8192
+
 	b := NewBuilder()
 
 	// Handle empty string.
-	if ValidateInputString(s) {
-		if s == "" {
-			return b.Result(), nil
-		}
+	if s == "" {
 		return b.Result(), nil
-
 	}
-	if s == "0-3" {
-		return b.Result(), nil
 
-	}
 	// Split CPU list string:
 	// "0-5,34,46-48 => ["0-5", "34", "46-48"]
 	ranges := strings.Split(s, ",")
 
 	for _, r := range ranges {
+		// Validate that the range is not empty
+		if r == "" {
+			return NewCPUSet(), fmt.Errorf("empty range in CPU list %q", s)
+		}
+
 		boundaries := strings.Split(r, "-")
 		if len(boundaries) == 1 {
 			// Handle ranges that consist of only one element like "34".
@@ -323,24 +308,62 @@ func Parse(s string) (CPUSet, error) {
 			if err != nil {
 				return NewCPUSet(), err
 			}
+			if elem < 0 {
+				return NewCPUSet(), fmt.Errorf("invalid CPU number: %d (must be non-negative)", elem)
+			}
+			if elem >= maxCPUID {
+				return NewCPUSet(), fmt.Errorf("invalid CPU number: %d (must be less than %d)", elem, maxCPUID)
+			}
 
 			b.Add(elem)
 		} else if len(boundaries) == 2 {
 			// Handle multi-element ranges like "0-5".
+			// Check for empty boundaries (e.g., "-5", "5-", "--5")
+			if boundaries[0] == "" || boundaries[1] == "" {
+				return NewCPUSet(), fmt.Errorf("invalid range format in %q", r)
+			}
+
 			start, err := strconv.Atoi(boundaries[0])
 			if err != nil {
 				return NewCPUSet(), err
+			}
+			if start < 0 {
+				return NewCPUSet(), fmt.Errorf("invalid start CPU number: %d (must be non-negative)", start)
+			}
+			if start >= maxCPUID {
+				return NewCPUSet(), fmt.Errorf("invalid start CPU number: %d (must be less than %d)", start, maxCPUID)
 			}
 
 			end, err := strconv.Atoi(boundaries[1])
 			if err != nil {
 				return NewCPUSet(), err
 			}
+			if end < 0 {
+				return NewCPUSet(), fmt.Errorf("invalid end CPU number: %d (must be non-negative)", end)
+			}
+			if end >= maxCPUID {
+				return NewCPUSet(), fmt.Errorf("invalid end CPU number: %d (must be less than %d)", end, maxCPUID)
+			}
+
+			// Validate that start <= end to avoid infinite loop
+			if start > end {
+				return NewCPUSet(), fmt.Errorf("invalid range %q: start (%d) must be less than or equal to end (%d)", r, start, end)
+			}
+
+			// Validate range size to prevent memory exhaustion
+			rangeSize := end - start + 1
+			if rangeSize > maxRangeSize {
+				return NewCPUSet(), fmt.Errorf("invalid range %q: range size (%d) exceeds maximum allowed (%d)", r, rangeSize, maxRangeSize)
+			}
+
 			// Add all elements to the result.
 			// e.g. "0-5", "46-48" => [0, 1, 2, 3, 4, 5, 46, 47, 48].
 			for e := start; e <= end; e++ {
 				b.Add(e)
 			}
+		} else {
+			// More than 2 boundaries means multiple dashes (e.g., "1-2-3")
+			return NewCPUSet(), fmt.Errorf("invalid range format %q: too many dashes", r)
 		}
 	}
 
