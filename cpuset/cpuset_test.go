@@ -1,7 +1,7 @@
-/*
-This file was copied directly from k8s.io/kubernetes v1.20.2. It is not importable in a normal way, as kubernetes/pkg/kubelet isn't meant to be imported,
- doing so requires `replace` statements that make it difficult to import the chaos-controller from other modules.
-*/
+// Unless explicitly stated otherwise all files in this repository are licensed
+// under the Apache License Version 2.0.
+// This product includes software developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2025 Datadog, Inc.
 
 package cpuset
 
