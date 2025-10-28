@@ -7,33 +7,24 @@ package datadog_test
 
 import (
 	"fmt"
+	
+	"github.com/DataDog/datadog-go/statsd"
+	"github.com/stretchr/testify/mock"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier/datadog"
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
 	"github.com/DataDog/chaos-controller/eventnotifier/utils"
 	"github.com/DataDog/chaos-controller/mocks"
-	"github.com/DataDog/datadog-go/statsd"
-	"github.com/stretchr/testify/mock"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zaptest"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Datadog", func() {
-	var (
-		logger *zap.SugaredLogger
-	)
-
-	BeforeEach(func() {
-		logger = zaptest.NewLogger(GinkgoT()).Sugar()
-	})
-
 	Describe("New", func() {
 		Describe("success cases", func() {
 			It("should return a new datadog notifier", func() {
@@ -45,8 +36,6 @@ var _ = Describe("Datadog", func() {
 					types.NotifiersCommonConfig{
 						ClusterName: "cluster-name",
 					},
-					datadog.NotifierDatadogConfig{},
-					logger,
 					clientStatsdMock,
 				)
 
@@ -65,8 +54,6 @@ var _ = Describe("Datadog", func() {
 				types.NotifiersCommonConfig{
 					ClusterName: "cluster-name",
 				},
-				datadog.NotifierDatadogConfig{},
-				logger,
 				clientStatsdMock,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -81,7 +68,7 @@ var _ = Describe("Datadog", func() {
 
 	Describe("Notify", func() {
 		Describe("success cases", func() {
-			DescribeTable("with support object", func(obj k8sclient.Object, event corev1.Event, expectedEventTags []string) {
+			DescribeTable("with support object", func(ctx SpecContext, obj k8sclient.Object, event corev1.Event, expectedEventTags []string) {
 				// Arrange
 				expectedNotificationType := types.NotificationInfo
 
@@ -97,14 +84,12 @@ var _ = Describe("Datadog", func() {
 					types.NotifiersCommonConfig{
 						ClusterName: "cluster-name",
 					},
-					datadog.NotifierDatadogConfig{},
-					logger,
 					clientStatsdMock,
 				)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				// Act
-				err = notifierDD.Notify(obj, event, expectedNotificationType)
+				err = notifierDD.Notify(ctx, obj, event, expectedNotificationType)
 
 				// Assert
 				Expect(err).ShouldNot(HaveOccurred())
@@ -133,7 +118,7 @@ var _ = Describe("Datadog", func() {
 				),
 			)
 
-			DescribeTable("with unsupported object", func(obj k8sclient.Object) {
+			DescribeTable("with unsupported object", func(ctx SpecContext, obj k8sclient.Object) {
 				// Arrange
 				expectedNotificationType := types.NotificationInfo
 
@@ -144,14 +129,12 @@ var _ = Describe("Datadog", func() {
 					types.NotifiersCommonConfig{
 						ClusterName: "cluster-name",
 					},
-					datadog.NotifierDatadogConfig{},
-					logger,
 					clientStatsdMock,
 				)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				// Act
-				err = notifierDD.Notify(obj, corev1.Event{}, expectedNotificationType)
+				err = notifierDD.Notify(ctx, obj, corev1.Event{}, expectedNotificationType)
 
 				// Assert
 				Expect(err).ShouldNot(HaveOccurred())
@@ -170,7 +153,7 @@ var _ = Describe("Datadog", func() {
 				),
 			)
 
-			DescribeTable("verify event alert type selection", func(notifType types.NotificationType, expectedEventTags statsd.EventAlertType) {
+			DescribeTable("verify event alert type selection", func(ctx SpecContext, notifType types.NotificationType, expectedEventTags statsd.EventAlertType) {
 				// Arrange
 				obj := &v1beta1.Disruption{}
 				event := corev1.Event{}
@@ -187,14 +170,12 @@ var _ = Describe("Datadog", func() {
 					types.NotifiersCommonConfig{
 						ClusterName: "cluster-name",
 					},
-					datadog.NotifierDatadogConfig{},
-					logger,
 					clientStatsdMock,
 				)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				// Act
-				err = notifierDD.Notify(obj, event, notifType)
+				err = notifierDD.Notify(ctx, obj, event, notifType)
 
 				// Assert
 				Expect(err).ShouldNot(HaveOccurred())
@@ -225,7 +206,7 @@ var _ = Describe("Datadog", func() {
 				),
 			)
 
-			DescribeTable("verify additional tags", func(obj k8sclient.Object, event corev1.Event, expectedEventTags []string) {
+			DescribeTable("verify additional tags", func(ctx SpecContext, obj k8sclient.Object, event corev1.Event, expectedEventTags []string) {
 				// Arrange
 				notificationType := types.NotificationInfo
 
@@ -241,14 +222,12 @@ var _ = Describe("Datadog", func() {
 					types.NotifiersCommonConfig{
 						ClusterName: "cluster-name",
 					},
-					datadog.NotifierDatadogConfig{},
-					logger,
 					clientStatsdMock,
 				)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				// Act
-				err = notifierDD.Notify(obj, event, notificationType)
+				err = notifierDD.Notify(ctx, obj, event, notificationType)
 
 				// Assert
 				Expect(err).ShouldNot(HaveOccurred())
@@ -361,7 +340,7 @@ var _ = Describe("Datadog", func() {
 
 		Describe("error cases", func() {
 			DescribeTableSubtree("the client fails to send the event", func(obj k8sclient.Object) {
-				It("should return an error", func() {
+				It("should return an error", func(ctx SpecContext) {
 					// Arrange
 					event := corev1.Event{}
 
@@ -372,14 +351,12 @@ var _ = Describe("Datadog", func() {
 						types.NotifiersCommonConfig{
 							ClusterName: "cluster-name",
 						},
-						datadog.NotifierDatadogConfig{},
-						logger,
 						clientStatsdMock,
 					)
 					Expect(err).ShouldNot(HaveOccurred())
 
 					// Act
-					err = notifierDD.Notify(obj, event, types.NotificationInfo)
+					err = notifierDD.Notify(ctx, obj, event, types.NotificationInfo)
 
 					// Assert
 					Expect(err).Should(HaveOccurred())

@@ -3,7 +3,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2025 Datadog, Inc.
 
-package targetselector
+package tags_test
 
 import (
 	"testing"
@@ -12,7 +12,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestTargetselector(t *testing.T) {
+func TestTags(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Targetselector Suite")
+	RunSpecs(t, "Tags Suite")
 }

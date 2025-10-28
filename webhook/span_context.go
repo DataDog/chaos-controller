@@ -11,7 +11,7 @@ import (
 	"net/http"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
-	cLog "github.com/DataDog/chaos-controller/log"
+	"github.com/DataDog/chaos-controller/o11y/tags"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -39,20 +39,20 @@ func (m *SpanContextMutator) Handle(ctx context.Context, req admission.Request) 
 
 	// decode object
 	if err := m.Decoder.Decode(req, dis); err != nil {
-		m.Log.Errorw("error decoding disruption object", "error", err, cLog.DisruptionNameKey, req.Name, cLog.DisruptionNamespaceKey, req.Namespace)
+		m.Log.Errorw("error decoding disruption object", tags.ErrorKey, err, tags.DisruptionNameKey, req.Name, tags.DisruptionNamespaceKey, req.Namespace)
 
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
 	ctx, disruptionSpan := otel.Tracer("").Start(ctx, "disruption", trace.WithNewRoot(), trace.WithAttributes(
-		attribute.String("disruption_name", dis.Name),
-		attribute.String("disruption_namespace", dis.Namespace),
-		attribute.String("disruption_user", req.UserInfo.Username),
+		attribute.String("disruption.name", dis.Name),
+		attribute.String("disruption.namespace", dis.Namespace),
+		attribute.String("disruption.user", req.UserInfo.Username),
 	))
 	defer disruptionSpan.End()
 
 	// retrieve span context
-	m.Log.Infow("storing span context in annotations", cLog.DisruptionNameKey, dis.Name, cLog.DisruptionNamespaceKey, dis.Namespace)
+	m.Log.Infow("storing span context in annotations", tags.DisruptionNameKey, dis.Name, tags.DisruptionNamespaceKey, dis.Namespace)
 
 	annotations := make(map[string]string)
 
@@ -65,12 +65,12 @@ func (m *SpanContextMutator) Handle(ctx context.Context, req admission.Request) 
 	// writes the traceID and spanID in the annotations of the disruption
 	err := dis.SetSpanContext(ctx)
 	if err != nil {
-		m.Log.Errorw("error defining SpanContext", "error", err, cLog.DisruptionNameKey, dis.Name, cLog.DisruptionNamespaceKey, dis.Namespace)
+		m.Log.Errorw("error defining SpanContext", tags.ErrorKey, err, tags.DisruptionNameKey, dis.Name, tags.DisruptionNamespaceKey, dis.Namespace)
 	}
 
 	marshaled, err := json.Marshal(dis)
 	if err != nil {
-		m.Log.Errorw("error encoding modified annotations", "error", err, cLog.DisruptionNameKey, dis.Name, cLog.DisruptionNamespaceKey, dis.Namespace)
+		m.Log.Errorw("error encoding modified annotations", tags.ErrorKey, err, tags.DisruptionNameKey, dis.Name, tags.DisruptionNamespaceKey, dis.Namespace)
 
 		return admission.Errored(http.StatusInternalServerError, err)
 	}

@@ -12,6 +12,7 @@ import (
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/env"
+	"github.com/DataDog/chaos-controller/o11y/tags"
 	"github.com/DataDog/chaos-controller/types"
 )
 
@@ -76,8 +77,8 @@ func (i *nodeFailureInjector) Inject() error {
 	var err error
 
 	i.config.Log.Infow("injecting a node failure by triggering a kernel panic",
-		"sysrq_path", i.sysrqPath,
-		"sysrq_trigger_path", i.sysrqTriggerPath,
+		tags.SysrqPathKey, i.sysrqPath,
+		tags.SysrqTriggerPathKey, i.sysrqTriggerPath,
 	)
 
 	// Ensure sysrq value is set to 1 (to accept the kernel panic trigger)
@@ -100,7 +101,7 @@ func (i *nodeFailureInjector) Inject() error {
 		}
 
 		if err != nil {
-			i.config.Log.Errorw("error while writing to the sysrq trigger file: %v", "sysrqTriggerPath", i.sysrqTriggerPath, "error", err)
+			i.config.Log.Errorw("error while writing to the sysrq trigger file: %v", tags.SysrqTriggerPathKey, i.sysrqTriggerPath, tags.ErrorKey, err)
 		}
 	}()
 

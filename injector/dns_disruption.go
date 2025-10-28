@@ -16,6 +16,7 @@ import (
 	"github.com/DataDog/chaos-controller/command"
 	"github.com/DataDog/chaos-controller/env"
 	"github.com/DataDog/chaos-controller/network"
+	"github.com/DataDog/chaos-controller/o11y/tags"
 	"github.com/DataDog/chaos-controller/process"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 )
@@ -81,7 +82,7 @@ func (i *DNSDisruptionInjector) GetDisruptionKind() chaostypes.DisruptionKindNam
 
 // Inject injects the given dns disruption into the given container
 func (i *DNSDisruptionInjector) Inject() error {
-	i.config.Log.Infow("adding dns disruption", "spec", i.spec)
+	i.config.Log.Infow("adding dns disruption", tags.SpecKey, i.spec)
 
 	// get the chaos pod node IP from the environment variable
 	podIP, ok := os.LookupEnv(env.InjectorChaosPodIP)
@@ -222,7 +223,11 @@ func (i *DNSDisruptionInjector) Clean() error {
 	if !i.config.Cgroup.IsCgroupV2() {
 		if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", "0"); err != nil {
 			if os.IsNotExist(err) {
-				i.config.Log.Warnw("unable to find target container's net_cls.classid file, we will assume we cannot find the cgroup path because it is gone", "targetContainerID", i.config.TargetContainer.ID(), "error", err)
+				i.config.Log.Warnw("unable to find target container's net_cls.classid file, we will assume we cannot find the cgroup path because it is gone",
+					tags.TargetContainerIDKey, i.config.TargetContainer.ID(),
+					tags.ErrorKey, err,
+				)
+
 				return nil
 			}
 

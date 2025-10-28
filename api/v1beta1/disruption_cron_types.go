@@ -9,9 +9,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/DataDog/chaos-controller/log"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	tagutil "github.com/DataDog/chaos-controller/o11y/tags"
 )
 
 func init() {
@@ -119,8 +119,8 @@ func (d *DisruptionCron) IsReadyToRemoveFinalizer(finalizerDelay time.Duration) 
 // getMetricsTags parses the disruptioncron to generate metrics tags
 func (d *DisruptionCron) getMetricsTags() []string {
 	tags := []string{
-		fmt.Sprintf("%s:%s", log.DisruptionCronNameKey, d.Name),
-		fmt.Sprintf("%s:%s", log.DisruptionCronNamespaceKey, d.Namespace),
+		tagutil.FormatTag(tagutil.DisruptionCronNameKey, d.Name),
+		tagutil.FormatTag(tagutil.DisruptionCronNamespaceKey, d.Namespace),
 	}
 
 	return tags

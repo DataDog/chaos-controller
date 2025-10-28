@@ -14,6 +14,7 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	chaos_grpc "github.com/DataDog/chaos-controller/grpc"
 	pb "github.com/DataDog/chaos-controller/grpc/disruptionlistener"
+	"github.com/DataDog/chaos-controller/o11y/tags"
 	"github.com/DataDog/chaos-controller/types"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -65,7 +66,7 @@ func (i *GRPCDisruptionInjector) Inject() error {
 	i.config.Log.Infow("connecting to " + i.serverAddr + "...")
 
 	if i.config.Disruption.DryRun {
-		i.config.Log.Infow("adding dry run mode grpc disruption", "spec", i.spec)
+		i.config.Log.Infow("adding dry run mode grpc disruption", tags.SpecKey, i.spec)
 		return nil
 	}
 
@@ -77,7 +78,7 @@ func (i *GRPCDisruptionInjector) Inject() error {
 	// as long as we managed to dial the server, then we have to assume we're injected
 	i.config.State = Injected
 
-	i.config.Log.Infow("adding grpc disruption", "spec", i.spec)
+	i.config.Log.Infow("adding grpc disruption", tags.SpecKey, i.spec)
 
 	err = chaos_grpc.SendGrpcDisruption(pb.NewDisruptionListenerClient(conn), i.spec)
 
@@ -87,11 +88,11 @@ func (i *GRPCDisruptionInjector) Inject() error {
 				// error must have been --> code = Unimplemented desc = unknown service disruptionlistener.DisruptionListener
 				// We dialed a grpc server, but it does not have the chaos-interceptor, no disruption is possible
 				i.config.State = Created
-				i.config.Log.Warnw("disruption attempted on grpc server without the chaos-interceptor", "spec", i.spec)
+				i.config.Log.Warnw("disruption attempted on grpc server without the chaos-interceptor", tags.SpecKey, i.spec)
 
 				logConnClose := func() {
 					connErr := conn.Close()
-					i.config.Log.Errorw("could not close grpc connection", "error", connErr)
+					i.config.Log.Errorw("could not close grpc connection", tags.ErrorKey, connErr)
 				}
 
 				defer logConnClose()
@@ -113,14 +114,14 @@ func (i *GRPCDisruptionInjector) UpdateConfig(config Config) {
 // Clean removes the injected disruption from the given container
 func (i *GRPCDisruptionInjector) Clean() error {
 	if i.config.State != Injected {
-		i.config.Log.Infow("nothing to clean", "spec", i.spec, "state", i.config.State)
+		i.config.Log.Infow("nothing to clean", tags.SpecKey, i.spec, tags.StateKey, i.config.State)
 		return nil
 	}
 
 	i.config.Log.Infow("connecting to " + i.serverAddr + "...")
 
 	if i.config.Disruption.DryRun {
-		i.config.Log.Infow("removing dry run mode grpc disruption", "spec", i.spec)
+		i.config.Log.Infow("removing dry run mode grpc disruption", tags.SpecKey, i.spec)
 		return nil
 	}
 
@@ -129,7 +130,7 @@ func (i *GRPCDisruptionInjector) Clean() error {
 		return fmt.Errorf("an error occurred when connecting to server (clean): %w", err)
 	}
 
-	i.config.Log.Infow("removing grpc disruption", "spec", i.spec)
+	i.config.Log.Infow("removing grpc disruption", tags.SpecKey, i.spec)
 
 	err = chaos_grpc.ClearGrpcDisruptions(pb.NewDisruptionListenerClient(conn))
 

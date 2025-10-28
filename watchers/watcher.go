@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/DataDog/chaos-controller/o11y/tags"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/types"
 	k8sclientcache "k8s.io/client-go/tools/cache"
@@ -175,13 +176,13 @@ func (w *watcher) Start() error {
 	// get informer from cache
 	info, err := w.cache.GetInformer(context.Background(), w.config.ObjectType)
 	if err != nil {
-		return fmt.Errorf("error getting informer from cache. Error: %w", err)
+		return fmt.Errorf("error getting informer from cache: %w", err)
 	}
 
 	// add event handler to informer
 	_, err = info.AddEventHandler(w.config.Handler)
 	if err != nil {
-		return fmt.Errorf("error adding event handler to the informer. Error: %w", err)
+		return fmt.Errorf("error adding event handler to the informer: %w", err)
 	}
 
 	// create context and cancel function for the watcher
@@ -191,7 +192,7 @@ func (w *watcher) Start() error {
 	// start the cache in a goroutine
 	go func() {
 		if err := w.cache.Start(cacheCtx); err != nil {
-			w.config.Log.Errorw("could not start the watcher", "error", err)
+			w.config.Log.Errorw("could not start the watcher", tags.ErrorKey, err)
 		}
 	}()
 

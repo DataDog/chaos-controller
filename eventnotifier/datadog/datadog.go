@@ -6,17 +6,19 @@
 package datadog
 
 import (
+	"context"
 	"os"
 	"strings"
+
+	"github.com/DataDog/datadog-go/statsd"
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
 	"github.com/DataDog/chaos-controller/eventnotifier/utils"
 	cLog "github.com/DataDog/chaos-controller/log"
-	"github.com/DataDog/datadog-go/statsd"
-	"go.uber.org/zap"
-	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	tagutil "github.com/DataDog/chaos-controller/o11y/tags"
 )
 
 type NotifierDatadogConfig struct {
@@ -27,20 +29,20 @@ type NotifierDatadogConfig struct {
 type Notifier struct {
 	client statsd.ClientInterface
 	common types.NotifiersCommonConfig
-	logger *zap.SugaredLogger
 }
 
 // New Datadog Notifier
-func New(commonConfig types.NotifiersCommonConfig, _ NotifierDatadogConfig, logger *zap.SugaredLogger, statsdClient statsd.ClientInterface) (*Notifier, error) {
+func New(commonConfig types.NotifiersCommonConfig, statsdClient statsd.ClientInterface) (*Notifier, error) {
 	not := &Notifier{
 		common: commonConfig,
-		logger: logger,
 	}
 
 	url := os.Getenv("STATSD_URL")
 
 	if statsdClient == nil {
-		instance, err := statsd.New(url, statsd.WithTags([]string{"app:chaos-controller"}))
+		instance, err := statsd.New(url, statsd.WithTags([]string{
+			tagutil.FormatTag(tagutil.AppKey, "chaos-controller"),
+		}))
 		if err != nil {
 			return nil, err
 		}
@@ -49,8 +51,6 @@ func New(commonConfig types.NotifiersCommonConfig, _ NotifierDatadogConfig, logg
 	} else {
 		not.client = statsdClient
 	}
-
-	not.logger.Info("notifier: datadog notifier connected to datadog")
 
 	return not, nil
 }
@@ -61,22 +61,20 @@ func (n *Notifier) GetNotifierName() string {
 }
 
 // Notify generates a notification for generic k8s events
-func (n *Notifier) Notify(obj client.Object, event corev1.Event, notifType types.NotificationType) error {
+func (n *Notifier) Notify(ctx context.Context, obj client.Object, event corev1.Event, notifType types.NotificationType) error {
 	switch d := obj.(type) {
 	case *v1beta1.Disruption:
-		return n.notifyDisruption(d, event, notifType)
+		return n.notifyDisruption(ctx, d, event, notifType)
 	case *v1beta1.DisruptionCron:
-		return n.notifyDisruptionCron(d, event, notifType)
+		return n.notifyDisruptionCron(ctx, d, event, notifType)
 	}
 
-	n.logger.Debugw("notifier: skipping datadog notification for object", "object", obj)
+	cLog.FromContext(ctx).Debugw("notifier: skipping datadog notification for object", tagutil.ObjectKey, obj)
 
 	return nil
 }
 
-func (n *Notifier) notifyDisruption(d *v1beta1.Disruption, event corev1.Event, notifType types.NotificationType) error {
-	n.logger.With(cLog.DisruptionNameKey, d.Name, cLog.DisruptionNamespaceKey, d.Namespace)
-
+func (n *Notifier) notifyDisruption(_ context.Context, d *v1beta1.Disruption, event corev1.Event, notifType types.NotificationType) error {
 	eventType := n.getEventAlertType(notifType)
 
 	headerText := utils.BuildHeaderMessageFromObjectEvent(d, event, notifType)
@@ -86,8 +84,12 @@ func (n *Notifier) notifyDisruption(d *v1beta1.Disruption, event corev1.Event, n
 	return n.sendEvent(headerText, bodyText, eventType, additionalTags)
 }
 
-func (n *Notifier) notifyDisruptionCron(d *v1beta1.DisruptionCron, event corev1.Event, notifType types.NotificationType) error {
-	n.logger.With(cLog.DisruptionCronNameKey, d.Name, cLog.DisruptionCronNamespaceKey, d.Namespace)
+func (n *Notifier) notifyDisruptionCron(ctx context.Context, d *v1beta1.DisruptionCron, event corev1.Event, notifType types.NotificationType) error {
+	logger := cLog.FromContext(ctx).With(
+		tagutil.DisruptionCronNameKey, d.Name,
+		tagutil.DisruptionCronNamespaceKey, d.Namespace,
+		tagutil.EventTypeKey, event.Type,
+	)
 
 	eventType := n.getEventAlertType(notifType)
 
@@ -95,7 +97,10 @@ func (n *Notifier) notifyDisruptionCron(d *v1beta1.DisruptionCron, event corev1.
 	bodyText := utils.BuildBodyMessageFromObjectEvent(d, event, false)
 	additionalTags := n.buildDatadogEventTagsForDisruptionCron(*d, event)
 
-	n.logger.Debugw("notifier: sending notifier event to datadog", "eventType", event.Type, "message", bodyText, "datadogTags", strings.Join(additionalTags, ", "))
+	logger.Debugw("notifier: sending notifier event to datadog",
+		tagutil.MessageKey, bodyText,
+		tagutil.DatadogTagsKey, strings.Join(additionalTags, ", "),
+	)
 
 	return n.sendEvent(headerText, bodyText, eventType, additionalTags)
 }
@@ -116,34 +121,34 @@ func (n *Notifier) getEventAlertType(notifType types.NotificationType) statsd.Ev
 func (n *Notifier) buildDatadogEventTagsForDisruption(dis v1beta1.Disruption, event corev1.Event) []string {
 	var additionalTags []string
 
-	if team := dis.Spec.Selector.Get("team"); team != "" {
-		additionalTags = append(additionalTags, "team:"+team)
+	if team := dis.Spec.Selector.Get(tagutil.TeamKey); team != "" {
+		additionalTags = append(additionalTags, tagutil.FormatTag(tagutil.TeamKey, team))
 	}
 
-	if service := dis.Spec.Selector.Get("service"); service != "" {
-		additionalTags = append(additionalTags, "service:"+service)
+	if service := dis.Spec.Selector.Get(tagutil.ServiceKey); service != "" {
+		additionalTags = append(additionalTags, tagutil.FormatTag(tagutil.ServiceKey, service))
 	}
 
-	if app := dis.Spec.Selector.Get("app"); app != "" {
-		additionalTags = append(additionalTags, "app:"+app)
+	if app := dis.Spec.Selector.Get(tagutil.AppKey); app != "" {
+		additionalTags = append(additionalTags, tagutil.FormatTag(tagutil.AppKey, app))
 	}
 
-	additionalTags = append(additionalTags, "disruption_name:"+dis.Name)
+	additionalTags = append(additionalTags, tagutil.FormatTag(tagutil.DisruptionNameKey, dis.Name))
 
-	if targetName, ok := event.Annotations["target_name"]; ok {
-		additionalTags = append(additionalTags, "target_name:"+targetName)
+	if targetName, ok := event.Annotations[tagutil.TargetNameKey]; ok {
+		additionalTags = append(additionalTags, tagutil.FormatTag(tagutil.TargetNameKey, targetName))
 	}
 
 	return additionalTags
 }
 
 func (n *Notifier) buildDatadogEventTagsForDisruptionCron(dis v1beta1.DisruptionCron, event corev1.Event) []string {
-	var additionalTags []string
+	additionalTags := []string{
+		tagutil.FormatTag(tagutil.DisruptionCronNameKey, dis.Name),
+	}
 
-	additionalTags = append(additionalTags, "disruptioncron_name:"+dis.Name)
-
-	if targetName, ok := event.Annotations["target_name"]; ok {
-		additionalTags = append(additionalTags, "target_name:"+targetName)
+	if targetName, ok := event.Annotations[tagutil.TargetNameKey]; ok {
+		additionalTags = append(additionalTags, tagutil.FormatTag(tagutil.TargetNameKey, targetName))
 	}
 
 	return additionalTags

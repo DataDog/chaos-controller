@@ -68,14 +68,18 @@ var _ = Describe("New function", func() {
 		}).Maybe()
 	})
 
-	JustBeforeEach(func() {
+	JustBeforeEach(func(ctx SpecContext) {
 		var err error
 
-		logger, _ := log.NewZapLogger()
+		// Add logger to context for testing
+		logger, err := log.NewZapLogger()
+		Expect(err).ToNot(HaveOccurred())
+		ctxWithLogger := log.WithLogger(ctx, logger)
+
 		httpClient := http.Client{
 			Transport: httpRoundTripperMock,
 		}
-		manager, err = New(logger, configs, &httpClient)
+		manager, err = New(ctxWithLogger, configs, &httpClient)
 
 		By("Ensuring that no error was thrown")
 		Expect(err).ToNot(HaveOccurred())
@@ -270,15 +274,15 @@ var _ = Describe("New function", func() {
 
 		})
 
-		JustBeforeEach(func() {
+		JustBeforeEach(func(ctx SpecContext) {
 			// Action
-			err := manager.PullIPRanges()
+			err := manager.PullIPRanges(ctx)
 
 			By("Ensuring that no error was thrown")
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("should have parsed successfully the service list", func() {
+		It("should have parsed successfully the service list", func(ctx SpecContext) {
 			awsProvider := manager.GetProviderByName(types.CloudProviderAWS)
 			GCPProvider := manager.GetProviderByName(types.CloudProviderGCP)
 
@@ -291,7 +295,7 @@ var _ = Describe("New function", func() {
 				"S3",
 				"EC2",
 			})).To(BeTrue())
-			Expect(reflect.DeepEqual(manager.GetServiceList(types.CloudProviderAWS), []string{
+			Expect(reflect.DeepEqual(manager.GetServiceList(ctx, types.CloudProviderAWS), []string{
 				"S3",
 				"EC2",
 			})).To(BeTrue())
@@ -300,12 +304,12 @@ var _ = Describe("New function", func() {
 			Expect(reflect.DeepEqual(GCPProvider.IPRangeInfo.ServiceList, []string{
 				gcp.GoogleCloudService,
 			})).To(BeTrue())
-			Expect(reflect.DeepEqual(manager.GetServiceList(types.CloudProviderGCP), []string{
+			Expect(reflect.DeepEqual(manager.GetServiceList(ctx, types.CloudProviderGCP), []string{
 				gcp.GoogleCloudService,
 			})).To(BeTrue())
 		})
 
-		It("should have parsed successfully the ip ranges map", func() {
+		It("should have parsed successfully the ip ranges map", func(ctx SpecContext) {
 			awsProvider := manager.GetProviderByName(types.CloudProviderAWS)
 			GCPProvider := manager.GetProviderByName(types.CloudProviderGCP)
 
@@ -326,7 +330,7 @@ var _ = Describe("New function", func() {
 			})).To(BeTrue())
 
 			By("Ensuring it returns the right ip ranges map when using the GetServicesIPRanges function")
-			ipRanges, err := manager.GetServicesIPRanges(types.CloudProviderAWS, []string{"S3", "EC2"})
+			ipRanges, err := manager.GetServicesIPRanges(ctx, types.CloudProviderAWS, []string{"S3", "EC2"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(reflect.DeepEqual(ipRanges, map[string][]string{
 				"S3": {
@@ -349,7 +353,7 @@ var _ = Describe("New function", func() {
 			})).To(BeTrue())
 
 			By("Ensuring it returns the right ip ranges map when using the GetServicesIPRanges function")
-			ipRanges, err = manager.GetServicesIPRanges(types.CloudProviderGCP, []string{gcp.GoogleCloudService})
+			ipRanges, err = manager.GetServicesIPRanges(ctx, types.CloudProviderGCP, []string{gcp.GoogleCloudService})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(reflect.DeepEqual(ipRanges, map[string][]string{
 				gcp.GoogleCloudService: {

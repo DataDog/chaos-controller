@@ -6,6 +6,7 @@
 package slack
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/mail"
@@ -14,15 +15,16 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/slack-go/slack"
+	authv1 "k8s.io/api/authentication/v1"
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
 	"github.com/DataDog/chaos-controller/eventnotifier/utils"
 	cLog "github.com/DataDog/chaos-controller/log"
-	"github.com/slack-go/slack"
-	"go.uber.org/zap"
-	authv1 "k8s.io/api/authentication/v1"
-	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"github.com/DataDog/chaos-controller/o11y/tags"
 )
 
 const (
@@ -55,32 +57,30 @@ type Notifier struct {
 	client slackNotifier
 	common types.NotifiersCommonConfig
 	config NotifierSlackConfig
-	logger *zap.SugaredLogger
 }
 
 // New Slack Notifier
-func New(commonConfig types.NotifiersCommonConfig, slackConfig NotifierSlackConfig, logger *zap.SugaredLogger) (*Notifier, error) {
-	not := &Notifier{
+func New(ctx context.Context, commonConfig types.NotifiersCommonConfig, slackConfig NotifierSlackConfig) (*Notifier, error) {
+	notifier := &Notifier{
 		common: commonConfig,
 		config: slackConfig,
-		logger: logger,
 	}
 
-	tokenfile, err := os.Open(filepath.Clean(not.config.TokenFilepath))
+	tokenFile, err := os.Open(filepath.Clean(notifier.config.TokenFilepath))
 	if err != nil {
-		return nil, fmt.Errorf("slack token file not found: %w", err)
+		return nil, fmt.Errorf("slack token file notifier found: %w", err)
 	}
 
 	defer func() {
-		err := tokenfile.Close()
+		err := tokenFile.Close()
 		if err != nil {
-			not.logger.Warnw("unable to close token file", "error", err)
+			cLog.FromContext(ctx).Warnw("unable to close token file", tags.ErrorKey, err)
 		}
 	}()
 
-	token, err := io.ReadAll(tokenfile)
+	token, err := io.ReadAll(tokenFile)
 	if err != nil {
-		return nil, fmt.Errorf("slack token file could not be read: %w", err)
+		return nil, fmt.Errorf("slack token file could notifier be read: %w", err)
 	}
 
 	stoken := string(token)
@@ -96,11 +96,9 @@ func New(commonConfig types.NotifiersCommonConfig, slackConfig NotifierSlackConf
 		return nil, fmt.Errorf("slack auth failed: %w", err)
 	}
 
-	not.client = slackClient
+	notifier.client = slackClient
 
-	not.logger.Info("notifier: slack notifier connected to workspace")
-
-	return not, nil
+	return notifier, nil
 }
 
 // GetNotifierName returns the driver's name
@@ -109,87 +107,111 @@ func (n *Notifier) GetNotifierName() string {
 }
 
 // Notify generates a notification for generic k8s events
-func (n *Notifier) Notify(obj client.Object, event corev1.Event, notifType types.NotificationType) error {
+func (n *Notifier) Notify(ctx context.Context, obj client.Object, event corev1.Event, notifType types.NotificationType) error {
 	switch d := obj.(type) {
 	case *v1beta1.Disruption:
-		return n.notifyForDisruption(d, event, notifType)
+		return n.notifyForDisruption(ctx, d, event, notifType)
 	case *v1beta1.DisruptionCron:
-		return n.notifyForDisruptionCron(d, event, notifType)
+		return n.notifyForDisruptionCron(ctx, d, event, notifType)
 	}
 
 	return nil
 }
 
-func (n *Notifier) notifyForDisruption(dis *v1beta1.Disruption, event corev1.Event, notifType types.NotificationType) error {
-	logger := n.logger.With(cLog.DisruptionNameKey, dis.Name, cLog.DisruptionNamespaceKey, dis.Namespace, "eventType", event.Type)
+func (n *Notifier) notifyForDisruption(ctx context.Context, dis *v1beta1.Disruption, event corev1.Event, notifType types.NotificationType) error {
+	logger := cLog.FromContext(ctx).With(
+		tags.DisruptionNameKey, dis.Name,
+		tags.DisruptionNamespaceKey, dis.Namespace,
+		tags.EventTypeKey, event.Type,
+		tags.EventKey, event,
+	)
+	ctx = cLog.WithLogger(ctx, logger)
 
-	slackMsg := n.buildSlackMessage(dis, event, notifType, dis.Spec.Reporting, logger)
+	slackMsg := n.buildSlackMessage(ctx, dis, event, notifType, dis.Spec.Reporting)
 
 	if n.config.MirrorSlackChannelID != "" {
 		if err := n.sendMessageToChannel(n.config.MirrorSlackChannelID, slackMsg); err != nil {
-			logger.Warnw("slack notifier: couldn't send a message to the mirror slack channel", "slackChannel", n.config.MirrorSlackChannelID, "error", err)
+			logger.Warnw("slack notifier: couldn't send a message to the mirror slack channel",
+				tags.SlackChannelKey, n.config.MirrorSlackChannelID,
+				tags.ErrorKey, err,
+			)
 		}
 	}
 
 	if nil != dis.Spec.Reporting && dis.Spec.Reporting.SlackChannel != "" && dis.Spec.Reporting.MinNotificationType.Allows(notifType) {
 		if err := n.sendMessageToChannel(dis.Spec.Reporting.SlackChannel, slackMsg); err != nil {
-			logger.Warnw("slack notifier: couldn't send a message to the channel from the reporting", "slackChannel", dis.Spec.Reporting.SlackChannel, "error", err)
+			logger.Warnw("slack notifier: couldn't send a message to the channel from the reporting",
+				tags.SlackChannelKey, dis.Spec.Reporting.SlackChannel,
+				tags.ErrorKey, err,
+			)
 		}
 	}
 
 	// We expect notification equal to or above success to be sent to users
 	if !types.NotificationSuccess.Allows(notifType) {
-		logger.Debugw("slack notifier: not sending info notification type to not flood user", "message", slackMsg.BodyText)
+		logger.Debugw("slack notifier: not sending info notification type to not flood user", tags.MessageKey, slackMsg.BodyText)
 
 		return nil
 	}
 
-	if err := n.sendMessageToUserChannel(slackMsg, logger); err != nil {
+	if err := n.sendMessageToUserChannel(ctx, slackMsg); err != nil {
 		return fmt.Errorf("slack notifier: %w", err)
 	}
 
-	logger.Debugw("notifier: sending notifier event to slack", "message", slackMsg.BodyText)
+	logger.Debugw("notifier: sending notifier event to slack", tags.MessageKey, slackMsg.BodyText)
 
 	return nil
 }
 
-func (n *Notifier) notifyForDisruptionCron(disruptionCron *v1beta1.DisruptionCron, event corev1.Event, notifType types.NotificationType) error {
-	logger := n.logger.With(cLog.DisruptionCronNameKey, disruptionCron.Name, cLog.DisruptionCronNamespaceKey, disruptionCron.Namespace, "eventType", event.Type)
+func (n *Notifier) notifyForDisruptionCron(ctx context.Context, disruptionCron *v1beta1.DisruptionCron, event corev1.Event, notifType types.NotificationType) error {
+	logger := cLog.FromContext(ctx).With(
+		tags.DisruptionCronNameKey, disruptionCron.Name,
+		tags.DisruptionCronNamespaceKey, disruptionCron.Namespace,
+		tags.EventTypeKey, event.Type,
+		tags.EventKey, event,
+	)
+	ctx = cLog.WithLogger(ctx, logger)
 
-	slackMsg := n.buildSlackMessage(disruptionCron, event, notifType, disruptionCron.Spec.Reporting, logger)
+	slackMsg := n.buildSlackMessage(ctx, disruptionCron, event, notifType, disruptionCron.Spec.Reporting)
 
 	if n.config.MirrorSlackChannelID != "" {
 		if err := n.sendMessageToChannel(n.config.MirrorSlackChannelID, slackMsg); err != nil {
-			logger.Warnw("slack notifier: couldn't send a message to the mirror slack channel", "slackChannel", n.config.MirrorSlackChannelID, "error", err)
+			logger.Warnw("slack notifier: couldn't send a message to the mirror slack channel",
+				tags.SlackChannelKey, n.config.MirrorSlackChannelID,
+				tags.ErrorKey, err,
+			)
 		}
 	}
 
 	if nil != disruptionCron.Spec.Reporting && disruptionCron.Spec.Reporting.SlackChannel != "" {
 		if err := n.sendMessageToChannel(disruptionCron.Spec.Reporting.SlackChannel, slackMsg); err != nil {
-			logger.Warnw("slack notifier: couldn't send a message to the channel from the reporting", "slackChannel", disruptionCron.Spec.Reporting.SlackChannel, "error", err)
+			logger.Warnw("slack notifier: couldn't send a message to the channel from the reporting",
+				tags.SlackChannelKey, disruptionCron.Spec.Reporting.SlackChannel,
+				tags.ErrorKey, err,
+			)
 		}
 	}
 
-	if err := n.sendMessageToUserChannel(slackMsg, logger); err != nil {
+	if err := n.sendMessageToUserChannel(ctx, slackMsg); err != nil {
 		return fmt.Errorf("slack notifier: %w", err)
 	}
 
-	n.logger.Debugw("notifier: sending notifier event to slack", "message", slackMsg.BodyText)
+	logger.Debugw("notifier: sending notifier event to slack", tags.MessageKey, slackMsg.BodyText)
 
 	return nil
 }
 
-func (n *Notifier) sendMessageToUserChannel(slackMsg slackMessage, logger *zap.SugaredLogger) error {
+func (n *Notifier) sendMessageToUserChannel(ctx context.Context, slackMsg slackMessage) error {
 	emailAddr, err := mail.ParseAddress(slackMsg.UserEmail)
 	if err != nil {
-		logger.Infow("username could not be parsed as an email address", "err", err, "username", slackMsg.UserEmail)
+		cLog.FromContext(ctx).Infow("username could not be parsed as an email address", tags.ErrorKey, err, tags.UsernameKey, slackMsg.UserEmail)
 
 		return nil
 	}
 
 	p1, err := n.client.GetUserByEmail(emailAddr.Address)
 	if err != nil {
-		logger.Warnw("user not found", "userAddress", slackMsg.UserEmail, "error", err)
+		cLog.FromContext(ctx).Warnw("user not found", tags.UserAddressKey, slackMsg.UserEmail, tags.ErrorKey, err)
 
 		return nil
 	}
@@ -220,7 +242,7 @@ func (n *Notifier) sendMessageToChannel(slackChannel string, slackMsg slackMessa
 	return err
 }
 
-func (n *Notifier) buildSlackMessage(obj client.Object, event corev1.Event, notifType types.NotificationType, reporting *v1beta1.Reporting, logger *zap.SugaredLogger) slackMessage {
+func (n *Notifier) buildSlackMessage(ctx context.Context, obj client.Object, event corev1.Event, notifType types.NotificationType, reporting *v1beta1.Reporting) slackMessage {
 	headerText := utils.BuildHeaderMessageFromObjectEvent(obj, event, notifType)
 	headerBlock := slack.NewHeaderBlock(slack.NewTextBlockObject("plain_text", headerText, false, false))
 	bodyText := utils.BuildBodyMessageFromObjectEvent(obj, event, true)
@@ -249,13 +271,16 @@ func (n *Notifier) buildSlackMessage(obj client.Object, event corev1.Event, noti
 	}
 
 	if err != nil {
-		logger.Warnw("unable to retrieve user info", "error", err)
+		cLog.FromContext(ctx).Warnw("unable to retrieve user info", tags.ErrorKey, err)
 	}
 
 	// initiates the fallback mechanism incase SlackUserEmail is empty or an invalid input
 	_, err = mail.ParseAddress(userEmail)
 	if err != nil {
-		logger.Infow("the slack user email is not a valid email address, fall back to userInfo", "err", err, "username", userEmail)
+		cLog.FromContext(ctx).Infow("the slack user email is not a valid email address, fall back to userInfo",
+			tags.ErrorKey, err,
+			tags.UsernameKey, userEmail,
+		)
 
 		userEmail = userInfo.Username // falls back to userInfo username
 	}

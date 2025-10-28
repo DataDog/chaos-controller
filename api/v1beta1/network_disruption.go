@@ -6,6 +6,7 @@
 package v1beta1
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -796,7 +797,7 @@ func (s *NetworkDisruptionServiceSpec) Explain() string {
 }
 
 // UpdateHostsOnCloudDisruption from a cloud spec disruption, get all ip ranges of services provided and appends them into the s.Hosts slice
-func (s *NetworkDisruptionSpec) UpdateHostsOnCloudDisruption(cloudManager cloudservice.CloudServicesProvidersManager) error {
+func (s *NetworkDisruptionSpec) UpdateHostsOnCloudDisruption(ctx context.Context, cloudManager cloudservice.CloudServicesProvidersManager) error {
 	if s == nil || s.Cloud == nil {
 		return nil
 	}
@@ -814,7 +815,7 @@ func (s *NetworkDisruptionSpec) UpdateHostsOnCloudDisruption(cloudManager clouds
 			serviceListNames = append(serviceListNames, service.ServiceName)
 		}
 
-		ipRangesPerService, err := cloudManager.GetServicesIPRanges(types.CloudProviderName(cloudName), serviceListNames)
+		ipRangesPerService, err := cloudManager.GetServicesIPRanges(ctx, types.CloudProviderName(cloudName), serviceListNames)
 		if err != nil {
 			return err
 		}

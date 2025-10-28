@@ -10,6 +10,7 @@ import (
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/injector"
+	"github.com/DataDog/chaos-controller/o11y/tags"
 	"github.com/spf13/cobra"
 )
 
@@ -31,7 +32,7 @@ var podReplacementCmd = &cobra.Command{
 		if gracePeriodSecondsStr != "" {
 			gracePeriodSeconds, err := strconv.ParseInt(gracePeriodSecondsStr, 10, 64)
 			if err != nil {
-				log.Fatalw("invalid grace-period-seconds value", "value", gracePeriodSecondsStr, "error", err)
+				log.Fatalw("invalid grace-period-seconds value", tags.ValueKey, gracePeriodSecondsStr, tags.ErrorKey, err)
 			}
 			spec.GracePeriodSeconds = &gracePeriodSeconds
 		}
@@ -44,7 +45,7 @@ var podReplacementCmd = &cobra.Command{
 
 			inj, err := injector.NewPodReplacementInjector(spec, podReplacementConfig)
 			if err != nil {
-				log.Fatalw("error creating the pod replacement injector", "error", err)
+				log.Fatalw("error creating the pod replacement injector", tags.ErrorKey, err)
 			}
 
 			injectors = append(injectors, inj)

@@ -11,15 +11,15 @@ import (
 	"math/rand"
 	"time"
 
-	cLog "github.com/DataDog/chaos-controller/log"
-	"github.com/DataDog/chaos-controller/o11y/metrics"
-
-	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/o11y/metrics"
+	tagutil "github.com/DataDog/chaos-controller/o11y/tags"
 )
 
 var DisruptionRolloutTags = []string{}
@@ -34,7 +34,10 @@ type DisruptionRolloutReconciler struct {
 }
 
 func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
-	r.log = r.BaseLog.With("disruptionRolloutNamespace", req.Namespace, "disruptionRolloutName", req.Name)
+	r.log = r.BaseLog.With(
+		tagutil.DisruptionRolloutNamespaceKey, req.Namespace,
+		tagutil.DisruptionRolloutNameKey, req.Name,
+	)
 	r.log.Info("Reconciling DisruptionRollout")
 
 	instance := &chaosv1beta1.DisruptionRollout{}
@@ -46,7 +49,10 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	defer func(tsStart time.Time) {
 		tags := []string{}
 		if instance.Name != "" {
-			tags = append(tags, "disruptionRolloutName:"+instance.Name, "disruptionRolloutNamespace:"+instance.Namespace)
+			tags = append(tags,
+				tagutil.FormatTag(tagutil.DisruptionRolloutNameKey, instance.Name),
+				tagutil.FormatTag(tagutil.DisruptionRolloutNamespaceKey, instance.Namespace),
+			)
 		}
 
 		r.handleMetricSinkError(r.MetricsSink.MetricReconcileDuration(time.Since(tsStart), tags))
@@ -57,7 +63,11 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	DisruptionRolloutTags = []string{"disruptionRolloutName:" + instance.Name, "disruptionRolloutNamespace:", instance.Namespace, "targetName:", instance.Spec.TargetResource.Name}
+	DisruptionRolloutTags = []string{
+		tagutil.FormatTag(tagutil.DisruptionRolloutNameKey, instance.Name),
+		tagutil.FormatTag(tagutil.DisruptionRolloutNamespaceKey, instance.Namespace),
+		tagutil.FormatTag(tagutil.TargetNameKey, instance.Spec.TargetResource.Name),
+	}
 
 	if !instance.DeletionTimestamp.IsZero() {
 		// Add finalizer here if required
@@ -69,7 +79,7 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	targetResourceExists, instanceDeleted, err := r.updateTargetResourcePreviouslyMissing(ctx, instance)
 	if err != nil {
 		// Log error and requeue if status update or deletion fails
-		r.log.Errorw("failed to handle target resource status", "err", err)
+		r.log.Errorw("failed to handle target resource status", tagutil.ErrorKey, err)
 		return ctrl.Result{}, err
 	}
 
@@ -78,14 +88,14 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, nil
 	}
 
-	disruptions, err := GetChildDisruptions(ctx, r.Client, r.log, instance.Namespace, DisruptionRolloutNameLabel, instance.Name)
+	disruptions, err := GetChildDisruptions(ctx, r.Client, instance.Namespace, DisruptionRolloutNameLabel, instance.Name)
 	if err != nil {
 		return ctrl.Result{}, nil
 	}
 
 	// Update the DisruptionRollout status with the time when the last disruption was successfully scheduled
 	if err := r.updateLastScheduleTime(ctx, instance, disruptions); err != nil {
-		r.log.Errorw("unable to update LastScheduleTime of DisruptionCron status", "err", err)
+		r.log.Errorw("unable to update LastScheduleTime of DisruptionCron status", tagutil.ErrorKey, err)
 		return ctrl.Result{}, err
 	}
 
@@ -112,14 +122,15 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 	if instance.Status.LastContainerChangeTime.Before(instance.Status.LastScheduleTime) || instance.Status.LastContainerChangeTime.Equal(instance.Status.LastScheduleTime) {
 		r.log.Debugw("target resource update has already been tested, sleeping",
-			"LastContainerChangeTime", instance.Status.LastContainerChangeTime,
-			"LastScheduleTime", instance.Status.LastScheduleTime)
+			tagutil.LastContainerChangeTimeKey, instance.Status.LastContainerChangeTime,
+			tagutil.LastScheduleTimeKey, instance.Status.LastScheduleTime,
+		)
 
 		return ctrl.Result{}, nil
 	}
 
 	if len(disruptions.Items) > 0 {
-		r.log.Infow(fmt.Sprintf("cannot start a new disruption as a prior one is still running, scheduling next check in %s", requeueTime), "numActiveDisruptions", len(disruptions.Items))
+		r.log.Infow(fmt.Sprintf("cannot start a new disruption as a prior one is still running, scheduling next check in %s", requeueTime), tagutil.NumActiveDisruptionsKey, len(disruptions.Items))
 		return scheduledResult, nil
 	}
 
@@ -131,29 +142,29 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	if tooLate {
 		r.handleMetricSinkError(r.MetricsSink.MetricTooLate(DisruptionRolloutTags))
 		r.log.Infow("missed schedule to start a disruption, sleeping",
-			"LastContainerChangeTime", instance.Status.LastContainerChangeTime,
-			"DelayedStartTolerance", instance.Spec.DelayedStartTolerance)
+			tagutil.LastContainerChangeTimeKey, instance.Status.LastContainerChangeTime,
+			tagutil.DelayedStartToleranceKey, instance.Spec.DelayedStartTolerance)
 
 		return ctrl.Result{}, nil
 	}
 
 	// Create disruption
 	scheduledTime := time.Now()
-	disruption, err := CreateDisruptionFromTemplate(ctx, r.Client, r.Scheme, instance, &instance.Spec.TargetResource, &instance.Spec.DisruptionTemplate, scheduledTime, r.log)
+	disruption, err := CreateDisruptionFromTemplate(ctx, r.Client, r.Scheme, instance, &instance.Spec.TargetResource, &instance.Spec.DisruptionTemplate, scheduledTime)
 
 	if err != nil {
-		r.log.Warnw("unable to construct disruption from template", "err", err)
+		r.log.Warnw("unable to construct disruption from template", tagutil.ErrorKey, err)
 		return scheduledResult, nil
 	}
 
 	if err := r.Client.Create(ctx, disruption); err != nil {
-		r.log.Warnw("unable to create Disruption for DisruptionRollout", "disruption", disruption, "err", err)
+		r.log.Warnw("unable to create Disruption for DisruptionRollout", tagutil.DisruptionNameKey, disruption.Name, tagutil.ErrorKey, err)
 		return ctrl.Result{}, err
 	}
 
-	r.handleMetricSinkError(r.MetricsSink.MetricDisruptionScheduled(append(DisruptionRolloutTags, "disruptionName:"+disruption.Name)))
+	r.handleMetricSinkError(r.MetricsSink.MetricDisruptionScheduled(append(DisruptionRolloutTags, tagutil.FormatTag(tagutil.DisruptionNameKey, disruption.Name))))
 
-	r.log.Infow("created Disruption for DisruptionRollout run", cLog.DisruptionNameKey, disruption.Name)
+	r.log.Infow("created Disruption for DisruptionRollout run", tagutil.DisruptionNameKey, disruption.Name)
 
 	// ------------------------------------------------------------------ //
 	// If this process restarts at this point (after posting a disruption, but
@@ -164,7 +175,7 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	// Add the start time of the just initiated disruption to the status
 	instance.Status.LastScheduleTime = &metav1.Time{Time: scheduledTime}
 	if err := r.Client.Status().Update(ctx, instance); err != nil {
-		r.log.Warnw("unable to update LastScheduleTime of DisruptionCron status", "err", err)
+		r.log.Warnw("unable to update LastScheduleTime of DisruptionCron status", tagutil.ErrorKey, err)
 		return ctrl.Result{}, err
 	}
 
@@ -174,7 +185,7 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 // updateLastScheduleTime updates the LastScheduleTime in the status of a DisruptionRollout instance
 // based on the most recent schedule time among the given disruptions.
 func (r *DisruptionRolloutReconciler) updateLastScheduleTime(ctx context.Context, instance *chaosv1beta1.DisruptionRollout, disruptions *chaosv1beta1.DisruptionList) error {
-	mostRecentScheduleTime := GetMostRecentScheduleTime(r.log, disruptions) // find the last run so we can update the status
+	mostRecentScheduleTime := GetMostRecentScheduleTime(ctx, disruptions) // find the last run so we can update the status
 	if !mostRecentScheduleTime.IsZero() {
 		instance.Status.LastScheduleTime = &metav1.Time{Time: mostRecentScheduleTime}
 		return r.Client.Status().Update(ctx, instance)
@@ -197,7 +208,7 @@ func (r *DisruptionRolloutReconciler) updateTargetResourcePreviouslyMissing(ctx 
 	}
 
 	if !targetResourceExists {
-		r.log.Warnw("target does not exist, this disruption rollout will be deleted if that continues", "error", err)
+		r.log.Warnw("target does not exist, this disruption rollout will be deleted if that continues", tagutil.ErrorKey, err)
 
 		if instance.Status.TargetResourcePreviouslyMissing == nil {
 			r.log.Warnw("target is missing for the first time, updating status")
@@ -207,7 +218,7 @@ func (r *DisruptionRolloutReconciler) updateTargetResourcePreviouslyMissing(ctx 
 
 		if time.Since(instance.Status.TargetResourcePreviouslyMissing.Time) > r.TargetResourceMissingThreshold {
 			r.log.Errorw("target has been missing for over one day, deleting this schedule",
-				"timeMissing", time.Since(instance.Status.TargetResourcePreviouslyMissing.Time))
+				tagutil.TimeMissingKey, time.Since(instance.Status.TargetResourcePreviouslyMissing.Time))
 
 			disruptionRolloutDeleted = true
 
@@ -262,7 +273,7 @@ func (r *DisruptionRolloutReconciler) handleTargetResourceNowPresent(ctx context
 // handleMetricSinkError logs the given metric sink error if it is not nil
 func (r *DisruptionRolloutReconciler) handleMetricSinkError(err error) {
 	if err != nil {
-		r.log.Errorw("error sending a metric", "error", err)
+		r.log.Errorw("error sending a metric", tagutil.ErrorKey, err)
 	}
 }
 

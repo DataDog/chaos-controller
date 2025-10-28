@@ -54,7 +54,7 @@ PROTOC_VERSION = 3.17.3
 PROTOC_OS ?= osx
 PROTOC_ZIP = protoc-${PROTOC_VERSION}-${PROTOC_OS}-x86_64.zip
 # you might also want to change ~/lima.yaml k3s version
-KUBERNETES_MAJOR_VERSION ?= 1.26
+KUBERNETES_MAJOR_VERSION ?= 1.28
 KUBERNETES_VERSION ?= v$(KUBERNETES_MAJOR_VERSION).0
 KUBEBUILDER_VERSION ?= 3.1.0
 USE_VOLUMES ?= false
@@ -70,7 +70,7 @@ GOLANGCI_LINT_INSTALLED_VERSION = $(shell (golangci-lint --version || echo "") |
 CONTROLLER_GEN_VERSION = v0.14.0
 CONTROLLER_GEN_INSTALLED_VERSION = $(shell (controller-gen --version || echo "") | awk '{ print $$2 }')
 
-MOCKERY_VERSION = 2.53.0
+MOCKERY_VERSION = 2.53.5
 MOCKERY_ARCH = $(GOARCH)
 ifeq (amd64,$(GOARCH))
 MOCKERY_ARCH = x86_64

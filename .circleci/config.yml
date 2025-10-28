@@ -211,6 +211,7 @@ jobs:
             export PATH="/home/circleci/go/bin:${PATH}"
             make e2e-test GOBIN=/home/circleci/go/bin KUBECTL="minikube kubectl --" E2E_TEST_CLUSTER_NAME="minikube" E2E_TEST_KUBECTL_CONTEXT="minikube"
           no_output_timeout: 15m
+          max_auto_reruns: 3
       - run:
           name: Save logs
           when: on_fail
