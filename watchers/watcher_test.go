@@ -10,17 +10,19 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/DataDog/chaos-controller/mocks"
-	"github.com/DataDog/chaos-controller/watchers"
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-	"github.com/stretchr/testify/mock"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	k8scache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	"github.com/DataDog/chaos-controller/mocks"
+	"github.com/DataDog/chaos-controller/watchers"
+	"github.com/stretchr/testify/mock"
+
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
 type CacheMock struct {
@@ -166,7 +168,7 @@ var _ = Describe("watcher", func() {
 
 				// Assert
 				Expect(err).Should(HaveOccurred())
-				Expect(err).To(MatchError("error getting informer from cache. Error: get informer error"))
+				Expect(err).To(MatchError("error getting informer from cache: get informer error"))
 			})
 		})
 
@@ -182,7 +184,7 @@ var _ = Describe("watcher", func() {
 				err = watcher.Start()
 
 				Expect(err).Should(HaveOccurred())
-				Expect(err).To(MatchError("error adding event handler to the informer. Error: informer error"))
+				Expect(err).To(MatchError("error adding event handler to the informer: informer error"))
 			})
 		})
 

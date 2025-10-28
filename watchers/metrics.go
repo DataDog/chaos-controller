@@ -6,10 +6,12 @@
 package watchers
 
 import (
-	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/o11y/metrics"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+
+	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/o11y/metrics"
+	tagutil "github.com/DataDog/chaos-controller/o11y/tags"
 )
 
 // WatcherMetricsAdapter is in charge of watcher metrics.
@@ -33,26 +35,26 @@ func NewWatcherMetricsAdapter(metricsSink metrics.Sink, log *zap.SugaredLogger) 
 // OnChange increment the watcher.calls metrics with
 func (m watcherMetricsAdapter) OnChange(disruption *v1beta1.Disruption, watcherName string, pod *corev1.Pod, node *corev1.Node, okPod bool, okNode bool, event WatcherEventType) {
 	tags := []string{
-		"disruptionName:" + disruption.Name,
-		"namespace:" + disruption.Namespace,
-		"event:" + string(event),
-		"watcher:" + watcherName,
+		tagutil.FormatTag(tagutil.DisruptionNameKey, disruption.Name),
+		tagutil.FormatTag(tagutil.DisruptionNamespaceKey, disruption.Namespace),
+		tagutil.FormatTag(tagutil.EventKey, string(event)),
+		tagutil.FormatTag(tagutil.WatcherNameKey, watcherName),
 	}
 
 	switch {
 	case okPod:
-		tags = append(tags, "targetKind:pod",
-			"targetName:"+pod.Name,
-			"targetNamespace:"+pod.Namespace)
+		tags = append(tags, tagutil.FormatTag(tagutil.TargetKindKey, "pod"),
+			tagutil.FormatTag(tagutil.TargetNameKey, pod.Name),
+			tagutil.FormatTag(tagutil.TargetNamespaceKey, pod.Namespace))
 	case okNode:
-		tags = append(tags, "targetKind:node",
-			"targetName:"+node.Name,
-			"targetNamespace:"+node.Namespace)
+		tags = append(tags, tagutil.FormatTag(tagutil.TargetKindKey, "node"),
+			tagutil.FormatTag(tagutil.TargetNameKey, node.Name),
+			tagutil.FormatTag(tagutil.TargetNamespaceKey, node.Namespace))
 	default:
-		tags = append(tags, "targetKind:object")
+		tags = append(tags, tagutil.FormatTag(tagutil.TargetKindKey, "object"))
 	}
 
 	if err := m.metricsSink.MetricWatcherCalls(tags); err != nil {
-		m.log.Errorw("error sending a metric", "error", err)
+		m.log.Errorw("error sending a metric", tagutil.ErrorKey, err)
 	}
 }

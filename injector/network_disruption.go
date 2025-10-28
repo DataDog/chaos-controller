@@ -15,15 +15,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/ebpf"
-	"github.com/DataDog/chaos-controller/env"
-	"github.com/DataDog/chaos-controller/network"
-	"github.com/DataDog/chaos-controller/types"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/watch"
+
+	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/ebpf"
+	"github.com/DataDog/chaos-controller/env"
+	"github.com/DataDog/chaos-controller/network"
+	"github.com/DataDog/chaos-controller/o11y/tags"
+	"github.com/DataDog/chaos-controller/types"
 )
 
 // linkOperation represents a tc operation on a set of network interfaces combined with the parent to bind to and the handle identifier to use
@@ -184,7 +186,14 @@ func (i *networkDisruptionInjector) Inject() error {
 		return fmt.Errorf("unable to enter the given container network namespace: %w", err)
 	}
 
-	i.config.Log.Infow("adding network disruptions", "drop", i.spec.Drop, "duplicate", i.spec.Duplicate, "corrupt", i.spec.Corrupt, "delay", i.spec.Delay, "delayJitter", i.spec.DelayJitter, "bandwidthLimit", i.spec.BandwidthLimit)
+	i.config.Log.Infow("adding network disruptions",
+		tags.DropKey, i.spec.Drop,
+		tags.DuplicateKey, i.spec.Duplicate,
+		tags.CorruptKey, i.spec.Corrupt,
+		tags.DelayKey, i.spec.Delay,
+		tags.DelayJitterKey, i.spec.DelayJitter,
+		tags.BandwidthLimitKey, i.spec.BandwidthLimit,
+	)
 
 	// add netem
 	if i.spec.Delay > 0 || i.spec.Drop > 0 || i.spec.Corrupt > 0 || i.spec.Duplicate > 0 {
@@ -291,7 +300,11 @@ func (i *networkDisruptionInjector) Clean() error {
 	if !i.config.Cgroup.IsCgroupV2() {
 		if err := i.config.Cgroup.Write("net_cls", "net_cls.classid", "0"); err != nil {
 			if os.IsNotExist(err) {
-				i.config.Log.Warnw("unable to find target container's net_cls.classid file, we will assume we cannot find the cgroup path because it is gone", "targetContainerID", i.config.TargetContainer.ID(), "error", err)
+				i.config.Log.Warnw("unable to find target container's net_cls.classid file, we will assume we cannot find the cgroup path because it is gone",
+					tags.TargetContainerIDKey, i.config.TargetContainer.ID(),
+					tags.ErrorKey, err,
+				)
+
 				return nil
 			}
 
@@ -606,7 +619,10 @@ func (i *networkDisruptionInjector) addServiceFilters(serviceName string, filter
 	builtServices := []tcServiceFilter{}
 
 	for _, filter := range filters {
-		i.config.Log.Infow("found service endpoint", "resolvedEndpoint", filter.service.String(), "resolvedService", serviceName)
+		i.config.Log.Infow("found service endpoint",
+			tags.ResolvedEndpointKey, filter.service.String(),
+			tags.ResolvedServiceKey, serviceName,
+		)
 
 		for _, protocol := range network.AllProtocols(filter.service.protocol) {
 			filter.priority, err = i.config.TrafficController.AddFilter(interfaces, "1:0", "", nil, filter.service.ip, 0, filter.service.port, protocol, network.ConnStateUndefined, flowid)
@@ -615,7 +631,7 @@ func (i *networkDisruptionInjector) addServiceFilters(serviceName string, filter
 			}
 		}
 
-		i.config.Log.Infow(fmt.Sprintf("added a tc filter for service %s-%s with priority %d", serviceName, filter.service, filter.priority), "interfaces", interfaces)
+		i.config.Log.Infow(fmt.Sprintf("added a tc filter for service %s-%s with priority %d", serviceName, filter.service, filter.priority), tags.InterfacesKey, interfaces)
 
 		builtServices = append(builtServices, filter)
 	}
@@ -629,7 +645,7 @@ func (i *networkDisruptionInjector) removeServiceFilter(interfaces []string, tcF
 		return err
 	}
 
-	i.config.Log.Infow("tc filter deleted for all interfaces", "tcServiceFilter", tcFilter, "interfaces", interfaces)
+	i.config.Log.Infow("tc filter deleted for all interfaces", tags.TcServiceFilterKey, tcFilter, tags.InterfacesKey, interfaces)
 
 	return nil
 }
@@ -888,7 +904,7 @@ func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Even
 
 			watcher.tcFiltersFromPodEndpoints = append(watcher.tcFiltersFromPodEndpoints, createdTcFilters...)
 		} else {
-			i.config.Log.Infow("newly created destination port has no IP yet, adding to the watch list of pods", "destinationPodName", pod.Name)
+			i.config.Log.Infow("newly created destination port has no IP yet, adding to the watch list of pods", tags.DestinationPodNameKey, pod.Name)
 
 			watcher.podsWithoutIPs = append(watcher.podsWithoutIPs, pod.Name)
 		}
@@ -929,30 +945,30 @@ func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Even
 
 // watchServiceChanges for every changes happening in the kubernetes service destination or in the pods related to the kubernetes service destination, we update the tc service filters
 func (i *networkDisruptionInjector) watchServiceChanges(ctx context.Context, watcher serviceWatcher, interfaces []string, flowid string) {
-	log := i.config.Log.With("serviceNamespace", watcher.watchedServiceSpec.Namespace, "serviceName", watcher.watchedServiceSpec.Name)
+	log := i.config.Log.With(tags.ServiceNamespaceKey, watcher.watchedServiceSpec.Namespace, tags.ServiceNameKey, watcher.watchedServiceSpec.Name)
 
 	for {
 		// We create the watcher channels when it's closed
 		if watcher.kubernetesServiceWatcher == nil {
-			log := log.With("watcher", "kubernetesServiceWatcher")
+			watchLog := log.With(tags.WatcherNameKey, "kubernetesServiceWatcher")
 
-			serviceWatcher, err := i.config.K8sClient.CoreV1().Services(watcher.watchedServiceSpec.Namespace).Watch(context.Background(), metav1.ListOptions{
+			k8sServiceWatcher, err := i.config.K8sClient.CoreV1().Services(watcher.watchedServiceSpec.Namespace).Watch(context.Background(), metav1.ListOptions{
 				ResourceVersion:     watcher.servicesResourceVersion,
 				AllowWatchBookmarks: true,
 			})
 			if err != nil {
-				log.Errorw("error watching the changes for the given kubernetes service", "error", err)
+				watchLog.Errorw("error watching the changes for the given kubernetes service", tags.ErrorKey, err)
 
 				return
 			}
 
-			log.Infow("starting kubernetes service watch")
+			watchLog.Infow("starting kubernetes service watch")
 
-			watcher.kubernetesServiceWatcher = serviceWatcher.ResultChan()
+			watcher.kubernetesServiceWatcher = k8sServiceWatcher.ResultChan()
 		}
 
 		if watcher.kubernetesPodEndpointsWatcher == nil {
-			log := log.With("watcher", "kubernetesPodEndpointsWatcher")
+			watcherLog := log.With(tags.WatcherNameKey, "kubernetesPodEndpointsWatcher")
 
 			podsWatcher, err := i.config.K8sClient.CoreV1().Pods(watcher.watchedServiceSpec.Namespace).Watch(context.Background(), metav1.ListOptions{
 				LabelSelector:       watcher.labelServiceSelector,
@@ -960,12 +976,12 @@ func (i *networkDisruptionInjector) watchServiceChanges(ctx context.Context, wat
 				AllowWatchBookmarks: true,
 			})
 			if err != nil {
-				log.Errorw("error watching the list of pods for the given kubernetes service", "error", err)
+				watcherLog.Errorw("error watching the list of pods for the given kubernetes service", tags.ErrorKey, err)
 
 				return
 			}
 
-			log.Infow("starting kubernetes pods watch")
+			watcherLog.Infow("starting kubernetes pods watch")
 
 			watcher.kubernetesPodEndpointsWatcher = podsWatcher.ResultChan()
 		}
@@ -977,14 +993,14 @@ func (i *networkDisruptionInjector) watchServiceChanges(ctx context.Context, wat
 			if !ok { // channel is closed
 				watcher.kubernetesServiceWatcher = nil
 			} else {
-				log := log.With("watcher", "kubernetesServiceWatcher")
-				log.Debugw("changes in service", "eventType", event.Type)
+				watcherLog := log.With(tags.WatcherNameKey, "kubernetesServiceWatcher")
+				watcherLog.Debugw("changes in service", tags.EventTypeKey, event.Type)
 
 				if err := i.handleKubernetesServiceChanges(event, &watcher, interfaces, flowid); err != nil {
-					log.Errorw("couldn't apply changes to tc filters: Rebuilding watcher", "error", err)
+					watcherLog.Errorw("couldn't apply changes to tc filters: Rebuilding watcher", tags.ErrorKey, err)
 
 					if _, err = i.removeServiceFiltersInList(interfaces, watcher.tcFiltersFromNamespaceServices, watcher.tcFiltersFromNamespaceServices); err != nil {
-						log.Errorw("couldn't clean list of tc filters", "error", err)
+						watcherLog.Errorw("couldn't clean list of tc filters", tags.ErrorKey, err)
 					}
 
 					watcher.kubernetesServiceWatcher = nil // restart the watcher in case of error
@@ -995,14 +1011,14 @@ func (i *networkDisruptionInjector) watchServiceChanges(ctx context.Context, wat
 			if !ok { // channel is closed
 				watcher.kubernetesPodEndpointsWatcher = nil
 			} else {
-				log := log.With("watcher", "kubernetesPodEndpointsWatcher")
-				log.Debugw(fmt.Sprintf("changes in pods of service %s/%s", watcher.watchedServiceSpec.Name, watcher.watchedServiceSpec.Namespace), "eventType", event.Type)
+				watcherLog := log.With(tags.WatcherNameKey, "kubernetesPodEndpointsWatcher")
+				watcherLog.Debugw(fmt.Sprintf("changes in pods of service %s/%s", watcher.watchedServiceSpec.Name, watcher.watchedServiceSpec.Namespace), tags.EventTypeKey, event.Type)
 
 				if err := i.handleKubernetesPodsChanges(event, &watcher, interfaces, flowid); err != nil {
-					log.Errorw("couldn't apply changes to tc filters: Rebuilding watcher", "error", err)
+					watcherLog.Errorw("couldn't apply changes to tc filters: Rebuilding watcher", tags.ErrorKey, err)
 
 					if _, err = i.removeServiceFiltersInList(interfaces, watcher.tcFiltersFromPodEndpoints, watcher.tcFiltersFromPodEndpoints); err != nil {
-						log.Errorw("couldn't clean list of tc filters", "error", err)
+						watcherLog.Errorw("couldn't clean list of tc filters", tags.ErrorKey, err)
 					}
 
 					watcher.kubernetesPodEndpointsWatcher = nil // restart the watcher in case of error
@@ -1082,7 +1098,7 @@ func (i *networkDisruptionInjector) handleFiltersForHosts(interfaces []string, f
 
 // watchHostChanges watches for changes to the resolved IP for hosts
 func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interfaces []string, hosts hostsWatcher, flowid string) {
-	hostWatcherLog := i.config.Log.With("retryInterval", i.config.HostResolveInterval.String())
+	hostWatcherLog := i.config.Log.With(tags.RetryIntervalKey, i.config.HostResolveInterval.String())
 
 	for {
 		select {
@@ -1092,7 +1108,7 @@ func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interf
 			changedHosts := []v1beta1.NetworkDisruptionHostSpec{}
 
 			if err := i.config.Netns.Enter(); err != nil {
-				hostWatcherLog.Errorw("unable to enter the given container network namespace, retrying on next watch occurrence", "err", err)
+				hostWatcherLog.Errorw("unable to enter the given container network namespace, retrying on next watch occurrence", tags.ErrorKey, err)
 				continue
 			}
 
@@ -1100,7 +1116,7 @@ func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interf
 			for host, currentTcFilters := range hosts.hostFilterMap {
 				newIps, err := resolveHost(i.config.DNSClient, host.Host)
 				if err != nil {
-					hostWatcherLog.Errorw("error resolving Host", "err", err, "host", host.Host)
+					hostWatcherLog.Errorw("error resolving Host", tags.ErrorKey, err, tags.HostKey, host.Host)
 
 					// If we can't get a new set of IPs for this host, just move on to the next one
 					continue
@@ -1111,7 +1127,10 @@ func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interf
 				for _, currentTcFilter := range currentTcFilters {
 					if !containsIP(newIps, currentTcFilter.ip) {
 						// If any of the IPs have changed, lets completely reset the filters for this host
-						hostWatcherLog.Debugw("outdated ip found, will update filters for host", "host", host.Host, "outdatedIP", currentTcFilter.ip.String())
+						hostWatcherLog.Debugw("outdated ip found, will update filters for host",
+							tags.HostKey, host.Host,
+							tags.OutdatedIPKey, currentTcFilter.ip.String(),
+						)
 
 						changedHosts = append(changedHosts, host)
 
@@ -1125,7 +1144,7 @@ func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interf
 				}
 
 				if len(newIps) != len(oldIps) {
-					hostWatcherLog.Debugw(fmt.Sprintf("%d ips found, expected %d. will update filters for host", len(newIps), len(oldIps)), "host", host.Host, "newIPs", newIps, "oldIps", oldIps)
+					hostWatcherLog.Debugw(fmt.Sprintf("%d ips found, expected %d. will update filters for host", len(newIps), len(oldIps)), tags.HostKey, host.Host, tags.NewIPsKey, newIps, tags.OldIpsKey, oldIps)
 					// If we have more or fewer IPs than before, we obviously have a change and need to update the tc filters
 					changedHosts = append(changedHosts, host)
 				}
@@ -1136,9 +1155,9 @@ func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interf
 					for _, filter := range hosts.hostFilterMap[changedHost] {
 						if err := i.removeTcFilter(interfaces, filter.priority); err != nil {
 							if strings.Contains(err.Error(), "Filter with specified priority/protocol not found") {
-								hostWatcherLog.Warnw("could not find outdated tc filter", "err", err, "host", changedHost.Host, "filter.ip", filter.ip, "filter.priority", filter.priority)
+								hostWatcherLog.Warnw("could not find outdated tc filter", tags.ErrorKey, err, tags.HostKey, changedHost.Host, tags.FilterIPKey, filter.ip, tags.FilterPriorityKey, filter.priority)
 							} else {
-								hostWatcherLog.Errorw("error removing out of date tc filter", "err", err, "host", changedHost.Host) // Clean() removes the entire qdiscs, thus there is no risk of leaking any filters here if Clean succeeds
+								hostWatcherLog.Errorw("error removing out of date tc filter", tags.ErrorKey, err, tags.HostKey, changedHost.Host) // Clean() removes the entire qdiscs, thus there is no risk of leaking any filters here if Clean succeeds
 							}
 						}
 					}
@@ -1147,7 +1166,7 @@ func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interf
 				filterMap, err := i.addFiltersForHosts(interfaces, changedHosts, flowid)
 
 				if err != nil {
-					hostWatcherLog.Errorw("error updating filters for hosts", "hosts", changedHosts, "err", err)
+					hostWatcherLog.Errorw("error updating filters for hosts", tags.HostsKey, changedHosts, tags.ErrorKey, err)
 					continue
 				}
 
@@ -1157,7 +1176,7 @@ func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interf
 			}
 
 			if err := i.config.Netns.Exit(); err != nil {
-				hostWatcherLog.Errorw("unable to exit the given container network namespace", "err", err)
+				hostWatcherLog.Errorw("unable to exit the given container network namespace", tags.ErrorKey, err)
 			}
 		}
 	}
@@ -1179,7 +1198,7 @@ func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, host
 
 	for _, host := range hosts {
 		if err := i.config.InjectorCtx.Err(); err != nil {
-			i.config.Log.Warnw("interrupting adding filters for hosts", "err", err)
+			i.config.Log.Warnw("interrupting adding filters for hosts", tags.ErrorKey, err)
 
 			return nil, nil
 		}
@@ -1226,7 +1245,7 @@ func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, host
 			}
 		}
 
-		i.config.Log.Debugw("tc filters created for host", "host", host, "filters", filtersForHost)
+		i.config.Log.Debugw("tc filters created for host", tags.HostKey, host, tags.FiltersKey, filtersForHost)
 		hostFilterMap[host] = filtersForHost
 	}
 

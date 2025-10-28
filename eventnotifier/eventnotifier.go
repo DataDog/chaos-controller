@@ -6,14 +6,17 @@
 package eventnotifier
 
 import (
+	"context"
+
+	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"github.com/DataDog/chaos-controller/eventnotifier/datadog"
 	"github.com/DataDog/chaos-controller/eventnotifier/http"
 	"github.com/DataDog/chaos-controller/eventnotifier/noop"
 	"github.com/DataDog/chaos-controller/eventnotifier/slack"
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
-	"go.uber.org/zap"
-	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type NotifiersConfig struct {
@@ -26,38 +29,40 @@ type NotifiersConfig struct {
 
 type Notifier interface {
 	GetNotifierName() string
-	Notify(client.Object, corev1.Event, types.NotificationType) error
+	Notify(context.Context, client.Object, corev1.Event, types.NotificationType) error
 }
 
 // CreateNotifiers creates and returns a list of Notifier instances
-func CreateNotifiers(config NotifiersConfig, logger *zap.SugaredLogger) (notifiers []Notifier, err error) {
+func CreateNotifiers(ctx context.Context, config NotifiersConfig, logger *zap.SugaredLogger) (notifiers []Notifier, err error) {
 	err = nil
 
 	if config.Noop.Enabled {
-		not := noop.New(logger)
+		not := noop.New()
 		notifiers = append(notifiers, not)
 	}
 
 	if config.Slack.Enabled {
-		not, slackErr := slack.New(config.Common, config.Slack, logger)
+		not, slackErr := slack.New(ctx, config.Common, config.Slack)
 		if slackErr != nil {
 			err = slackErr
 		} else {
+			logger.Infof("notifier %s enabled", not.GetNotifierName())
 			notifiers = append(notifiers, not)
 		}
 	}
 
 	if config.Datadog.Enabled {
-		not, ddogErr := datadog.New(config.Common, config.Datadog, logger, nil)
+		not, ddogErr := datadog.New(config.Common, nil)
 		if ddogErr != nil {
 			err = ddogErr
 		} else {
+			logger.Infof("notifier %s enabled", not.GetNotifierName())
 			notifiers = append(notifiers, not)
 		}
 	}
 
 	if config.HTTP.IsEnabled() {
-		not, httpErr := http.New(config.Common, config.HTTP, logger)
+		not, httpErr := http.New(config.Common, config.HTTP)
 		if httpErr != nil {
 			err = httpErr
 		} else {

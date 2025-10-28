@@ -83,7 +83,6 @@ var _ = Describe("Chaos Pod Service", func() {
 
 	JustBeforeEach(func() {
 		// Arrange
-		chaosPodServiceConfig.Log = logger
 		chaosPodServiceConfig.ChaosNamespace = DefaultChaosNamespace
 		chaosPodServiceConfig.MetricsSink = metricsSinkMock
 		chaosPodServiceConfig.TargetSelector = targetSelectorMock
@@ -984,9 +983,9 @@ var _ = Describe("Chaos Pod Service", func() {
 
 		var chaosPodArgs []string
 
-		JustBeforeEach(func() {
+		JustBeforeEach(func(ctx SpecContext) {
 			// Action
-			chaosPodArgs = chaosPodService.GetPodInjectorArgs(chaosPod)
+			chaosPodArgs = chaosPodService.GetPodInjectorArgs(ctx, chaosPod)
 		})
 
 		Describe("success cases", func() {

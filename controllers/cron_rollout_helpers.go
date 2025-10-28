@@ -12,9 +12,6 @@ import (
 	"sort"
 	"time"
 
-	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
-	cLog "github.com/DataDog/chaos-controller/log"
-	"go.uber.org/zap"
 	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,6 +20,10 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
+	cLog "github.com/DataDog/chaos-controller/log"
+	"github.com/DataDog/chaos-controller/o11y/tags"
 )
 
 const (
@@ -32,12 +33,12 @@ const (
 
 // GetChildDisruptions retrieves disruptions associated with a resource by its label.
 // Most of the time, this will return an empty list as disruptions are typically short-lived objects.
-func GetChildDisruptions(ctx context.Context, cl client.Client, log *zap.SugaredLogger, namespace, labelKey, labelVal string) (*chaosv1beta1.DisruptionList, error) {
+func GetChildDisruptions(ctx context.Context, cl client.Client, namespace, labelKey, labelVal string) (*chaosv1beta1.DisruptionList, error) {
 	disruptions := &chaosv1beta1.DisruptionList{}
 	labelSelector := labels.SelectorFromSet(labels.Set{labelKey: labelVal})
 
 	if err := cl.List(ctx, disruptions, client.InNamespace(namespace), &client.ListOptions{LabelSelector: labelSelector}); err != nil {
-		log.Errorw("unable to list Disruptions", "err", err)
+		cLog.FromContext(ctx).Errorw("unable to list Disruptions", tags.ErrorKey, err)
 		return disruptions, err
 	}
 
@@ -157,14 +158,17 @@ func overwriteDisruptionSelectors(ctx context.Context, cl client.Client, disrupt
 // CreateDisruptionFromTemplate constructs a Disruption object based on the provided owner, disruptionSpec, and targetResource.
 // The function sets annotations, overwrites selectors, and associates the Disruption with its owner.
 // It returns the constructed Disruption or an error if any step fails.
-func CreateDisruptionFromTemplate(ctx context.Context, cl client.Client, scheme *runtime.Scheme, owner metav1.Object, targetResource *chaosv1beta1.TargetResourceSpec, disruptionSpec *chaosv1beta1.DisruptionSpec, scheduledTime time.Time, log *zap.SugaredLogger) (*chaosv1beta1.Disruption, error) {
+func CreateDisruptionFromTemplate(ctx context.Context, cl client.Client, scheme *runtime.Scheme, owner metav1.Object, targetResource *chaosv1beta1.TargetResourceSpec, disruptionSpec *chaosv1beta1.DisruptionSpec, scheduledTime time.Time) (*chaosv1beta1.Disruption, error) {
 	disruption := createBaseDisruption(owner, disruptionSpec)
 
 	ownerNameLabel := getOwnerNameLabel(owner)
 	disruption.Labels[ownerNameLabel] = owner.GetName()
 
 	if err := setDisruptionAnnotations(disruption, owner, scheduledTime); err != nil {
-		log.Errorw("unable to set annotations for child disruption", "err", err, cLog.DisruptionNameKey, disruption.Name)
+		cLog.FromContext(ctx).Errorw("unable to set annotations for child disruption",
+			tags.ErrorKey, err,
+			tags.DisruptionNameKey, disruption.Name,
+		)
 	}
 
 	if err := overwriteDisruptionSelectors(ctx, cl, disruption, targetResource, owner.GetNamespace()); err != nil {
@@ -179,10 +183,14 @@ func CreateDisruptionFromTemplate(ctx context.Context, cl client.Client, scheme 
 }
 
 // getScheduledTimeForDisruption returns the scheduled time for a particular disruption.
-func getScheduledTimeForDisruption(log *zap.SugaredLogger, disruption *chaosv1beta1.Disruption) time.Time {
+func getScheduledTimeForDisruption(ctx context.Context, disruption *chaosv1beta1.Disruption) time.Time {
 	parsedTime, err := disruption.GetScheduledAtAnnotation()
 	if err != nil {
-		log.Errorw("unable to parse schedule time for child disruption", "err", err, cLog.DisruptionNameKey, disruption.Name)
+		cLog.FromContext(ctx).Errorw("unable to parse schedule time for child disruption",
+			tags.ErrorKey, err,
+			tags.DisruptionNameKey, disruption.Name,
+		)
+
 		return time.Time{}
 	}
 
@@ -190,20 +198,20 @@ func getScheduledTimeForDisruption(log *zap.SugaredLogger, disruption *chaosv1be
 }
 
 // GetMostRecentScheduleTime returns the most recent scheduled time from a list of disruptions.
-func GetMostRecentScheduleTime(log *zap.SugaredLogger, disruptions *chaosv1beta1.DisruptionList) time.Time {
+func GetMostRecentScheduleTime(ctx context.Context, disruptions *chaosv1beta1.DisruptionList) time.Time {
 	length := len(disruptions.Items)
 	if length == 0 {
 		return time.Time{}
 	}
 
 	sort.Slice(disruptions.Items, func(i, j int) bool {
-		scheduleTime1 := getScheduledTimeForDisruption(log, &disruptions.Items[i])
-		scheduleTime2 := getScheduledTimeForDisruption(log, &disruptions.Items[j])
+		scheduleTime1 := getScheduledTimeForDisruption(ctx, &disruptions.Items[i])
+		scheduleTime2 := getScheduledTimeForDisruption(ctx, &disruptions.Items[j])
 
 		return scheduleTime1.Before(scheduleTime2)
 	})
 
-	return getScheduledTimeForDisruption(log, &disruptions.Items[length-1])
+	return getScheduledTimeForDisruption(ctx, &disruptions.Items[length-1])
 }
 
 // generateDisruptionName produces a disruption name based on the specific CR controller, that's invoking it.

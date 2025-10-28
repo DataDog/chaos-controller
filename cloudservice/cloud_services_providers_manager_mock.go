@@ -8,6 +8,8 @@
 package cloudservice
 
 import (
+	context "context"
+
 	types "github.com/DataDog/chaos-controller/cloudservice/types"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -73,17 +75,17 @@ func (_c *CloudServicesProvidersManagerMock_GetProviderByName_Call) RunAndReturn
 	return _c
 }
 
-// GetServiceList provides a mock function with given fields: cloudProviderName
-func (_m *CloudServicesProvidersManagerMock) GetServiceList(cloudProviderName types.CloudProviderName) []string {
-	ret := _m.Called(cloudProviderName)
+// GetServiceList provides a mock function with given fields: ctx, cloudProviderName
+func (_m *CloudServicesProvidersManagerMock) GetServiceList(ctx context.Context, cloudProviderName types.CloudProviderName) []string {
+	ret := _m.Called(ctx, cloudProviderName)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetServiceList")
 	}
 
 	var r0 []string
-	if rf, ok := ret.Get(0).(func(types.CloudProviderName) []string); ok {
-		r0 = rf(cloudProviderName)
+	if rf, ok := ret.Get(0).(func(context.Context, types.CloudProviderName) []string); ok {
+		r0 = rf(ctx, cloudProviderName)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]string)
@@ -99,14 +101,15 @@ type CloudServicesProvidersManagerMock_GetServiceList_Call struct {
 }
 
 // GetServiceList is a helper method to define mock.On call
+//   - ctx context.Context
 //   - cloudProviderName types.CloudProviderName
-func (_e *CloudServicesProvidersManagerMock_Expecter) GetServiceList(cloudProviderName interface{}) *CloudServicesProvidersManagerMock_GetServiceList_Call {
-	return &CloudServicesProvidersManagerMock_GetServiceList_Call{Call: _e.mock.On("GetServiceList", cloudProviderName)}
+func (_e *CloudServicesProvidersManagerMock_Expecter) GetServiceList(ctx interface{}, cloudProviderName interface{}) *CloudServicesProvidersManagerMock_GetServiceList_Call {
+	return &CloudServicesProvidersManagerMock_GetServiceList_Call{Call: _e.mock.On("GetServiceList", ctx, cloudProviderName)}
 }
 
-func (_c *CloudServicesProvidersManagerMock_GetServiceList_Call) Run(run func(cloudProviderName types.CloudProviderName)) *CloudServicesProvidersManagerMock_GetServiceList_Call {
+func (_c *CloudServicesProvidersManagerMock_GetServiceList_Call) Run(run func(ctx context.Context, cloudProviderName types.CloudProviderName)) *CloudServicesProvidersManagerMock_GetServiceList_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(types.CloudProviderName))
+		run(args[0].(context.Context), args[1].(types.CloudProviderName))
 	})
 	return _c
 }
@@ -116,14 +119,14 @@ func (_c *CloudServicesProvidersManagerMock_GetServiceList_Call) Return(_a0 []st
 	return _c
 }
 
-func (_c *CloudServicesProvidersManagerMock_GetServiceList_Call) RunAndReturn(run func(types.CloudProviderName) []string) *CloudServicesProvidersManagerMock_GetServiceList_Call {
+func (_c *CloudServicesProvidersManagerMock_GetServiceList_Call) RunAndReturn(run func(context.Context, types.CloudProviderName) []string) *CloudServicesProvidersManagerMock_GetServiceList_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// GetServicesIPRanges provides a mock function with given fields: cloudProviderName, serviceNames
-func (_m *CloudServicesProvidersManagerMock) GetServicesIPRanges(cloudProviderName types.CloudProviderName, serviceNames []string) (map[string][]string, error) {
-	ret := _m.Called(cloudProviderName, serviceNames)
+// GetServicesIPRanges provides a mock function with given fields: ctx, cloudProviderName, serviceNames
+func (_m *CloudServicesProvidersManagerMock) GetServicesIPRanges(ctx context.Context, cloudProviderName types.CloudProviderName, serviceNames []string) (map[string][]string, error) {
+	ret := _m.Called(ctx, cloudProviderName, serviceNames)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetServicesIPRanges")
@@ -131,19 +134,19 @@ func (_m *CloudServicesProvidersManagerMock) GetServicesIPRanges(cloudProviderNa
 
 	var r0 map[string][]string
 	var r1 error
-	if rf, ok := ret.Get(0).(func(types.CloudProviderName, []string) (map[string][]string, error)); ok {
-		return rf(cloudProviderName, serviceNames)
+	if rf, ok := ret.Get(0).(func(context.Context, types.CloudProviderName, []string) (map[string][]string, error)); ok {
+		return rf(ctx, cloudProviderName, serviceNames)
 	}
-	if rf, ok := ret.Get(0).(func(types.CloudProviderName, []string) map[string][]string); ok {
-		r0 = rf(cloudProviderName, serviceNames)
+	if rf, ok := ret.Get(0).(func(context.Context, types.CloudProviderName, []string) map[string][]string); ok {
+		r0 = rf(ctx, cloudProviderName, serviceNames)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(map[string][]string)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(types.CloudProviderName, []string) error); ok {
-		r1 = rf(cloudProviderName, serviceNames)
+	if rf, ok := ret.Get(1).(func(context.Context, types.CloudProviderName, []string) error); ok {
+		r1 = rf(ctx, cloudProviderName, serviceNames)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -157,15 +160,16 @@ type CloudServicesProvidersManagerMock_GetServicesIPRanges_Call struct {
 }
 
 // GetServicesIPRanges is a helper method to define mock.On call
+//   - ctx context.Context
 //   - cloudProviderName types.CloudProviderName
 //   - serviceNames []string
-func (_e *CloudServicesProvidersManagerMock_Expecter) GetServicesIPRanges(cloudProviderName interface{}, serviceNames interface{}) *CloudServicesProvidersManagerMock_GetServicesIPRanges_Call {
-	return &CloudServicesProvidersManagerMock_GetServicesIPRanges_Call{Call: _e.mock.On("GetServicesIPRanges", cloudProviderName, serviceNames)}
+func (_e *CloudServicesProvidersManagerMock_Expecter) GetServicesIPRanges(ctx interface{}, cloudProviderName interface{}, serviceNames interface{}) *CloudServicesProvidersManagerMock_GetServicesIPRanges_Call {
+	return &CloudServicesProvidersManagerMock_GetServicesIPRanges_Call{Call: _e.mock.On("GetServicesIPRanges", ctx, cloudProviderName, serviceNames)}
 }
 
-func (_c *CloudServicesProvidersManagerMock_GetServicesIPRanges_Call) Run(run func(cloudProviderName types.CloudProviderName, serviceNames []string)) *CloudServicesProvidersManagerMock_GetServicesIPRanges_Call {
+func (_c *CloudServicesProvidersManagerMock_GetServicesIPRanges_Call) Run(run func(ctx context.Context, cloudProviderName types.CloudProviderName, serviceNames []string)) *CloudServicesProvidersManagerMock_GetServicesIPRanges_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(types.CloudProviderName), args[1].([]string))
+		run(args[0].(context.Context), args[1].(types.CloudProviderName), args[2].([]string))
 	})
 	return _c
 }
@@ -175,22 +179,22 @@ func (_c *CloudServicesProvidersManagerMock_GetServicesIPRanges_Call) Return(_a0
 	return _c
 }
 
-func (_c *CloudServicesProvidersManagerMock_GetServicesIPRanges_Call) RunAndReturn(run func(types.CloudProviderName, []string) (map[string][]string, error)) *CloudServicesProvidersManagerMock_GetServicesIPRanges_Call {
+func (_c *CloudServicesProvidersManagerMock_GetServicesIPRanges_Call) RunAndReturn(run func(context.Context, types.CloudProviderName, []string) (map[string][]string, error)) *CloudServicesProvidersManagerMock_GetServicesIPRanges_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// PullIPRanges provides a mock function with no fields
-func (_m *CloudServicesProvidersManagerMock) PullIPRanges() error {
-	ret := _m.Called()
+// PullIPRanges provides a mock function with given fields: ctx
+func (_m *CloudServicesProvidersManagerMock) PullIPRanges(ctx context.Context) error {
+	ret := _m.Called(ctx)
 
 	if len(ret) == 0 {
 		panic("no return value specified for PullIPRanges")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func() error); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -204,13 +208,14 @@ type CloudServicesProvidersManagerMock_PullIPRanges_Call struct {
 }
 
 // PullIPRanges is a helper method to define mock.On call
-func (_e *CloudServicesProvidersManagerMock_Expecter) PullIPRanges() *CloudServicesProvidersManagerMock_PullIPRanges_Call {
-	return &CloudServicesProvidersManagerMock_PullIPRanges_Call{Call: _e.mock.On("PullIPRanges")}
+//   - ctx context.Context
+func (_e *CloudServicesProvidersManagerMock_Expecter) PullIPRanges(ctx interface{}) *CloudServicesProvidersManagerMock_PullIPRanges_Call {
+	return &CloudServicesProvidersManagerMock_PullIPRanges_Call{Call: _e.mock.On("PullIPRanges", ctx)}
 }
 
-func (_c *CloudServicesProvidersManagerMock_PullIPRanges_Call) Run(run func()) *CloudServicesProvidersManagerMock_PullIPRanges_Call {
+func (_c *CloudServicesProvidersManagerMock_PullIPRanges_Call) Run(run func(ctx context.Context)) *CloudServicesProvidersManagerMock_PullIPRanges_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(context.Context))
 	})
 	return _c
 }
@@ -220,14 +225,14 @@ func (_c *CloudServicesProvidersManagerMock_PullIPRanges_Call) Return(_a0 error)
 	return _c
 }
 
-func (_c *CloudServicesProvidersManagerMock_PullIPRanges_Call) RunAndReturn(run func() error) *CloudServicesProvidersManagerMock_PullIPRanges_Call {
+func (_c *CloudServicesProvidersManagerMock_PullIPRanges_Call) RunAndReturn(run func(context.Context) error) *CloudServicesProvidersManagerMock_PullIPRanges_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// StartPeriodicPull provides a mock function with no fields
-func (_m *CloudServicesProvidersManagerMock) StartPeriodicPull() {
-	_m.Called()
+// StartPeriodicPull provides a mock function with given fields: ctx
+func (_m *CloudServicesProvidersManagerMock) StartPeriodicPull(ctx context.Context) {
+	_m.Called(ctx)
 }
 
 // CloudServicesProvidersManagerMock_StartPeriodicPull_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StartPeriodicPull'
@@ -236,13 +241,14 @@ type CloudServicesProvidersManagerMock_StartPeriodicPull_Call struct {
 }
 
 // StartPeriodicPull is a helper method to define mock.On call
-func (_e *CloudServicesProvidersManagerMock_Expecter) StartPeriodicPull() *CloudServicesProvidersManagerMock_StartPeriodicPull_Call {
-	return &CloudServicesProvidersManagerMock_StartPeriodicPull_Call{Call: _e.mock.On("StartPeriodicPull")}
+//   - ctx context.Context
+func (_e *CloudServicesProvidersManagerMock_Expecter) StartPeriodicPull(ctx interface{}) *CloudServicesProvidersManagerMock_StartPeriodicPull_Call {
+	return &CloudServicesProvidersManagerMock_StartPeriodicPull_Call{Call: _e.mock.On("StartPeriodicPull", ctx)}
 }
 
-func (_c *CloudServicesProvidersManagerMock_StartPeriodicPull_Call) Run(run func()) *CloudServicesProvidersManagerMock_StartPeriodicPull_Call {
+func (_c *CloudServicesProvidersManagerMock_StartPeriodicPull_Call) Run(run func(ctx context.Context)) *CloudServicesProvidersManagerMock_StartPeriodicPull_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(context.Context))
 	})
 	return _c
 }
@@ -252,14 +258,14 @@ func (_c *CloudServicesProvidersManagerMock_StartPeriodicPull_Call) Return() *Cl
 	return _c
 }
 
-func (_c *CloudServicesProvidersManagerMock_StartPeriodicPull_Call) RunAndReturn(run func()) *CloudServicesProvidersManagerMock_StartPeriodicPull_Call {
+func (_c *CloudServicesProvidersManagerMock_StartPeriodicPull_Call) RunAndReturn(run func(context.Context)) *CloudServicesProvidersManagerMock_StartPeriodicPull_Call {
 	_c.Run(run)
 	return _c
 }
 
-// StopPeriodicPull provides a mock function with no fields
-func (_m *CloudServicesProvidersManagerMock) StopPeriodicPull() {
-	_m.Called()
+// StopPeriodicPull provides a mock function with given fields: ctx
+func (_m *CloudServicesProvidersManagerMock) StopPeriodicPull(ctx context.Context) {
+	_m.Called(ctx)
 }
 
 // CloudServicesProvidersManagerMock_StopPeriodicPull_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StopPeriodicPull'
@@ -268,13 +274,14 @@ type CloudServicesProvidersManagerMock_StopPeriodicPull_Call struct {
 }
 
 // StopPeriodicPull is a helper method to define mock.On call
-func (_e *CloudServicesProvidersManagerMock_Expecter) StopPeriodicPull() *CloudServicesProvidersManagerMock_StopPeriodicPull_Call {
-	return &CloudServicesProvidersManagerMock_StopPeriodicPull_Call{Call: _e.mock.On("StopPeriodicPull")}
+//   - ctx context.Context
+func (_e *CloudServicesProvidersManagerMock_Expecter) StopPeriodicPull(ctx interface{}) *CloudServicesProvidersManagerMock_StopPeriodicPull_Call {
+	return &CloudServicesProvidersManagerMock_StopPeriodicPull_Call{Call: _e.mock.On("StopPeriodicPull", ctx)}
 }
 
-func (_c *CloudServicesProvidersManagerMock_StopPeriodicPull_Call) Run(run func()) *CloudServicesProvidersManagerMock_StopPeriodicPull_Call {
+func (_c *CloudServicesProvidersManagerMock_StopPeriodicPull_Call) Run(run func(ctx context.Context)) *CloudServicesProvidersManagerMock_StopPeriodicPull_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(context.Context))
 	})
 	return _c
 }
@@ -284,7 +291,7 @@ func (_c *CloudServicesProvidersManagerMock_StopPeriodicPull_Call) Return() *Clo
 	return _c
 }
 
-func (_c *CloudServicesProvidersManagerMock_StopPeriodicPull_Call) RunAndReturn(run func()) *CloudServicesProvidersManagerMock_StopPeriodicPull_Call {
+func (_c *CloudServicesProvidersManagerMock_StopPeriodicPull_Call) RunAndReturn(run func(context.Context)) *CloudServicesProvidersManagerMock_StopPeriodicPull_Call {
 	_c.Run(run)
 	return _c
 }

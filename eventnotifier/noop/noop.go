@@ -6,13 +6,15 @@
 package noop
 
 import (
+	"context"
 	"fmt"
+
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
-	"go.uber.org/zap"
-	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	cLog "github.com/DataDog/chaos-controller/log"
 )
 
 type NotifierNoopConfig struct {
@@ -20,15 +22,11 @@ type NotifierNoopConfig struct {
 }
 
 // Notifier describes a NOOP notifier
-type Notifier struct {
-	log *zap.SugaredLogger
-}
+type Notifier struct{}
 
 // New NOOP Notifier
-func New(log *zap.SugaredLogger) Notifier {
-	return Notifier{
-		log,
-	}
+func New() Notifier {
+	return Notifier{}
 }
 
 // GetNotifierName returns the driver's name
@@ -37,14 +35,14 @@ func (n Notifier) GetNotifierName() string {
 }
 
 // Notify generates a notification for generic k8s events
-func (n Notifier) Notify(obj client.Object, event corev1.Event, notifType types.NotificationType) error {
+func (n Notifier) Notify(ctx context.Context, obj client.Object, event corev1.Event, notifType types.NotificationType) error {
 	notifierMessage := fmt.Sprintf("Notifier %s: %s - %s", string(notifType), event.Reason, event.Message)
 
 	switch d := obj.(type) {
 	case *v1beta1.Disruption:
-		n.log.Debugf("NOOP: %s for disruption %s\n", notifierMessage, d.Name)
+		cLog.FromContext(ctx).Debugf("NOOP: %s for disruption %s\n", notifierMessage, d.Name)
 	case *v1beta1.DisruptionCron:
-		n.log.Debugf("NOOP: %s for disruption cron %s\n", notifierMessage, d.Name)
+		cLog.FromContext(ctx).Debugf("NOOP: %s for disruption cron %s\n", notifierMessage, d.Name)
 	}
 
 	return nil

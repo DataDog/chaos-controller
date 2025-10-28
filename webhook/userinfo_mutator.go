@@ -12,7 +12,7 @@ import (
 	"net/http"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
-	cLog "github.com/DataDog/chaos-controller/log"
+	"github.com/DataDog/chaos-controller/o11y/tags"
 	"go.uber.org/zap"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -29,7 +29,7 @@ type UserInfoMutator struct {
 func (m UserInfoMutator) Handle(ctx context.Context, request admission.Request) admission.Response {
 	log, err := m.getLogger(request)
 	if err != nil {
-		m.Log.Errorw("error getting logger", "error", err)
+		m.Log.Errorw("error getting logger", tags.ErrorKey, err)
 
 		return admission.Errored(http.StatusBadRequest, err)
 	}
@@ -44,21 +44,21 @@ func (m UserInfoMutator) Handle(ctx context.Context, request admission.Request) 
 
 	object, err := m.getObject(request)
 	if err != nil {
-		log.Errorw("error getting object", "error", err)
+		log.Errorw("error getting object", tags.ErrorKey, err)
 
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
 	// retrieve user info
-	log.Infow("storing user info in annotations", "request", request.UserInfo)
+	log.Infow("storing user info in annotations", tags.RequestKey, request.UserInfo)
 
 	if err := m.setUserInfo(object, request); err != nil {
-		m.Log.Errorw("error defining UserInfo", "error", err)
+		m.Log.Errorw("error defining UserInfo", tags.ErrorKey, err)
 	}
 
 	marshaled, err := json.Marshal(object)
 	if err != nil {
-		m.Log.Errorw("error encoding modified annotations", "error", err)
+		m.Log.Errorw("error encoding modified annotations", tags.ErrorKey, err)
 
 		return admission.Errored(http.StatusInternalServerError, err)
 	}
@@ -89,9 +89,9 @@ func (m UserInfoMutator) getObject(request admission.Request) (client.Object, er
 func (m UserInfoMutator) getLogger(request admission.Request) (*zap.SugaredLogger, error) {
 	switch request.Kind.Kind {
 	case v1beta1.DisruptionKind:
-		return m.Log.With(cLog.DisruptionNameKey, request.Name, cLog.DisruptionNamespaceKey, request.Namespace), nil
+		return m.Log.With(tags.DisruptionNameKey, request.Name, tags.DisruptionNamespaceKey, request.Namespace), nil
 	case v1beta1.DisruptionCronKind:
-		return m.Log.With(cLog.DisruptionCronNameKey, request.Name, cLog.DisruptionCronNamespaceKey, request.Namespace), nil
+		return m.Log.With(tags.DisruptionCronNameKey, request.Name, tags.DisruptionCronNamespaceKey, request.Namespace), nil
 	}
 
 	return nil, fmt.Errorf("not a valid kind: %s", request.Kind.Kind)

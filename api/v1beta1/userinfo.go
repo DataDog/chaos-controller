@@ -10,11 +10,12 @@ import (
 	"fmt"
 	"strings"
 
+	authV1 "k8s.io/api/authentication/v1"
 	"k8s.io/api/authentication/v1beta1"
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	authV1 "k8s.io/api/authentication/v1"
-	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/DataDog/chaos-controller/o11y/tags"
 )
 
 const (
@@ -141,12 +142,17 @@ func validateUserInfoGroup(object client.Object, permittedGroups map[string]stru
 	objectKind := object.GetObjectKind().GroupVersionKind().Kind
 
 	if allowedGroups := filterUserGroupsByPermitted(userInfo, permittedGroups); len(allowedGroups) > 0 {
-		logger.Debugw(fmt.Sprintf("permitting user %s creation, due to group membership", objectKind), "groups", strings.Join(allowedGroups, ", "))
+		logger.Debugw(fmt.Sprintf("permitting user %s creation, due to group membership", objectKind),
+			tags.GroupsKey, strings.Join(allowedGroups, ", "),
+		)
 
 		return nil
 	}
 
-	logger.Warnw(fmt.Sprintf("rejecting user from creating this %s", objectKind), "permittedUserGroups", permittedGroupsString, "userGroups", userInfo.Groups)
+	logger.Warnw(fmt.Sprintf("rejecting user from creating this %s", objectKind),
+		tags.PermittedUserGroupsKey, permittedGroupsString,
+		tags.UserGroupsKey, userInfo.Groups,
+	)
 
 	return fmt.Errorf(
 		"lacking sufficient authorization to create %s. your user groups are %s, but you must be in one of the following groups: %s",

@@ -14,6 +14,7 @@ import (
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/command"
+	"github.com/DataDog/chaos-controller/o11y/tags"
 	"github.com/DataDog/chaos-controller/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -56,7 +57,7 @@ func (i *cpuPressureInjector) GetDisruptionKind() types.DisruptionKindName {
 }
 
 func (i *cpuPressureInjector) Inject() error {
-	i.config.Log.Infow("creating processes to stress target", "count", i.spec.Count)
+	i.config.Log.Infow("creating processes to stress target", tags.CountKey, i.spec.Count)
 
 	var (
 		percentage int
@@ -71,11 +72,11 @@ func (i *cpuPressureInjector) Inject() error {
 
 		percentage = int(math.Floor(float64(i.spec.Count.IntValue()) / float64(assignedCPUs.Size()) * 100))
 
-		i.config.Log.Infow("percentage calculated from number of cpu", "provided_value", i.spec.Count, "assigned_cpus", assignedCPUs, "percentage", percentage)
+		i.config.Log.Infow("percentage calculated from number of cpu", tags.ProvidedValueKey, i.spec.Count, tags.AssignedCpusKey, assignedCPUs, tags.PercentageKey, percentage)
 	} else if percentage, err = intstr.GetScaledValueFromIntOrPercent(i.spec.Count, 100, true); err != nil { // if a percentage is provided, keep it as is
 		return fmt.Errorf("unable to calculate stress percentage for '%s': %w", i.spec.Count, err)
 	} else {
-		i.config.Log.Infow("percentage calculated from percentage", "provided_value", i.spec.Count, "percentage", percentage)
+		i.config.Log.Infow("percentage calculated from percentage", tags.ProvidedValueKey, i.spec.Count, tags.PercentageKey, percentage)
 	}
 
 	// If a range is expected, it should be checked earlier than here, let's not fail in the injector that is far away from our users
@@ -102,7 +103,7 @@ func (i *cpuPressureInjector) Inject() error {
 
 	i.backgroundCmd.KeepAlive()
 
-	i.config.Log.Infow("all routines have been created successfully, now stressing in background", "percentage", percentage)
+	i.config.Log.Infow("all routines have been created successfully, now stressing in background", tags.PercentageKey, percentage)
 
 	return nil
 }

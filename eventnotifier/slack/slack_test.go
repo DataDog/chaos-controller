@@ -8,31 +8,22 @@ package slack
 import (
 	"fmt"
 
-	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/eventnotifier/types"
 	"github.com/google/uuid"
 	"github.com/slack-go/slack"
 	"github.com/stretchr/testify/mock"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zaptest"
 	v1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/eventnotifier/types"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Slack Notifier", func() {
-	var (
-		logger *zap.SugaredLogger
-	)
-
-	BeforeEach(func() {
-		logger = zaptest.NewLogger(GinkgoT()).Sugar()
-	})
-
 	Describe("Notify", func() {
 		var (
 			defaultClusterName         = "cluster-name"
@@ -53,7 +44,6 @@ var _ = Describe("Slack Notifier", func() {
 					Enabled:       true,
 					TokenFilepath: "/path/to/token",
 				},
-				logger: logger,
 			}
 		})
 
@@ -65,7 +55,7 @@ var _ = Describe("Slack Notifier", func() {
 
 				Context("with an info notification", func() {
 					Context("with a disruption", func() {
-						It("should send a slack message to the mirror slack channel", func() {
+						It("should send a slack message to the mirror slack channel", func(ctx SpecContext) {
 							// Arrange
 							slackNotifMock.EXPECT().PostMessage(
 								defaultMirrorSlackChanelID,
@@ -79,14 +69,11 @@ var _ = Describe("Slack Notifier", func() {
 							slackNotifMock.AssertNotCalled(GinkgoT(), "GetUserByEmail")
 
 							// Act
-							err := notifier.Notify(&v1beta1.Disruption{
+							err := notifier.Notify(ctx, &v1beta1.Disruption{
 								TypeMeta: metav1.TypeMeta{
 									Kind: v1beta1.DisruptionKind,
 								},
-							},
-								corev1.Event{},
-								types.NotificationInfo,
-							)
+							}, corev1.Event{}, types.NotificationInfo)
 
 							// Assert
 							Expect(err).ShouldNot(HaveOccurred())
@@ -95,7 +82,7 @@ var _ = Describe("Slack Notifier", func() {
 				})
 
 				Context("with all other notifications", func() {
-					DescribeTable("should send a slack message to the mirror slack channel and the user chanel", func(obj k8sclient.Object, notifType types.NotificationType) {
+					DescribeTable("should send a slack message to the mirror slack channel and the user chanel", func(ctx SpecContext, obj k8sclient.Object, notifType types.NotificationType) {
 						// Arrange
 						expectedUserInfo := v1.UserInfo{Username: defaultUserInfoUserName}
 						switch d := obj.(type) {
@@ -132,10 +119,7 @@ var _ = Describe("Slack Notifier", func() {
 						).Return("", "", nil).Once()
 
 						// Act
-						err := notifier.Notify(obj,
-							corev1.Event{},
-							notifType,
-						)
+						err := notifier.Notify(ctx, obj, corev1.Event{}, notifType)
 
 						// Assert
 						Expect(err).ShouldNot(HaveOccurred())
@@ -193,7 +177,7 @@ var _ = Describe("Slack Notifier", func() {
 					)
 
 					Context("with a slack configuration defined in the resource", func() {
-						DescribeTable("should send a slack message to the mirror, the user chanel and the custom channel", func(obj k8sclient.Object, notifType types.NotificationType) {
+						DescribeTable("should send a slack message to the mirror, the user chanel and the custom channel", func(ctx SpecContext, obj k8sclient.Object, notifType types.NotificationType) {
 							// Arrange
 							expectedUserInfo := v1.UserInfo{Username: defaultUserInfoUserName}
 							switch d := obj.(type) {
@@ -255,10 +239,7 @@ var _ = Describe("Slack Notifier", func() {
 							).Return("", "", nil).Once()
 
 							// Act
-							err := notifier.Notify(obj,
-								corev1.Event{},
-								notifType,
-							)
+							err := notifier.Notify(ctx, obj, corev1.Event{}, notifType)
 
 							// Assert
 							Expect(err).ShouldNot(HaveOccurred())
@@ -316,7 +297,7 @@ var _ = Describe("Slack Notifier", func() {
 						)
 
 						When("the message to the custom slack channel fails", func() {
-							DescribeTable("should send a slack message to the mirror, the user chanel and the custom channel and not failed", func(obj k8sclient.Object, notifType types.NotificationType) {
+							DescribeTable("should send a slack message to the mirror, the user chanel and the custom channel and not failed", func(ctx SpecContext, obj k8sclient.Object, notifType types.NotificationType) {
 								// Arrange
 								expectedUserInfo := v1.UserInfo{Username: defaultUserInfoUserName}
 								switch d := obj.(type) {
@@ -377,10 +358,7 @@ var _ = Describe("Slack Notifier", func() {
 								).Return("", "", nil).Once()
 
 								// Act
-								err := notifier.Notify(obj,
-									corev1.Event{},
-									notifType,
-								)
+								err := notifier.Notify(ctx, obj, corev1.Event{}, notifType)
 
 								// Assert
 								Expect(err).ShouldNot(HaveOccurred())
@@ -439,7 +417,7 @@ var _ = Describe("Slack Notifier", func() {
 						})
 
 						When("the message to the mirror slack channel fails", func() {
-							DescribeTable("should send a slack message the user chanel and the custom channel, but not returns an error", func(obj k8sclient.Object, notifType types.NotificationType) {
+							DescribeTable("should send a slack message the user chanel and the custom channel, but not returns an error", func(ctx SpecContext, obj k8sclient.Object, notifType types.NotificationType) {
 								// Arrange
 								expectedUserInfo := v1.UserInfo{Username: defaultUserInfoUserName}
 
@@ -501,10 +479,7 @@ var _ = Describe("Slack Notifier", func() {
 								).Return("", "", nil).Once()
 
 								// Act
-								err := notifier.Notify(obj,
-									corev1.Event{},
-									notifType,
-								)
+								err := notifier.Notify(ctx, obj, corev1.Event{}, notifType)
 
 								// Assert
 								Expect(err).ShouldNot(HaveOccurred())
@@ -569,20 +544,17 @@ var _ = Describe("Slack Notifier", func() {
 			Context("without a mirror slack channel", func() {
 				Context("with an info notification", func() {
 					Context("with a disruption", func() {
-						It("should noy send any message", func() {
+						It("should noy send any message", func(ctx SpecContext) {
 							// Arrange
 							slackNotifMock.AssertNotCalled(GinkgoT(), "PostMessage")
 							slackNotifMock.AssertNotCalled(GinkgoT(), "GetUserByEmail")
 
 							// Act
-							err := notifier.Notify(&v1beta1.Disruption{
+							err := notifier.Notify(ctx, &v1beta1.Disruption{
 								TypeMeta: metav1.TypeMeta{
 									Kind: v1beta1.DisruptionKind,
 								},
-							},
-								corev1.Event{},
-								types.NotificationInfo,
-							)
+							}, corev1.Event{}, types.NotificationInfo)
 
 							// Assert
 							Expect(err).ShouldNot(HaveOccurred())
@@ -591,7 +563,7 @@ var _ = Describe("Slack Notifier", func() {
 				})
 
 				Context("with all other notifications", func() {
-					DescribeTable("should send a message to the user chanel", func(obj k8sclient.Object, notifType types.NotificationType) {
+					DescribeTable("should send a message to the user chanel", func(ctx SpecContext, obj k8sclient.Object, notifType types.NotificationType) {
 						// Arrange
 						expectedUserInfo := v1.UserInfo{Username: defaultUserInfoUserName}
 						switch d := obj.(type) {
@@ -621,10 +593,7 @@ var _ = Describe("Slack Notifier", func() {
 						).Return("", "", nil).Once()
 
 						// Act
-						err := notifier.Notify(obj,
-							corev1.Event{},
-							notifType,
-						)
+						err := notifier.Notify(ctx, obj, corev1.Event{}, notifType)
 
 						// Assert
 						Expect(err).ShouldNot(HaveOccurred())
@@ -682,7 +651,7 @@ var _ = Describe("Slack Notifier", func() {
 					)
 
 					When("slack client fails to get the user by email", func() {
-						DescribeTable("should not failed", func(obj k8sclient.Object, notifType types.NotificationType) {
+						DescribeTable("should not failed", func(ctx SpecContext, obj k8sclient.Object, notifType types.NotificationType) {
 							// Arrange
 							expectedUserInfo := v1.UserInfo{Username: defaultUserInfoUserName}
 							switch d := obj.(type) {
@@ -698,10 +667,7 @@ var _ = Describe("Slack Notifier", func() {
 							slackNotifMock.AssertNotCalled(GinkgoT(), "PostMessage")
 
 							// Act
-							err := notifier.Notify(obj,
-								corev1.Event{},
-								notifType,
-							)
+							err := notifier.Notify(ctx, obj, corev1.Event{}, notifType)
 
 							// Assert
 							Expect(err).ShouldNot(HaveOccurred())
@@ -769,7 +735,7 @@ var _ = Describe("Slack Notifier", func() {
 					})
 
 					Context("with a slack configuration defined in the resource", func() {
-						DescribeTable("should send a slack message the user chanel and the custom channel", func(obj k8sclient.Object, notifType types.NotificationType) {
+						DescribeTable("should send a slack message the user chanel and the custom channel", func(ctx SpecContext, obj k8sclient.Object, notifType types.NotificationType) {
 							// Arrange
 							expectedUserInfo := v1.UserInfo{Username: defaultUserInfoUserName}
 
@@ -816,10 +782,7 @@ var _ = Describe("Slack Notifier", func() {
 							).Return("", "", nil).Once()
 
 							// Act
-							err := notifier.Notify(obj,
-								corev1.Event{},
-								notifType,
-							)
+							err := notifier.Notify(ctx, obj, corev1.Event{}, notifType)
 
 							// Assert
 							Expect(err).ShouldNot(HaveOccurred())
@@ -895,7 +858,7 @@ var _ = Describe("Slack Notifier", func() {
 						)
 
 						When("the message to the custom slack channel fails", func() {
-							DescribeTable("should send a slack message the user chanel and the custom channel, but not returns an error", func(obj k8sclient.Object, notifType types.NotificationType) {
+							DescribeTable("should send a slack message the user chanel and the custom channel, but not returns an error", func(ctx SpecContext, obj k8sclient.Object, notifType types.NotificationType) {
 								// Arrange
 								expectedUserInfo := v1.UserInfo{Username: defaultUserInfoUserName}
 								switch d := obj.(type) {
@@ -948,10 +911,7 @@ var _ = Describe("Slack Notifier", func() {
 								).Return("", "", nil).Once()
 
 								// Act
-								err := notifier.Notify(obj,
-									corev1.Event{},
-									notifType,
-								)
+								err := notifier.Notify(ctx, obj, corev1.Event{}, notifType)
 
 								// Assert
 								Expect(err).ShouldNot(HaveOccurred())
@@ -1021,7 +981,7 @@ var _ = Describe("Slack Notifier", func() {
 						})
 
 						When("the userInfo username is not configured but SlackUserEmail is configured ", func() {
-							DescribeTable("should send a slack message the user chanel", func(obj k8sclient.Object, notifType types.NotificationType) {
+							DescribeTable("should send a slack message the user chanel", func(ctx SpecContext, obj k8sclient.Object, notifType types.NotificationType) {
 
 								// Arrange
 								expectedSlackUserName := "jaden@test.com"
@@ -1056,10 +1016,7 @@ var _ = Describe("Slack Notifier", func() {
 								).Return("", "", nil).Once()
 
 								// Act
-								err := notifier.Notify(obj,
-									corev1.Event{},
-									notifType,
-								)
+								err := notifier.Notify(ctx, obj, corev1.Event{}, notifType)
 
 								// Assert
 								Expect(err).ShouldNot(HaveOccurred())
@@ -1136,7 +1093,7 @@ var _ = Describe("Slack Notifier", func() {
 						})
 
 						When("the UserInfo username and SlackUserEmail are configured but differ in value", func() {
-							DescribeTable("should prioritize utilizing the slackUserEmail", func(obj k8sclient.Object, notifType types.NotificationType) {
+							DescribeTable("should prioritize utilizing the slackUserEmail", func(ctx SpecContext, obj k8sclient.Object, notifType types.NotificationType) {
 								// Arrange
 
 								expectedUserInfo := v1.UserInfo{Username: "differingEmail@test.com"}
@@ -1186,10 +1143,7 @@ var _ = Describe("Slack Notifier", func() {
 								).Return("", "", nil).Once()
 
 								// Act
-								err := notifier.Notify(obj,
-									corev1.Event{},
-									notifType,
-								)
+								err := notifier.Notify(ctx, obj, corev1.Event{}, notifType)
 
 								// Assert
 								Expect(err).ShouldNot(HaveOccurred())
@@ -1270,7 +1224,7 @@ var _ = Describe("Slack Notifier", func() {
 
 			When("the name of the user is not a valid address mail", func() {
 				Context("with the slack configuration not in the resource and the invalid user is from userInfo", func() {
-					DescribeTable("it should not return the error", func(obj k8sclient.Object) {
+					DescribeTable("it should not return the error", func(ctx SpecContext, obj k8sclient.Object) {
 
 						// Arrange
 						expectedUserInfo := v1.UserInfo{Username: "not-an-valid-email"}
@@ -1285,10 +1239,7 @@ var _ = Describe("Slack Notifier", func() {
 						slackNotifMock.AssertNotCalled(GinkgoT(), "PostMessage", defaultMirrorSlackChanelID, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 
 						// Act
-						err := notifier.Notify(obj,
-							corev1.Event{},
-							types.NotificationWarning,
-						)
+						err := notifier.Notify(ctx, obj, corev1.Event{}, types.NotificationWarning)
 
 						// Assert
 						Expect(err).ShouldNot(HaveOccurred())
@@ -1307,7 +1258,7 @@ var _ = Describe("Slack Notifier", func() {
 				})
 
 				Context("with the slack configuration in the resource and slackUserEmail is not valid", func() {
-					DescribeTable("it should fallback to the userInfo user", func(obj k8sclient.Object, notifType types.NotificationType) {
+					DescribeTable("it should fallback to the userInfo user", func(ctx SpecContext, obj k8sclient.Object, notifType types.NotificationType) {
 						expectedUserInfo := v1.UserInfo{Username: defaultUserInfoUserName}
 
 						expectedReporting := &v1beta1.Reporting{
@@ -1343,10 +1294,7 @@ var _ = Describe("Slack Notifier", func() {
 						).Return("", "", nil).Once()
 
 						//Act
-						err := notifier.Notify(obj,
-							corev1.Event{},
-							notifType,
-						)
+						err := notifier.Notify(ctx, obj, corev1.Event{}, notifType)
 
 						Expect(err).ShouldNot(HaveOccurred())
 
@@ -1409,7 +1357,7 @@ var _ = Describe("Slack Notifier", func() {
 
 		Describe("error cases", func() {
 			When("the slack client fails to send a message to the user slack channel", func() {
-				DescribeTable("it should return the error", func(obj k8sclient.Object) {
+				DescribeTable("it should return the error", func(ctx SpecContext, obj k8sclient.Object) {
 					// Arrange
 					expectedUserInfo := v1.UserInfo{Username: defaultUserInfoUserName}
 					switch d := obj.(type) {
@@ -1436,10 +1384,7 @@ var _ = Describe("Slack Notifier", func() {
 					).Return("", "", fmt.Errorf("could not send error the the reporting channel")).Once()
 
 					// Act
-					err := notifier.Notify(obj,
-						corev1.Event{},
-						types.NotificationWarning,
-					)
+					err := notifier.Notify(ctx, obj, corev1.Event{}, types.NotificationWarning)
 
 					// Assert
 					Expect(err).Should(HaveOccurred())

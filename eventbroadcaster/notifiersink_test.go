@@ -10,11 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/eventnotifier"
-	notifTypes "github.com/DataDog/chaos-controller/eventnotifier/types"
-	"github.com/DataDog/chaos-controller/mocks"
-	chaostypes "github.com/DataDog/chaos-controller/types"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
@@ -24,6 +19,12 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/eventnotifier"
+	notifTypes "github.com/DataDog/chaos-controller/eventnotifier/types"
+	"github.com/DataDog/chaos-controller/mocks"
+	chaostypes "github.com/DataDog/chaos-controller/types"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -124,7 +125,7 @@ var _ = Describe("NotifierSink", func() {
 			)
 
 			When("the Notifier is triggered", func() {
-				DescribeTable("without annotation", func(event corev1.Event, expectedObject client.Object, expectedNotifType notifTypes.NotificationType) {
+				DescribeTable("without annotation", func(ctx SpecContext, event corev1.Event, expectedObject client.Object, expectedNotifType notifTypes.NotificationType) {
 					// Arrange
 					By("expecting the client to get the object")
 					mockClient.EXPECT().Get(
@@ -145,7 +146,7 @@ var _ = Describe("NotifierSink", func() {
 					notifierMock := eventnotifier.NewNotifierMock(GinkgoT())
 
 					By("expecting the notifier to be called")
-					notifierMock.EXPECT().Notify(expectedObject, event, expectedNotifType).Return(nil)
+					notifierMock.EXPECT().Notify(mock.Anything, expectedObject, event, expectedNotifType).Return(nil)
 					notifierSink := NotifierSink{
 						client:   mockClient,
 						notifier: notifierMock,
@@ -323,7 +324,7 @@ var _ = Describe("NotifierSink", func() {
 					),
 				)
 
-				DescribeTable("with annotation", func(event corev1.Event, expectedObject client.Object, expectedNotifType notifTypes.NotificationType) {
+				DescribeTable("with annotation", func(ctx SpecContext, event corev1.Event, expectedObject client.Object, expectedNotifType notifTypes.NotificationType) {
 					// Arrange
 					annotations := map[string]string{}
 
@@ -346,7 +347,7 @@ var _ = Describe("NotifierSink", func() {
 					notifierMock := eventnotifier.NewNotifierMock(GinkgoT())
 
 					By("expecting the notifier to be called")
-					notifierMock.EXPECT().Notify(expectedObject, event, expectedNotifType).Return(nil)
+					notifierMock.EXPECT().Notify(mock.Anything, expectedObject, event, expectedNotifType).Return(nil)
 					notifierSink := NotifierSink{
 						client:   mockClient,
 						notifier: notifierMock,
@@ -718,33 +719,30 @@ var _ = Describe("NotifierSink", func() {
 					}
 
 					By("expecting the client to get the object")
-					mockClient.EXPECT().Get(
-						mock.Anything, types.NamespacedName{Namespace: event.InvolvedObject.Namespace, Name: event.InvolvedObject.Name}, mock.Anything,
-					).RunAndReturn(func(ctx context.Context, name types.NamespacedName, object client.Object, option ...client.GetOption) error { //nolint:ineffassign,staticcheck
-						switch objectKind {
-						case v1beta1.DisruptionKind:
-							//nolint:ineffassign,staticcheck
-							object = &v1beta1.Disruption{
-								TypeMeta: metav1.TypeMeta{
-									Kind: v1beta1.DisruptionKind,
-								},
+					mockClient.EXPECT().Get(mock.Anything, mock.Anything, mock.Anything).
+						RunAndReturn(func(ctx context.Context, name types.NamespacedName, object client.Object, option ...client.GetOption) error {
+							switch objectKind {
+							case v1beta1.DisruptionKind:
+								*object.(*v1beta1.Disruption) = v1beta1.Disruption{
+									TypeMeta: metav1.TypeMeta{
+										Kind: v1beta1.DisruptionKind,
+									},
+								}
+							case v1beta1.DisruptionCronKind:
+								*object.(*v1beta1.DisruptionCron) = v1beta1.DisruptionCron{
+									TypeMeta: metav1.TypeMeta{
+										Kind: v1beta1.DisruptionCronKind,
+									},
+								}
 							}
-						case v1beta1.DisruptionCronKind:
-							//nolint:ineffassign,staticcheck
-							object = &v1beta1.DisruptionCron{
-								TypeMeta: metav1.TypeMeta{
-									Kind: v1beta1.DisruptionCronKind,
-								},
-							}
-						}
 
-						return nil
-					})
+							return nil
+						})
 
 					notifierMock := eventnotifier.NewNotifierMock(GinkgoT())
 
 					By("expecting the notifier to be called")
-					notifierMock.EXPECT().Notify(mock.Anything, event, mock.Anything).Return(fmt.Errorf("notify error"))
+					notifierMock.EXPECT().Notify(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("notify error"))
 
 					notifierSink := NotifierSink{
 						client:   mockClient,

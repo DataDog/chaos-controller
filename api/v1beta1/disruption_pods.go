@@ -9,16 +9,18 @@ import (
 	"context"
 	"fmt"
 
-	chaostypes "github.com/DataDog/chaos-controller/types"
-	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	cLog "github.com/DataDog/chaos-controller/log"
+	"github.com/DataDog/chaos-controller/o11y/tags"
+	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
 // GetChaosPods returns chaos pods owned by the given instance and having the given labels
 // both instance and label set are optional but at least one must be provided
-func GetChaosPods(ctx context.Context, log *zap.SugaredLogger, chaosNamespace string, k8sClient client.Client, instance *Disruption, ls labels.Set) ([]corev1.Pod, error) {
+func GetChaosPods(ctx context.Context, chaosNamespace string, k8sClient client.Client, instance *Disruption, ls labels.Set) ([]corev1.Pod, error) {
 	pods := &corev1.PodList{}
 
 	if k8sClient == nil {
@@ -56,9 +58,11 @@ func GetChaosPods(ctx context.Context, log *zap.SugaredLogger, chaosNamespace st
 		podNames = append(podNames, pod.Name)
 	}
 
-	if log != nil {
-		log.Debugw("searching for chaos pods with label selector...", "labels", ls.String(), "foundPods", podNames)
-	}
+	// Get logger from context for debugging
+	cLog.FromContext(ctx).Debugw("searching for chaos pods with label selector...",
+		tags.LabelsKey, ls.String(),
+		tags.FoundPodsKey, podNames,
+	)
 
 	return pods.Items, nil
 }

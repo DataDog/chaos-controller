@@ -11,9 +11,10 @@ import (
 	"io"
 	"net/http"
 
-	"go.uber.org/zap"
-
 	"github.com/tidwall/gjson"
+
+	cLog "github.com/DataDog/chaos-controller/log"
+	"github.com/DataDog/chaos-controller/o11y/tags"
 )
 
 // BearerAuthTokenProvider defines an interface for retrieving authentication tokens.
@@ -27,7 +28,6 @@ var _ BearerAuthTokenProvider = bearerAuthTokenProvider{}
 // bearerAuthTokenProvider implements the BearerAuthTokenProvider interface for
 // retrieving bearer tokens from a specified URL using HTTP GET request.
 type bearerAuthTokenProvider struct {
-	Logger    *zap.SugaredLogger
 	URL       string
 	Client    *http.Client
 	Headers   map[string]string
@@ -35,9 +35,8 @@ type bearerAuthTokenProvider struct {
 }
 
 // NewBearerAuthTokenProvider creates a new BearerAuthTokenProvider.
-func NewBearerAuthTokenProvider(logger *zap.SugaredLogger, client *http.Client, url string, headers map[string]string, tokenPath string) BearerAuthTokenProvider {
+func NewBearerAuthTokenProvider(client *http.Client, url string, headers map[string]string, tokenPath string) BearerAuthTokenProvider {
 	return bearerAuthTokenProvider{
-		logger,
 		url,
 		client,
 		headers,
@@ -56,7 +55,9 @@ func (b bearerAuthTokenProvider) AuthToken(ctx context.Context) (string, error) 
 		req.Header.Add(headerKey, headerValue)
 	}
 
-	b.Logger.Debugw("sending request to get token", "req", fmt.Sprintf("%+v", req))
+	logger := cLog.FromContext(ctx).With(tags.ReqKey, fmt.Sprintf("%+v", req))
+
+	logger.Debugw("sending request to get token")
 
 	res, err := b.Client.Do(req)
 	if err != nil {
@@ -65,7 +66,7 @@ func (b bearerAuthTokenProvider) AuthToken(ctx context.Context) (string, error) 
 
 	defer func() {
 		if err = res.Body.Close(); err != nil {
-			b.Logger.Warnw("an error occurred while closing body after reading auth token", "error", err)
+			logger.Warnw("an error occurred while closing body after reading auth token", tags.ErrorKey, err)
 		}
 	}()
 

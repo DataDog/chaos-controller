@@ -10,8 +10,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/DataDog/chaos-controller/cpuset"
 	"go.uber.org/zap"
+
+	"github.com/DataDog/chaos-controller/cpuset"
+	"github.com/DataDog/chaos-controller/o11y/tags"
 )
 
 // Manager represents a cgroup manager able to join the given cgroup
@@ -101,7 +103,7 @@ func (m manager) ReadCPUSet() (cpuset.CPUSet, error) {
 func (m manager) Write(controller, file, data string) error {
 	controllerDir := m.cgroups.Path(controller)
 
-	m.log.Infow("writing to cgroup file", "path", filepath.Join(controllerDir, file), "data", data)
+	m.log.Infow("writing to cgroup file", tags.PathKey, filepath.Join(controllerDir, file), tags.DataKey, data)
 
 	if m.dryRun {
 		return nil
@@ -112,7 +114,7 @@ func (m manager) Write(controller, file, data string) error {
 
 // Join adds the given PID to all available controllers of the cgroup
 func (m manager) Join(pid int) error {
-	m.log.Infow("moving the pid to cgroup", "pid", pid)
+	m.log.Infow("moving the pid to cgroup", tags.PidKey, pid)
 
 	if m.dryRun {
 		return nil

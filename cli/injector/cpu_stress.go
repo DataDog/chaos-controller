@@ -8,9 +8,11 @@ package main
 import (
 	"fmt"
 
-	"github.com/DataDog/chaos-controller/injector"
-	"github.com/DataDog/chaos-controller/process"
 	"github.com/spf13/cobra"
+
+	"github.com/DataDog/chaos-controller/injector"
+	"github.com/DataDog/chaos-controller/o11y/tags"
+	"github.com/DataDog/chaos-controller/process"
 )
 
 const (
@@ -30,8 +32,8 @@ var cpuPressureStressCmd = &cobra.Command{
 
 		percentage, _ := cmd.Flags().GetInt(percentageFlagName)
 
-		log = log.With("percentage", percentage)
-		log.Infow("stressing every CPU allocated to target", "disruption_target", config.TargetName())
+		log = log.With(tags.PercentageKey, percentage)
+		log.Infow("stressing every CPU allocated to target", tags.TargetNameKey, config.TargetName())
 
 		runtime := process.NewRuntime(config.Disruption.DryRun)
 		process := process.NewManager(config.Disruption.DryRun)

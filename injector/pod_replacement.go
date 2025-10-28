@@ -10,12 +10,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/types"
+	"github.com/DataDog/chaos-controller/o11y/tags"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+
+	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/types"
 )
 
 // podReplacementInjector describes a pod replacement injector
@@ -64,12 +66,17 @@ func (i *podReplacementInjector) GetDisruptionKind() types.DisruptionKindName {
 func (i *podReplacementInjector) Inject() error {
 	ctx := context.Background()
 
-	i.config.Log.Infow("starting pod replacement injection",
-		"nodeName", i.nodeName,
-		"deleteStorage", i.spec.DeleteStorage,
-		"forceDelete", i.spec.ForceDelete,
-		"gracePeriodSeconds", i.spec.GracePeriodSeconds,
+	i.config.Log = i.config.Log.With(
+		tags.DisruptionKey, i.config.Disruption.DisruptionName,
+		tags.TargetNameKey, i.config.TargetName(),
+		tags.DisruptionKindKey, i.GetDisruptionKind(),
+		tags.NodeNameKey, i.nodeName,
+		tags.DeleteStorageKey, i.spec.DeleteStorage,
+		tags.ForceDeleteKey, i.spec.ForceDelete,
+		tags.GracePeriodSecondsKey, i.spec.GracePeriodSeconds,
 	)
+
+	i.config.Log.Infow("starting pod replacement injection")
 
 	// Step 1: Cordon the node
 	if err := i.cordonNode(ctx); err != nil {
@@ -82,7 +89,12 @@ func (i *podReplacementInjector) Inject() error {
 		return fmt.Errorf("failed to get target pod: %w", err)
 	}
 
-	i.config.Log.Infow("found target pod", "nodeName", i.nodeName, "podName", targetPod.Name, "podNamespace", targetPod.Namespace, "podUID", targetPod.UID)
+	i.config.Log = i.config.Log.With(
+		tags.TargetPodNameKey, targetPod.Name,
+		tags.TargetNamespaceKey, targetPod.Namespace,
+		tags.TargetPodUIDKey, targetPod.UID,
+	)
+	i.config.Log.Infow("found target pod")
 
 	// Step 3: Delete PVCs if requested
 	if i.spec.DeleteStorage {
@@ -101,9 +113,7 @@ func (i *podReplacementInjector) Inject() error {
 		return fmt.Errorf("failed to uncordon node %s: %w", i.nodeName, err)
 	}
 
-	i.config.Log.Infow("pod replacement injection completed successfully",
-		"nodeName", i.nodeName,
-	)
+	i.config.Log.Infow("pod replacement injection completed successfully")
 
 	return nil
 }
@@ -111,7 +121,7 @@ func (i *podReplacementInjector) Inject() error {
 // cordonNode cordons the specified node to prevent new pods from being scheduled
 func (i *podReplacementInjector) cordonNode(ctx context.Context) error {
 	if i.config.Disruption.DryRun {
-		i.config.Log.Infow("dry-run: would cordon node", "nodeName", i.nodeName)
+		i.config.Log.Infow("dry-run: would cordon node")
 		return nil
 	}
 
@@ -122,7 +132,7 @@ func (i *podReplacementInjector) cordonNode(ctx context.Context) error {
 	}
 
 	if node.Spec.Unschedulable {
-		i.config.Log.Infow("node is already cordoned", "nodeName", i.nodeName)
+		i.config.Log.Infow("node is already cordoned")
 		i.cordoned = true
 
 		return nil
@@ -137,7 +147,7 @@ func (i *podReplacementInjector) cordonNode(ctx context.Context) error {
 	}
 
 	i.cordoned = true
-	i.config.Log.Infow("successfully cordoned node", "nodeName", i.nodeName)
+	i.config.Log.Infow("successfully cordoned node")
 
 	return nil
 }
@@ -145,12 +155,12 @@ func (i *podReplacementInjector) cordonNode(ctx context.Context) error {
 // cordonNode cordons the specified node to prevent new pods from being scheduled
 func (i *podReplacementInjector) uncordonNode(ctx context.Context) error {
 	if !i.cordoned {
-		i.config.Log.Infow("node was not cordoned by this injector, skipping uncordon", "nodeName", i.nodeName)
+		i.config.Log.Infow("node was not cordoned by this injector, skipping uncordon")
 		return nil
 	}
 
 	if i.config.Disruption.DryRun {
-		i.config.Log.Infow("dry-run: would uncordon node", "nodeName", i.nodeName)
+		i.config.Log.Infow("dry-run: would uncordon node")
 		return nil
 	}
 
@@ -161,7 +171,7 @@ func (i *podReplacementInjector) uncordonNode(ctx context.Context) error {
 	}
 
 	if !node.Spec.Unschedulable {
-		i.config.Log.Infow("node is already uncordoned", "nodeName", i.nodeName)
+		i.config.Log.Infow("node is already uncordoned")
 		return nil
 	}
 
@@ -173,7 +183,7 @@ func (i *podReplacementInjector) uncordonNode(ctx context.Context) error {
 		return fmt.Errorf("failed to uncordon node %s: %w", i.nodeName, err)
 	}
 
-	i.config.Log.Infow("successfully uncordoned node", "nodeName", i.nodeName)
+	i.config.Log.Infow("successfully uncordoned node")
 
 	return nil
 }
@@ -217,7 +227,7 @@ func (i *podReplacementInjector) deletePVCs(ctx context.Context, pods []corev1.P
 			if volume.PersistentVolumeClaim != nil {
 				pvcName := volume.PersistentVolumeClaim.ClaimName
 				pvcNames[pvcName] = pod.Namespace
-				i.config.Log.Infow("found PVC to delete", "pvcName", pvcName, "namespace", pod.Namespace, "podName", pod.Name)
+				i.config.Log.Infow("found PVC to delete", tags.PVCNameKey, pvcName, tags.PodNamespaceKey, pod.Namespace, tags.PodNameKey, pod.Name)
 			}
 		}
 	}
@@ -230,20 +240,20 @@ func (i *podReplacementInjector) deletePVCs(ctx context.Context, pods []corev1.P
 	// Delete each PVC
 	for pvcName, namespace := range pvcNames {
 		if i.config.Disruption.DryRun {
-			i.config.Log.Infow("dry-run: would delete PVC", "pvcName", pvcName, "namespace", namespace)
+			i.config.Log.Infow("dry-run: would delete PVC", tags.PVCNameKey, pvcName, tags.PodNamespaceKey, namespace)
 			continue
 		}
 
 		err := i.k8sClientset.CoreV1().PersistentVolumeClaims(namespace).Delete(ctx, pvcName, metav1.DeleteOptions{})
 		if err != nil && !apierrors.IsNotFound(err) {
-			i.config.Log.Errorw("failed to delete PVC", "pvcName", pvcName, "namespace", namespace, "error", err)
+			i.config.Log.Errorw("failed to delete PVC", tags.PVCNameKey, pvcName, tags.PodNamespaceKey, namespace, tags.ErrorKey, err)
 			return fmt.Errorf("failed to delete PVC %s in namespace %s: %w", pvcName, namespace, err)
 		}
 
 		if err == nil {
-			i.config.Log.Infow("successfully deleted PVC", "pvcName", pvcName, "namespace", namespace)
+			i.config.Log.Infow("successfully deleted PVC", tags.PVCNameKey, pvcName, tags.PodNamespaceKey, namespace)
 		} else {
-			i.config.Log.Infow("PVC not found (already deleted)", "pvcName", pvcName, "namespace", namespace)
+			i.config.Log.Infow("PVC not found (already deleted)", tags.PVCNameKey, pvcName, tags.PodNamespaceKey, namespace)
 		}
 	}
 
@@ -266,9 +276,9 @@ func (i *podReplacementInjector) deletePods(ctx context.Context, pods []corev1.P
 	for _, pod := range pods {
 		if i.config.Disruption.DryRun {
 			i.config.Log.Infow("dry-run: would delete pod",
-				"podName", pod.Name,
-				"namespace", pod.Namespace,
-				"gracePeriodSeconds", deleteOptions.GracePeriodSeconds,
+				tags.PodNameKey, pod.Name,
+				tags.PodNamespaceKey, pod.Namespace,
+				tags.GracePeriodSecondsKey, deleteOptions.GracePeriodSeconds,
 			)
 
 			continue
@@ -276,18 +286,18 @@ func (i *podReplacementInjector) deletePods(ctx context.Context, pods []corev1.P
 
 		err := i.k8sClientset.CoreV1().Pods(pod.Namespace).Delete(ctx, pod.Name, deleteOptions)
 		if err != nil && !apierrors.IsNotFound(err) {
-			i.config.Log.Errorw("failed to delete pod", "podName", pod.Name, "namespace", pod.Namespace, "error", err)
+			i.config.Log.Errorw("failed to delete pod", tags.PodNameKey, pod.Name, tags.PodNamespaceKey, pod.Namespace, tags.ErrorKey, err)
 			return fmt.Errorf("failed to delete pod %s in namespace %s: %w", pod.Name, pod.Namespace, err)
 		}
 
 		if err == nil {
 			i.config.Log.Infow("successfully deleted pod",
-				"podName", pod.Name,
-				"namespace", pod.Namespace,
-				"gracePeriodSeconds", deleteOptions.GracePeriodSeconds,
+				tags.PodNameKey, pod.Name,
+				tags.PodNamespaceKey, pod.Namespace,
+				tags.GracePeriodSecondsKey, deleteOptions.GracePeriodSeconds,
 			)
 		} else {
-			i.config.Log.Infow("pod not found (already deleted)", "podName", pod.Name, "namespace", pod.Namespace)
+			i.config.Log.Infow("pod not found (already deleted)", tags.PodNameKey, pod.Name, tags.PodNamespaceKey, pod.Namespace)
 		}
 	}
 

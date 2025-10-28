@@ -12,39 +12,33 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/eventnotifier/types"
-	"github.com/DataDog/chaos-controller/eventnotifier/utils"
 	"github.com/DataDog/jsonapi"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zaptest"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apimachineryTypes "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/eventnotifier/types"
+	"github.com/DataDog/chaos-controller/eventnotifier/utils"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Notifier", func() {
-	var (
-		logger                    *zap.SugaredLogger
+	const (
 		defaultDisruptionName     = "disruption-name"
 		defaultDisruptionCronName = "disruption-cron-name"
 	)
-
-	BeforeEach(func() {
-		logger = zaptest.NewLogger(GinkgoT()).Sugar()
-	})
 
 	Describe("New", func() {
 		Describe("success cases", func() {
 			DescribeTable("should return a notifier instance", func(config Config) {
 				// Act
-				notifier, err := New(types.NotifiersCommonConfig{}, config, logger)
+				notifier, err := New(types.NotifiersCommonConfig{}, config)
 
 				// Assert
 				Expect(err).ShouldNot(HaveOccurred())
@@ -86,7 +80,7 @@ var _ = Describe("Notifier", func() {
 					}
 
 					// Act
-					notifier, err := New(types.NotifiersCommonConfig{}, config, logger)
+					notifier, err := New(types.NotifiersCommonConfig{}, config)
 
 					// Assert
 					Expect(err).ShouldNot(HaveOccurred())
@@ -109,7 +103,7 @@ var _ = Describe("Notifier", func() {
 					}
 
 					// Act
-					notifier, err := New(types.NotifiersCommonConfig{}, config, logger)
+					notifier, err := New(types.NotifiersCommonConfig{}, config)
 
 					// Assert
 					Expect(err).ShouldNot(HaveOccurred())
@@ -129,7 +123,7 @@ var _ = Describe("Notifier", func() {
 		Describe("error cases", func() {
 			DescribeTable("the URL is not defined", func(config Config, expectedError string) {
 				// Act
-				notifier, err := New(types.NotifiersCommonConfig{}, config, logger)
+				notifier, err := New(types.NotifiersCommonConfig{}, config)
 
 				// Assert
 				Expect(err).Should(HaveOccurred())
@@ -187,18 +181,17 @@ var _ = Describe("Notifier", func() {
 
 	Describe("Notify", func() {
 		Describe("success cases", func() {
-			DescribeTable("with an unsupported object", func(obj client.Object) {
+			DescribeTable("with an unsupported object", func(ctx SpecContext, obj client.Object) {
 				// Arrange
 				notifier := Notifier{
 					common: types.NotifiersCommonConfig{
 						ClusterName: "cluster-name",
 					},
 					client: &http.Client{},
-					logger: logger,
 				}
 
 				// Act
-				err := notifier.Notify(obj, corev1.Event{}, types.NotificationInfo)
+				err := notifier.Notify(ctx, obj, corev1.Event{}, types.NotificationInfo)
 
 				// Assert
 				Expect(err).ShouldNot(HaveOccurred())
@@ -209,7 +202,7 @@ var _ = Describe("Notifier", func() {
 				Entry("with a namespace object", &corev1.Namespace{}),
 			)
 
-			DescribeTable("with supported object", func(objKind string) {
+			DescribeTable("with supported object", func(ctx SpecContext, objKind string) {
 				// Arrange
 				var obj client.Object
 
@@ -313,7 +306,6 @@ var _ = Describe("Notifier", func() {
 						ClusterName: "cluster-name",
 					},
 					client: &http.Client{},
-					logger: logger,
 					disruptionConfig: DisruptionConfig{
 						Enabled: true,
 						URL:     svrDisruption.URL,
@@ -325,7 +317,7 @@ var _ = Describe("Notifier", func() {
 				}
 
 				// Act
-				err := notifier.Notify(obj, event, expectedNotificationType)
+				err := notifier.Notify(ctx, obj, event, expectedNotificationType)
 
 				// Assert
 				Expect(err).ShouldNot(HaveOccurred())
@@ -335,7 +327,7 @@ var _ = Describe("Notifier", func() {
 			)
 
 			When("the authentication provider is defined", func() {
-				It("should set the Authorization header", func() {
+				It("should set the Authorization header", func(ctx SpecContext) {
 					// Arrange
 					svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 						By("sending a POST request")
@@ -350,7 +342,6 @@ var _ = Describe("Notifier", func() {
 
 					notifier := Notifier{
 						client:            &http.Client{},
-						logger:            logger,
 						authTokenProvider: mockBearerAuthTokenProvider,
 						disruptionConfig: DisruptionConfig{
 							Enabled: true,
@@ -359,19 +350,15 @@ var _ = Describe("Notifier", func() {
 					}
 
 					// Act
-					err := notifier.Notify(
-						&v1beta1.Disruption{
-							ObjectMeta: metav1.ObjectMeta{
-								UID: apimachineryTypes.UID(uuid.New().String()),
-							},
+					err := notifier.Notify(ctx, &v1beta1.Disruption{
+						ObjectMeta: metav1.ObjectMeta{
+							UID: apimachineryTypes.UID(uuid.New().String()),
 						},
-						corev1.Event{
-							InvolvedObject: corev1.ObjectReference{
-								Kind: v1beta1.DisruptionKind,
-							},
+					}, corev1.Event{
+						InvolvedObject: corev1.ObjectReference{
+							Kind: v1beta1.DisruptionKind,
 						},
-						types.NotificationInfo,
-					)
+					}, types.NotificationInfo)
 
 					// Assert
 					Expect(err).ShouldNot(HaveOccurred())
@@ -379,7 +366,7 @@ var _ = Describe("Notifier", func() {
 			})
 
 			Context("with custom headers", func() {
-				It("should set the custom headers", func() {
+				It("should set the custom headers", func(ctx SpecContext) {
 					// Arrange
 					srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 						By("sending a POST request")
@@ -396,7 +383,6 @@ var _ = Describe("Notifier", func() {
 							"Custom-Header":  "custom-value",
 							"Custom-Header2": "custom-value2",
 						},
-						logger: logger,
 						disruptionConfig: DisruptionConfig{
 							Enabled: true,
 							URL:     srv.URL,
@@ -404,26 +390,22 @@ var _ = Describe("Notifier", func() {
 					}
 
 					// Act
-					err := notifier.Notify(
-						&v1beta1.Disruption{
-							ObjectMeta: metav1.ObjectMeta{
-								UID: apimachineryTypes.UID(uuid.New().String()),
-							},
+					err := notifier.Notify(ctx, &v1beta1.Disruption{
+						ObjectMeta: metav1.ObjectMeta{
+							UID: apimachineryTypes.UID(uuid.New().String()),
 						},
-						corev1.Event{
-							InvolvedObject: corev1.ObjectReference{
-								Kind: v1beta1.DisruptionKind,
-							},
+					}, corev1.Event{
+						InvolvedObject: corev1.ObjectReference{
+							Kind: v1beta1.DisruptionKind,
 						},
-						types.NotificationInfo,
-					)
+					}, types.NotificationInfo)
 
 					// Assert
 					Expect(err).ShouldNot(HaveOccurred())
 				})
 			})
 
-			DescribeTable("when notifier is disabled", func(notifier Notifier, object client.Object, event corev1.Event) {
+			DescribeTable("when notifier is disabled", func(ctx SpecContext, notifier Notifier, object client.Object, event corev1.Event) {
 				// Arrange
 				httpCallCount := 0
 				httpServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -433,14 +415,9 @@ var _ = Describe("Notifier", func() {
 				notifier.client = &http.Client{}
 				notifier.disruptionConfig.URL = httpServer.URL
 				notifier.disruptionCronConfig.URL = httpServer.URL
-				notifier.logger = logger
 
 				// Act
-				err := notifier.Notify(
-					object,
-					event,
-					types.NotificationInfo,
-				)
+				err := notifier.Notify(ctx, object, event, types.NotificationInfo)
 
 				// Assert
 				Expect(err).ShouldNot(HaveOccurred())
@@ -493,7 +470,7 @@ var _ = Describe("Notifier", func() {
 
 		Describe("error cases", func() {
 			When("the request fails", func() {
-				DescribeTable("it should return the error", func(httpStatus int, objKind string) {
+				DescribeTable("it should return the error", func(ctx SpecContext, httpStatus int, objKind string) {
 					// Arrange
 					var obj client.Object
 
@@ -535,7 +512,6 @@ var _ = Describe("Notifier", func() {
 							ClusterName: "cluster-name",
 						},
 						client: &http.Client{},
-						logger: logger,
 						disruptionConfig: DisruptionConfig{
 							Enabled: true,
 							URL:     svr.URL,
@@ -547,7 +523,7 @@ var _ = Describe("Notifier", func() {
 					}
 
 					// Act
-					err := notifier.Notify(obj, event, expectedNoticationType)
+					err := notifier.Notify(ctx, obj, event, expectedNoticationType)
 
 					// Assert
 					Expect(err).Should(HaveOccurred())
@@ -562,14 +538,13 @@ var _ = Describe("Notifier", func() {
 			})
 
 			When("the authentication provider fails", func() {
-				It("should return the error", func() {
+				It("should return the error", func(ctx SpecContext) {
 					// Arrange
 					mockBearerAuthTokenProvider := NewBearerAuthTokenProviderMock(GinkgoT())
 					mockBearerAuthTokenProvider.EXPECT().AuthToken(mock.Anything).Return("", fmt.Errorf("error"))
 
 					notifier := Notifier{
 						client:            &http.Client{},
-						logger:            logger,
 						authTokenProvider: mockBearerAuthTokenProvider,
 						disruptionConfig: DisruptionConfig{
 							Enabled: true,
@@ -577,7 +552,7 @@ var _ = Describe("Notifier", func() {
 					}
 
 					// Act
-					err := notifier.Notify(&v1beta1.Disruption{
+					err := notifier.Notify(ctx, &v1beta1.Disruption{
 						ObjectMeta: metav1.ObjectMeta{
 							UID: apimachineryTypes.UID(uuid.New().String()),
 						},

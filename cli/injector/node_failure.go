@@ -6,9 +6,11 @@
 package main
 
 import (
+	"github.com/spf13/cobra"
+
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/injector"
-	"github.com/spf13/cobra"
+	"github.com/DataDog/chaos-controller/o11y/tags"
 )
 
 var nodeFailureCmd = &cobra.Command{
@@ -27,7 +29,7 @@ var nodeFailureCmd = &cobra.Command{
 		for _, config := range configs {
 			inj, err := injector.NewNodeFailureInjector(spec, injector.NodeFailureInjectorConfig{Config: config})
 			if err != nil {
-				log.Fatalw("error creating the node injector", "error", err)
+				log.Fatalw("error creating the node injector", tags.ErrorKey, err)
 			}
 
 			injectors = append(injectors, inj)
