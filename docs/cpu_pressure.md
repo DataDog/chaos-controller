@@ -38,7 +38,7 @@ When the injector pod starts:
 
 > NB: stressing 100% of the allocated cpuset DOES NOT MEAN stressing 100% of all cores allocated if the defined CPU is below 1 in Kubernetes (e.g. `100m`)
 > NB2: container being part of the same pods can have similar core associated, however we still need to stress each of them like if they were alone, linux CPU scheduler is the one that will throttling us appropriately
-
+> NB3: there is a maximum CPU limit of 8192.
 <p align="center"><kbd>
     <img src="img/cpu/cgroup_disrupted.png" width=500 align="center" />
 </kbd></p>
