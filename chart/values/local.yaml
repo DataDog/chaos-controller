@@ -53,9 +53,6 @@ controller:
 injector:
   serviceAccount: chaos-injector
   chaosNamespace: chaos-engineering
-  dnsDisruption:
-    dnsServer: ""
-    kubeDns: all
   labels:
     # If Datadog agent is installed, Datadog admission controller will inject some env vars automatically
     admission.datadoghq.com/enabled: "true"

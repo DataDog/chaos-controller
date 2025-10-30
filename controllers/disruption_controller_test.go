@@ -59,15 +59,6 @@ var _ = Describe("Disruption Controller", func() {
 					BandwidthLimit: 10000,
 				},
 				CPUPressure: &chaosv1beta1.CPUPressureSpec{},
-				DNS: []chaosv1beta1.HostRecordPair{
-					{
-						Hostname: "ctn",
-						Record: chaosv1beta1.DNSRecord{
-							Type:  "A",
-							Value: "10.0.0.1, 10.0.0.2 , 10.0.0.3",
-						},
-					},
-				},
 				GRPC: &chaosv1beta1.GRPCDisruptionSpec{
 					Port: 2000,
 					Endpoints: []chaosv1beta1.EndpointAlteration{
@@ -101,7 +92,7 @@ var _ = Describe("Disruption Controller", func() {
 		})
 
 		It("should only select half of all pods", func(ctx SpecContext) {
-			ExpectChaosPods(ctx, disruption, 4)
+			ExpectChaosPods(ctx, disruption, 3)
 		})
 	})
 
@@ -115,7 +106,7 @@ var _ = Describe("Disruption Controller", func() {
 		})
 
 		It("should only select half of all pods", func(ctx SpecContext) {
-			ExpectChaosPods(ctx, disruption, 4)
+			ExpectChaosPods(ctx, disruption, 3)
 		})
 	})
 
@@ -226,10 +217,10 @@ var _ = Describe("Disruption Controller", func() {
 	Context("target one pod and one container only", func() {
 		It("should target all the selected pods", func(ctx SpecContext) {
 			By("Ensuring that the inject pod has been created")
-			ExpectChaosPods(ctx, disruption, 4)
+			ExpectChaosPods(ctx, disruption, 3)
 
 			By("Ensuring that the chaos pods have correct number of targeted containers")
-			ExpectChaosInjectors(ctx, disruption, 4)
+			ExpectChaosInjectors(ctx, disruption, 3)
 		})
 	})
 
@@ -240,10 +231,10 @@ var _ = Describe("Disruption Controller", func() {
 
 		It("should target all the selected pods", func(ctx SpecContext) {
 			By("Ensuring that the chaos pods have been created")
-			ExpectChaosPods(ctx, disruption, 8)
+			ExpectChaosPods(ctx, disruption, 6)
 
 			By("Ensuring that the chaos pods have correct number of targeted containers")
-			ExpectChaosInjectors(ctx, disruption, 8)
+			ExpectChaosInjectors(ctx, disruption, 6)
 		})
 	})
 
@@ -257,10 +248,10 @@ var _ = Describe("Disruption Controller", func() {
 			InjectPodsAndDisruption(ctx, *disruptionTwo, skipSecondPod)
 
 			By("Ensuring that no extra chaos pods have been created")
-			ExpectChaosPods(ctx, disruption, 8)
+			ExpectChaosPods(ctx, disruption, 6)
 
 			By("Ensuring that the chaos pods have correct number of targeted containers")
-			ExpectChaosInjectors(ctx, disruption, 8)
+			ExpectChaosInjectors(ctx, disruption, 6)
 		})
 	})
 
@@ -271,10 +262,10 @@ var _ = Describe("Disruption Controller", func() {
 
 		It("should target all the selected pods", func(ctx SpecContext) {
 			By("Ensuring that the inject pod has been created")
-			ExpectChaosPods(ctx, disruption, 4)
+			ExpectChaosPods(ctx, disruption, 3)
 
 			By("Ensuring that the chaos pods have correct number of targeted containers")
-			ExpectChaosInjectors(ctx, disruption, 4)
+			ExpectChaosInjectors(ctx, disruption, 3)
 		})
 	})
 
@@ -287,10 +278,10 @@ var _ = Describe("Disruption Controller", func() {
 
 		It("should target all the selected pods", func(ctx SpecContext) {
 			By("Ensuring that the chaos pods have been created")
-			ExpectChaosPods(ctx, disruption, 8)
+			ExpectChaosPods(ctx, disruption, 6)
 
 			By("Ensuring that the chaos pods have correct number of targeted containers")
-			ExpectChaosInjectors(ctx, disruption, 12)
+			ExpectChaosInjectors(ctx, disruption, 9)
 		})
 	})
 
@@ -742,7 +733,6 @@ var _ = Describe("Disruption Controller", func() {
 				// let's have a quick disruption by default when we test expiration
 				disruption.Spec.Duration = shortDisruptionDuration
 				disruption.Spec.CPUPressure = nil
-				disruption.Spec.DNS = nil
 				disruption.Spec.GRPC = nil
 			})
 

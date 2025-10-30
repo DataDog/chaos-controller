@@ -496,7 +496,7 @@ func (r *DisruptionReconciler) updateInjectionStatus(ctx context.Context, instan
 	instance.Status.InjectionStatus = status
 
 	// we divide by the number of active disruption types because we create one pod per target per disruption
-	// ex: we would have 10 pods if we target 50% of all targets with 2 disruption types like network and dns
+	// ex: we would have 10 pods if we target 50% of all targets with 2 disruption types like network and cpu pressure
 	// we also consider a target is not fully injected if not all disruptions are injected in it
 	if instance.Spec.DisruptionCount() == 0 {
 		instance.Status.InjectedTargetsCount = 0

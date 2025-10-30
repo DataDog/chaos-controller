@@ -32,7 +32,6 @@ import (
 	"github.com/DataDog/chaos-controller/injector"
 	logger "github.com/DataDog/chaos-controller/log"
 	"github.com/DataDog/chaos-controller/netns"
-	"github.com/DataDog/chaos-controller/network"
 	"github.com/DataDog/chaos-controller/o11y/metrics"
 	metricstypes "github.com/DataDog/chaos-controller/o11y/metrics/types"
 	"github.com/DataDog/chaos-controller/o11y/tags"
@@ -90,7 +89,6 @@ func init() {
 	rootCmd.AddCommand(cpuPressureStressCmd)
 	rootCmd.AddCommand(diskFailureCmd)
 	rootCmd.AddCommand(diskPressureCmd)
-	rootCmd.AddCommand(dnsDisruptionCmd)
 	rootCmd.AddCommand(grpcDisruptionCmd)
 
 	// basic args
@@ -105,8 +103,6 @@ func init() {
 	rootCmd.PersistentFlags().DurationVar(&disruptionArgs.PulseDormantDuration, "pulse-dormant-duration", time.Duration(0), "Duration of the disruption being dormant in a pulsing disruption (empty if the disruption is not pulsing)")
 	rootCmd.PersistentFlags().Var(notInjectedBeforeFlag, "not-injected-before", "")
 	rootCmd.PersistentFlags().Var(deadlineFlag, string(injector.DeadlineFlag), "RFC3339 time at which the disruption must be over by")
-	rootCmd.PersistentFlags().StringVar(&disruptionArgs.DNSServer, "dns-server", "8.8.8.8", "IP address of the upstream DNS server")
-	rootCmd.PersistentFlags().StringVar(&disruptionArgs.KubeDNS, "kube-dns", "off", "Whether to use kube-dns for DNS resolution (off, internal, all)")
 	rootCmd.PersistentFlags().StringVar(&disruptionArgs.ChaosNamespace, "chaos-namespace", "chaos-engineering", "Namespace that contains this chaos pod")
 	rootCmd.PersistentFlags().Uint32Var(&parentPID, string(injector.ParentPIDFlag), 0, "Parent process PID")
 
@@ -206,7 +202,6 @@ func initManagers(pid uint32) (netns.Manager, cgroup.Manager, error) {
 func initConfig() {
 	pids := []uint32{}
 	ctns := []container.Container{}
-	dnsConfig := network.DNSConfig{DNSServer: disruptionArgs.DNSServer, KubeDNS: disruptionArgs.KubeDNS}
 
 	// log when dry-run mode is enabled
 	if disruptionArgs.DryRun {
@@ -306,7 +301,6 @@ func initConfig() {
 			Cgroup:             cgroupMgr,
 			Netns:              netnsMgr,
 			K8sClient:          clientset,
-			DNS:                dnsConfig,
 			Disruption:         disruptionArgs,
 			InjectorCtx:        injectorCtx,
 		}

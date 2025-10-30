@@ -129,9 +129,6 @@ data:
       {{- end }}
       serviceAccount: {{ .Values.injector.serviceAccount | quote }}
       chaosNamespace: {{ .Values.chaosNamespace | quote }}
-      dnsDisruption:
-        dnsServer: {{ .Values.injector.dnsDisruption.dnsServer | quote }}
-        kubeDns: {{ .Values.injector.dnsDisruption.kubeDns | quote }}
       {{- if .Values.injector.networkDisruption.allowedHosts }}
       networkDisruption:
         hostResolveInterval: {{ .Values.injector.networkDisruption.hostResolveInterval | quote }}

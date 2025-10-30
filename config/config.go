@@ -82,7 +82,6 @@ type injectorConfig struct {
 	Labels            map[string]string               `json:"labels" yaml:"labels"`
 	ChaosNamespace    string                          `json:"chaosNamespace" yaml:"chaosNamespace"`
 	ServiceAccount    string                          `json:"serviceAccount" yaml:"serviceAccount"`
-	DNSDisruption     injectorDNSDisruptionConfig     `json:"dnsDisruption" yaml:"dnsDisruption"`
 	NetworkDisruption injectorNetworkDisruptionConfig `json:"networkDisruption" yaml:"networkDisruption"`
 	ImagePullSecrets  string                          `json:"imagePullSecrets" yaml:"imagePullSecrets"`
 	Tolerations       []Toleration                    `json:"tolerations" yaml:"tolerations,omitempty"`
@@ -95,11 +94,6 @@ type Toleration struct {
 	Value             string `json:"value" yaml:"value"`
 	Effect            string `json:"effect" yaml:"effect"`
 	TolerationSeconds *int64 `json:"tolerationSeconds,omitempty" yaml:"tolerationSeconds,omitempty"`
-}
-
-type injectorDNSDisruptionConfig struct {
-	DNSServer string `json:"dnsServer" yaml:"dnsServer"`
-	KubeDNS   string `json:"kubeDns" yaml:"kubeDns"`
 }
 
 type injectorNetworkDisruptionConfig struct {
@@ -332,18 +326,6 @@ func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osAr
 		return cfg, err
 	}
 
-	mainFS.StringVar(&cfg.Injector.DNSDisruption.DNSServer, "injector-dns-disruption-dns-server", "8.8.8.8", "IP address of the upstream DNS server")
-
-	if err := viper.BindPFlag("injector.dnsDisruption.dnsServer", mainFS.Lookup("injector-dns-disruption-dns-server")); err != nil {
-		return cfg, err
-	}
-
-	mainFS.StringVar(&cfg.Injector.DNSDisruption.KubeDNS, "injector-dns-disruption-kube-dns", "off", "Whether to use kube-dns for DNS resolution (off, internal, all)")
-
-	if err := viper.BindPFlag("injector.dnsDisruption.kubeDns", mainFS.Lookup("injector-dns-disruption-kube-dns")); err != nil {
-		return cfg, err
-	}
-
 	mainFS.StringSliceVar(&cfg.Injector.NetworkDisruption.AllowedHosts, "injector-network-disruption-allowed-hosts", []string{}, "List of hosts always allowed by network disruptions (format: <host>;<port>;<protocol>;<flow>)")
 
 	if err := viper.BindPFlag("injector.networkDisruption.allowedHosts", mainFS.Lookup("injector-network-disruption-allowed-hosts")); err != nil {
@@ -424,7 +406,7 @@ func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osAr
 		return cfg, err
 	}
 
-	mainFS.StringSliceVar(&cfg.Controller.DisabledDisruptions, "disabled-disruptions", []string{}, "List of Disruption Kinds to disable. These should match their kind names from types.go: e.g., `dns-disruption`, `container-failure`, etc. ")
+	mainFS.StringSliceVar(&cfg.Controller.DisabledDisruptions, "disabled-disruptions", []string{}, "List of Disruption Kinds to disable. These should match their kind names from types.go: e.g., `container-failure`, `node-failure`, etc. ")
 
 	if err := viper.BindPFlag("controller.disabledDisruptions", mainFS.Lookup("disabled-disruptions")); err != nil {
 		return cfg, err

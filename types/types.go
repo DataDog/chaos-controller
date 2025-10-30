@@ -77,8 +77,6 @@ const (
 	DisruptionKindDiskFailure = "disk-failure"
 	// DisruptionKindDiskPressure is a disk pressure disruption
 	DisruptionKindDiskPressure = "disk-pressure"
-	// DisruptionKindDNSDisruption is a dns disruption
-	DisruptionKindDNSDisruption = "dns-disruption"
 	// DisruptionKindGRPCDisruption is a grpc disruption
 	DisruptionKindGRPCDisruption = "grpc-disruption"
 	// DisruptionKindPodReplacement is a pod replacement disruption
@@ -141,7 +139,6 @@ const (
 	InjectorPadDuration = 2 * time.Second
 
 	// InjectorCgroupClassID is linked to the TC tree in the injector network disruption.
-	// Also used in the DNS Disruption to allow combined Network + DNS Disruption
 	// This value should NEVER be changed without changing the Network Disruption TC tree.
 	InjectorCgroupClassID = "0x00020002"
 )
@@ -158,7 +155,6 @@ var DisruptionKindNames = []DisruptionKindName{
 	DisruptionKindCPUPressure,
 	DisruptionKindDiskPressure,
 	DisruptionKindDiskFailure,
-	DisruptionKindDNSDisruption,
 	DisruptionKindGRPCDisruption,
 	DisruptionKindPodReplacement,
 }

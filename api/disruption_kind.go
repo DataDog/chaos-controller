@@ -13,7 +13,7 @@ import (
 	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
-// DisruptionKind contains all methods required for a disruption sub-specification (Network, DNS, CPUPressure, etc.)
+// DisruptionKind contains all methods required for a disruption sub-specification (Network, CPUPressure, etc.)
 type DisruptionKind interface {
 	// generates CLI args for the given disruption sub-specification
 	GenerateArgs() []string
@@ -33,8 +33,6 @@ type DisruptionArgs struct {
 	DisruptionNamespace  string
 	TargetName           string
 	TargetNodeName       string
-	DNSServer            string
-	KubeDNS              string
 	ChaosNamespace       string
 	DryRun               bool
 	OnInit               bool
@@ -90,12 +88,6 @@ func (d DisruptionArgs) CreateCmdArgs(args []string) []string {
 
 	if !d.NotInjectedBefore.IsZero() {
 		args = append(args, "--not-injected-before", d.NotInjectedBefore.Format(time.RFC3339))
-	}
-
-	// DNS disruption configs
-	if d.Kind == chaostypes.DisruptionKindDNSDisruption {
-		args = append(args, "--dns-server", d.DNSServer)
-		args = append(args, "--kube-dns", d.KubeDNS)
 	}
 
 	// append allowed hosts for network disruptions
