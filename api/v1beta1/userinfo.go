@@ -28,13 +28,13 @@ var (
 )
 
 // UserInfo returns extracted user info informations or an error if not available or invalid
-func (r *Disruption) UserInfo() (authV1.UserInfo, error) {
-	return getUserInfo(r.GetObjectMeta())
+func (d *Disruption) UserInfo() (authV1.UserInfo, error) {
+	return getUserInfo(d.GetObjectMeta())
 }
 
 // SetUserInfo store provided userInfo into expected disruption annotation
-func (r *Disruption) SetUserInfo(userInfo authV1.UserInfo) error {
-	return setUserInfo(userInfo, r)
+func (d *Disruption) SetUserInfo(userInfo authV1.UserInfo) error {
+	return setUserInfo(userInfo, d)
 }
 
 // UserInfo returns extracted user info informations or an error if not available or invalid

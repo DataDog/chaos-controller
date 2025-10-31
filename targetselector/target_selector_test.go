@@ -7,36 +7,37 @@ package targetselector_test
 
 import (
 	"github.com/DataDog/chaos-controller/targetselector"
-	"github.com/onsi/ginkgo/v2"
-	"github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/labels"
+
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
-var _ = ginkgo.Describe("Label Selector Validation", func() {
-	ginkgo.Context("validating an empty label selector", func() {
-		ginkgo.It("should succeed", func() {
+var _ = Describe("Label Selector Validation", func() {
+	Context("validating an empty label selector", func() {
+		It("should succeed", func() {
 			selector := labels.Set{}
-			gomega.Expect(targetselector.ValidateLabelSelector(selector.AsSelector())).ToNot(gomega.Succeed())
+			Expect(targetselector.ValidateLabelSelector(selector.AsSelector())).ToNot(Succeed())
 		})
 	})
-	ginkgo.Context("validating a good label selector", func() {
-		ginkgo.It("should succeed", func() {
+	Context("validating a good label selector", func() {
+		It("should succeed", func() {
 			selector := labels.Set{"foo": "bar"}
-			gomega.Expect(targetselector.ValidateLabelSelector(selector.AsSelector())).To(gomega.Succeed())
+			Expect(targetselector.ValidateLabelSelector(selector.AsSelector())).To(Succeed())
 		})
 	})
-	ginkgo.Context("validating special characters in label selector", func() {
-		ginkgo.It("should succeed", func() {
+	Context("validating special characters in label selector", func() {
+		It("should succeed", func() {
 			selector := labels.Set{"foo": "”bar”"}
 			//.AsSelector() should strip invalid characters
-			gomega.Expect(targetselector.ValidateLabelSelector(selector.AsSelector())).To(gomega.Succeed())
+			Expect(targetselector.ValidateLabelSelector(selector.AsSelector())).To(Succeed())
 		})
 	})
-	ginkgo.Context("validating too many quotes in label selector", func() {
-		ginkgo.It("should succeed", func() {
+	Context("validating too many quotes in label selector", func() {
+		It("should succeed", func() {
 			selector := labels.Set{"foo": "\"bar\""}
 			//.AsSelector() should strip invalid characters
-			gomega.Expect(targetselector.ValidateLabelSelector(selector.AsSelector())).To(gomega.Succeed())
+			Expect(targetselector.ValidateLabelSelector(selector.AsSelector())).To(Succeed())
 		})
 	})
 })

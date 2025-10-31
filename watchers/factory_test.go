@@ -35,11 +35,11 @@ var _ = Describe("Watcher factory", func() {
 		readerMock        mocks.ReaderMock
 		watcherFactory    watchers.Factory
 		watcher           watchers.Watcher
-		cacheMock         *CacheMock
+		cacheMock         *mocks.CacheCacheMock
 	)
 
 	BeforeEach(func() {
-		cacheMock = &CacheMock{}
+		cacheMock = mocks.NewCacheCacheMock(GinkgoT())
 	})
 
 	JustBeforeEach(func() {

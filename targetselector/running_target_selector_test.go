@@ -3,120 +3,30 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2025 Datadog, Inc.
 
-package targetselector
+package targetselector_test
 
 import (
 	"context"
 	"os"
-	"reflect"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/mocks"
+	"github.com/DataDog/chaos-controller/targetselector"
 	"github.com/DataDog/chaos-controller/types"
+	"github.com/stretchr/testify/mock"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8stypes "k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
 	// ChaosFailureInjectionImageVariableName is the name of the chaos failure injection image variable
 	ChaosFailureInjectionImageVariableName = "CHAOS_INJECTOR_IMAGE"
 )
-
-type fakeClient struct {
-	ListOptions []*client.ListOptions
-}
-
-func (f *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
-	if key.Name == "runningPod" {
-		objVal := reflect.ValueOf(obj)
-		nodeVal := reflect.ValueOf(runningPod1)
-		reflect.Indirect(objVal).Set(reflect.Indirect(nodeVal))
-	} else if key.Name == "failedPod" {
-		objVal := reflect.ValueOf(obj)
-		nodeVal := reflect.ValueOf(failedPod)
-		reflect.Indirect(objVal).Set(reflect.Indirect(nodeVal))
-	} else if key.Name == "pendingPod" {
-		objVal := reflect.ValueOf(obj)
-		nodeVal := reflect.ValueOf(pendingPod)
-		reflect.Indirect(objVal).Set(reflect.Indirect(nodeVal))
-	} else if key.Name == "runningNode" {
-		objVal := reflect.ValueOf(obj)
-		nodeVal := reflect.ValueOf(runningNode)
-		reflect.Indirect(objVal).Set(reflect.Indirect(nodeVal))
-	} else if key.Name == "failedNode" {
-		objVal := reflect.ValueOf(obj)
-		nodeVal := reflect.ValueOf(failedNode)
-		reflect.Indirect(objVal).Set(reflect.Indirect(nodeVal))
-	}
-
-	return nil
-}
-
-func (f *fakeClient) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
-	for _, opt := range opts {
-		if o, ok := opt.(*client.ListOptions); ok {
-			f.ListOptions = append(f.ListOptions, o)
-		}
-	}
-
-	if l, ok := list.(*corev1.PodList); ok {
-		l.Items = mixedStatusPods
-	} else if l, ok := list.(*corev1.NodeList); ok {
-		l.Items = justRunningNodes
-	}
-
-	return nil
-}
-
-func (f fakeClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
-	return nil
-}
-
-func (f fakeClient) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
-	return nil
-}
-
-func (f fakeClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
-	return nil
-}
-
-func (f fakeClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
-	return nil
-}
-
-func (f fakeClient) DeleteAllOf(ctx context.Context, obj client.Object, opts ...client.DeleteAllOfOption) error {
-	return nil
-}
-
-func (f fakeClient) Status() client.StatusWriter {
-	return nil
-}
-
-func (f fakeClient) Scheme() *runtime.Scheme {
-	return nil
-}
-
-func (f fakeClient) RESTMapper() meta.RESTMapper {
-	return nil
-}
-
-func (f fakeClient) SubResource(subResource string) client.SubResourceClient {
-	return nil
-}
-
-func (f fakeClient) GroupVersionKindFor(obj runtime.Object) (schema.GroupVersionKind, error) {
-	return schema.GroupVersionKind{}, nil
-}
-
-func (f fakeClient) IsObjectNamespaced(obj runtime.Object) (bool, error) {
-	// this client is used for both fake pods and fake nodes. only the former is namespaced, but we don't rely on this function so we always return true
-	return true, nil
-}
 
 var (
 	runningPod1 *corev1.Pod
@@ -127,7 +37,6 @@ var (
 
 var (
 	mixedStatusPods []corev1.Pod
-	twoPods         []corev1.Pod
 )
 
 var (
@@ -137,19 +46,18 @@ var (
 
 var (
 	justRunningNodes []corev1.Node
-	mixedNodes       []corev1.Node
 )
 
 var _ = Describe("Helpers", func() {
-	var c fakeClient
+	var k8SClientMock *mocks.K8SClientMock
 	var image string
 	var disruption *chaosv1beta1.Disruption
-	var targetSelector TargetSelector
+	var targetSelector targetselector.TargetSelector
 
 	BeforeEach(func() {
-		targetSelector = NewRunningTargetSelector(false, "foo")
+		targetSelector = targetselector.NewRunningTargetSelector(false, "foo")
 
-		c = fakeClient{}
+		k8SClientMock = mocks.NewK8SClientMock(GinkgoT())
 
 		runningPod1 = &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
@@ -225,11 +133,6 @@ var _ = Describe("Helpers", func() {
 			*pendingPod,
 		}
 
-		twoPods = []corev1.Pod{
-			*runningPod1,
-			*runningPod2,
-		}
-
 		runningNode = &corev1.Node{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "runningNode",
@@ -266,11 +169,6 @@ var _ = Describe("Helpers", func() {
 
 		justRunningNodes = []corev1.Node{
 			*runningNode,
-		}
-
-		mixedNodes = []corev1.Node{
-			*runningNode,
-			*failedNode,
 		}
 
 		image = "chaos-injector:latest"
@@ -318,9 +216,11 @@ var _ = Describe("Helpers", func() {
 	Describe("GetMatchingPodsOverTotalPods", func() {
 		Context("with empty label selector", func() {
 			It("should return an error", func() {
+				// Arrange
 				disruption.Namespace = ""
 				disruption.Spec.Selector = nil
 
+				// Act & Assert
 				Expect(targetSelector.GetMatchingPodsOverTotalPods(nil, disruption)).Error().To(HaveOccurred())
 			})
 		})
@@ -354,18 +254,49 @@ var _ = Describe("Helpers", func() {
 			})
 
 			It("should pass given selector for the given namespace to the client", func() {
-				Expect(targetSelector.GetMatchingPodsOverTotalPods(&c, disruption)).Error().To(Succeed())
-				// Note: Namespace filter is not applied for results of the fakeClient.
-				//       We instead test this functionality in the controller tests.
-				Expect(c.ListOptions[0].Namespace).To(Equal("foo"))
-				Expect(c.ListOptions[0].LabelSelector.String()).To(Equal("app=bar,app,!app,app in (bar),app notin (bar)"))
+				// Arrange
+				var capturedNamespace string
+				var capturedLabelSelector string
+				k8SClientMock.EXPECT().List(mock.Anything, mock.AnythingOfType("*v1.PodList"), mock.Anything).
+					Run(func(ctx context.Context, list client.ObjectList, opts ...client.ListOption) {
+						for _, opt := range opts {
+							if listOpts, ok := opt.(*client.ListOptions); ok {
+								capturedNamespace = listOpts.Namespace
+								if listOpts.LabelSelector != nil {
+									capturedLabelSelector = listOpts.LabelSelector.String()
+								}
+							}
+						}
+						if podList, ok := list.(*corev1.PodList); ok {
+							podList.Items = mixedStatusPods
+						}
+					}).Return(nil)
+
+				// Act
+				_, _, err := targetSelector.GetMatchingPodsOverTotalPods(k8SClientMock, disruption)
+
+				// Assert
+				Expect(err).ToNot(HaveOccurred())
+				Expect(capturedNamespace).To(Equal("foo"))
+				Expect(capturedLabelSelector).To(Equal("app=bar,app,!app,app in (bar),app notin (bar)"))
 			})
 
 			It("should return the pods list except for failed pod", func() {
+				// Arrange
 				disruption.Namespace = ""
 
-				r, _, err := targetSelector.GetMatchingPodsOverTotalPods(&c, disruption)
+				k8SClientMock.EXPECT().List(mock.Anything, mock.AnythingOfType("*v1.PodList"), mock.Anything).
+					Run(func(ctx context.Context, list client.ObjectList, opts ...client.ListOption) {
+						if podList, ok := list.(*corev1.PodList); ok {
+							podList.Items = mixedStatusPods
+						}
+					}).Return(nil)
+
+				// Act
+				r, _, err := targetSelector.GetMatchingPodsOverTotalPods(k8SClientMock, disruption)
 				numExcludedPods := 2 // pending + failed pods
+
+				// Assert
 				Expect(err).ToNot(HaveOccurred())
 				Expect(r.Items).To(HaveLen(len(mixedStatusPods) - numExcludedPods))
 			})
@@ -377,7 +308,14 @@ var _ = Describe("Helpers", func() {
 			})
 
 			It("should match pending pods with init containers only", func() {
-				r, _, err := targetSelector.GetMatchingPodsOverTotalPods(&c, disruption)
+				k8SClientMock.EXPECT().List(mock.Anything, mock.AnythingOfType("*v1.PodList"), mock.Anything).
+					Run(func(ctx context.Context, list client.ObjectList, opts ...client.ListOption) {
+						if podList, ok := list.(*corev1.PodList); ok {
+							podList.Items = mixedStatusPods
+						}
+					}).Return(nil)
+
+				r, _, err := targetSelector.GetMatchingPodsOverTotalPods(k8SClientMock, disruption)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(r.Items[0]).To(Equal(*pendingPod))
 			})
@@ -385,11 +323,18 @@ var _ = Describe("Helpers", func() {
 
 		Context("with controller safeguards enabled", func() {
 			BeforeEach(func() {
-				targetSelector = NewRunningTargetSelector(true, "runningNode")
+				targetSelector = targetselector.NewRunningTargetSelector(true, "runningNode")
 			})
 
 			It("should exclude the pods running on the same node as the controller from targets", func() {
-				r, _, err := targetSelector.GetMatchingPodsOverTotalPods(&c, disruption)
+				k8SClientMock.EXPECT().List(mock.Anything, mock.AnythingOfType("*v1.PodList"), mock.Anything).
+					Run(func(ctx context.Context, list client.ObjectList, opts ...client.ListOption) {
+						if podList, ok := list.(*corev1.PodList); ok {
+							podList.Items = mixedStatusPods
+						}
+					}).Return(nil)
+
+				r, _, err := targetSelector.GetMatchingPodsOverTotalPods(k8SClientMock, disruption)
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(r.Items).To(HaveLen(1)) // only the pod not running on the same node as the controller
@@ -400,8 +345,13 @@ var _ = Describe("Helpers", func() {
 	Describe("GetMatchingNodesOverTotalNodes", func() {
 		Context("with empty label selector", func() {
 			It("should return an error", func() {
+				// Arrange
 				disruption.Spec.Selector = nil
-				_, _, err := targetSelector.GetMatchingNodesOverTotalNodes(&c, disruption)
+
+				// Act
+				_, _, err := targetSelector.GetMatchingNodesOverTotalNodes(k8SClientMock, disruption)
+
+				// Assert
 				Expect(err).To(HaveOccurred())
 			})
 		})
@@ -434,13 +384,35 @@ var _ = Describe("Helpers", func() {
 			})
 
 			It("should pass given selector to the client", func() {
-				_, _, err := targetSelector.GetMatchingNodesOverTotalNodes(&c, disruption)
+				var capturedLabelSelector string
+				k8SClientMock.EXPECT().List(mock.Anything, mock.AnythingOfType("*v1.NodeList"), mock.Anything).
+					Run(func(ctx context.Context, list client.ObjectList, opts ...client.ListOption) {
+						for _, opt := range opts {
+							if listOpts, ok := opt.(*client.ListOptions); ok {
+								if listOpts.LabelSelector != nil {
+									capturedLabelSelector = listOpts.LabelSelector.String()
+								}
+							}
+						}
+						if nodeList, ok := list.(*corev1.NodeList); ok {
+							nodeList.Items = justRunningNodes
+						}
+					}).Return(nil)
+
+				_, _, err := targetSelector.GetMatchingNodesOverTotalNodes(k8SClientMock, disruption)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(c.ListOptions[0].LabelSelector.String()).To(Equal("app=bar,app,!app,app in (bar),app notin (bar)"))
+				Expect(capturedLabelSelector).To(Equal("app=bar,app,!app,app in (bar),app notin (bar)"))
 			})
 
 			It("should return the nodes list with no error", func() {
-				r, _, err := targetSelector.GetMatchingNodesOverTotalNodes(&c, disruption)
+				k8SClientMock.EXPECT().List(mock.Anything, mock.AnythingOfType("*v1.NodeList"), mock.Anything).
+					Run(func(ctx context.Context, list client.ObjectList, opts ...client.ListOption) {
+						if nodeList, ok := list.(*corev1.NodeList); ok {
+							nodeList.Items = justRunningNodes
+						}
+					}).Return(nil)
+
+				r, _, err := targetSelector.GetMatchingNodesOverTotalNodes(k8SClientMock, disruption)
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(r.Items).To(HaveLen(len(justRunningNodes)))
@@ -450,11 +422,18 @@ var _ = Describe("Helpers", func() {
 
 		Context("with controller safeguards enabled", func() {
 			BeforeEach(func() {
-				targetSelector = NewRunningTargetSelector(true, "runningNode")
+				targetSelector = targetselector.NewRunningTargetSelector(true, "runningNode")
 			})
 
 			It("should exclude the controller node from targets", func() {
-				r, _, err := targetSelector.GetMatchingNodesOverTotalNodes(&c, disruption)
+				k8SClientMock.EXPECT().List(mock.Anything, mock.AnythingOfType("*v1.NodeList"), mock.Anything).
+					Run(func(ctx context.Context, list client.ObjectList, opts ...client.ListOption) {
+						if nodeList, ok := list.(*corev1.NodeList); ok {
+							nodeList.Items = justRunningNodes
+						}
+					}).Return(nil)
+
+				r, _, err := targetSelector.GetMatchingNodesOverTotalNodes(k8SClientMock, disruption)
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(r.Items).To(BeEmpty())
@@ -470,11 +449,47 @@ var _ = Describe("Helpers", func() {
 			})
 
 			It("should return no error for running pod", func() {
-				err := targetSelector.TargetIsHealthy("runningPod", &c, disruption)
+				// Arrange
+				k8SClientMock.EXPECT().
+					Get(mock.Anything, k8stypes.NamespacedName{Name: "runningPod", Namespace: "default"}, mock.AnythingOfType("*v1.Pod")).
+					Run(func(ctx context.Context, key k8stypes.NamespacedName, obj client.Object, opts ...client.GetOption) {
+						if pod, ok := obj.(*corev1.Pod); ok {
+							*pod = *runningPod1
+						}
+					}).
+					Return(nil)
+
+				// Since the disruption has NodeFailure spec, it will also check the pod's node
+				k8SClientMock.EXPECT().
+					Get(mock.Anything, k8stypes.NamespacedName{Name: "runningNode", Namespace: ""}, mock.AnythingOfType("*v1.Node")).
+					Run(func(ctx context.Context, key k8stypes.NamespacedName, obj client.Object, opts ...client.GetOption) {
+						if node, ok := obj.(*corev1.Node); ok {
+							*node = *runningNode
+						}
+					}).
+					Return(nil)
+
+				// Act
+				err := targetSelector.TargetIsHealthy("runningPod", k8SClientMock, disruption)
+
+				// Assert
 				Expect(err).ToNot(HaveOccurred())
 			})
+
 			It("should return error for failed pod", func() {
-				err := targetSelector.TargetIsHealthy("failedPod", &c, disruption)
+				// Arrange
+				k8SClientMock.EXPECT().
+					Get(mock.Anything, k8stypes.NamespacedName{Name: "failedPod", Namespace: "default"}, mock.AnythingOfType("*v1.Pod")).
+					Run(func(ctx context.Context, key k8stypes.NamespacedName, obj client.Object, opts ...client.GetOption) {
+						if pod, ok := obj.(*corev1.Pod); ok {
+							*pod = *failedPod
+						}
+					}).Return(nil)
+
+				// Act
+				err := targetSelector.TargetIsHealthy("failedPod", k8SClientMock, disruption)
+
+				// Assert
 				Expect(err).To(HaveOccurred())
 			})
 		})
@@ -485,12 +500,162 @@ var _ = Describe("Helpers", func() {
 				disruption.Spec.Level = types.DisruptionLevelNode
 			})
 
-			It("should return an error for running node", func() {
-				err := targetSelector.TargetIsHealthy("runnningNode", &c, disruption)
+			It("should not return an error for running node", func() {
+				// Arrange
+				k8SClientMock.EXPECT().Get(mock.Anything, k8stypes.NamespacedName{Name: "runningNode", Namespace: ""}, mock.AnythingOfType("*v1.Node")).
+					Run(func(ctx context.Context, key k8stypes.NamespacedName, obj client.Object, opts ...client.GetOption) {
+						if node, ok := obj.(*corev1.Node); ok {
+							*node = *runningNode
+						}
+					}).Return(nil)
+
+				// Act
+				err := targetSelector.TargetIsHealthy("runningNode", k8SClientMock, disruption)
+
+				// Assert
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			It("should return an error for failed node", func() {
+				k8SClientMock.EXPECT().Get(mock.Anything, k8stypes.NamespacedName{Name: "failedNode", Namespace: ""}, mock.AnythingOfType("*v1.Node")).
+					Run(func(ctx context.Context, key k8stypes.NamespacedName, obj client.Object, opts ...client.GetOption) {
+						if node, ok := obj.(*corev1.Node); ok {
+							*node = *failedNode
+						}
+					}).Return(nil)
+
+				err := targetSelector.TargetIsHealthy("failedNode", k8SClientMock, disruption)
 				Expect(err).To(HaveOccurred())
 			})
-			It("should return an error for failed node", func() {
-				err := targetSelector.TargetIsHealthy("failedNode", &c, disruption)
+		})
+	})
+
+	Describe("GetLabelSelectorFromInstance", func() {
+		Context("with empty selectors", func() {
+			It("should return an error when both selectors are nil", func() {
+				// Arrange
+				disruption.Spec.Selector = nil
+				disruption.Spec.AdvancedSelector = nil
+
+				// Act
+				_, err := targetselector.GetLabelSelectorFromInstance(disruption)
+
+				// Assert
+				Expect(err).To(MatchError("selector can't be an empty set"))
+			})
+
+			It("should return an error when both selectors are empty", func() {
+				// Arrange
+				disruption.Spec.Selector = map[string]string{}
+				disruption.Spec.AdvancedSelector = []metav1.LabelSelectorRequirement{}
+
+				// Act
+				_, err := targetselector.GetLabelSelectorFromInstance(disruption)
+
+				// Assert
+				Expect(err).To(MatchError("selector can't be an empty set"))
+			})
+		})
+
+		Context("with simple selector only", func() {
+			BeforeEach(func() {
+				disruption.Spec.Selector = map[string]string{
+					"app": "test",
+					"env": "staging",
+				}
+				disruption.Spec.AdvancedSelector = nil
+			})
+
+			It("should create label selector from simple selector", func() {
+				// Act
+				selector, err := targetselector.GetLabelSelectorFromInstance(disruption)
+
+				// Assert
+				Expect(err).ToNot(HaveOccurred())
+				Expect(selector).ToNot(BeNil())
+				Expect(selector.String()).To(Equal("app=test,env=staging"))
+			})
+		})
+
+		Context("with advanced selector only", func() {
+			BeforeEach(func() {
+				disruption.Spec.Selector = nil
+				disruption.Spec.AdvancedSelector = []metav1.LabelSelectorRequirement{
+					{
+						Key:      "app",
+						Operator: metav1.LabelSelectorOpExists,
+					},
+					{
+						Key:      "env",
+						Operator: metav1.LabelSelectorOpIn,
+						Values:   []string{"staging", "prod"},
+					},
+				}
+			})
+
+			It("should create label selector from advanced selector", func() {
+				selector, err := targetselector.GetLabelSelectorFromInstance(disruption)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(selector).ToNot(BeNil())
+				Expect(selector.String()).To(Equal("app,env in (prod,staging)"))
+			})
+		})
+
+		Context("with both simple and advanced selectors", func() {
+			BeforeEach(func() {
+				disruption.Spec.Selector = map[string]string{
+					"app": "test",
+				}
+				disruption.Spec.AdvancedSelector = []metav1.LabelSelectorRequirement{
+					{
+						Key:      "env",
+						Operator: metav1.LabelSelectorOpIn,
+						Values:   []string{"staging"},
+					},
+				}
+			})
+
+			It("should combine both selectors", func() {
+				selector, err := targetselector.GetLabelSelectorFromInstance(disruption)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(selector).ToNot(BeNil())
+				Expect(selector.String()).To(Equal("app=test,env in (staging)"))
+			})
+		})
+
+		Context("with OnInit enabled", func() {
+			BeforeEach(func() {
+				disruption.Spec.Selector = map[string]string{
+					"app": "test",
+				}
+				disruption.Spec.OnInit = true
+			})
+
+			It("should add the disrupt-on-init label requirement", func() {
+				// Act
+				selector, err := targetselector.GetLabelSelectorFromInstance(disruption)
+
+				// Assert
+				Expect(err).ToNot(HaveOccurred())
+				Expect(selector).ToNot(BeNil())
+				Expect(selector.String()).To(ContainSubstring("app=test"))
+				Expect(selector.String()).To(ContainSubstring("chaos.datadoghq.com/disrupt-on-init"))
+			})
+		})
+
+		Context("with invalid advanced selector", func() {
+			BeforeEach(func() {
+				disruption.Spec.Selector = nil
+				disruption.Spec.AdvancedSelector = []metav1.LabelSelectorRequirement{
+					{
+						Key:      "invalid key with spaces",
+						Operator: metav1.LabelSelectorOpExists,
+					},
+				}
+			})
+
+			It("should return an error for invalid advanced selector", func() {
+				_, err := targetselector.GetLabelSelectorFromInstance(disruption)
 				Expect(err).To(HaveOccurred())
 			})
 		})

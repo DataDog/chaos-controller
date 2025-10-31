@@ -98,12 +98,16 @@ var _ = Describe("Chaos Pod watcher", func() {
 					It("should send a warning event", func() {
 						expectEventType := v1beta1.Events[v1beta1.EventChaosPodFailedState].Type
 						expectEventMessage := fmt.Sprintf(v1beta1.Events[v1beta1.EventChaosPodFailedState].OnDisruptionTemplateMessage,
-							newPod,
+							newPod.Name,
 							v1.PodFailed,
 							"OutOfpods",
 						)
 
-						Eventually(eventRecorder.(*record.FakeRecorder).Events).Should(Receive(ContainSubstring(expectEventType), ContainSubstring(expectEventMessage)))
+						Eventually(eventRecorder.(*record.FakeRecorder).Events).Should(
+							Receive(And(
+								ContainSubstring(expectEventType),
+								ContainSubstring(expectEventMessage),
+							)))
 					})
 
 					It("should send the event once", func() {

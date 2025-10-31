@@ -58,12 +58,12 @@ func (f factory) NewChaosPodWatcher(name string, disruption *v1beta1.Disruption,
 
 	// Create a new watcher configuration object
 	watcherConfig := WatcherConfig{
-		Name:                     name,
-		Handler:                  &handler,
-		ObjectType:               &corev1.Pod{},
-		CacheOptions:             cacheOptions,
-		Log:                      f.config.Log,
-		DisruptionNamespacedName: types.NamespacedName{Name: disruption.GetName(), Namespace: disruption.GetNamespace()},
+		Name:           name,
+		Handler:        &handler,
+		ObjectType:     &corev1.Pod{},
+		CacheOptions:   cacheOptions,
+		Log:            f.config.Log,
+		NamespacedName: types.NamespacedName{Name: disruption.GetName(), Namespace: disruption.GetNamespace()},
 	}
 
 	return NewWatcher(watcherConfig, cacheMock, nil)
@@ -95,12 +95,12 @@ func (f factory) NewDisruptionTargetWatcher(name string, enableObserver bool, di
 
 	// Create a new watcher configuration object
 	watcherConfig := WatcherConfig{
-		Name:                     name,
-		Handler:                  &handler,
-		ObjectType:               targetObjectType,
-		CacheOptions:             cacheOptions,
-		Log:                      f.config.Log,
-		DisruptionNamespacedName: types.NamespacedName{Name: disruption.GetName(), Namespace: disruption.GetNamespace()},
+		Name:           name,
+		Handler:        &handler,
+		ObjectType:     targetObjectType,
+		CacheOptions:   cacheOptions,
+		Log:            f.config.Log,
+		NamespacedName: types.NamespacedName{Name: disruption.GetName(), Namespace: disruption.GetNamespace()},
 	}
 
 	return NewWatcher(watcherConfig, cacheMock, nil)

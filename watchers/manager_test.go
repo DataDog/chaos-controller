@@ -12,12 +12,14 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/mocks"
 	. "github.com/DataDog/chaos-controller/watchers"
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Manager of watchers", func() {
@@ -28,7 +30,7 @@ var _ = Describe("Manager of watchers", func() {
 	const methodWatcherGetContextTuple string = "GetContextTuple"
 
 	var (
-		controllerMock              *mocks.RuntimeControllerMock
+		controllerMock              *mocks.RuntimeControllerMock[reconcile.Request]
 		ctxTuple                    CtxTuple
 		err                         error
 		readerMock                  *mocks.ReaderMock
@@ -39,7 +41,7 @@ var _ = Describe("Manager of watchers", func() {
 		watcherMock2IsExpired       *WatcherMock_IsExpired_Call
 		watcherMock1GetContextTuple *WatcherMock_GetContextTuple_Call
 		watcherMock2GetContextTuple *WatcherMock_GetContextTuple_Call
-		syncingSourceMock           *mocks.SyncingSourceMock
+		syncingSourceMock           *mocks.SyncingSourceMock[reconcile.Request]
 	)
 
 	// Arrange
@@ -47,18 +49,18 @@ var _ = Describe("Manager of watchers", func() {
 	ctxTuple = CtxTuple{
 		Ctx:        cacheCtx,
 		CancelFunc: cacheCancelFunc,
-		DisruptionNamespacedName: types.NamespacedName{
+		NamespacedName: types.NamespacedName{
 			Namespace: "namespace",
 			Name:      "namespace-name",
 		},
 	}
 
 	BeforeEach(func() {
-		syncingSourceMock = mocks.NewSyncingSourceMock(GinkgoT())
+		syncingSourceMock = mocks.NewSyncingSourceMock[reconcile.Request](GinkgoT())
 		watcherMock1 = NewWatcherMock(GinkgoT())
 		watcherMock2 = NewWatcherMock(GinkgoT())
 		readerMock = mocks.NewReaderMock(GinkgoT())
-		controllerMock = mocks.NewRuntimeControllerMock(GinkgoT())
+		controllerMock = mocks.NewRuntimeControllerMock[reconcile.Request](GinkgoT())
 
 		watcherManager = NewManager(readerMock, controllerMock)
 	})
@@ -81,12 +83,8 @@ var _ = Describe("Manager of watchers", func() {
 				watcherMockGetCacheSource := watcherMock.EXPECT().GetCacheSource().Return(syncingSourceMock, nil)
 				watcherMockGetCacheSource.Once().NotBefore(watcherMockStart.Call)
 
-				By("call once the GetContextTuple method of the watcher")
-				watcherMockGetContextTuple := watcherMock.EXPECT().GetContextTuple().Return(ctxTuple, nil)
-				watcherMockGetContextTuple.Once().NotBefore(watcherMockGetCacheSource.Call)
-
 				By("link the watcher to the controller")
-				controllerMock.EXPECT().Watch(mock.Anything, mock.Anything, mock.Anything).Return(nil).Once().NotBefore(watcherMockGetContextTuple.Call)
+				controllerMock.EXPECT().Watch(mock.Anything).Return(nil).Once().NotBefore(watcherMockGetCacheSource.Call)
 
 				// Act
 				err = watcherManager.AddWatcher(watcherMock)
@@ -207,8 +205,7 @@ var _ = Describe("Manager of watchers", func() {
 				})
 
 				It("should return an error", func() {
-					Expect(err).Should(HaveOccurred())
-					Expect(err.Error()).Should(HavePrefix("the watcher watcher1 does not exist"))
+					Expect(err).Should(MatchError(HavePrefix("the watcher watcher1 does not exist")))
 				})
 			})
 		})
@@ -292,7 +289,7 @@ var _ = Describe("Manager of watchers", func() {
 
 				// Assert
 				By("call twice the Get method of the reader")
-				readerMock.EXPECT().Get(ctxTuple.Ctx, ctxTuple.DisruptionNamespacedName, &v1beta1.Disruption{}).Return(nil).Twice()
+				readerMock.EXPECT().Get(ctxTuple.Ctx, ctxTuple.NamespacedName, &v1beta1.Disruption{}).Return(nil).Twice()
 
 				By("call once the GetContextTuple method of both watchers")
 				watcherMock1.EXPECT().GetContextTuple().Return(ctxTuple, nil).Once()
@@ -313,7 +310,7 @@ var _ = Describe("Manager of watchers", func() {
 			ctxTupleWatcher2 := CtxTuple{
 				Ctx:        cacheCtx2,
 				CancelFunc: cacheCancelFunc2,
-				DisruptionNamespacedName: types.NamespacedName{
+				NamespacedName: types.NamespacedName{
 					Namespace: "namespace-2",
 					Name:      "namespace-name-2",
 				},
@@ -334,7 +331,7 @@ var _ = Describe("Manager of watchers", func() {
 			When("the Get function of the reader return nil for both watchers", func() {
 				BeforeEach(func() {
 					// Arrange
-					readerMock.EXPECT().Get(ctxTuple.Ctx, ctxTuple.DisruptionNamespacedName, &v1beta1.Disruption{}).Return(nil).Twice()
+					readerMock.EXPECT().Get(ctxTuple.Ctx, ctxTuple.NamespacedName, &v1beta1.Disruption{}).Return(nil).Twice()
 
 					// Act
 					watcherManager.RemoveOrphanWatchers()
@@ -352,7 +349,7 @@ var _ = Describe("Manager of watchers", func() {
 					watcherMock2GetContextTuple.Return(ctxTupleWatcher2, nil).Once()
 
 					By("call once the Get method of the reader with the watcher1 context")
-					readerMock.EXPECT().Get(ctxTuple.Ctx, ctxTuple.DisruptionNamespacedName, &v1beta1.Disruption{}).Return(nil).Once()
+					readerMock.EXPECT().Get(ctxTuple.Ctx, ctxTuple.NamespacedName, &v1beta1.Disruption{}).Return(nil).Once()
 
 					By("call once the Get method of the reader with the watcher2 context and return a not found error")
 					errorStatus := errors.StatusError{
@@ -362,7 +359,7 @@ var _ = Describe("Manager of watchers", func() {
 							Code:    http.StatusNotFound,
 						},
 					}
-					readerMock.EXPECT().Get(ctxTupleWatcher2.Ctx, ctxTupleWatcher2.DisruptionNamespacedName, &v1beta1.Disruption{}).Return(&errorStatus).Once()
+					readerMock.EXPECT().Get(ctxTupleWatcher2.Ctx, ctxTupleWatcher2.NamespacedName, &v1beta1.Disruption{}).Return(&errorStatus).Once()
 
 					By("call once the Clean function of the watcher2")
 					watcherMock2.EXPECT().Clean().Once()
@@ -382,7 +379,7 @@ var _ = Describe("Manager of watchers", func() {
 						watcherMock1GetContextTuple.Return(ctxTuple, nil).Once()
 
 						By("call once the Get method of the reader ")
-						readerMock.EXPECT().Get(ctxTuple.Ctx, ctxTuple.DisruptionNamespacedName, &v1beta1.Disruption{}).Return(nil).Once()
+						readerMock.EXPECT().Get(ctxTuple.Ctx, ctxTuple.NamespacedName, &v1beta1.Disruption{}).Return(nil).Once()
 
 						// Act
 						watcherManager.RemoveOrphanWatchers()
@@ -402,7 +399,7 @@ var _ = Describe("Manager of watchers", func() {
 					watcherMock2GetContextTuple.Return(ctxTupleWatcher2, nil).Once()
 
 					By("call once the Get method of the reader with the watcher1 context")
-					readerMock.EXPECT().Get(ctxTuple.Ctx, ctxTuple.DisruptionNamespacedName, &v1beta1.Disruption{}).Return(nil).Once()
+					readerMock.EXPECT().Get(ctxTuple.Ctx, ctxTuple.NamespacedName, &v1beta1.Disruption{}).Return(nil).Once()
 
 					By("call once the Get method of the reader with the watcher2 context and return an unexpected error")
 					errorStatus := errors.StatusError{
@@ -412,7 +409,7 @@ var _ = Describe("Manager of watchers", func() {
 							Code:    http.StatusInternalServerError,
 						},
 					}
-					readerMock.EXPECT().Get(ctxTupleWatcher2.Ctx, ctxTupleWatcher2.DisruptionNamespacedName, &v1beta1.Disruption{}).Return(&errorStatus).Once()
+					readerMock.EXPECT().Get(ctxTupleWatcher2.Ctx, ctxTupleWatcher2.NamespacedName, &v1beta1.Disruption{}).Return(&errorStatus).Once()
 
 					// Act
 					watcherManager.RemoveOrphanWatchers()
@@ -430,7 +427,7 @@ var _ = Describe("Manager of watchers", func() {
 						watcherMock2GetContextTuple.Return(ctxTuple, nil).Once()
 
 						By("call twice the Get method of the reader")
-						readerMock.EXPECT().Get(ctxTuple.Ctx, ctxTuple.DisruptionNamespacedName, &v1beta1.Disruption{}).Return(nil).Twice()
+						readerMock.EXPECT().Get(ctxTuple.Ctx, ctxTuple.NamespacedName, &v1beta1.Disruption{}).Return(nil).Twice()
 
 						// Act
 						watcherManager.RemoveOrphanWatchers()
@@ -482,8 +479,8 @@ var _ = Describe("Manager of watchers", func() {
 	})
 })
 
-func createSingleWatcher(name string, manager Manager, controllerMock *mocks.RuntimeControllerMock, tuple CtxTuple, source *mocks.SyncingSourceMock) (watcherMock *WatcherMock) {
-	controllerMock.EXPECT().Watch(mock.Anything, mock.Anything, mock.Anything).Return(nil)
+func createSingleWatcher(name string, manager Manager, controllerMock *mocks.RuntimeControllerMock[reconcile.Request], tuple CtxTuple, source *mocks.SyncingSourceMock[reconcile.Request]) (watcherMock *WatcherMock) {
+	controllerMock.EXPECT().Watch(mock.Anything).Return(nil)
 
 	watcherMock = NewWatcherMock(GinkgoT())
 
@@ -496,9 +493,6 @@ func createSingleWatcher(name string, manager Manager, controllerMock *mocks.Run
 	watcherMockGetCacheSource := watcherMock.EXPECT().GetCacheSource().Return(source, nil)
 	watcherMockGetCacheSource.Once().NotBefore(watcherMockStart.Call)
 
-	watcherGetContextTuple := watcherMock.EXPECT().GetContextTuple().Return(tuple, nil)
-	watcherGetContextTuple.Once().NotBefore(watcherMockGetCacheSource.Call)
-
 	Expect(manager.AddWatcher(watcherMock)).Should(Succeed())
 
 	watcherMock.Calls = nil
@@ -506,7 +500,7 @@ func createSingleWatcher(name string, manager Manager, controllerMock *mocks.Run
 	return
 }
 
-func createTwoWatchers(manager Manager, controllerMock *mocks.RuntimeControllerMock, watcher1CtxTuple, watcher2CtxTuple CtxTuple, watcher1SyncSource, watcher2SyncSource *mocks.SyncingSourceMock) (watcherMock1, watcherMock2 *WatcherMock) {
+func createTwoWatchers(manager Manager, controllerMock *mocks.RuntimeControllerMock[reconcile.Request], watcher1CtxTuple, watcher2CtxTuple CtxTuple, watcher1SyncSource, watcher2SyncSource *mocks.SyncingSourceMock[reconcile.Request]) (watcherMock1, watcherMock2 *WatcherMock) {
 	watcherMock1 = createSingleWatcher("watcher1", manager, controllerMock, watcher1CtxTuple, watcher1SyncSource)
 	watcherMock2 = createSingleWatcher("watcher2", manager, controllerMock, watcher2CtxTuple, watcher2SyncSource)
 	return

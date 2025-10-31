@@ -39,6 +39,9 @@ packages:
       Informer:
         config:
           mockname: CacheInformerMock
+      Cache:
+        config:
+          mockname: CacheCacheMock
   sigs.k8s.io/controller-runtime/pkg/source:
     interfaces:
       SyncingSource:
