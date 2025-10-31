@@ -89,6 +89,9 @@ controller:
     clusterThreshold: 66
     allowNodeFailure: true # if set to false, will prevent the creation of any disruption that applies a nodeFailure, but only if safeMode.enable is true
     allowNodeLevel: true # if set to false, will prevent the creation of any disruption at the node level, but only if safeMode.enable is true
+  additionalArgs: [] # list of additional arguments to pass to the controller
+  clientGoQPS: 20 # Number of queries per second client-go is allowed to make
+  clientGoBurst: 30 # Allowed burst queries for client-go
   logLevel: DEBUG # sets the log level for the chaos controller
   resources: # resources assigned to the controller pod. may need to be increased when deploying to larger scale clusters
     cpu: 100m
