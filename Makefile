@@ -8,7 +8,7 @@ GOARCH = $(shell go env GOARCH)
 
 # change also circleci go build version "cimb/go:" if you change the version below
 # https://github.com/DataDog/chaos-controller/blob/main/.circleci/config.yml#L85
-BUILDGOVERSION = 1.23.1
+BUILDGOVERSION = 1.25.3
 
 # GOBIN can be provided (gitlab), defined (custom user setup), or empty/guessed (default go setup)
 GOBIN ?= $(shell go env GOBIN)
@@ -56,18 +56,17 @@ PROTOC_ZIP = protoc-${PROTOC_VERSION}-${PROTOC_OS}-x86_64.zip
 # you might also want to change ~/lima.yaml k3s version
 KUBERNETES_MAJOR_VERSION ?= 1.28
 KUBERNETES_VERSION ?= v$(KUBERNETES_MAJOR_VERSION).0
-KUBEBUILDER_VERSION ?= 3.1.0
 USE_VOLUMES ?= false
 
 HELM_VALUES ?= dev.yaml
-HELM_VERSION = v3.11.3
+HELM_VERSION = v3.19.0
 HELM_INSTALLED_VERSION = $(shell (helm version --template="{{ .Version }}" || echo "") | awk '{ print $$1 }')
 
 # TODO: reenable depguard in .golangci.yml after upgrading golangci-lint again
-GOLANGCI_LINT_VERSION = 1.61.0
+GOLANGCI_LINT_VERSION = 1.64.8
 GOLANGCI_LINT_INSTALLED_VERSION = $(shell (golangci-lint --version || echo "") | sed -E 's/.*version ([^ ]+).*/\1/')
 
-CONTROLLER_GEN_VERSION = v0.14.0
+CONTROLLER_GEN_VERSION = v0.19.0
 CONTROLLER_GEN_INSTALLED_VERSION = $(shell (controller-gen --version || echo "") | awk '{ print $$2 }')
 
 MOCKERY_VERSION = 2.53.5
@@ -304,7 +303,7 @@ vet:
 lint: install-golangci-lint
 # By using GOOS=linux we aim to validate files as if we were on linux
 # you can use a similar trick with gopls to have vs-code linting your linux platform files instead of darwin
-	GOOS=linux golangci-lint run --no-config -E ginkgolinter ./...
+	GOOS=linux golangci-lint run -E ginkgolinter ./...
 	GOOS=linux golangci-lint run
 
 ## Generate code

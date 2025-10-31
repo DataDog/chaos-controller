@@ -47,7 +47,7 @@ require (
 	k8s.io/cli-runtime v0.26.1
 	k8s.io/client-go v0.34.1
 	k8s.io/klog/v2 v2.130.1
-	sigs.k8s.io/controller-runtime v0.22.3
+	sigs.k8s.io/controller-runtime v0.21.0
 	sigs.k8s.io/yaml v1.6.0
 )
 
