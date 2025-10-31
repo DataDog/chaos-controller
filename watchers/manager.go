@@ -6,14 +6,11 @@
 package watchers
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 // Manager defines the interface for a manager that can handle adding, removing, and retrieving Watchers.
@@ -89,18 +86,8 @@ func (m manager) AddWatcher(w Watcher) error {
 		return fmt.Errorf("could not get the cache source of the watcher. Error: %w", err)
 	}
 
-	// Get the context tuple of the Watcher instance
-	ctxTuple, _ := w.GetContextTuple()
-
 	// Watch for changes in the cache
-	return m.controller.Watch(
-		cacheSource,
-		handler.EnqueueRequestsFromMapFunc(
-			func(ctx context.Context, c client.Object) []reconcile.Request {
-				return []reconcile.Request{{NamespacedName: ctxTuple.DisruptionNamespacedName}}
-			},
-		),
-	)
+	return m.controller.Watch(cacheSource)
 }
 
 // RemoveWatcher removes a Watcher instance from the Manager
@@ -136,7 +123,7 @@ func (m manager) RemoveOrphanWatchers() {
 	for name, w := range m.watchers {
 		ctxTuple, _ := w.GetContextTuple()
 
-		if err := m.reader.Get(ctxTuple.Ctx, ctxTuple.DisruptionNamespacedName, &v1beta1.Disruption{}); err != nil {
+		if err := m.reader.Get(ctxTuple.Ctx, ctxTuple.NamespacedName, &v1beta1.Disruption{}); err != nil {
 			if err = client.IgnoreNotFound(err); err != nil {
 				continue
 			}

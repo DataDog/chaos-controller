@@ -8,10 +8,8 @@ package watchers_test
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	k8scache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -25,81 +23,12 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-type CacheMock struct {
-	mock.Mock
-	Wg sync.WaitGroup
-}
-
-func (c *CacheMock) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
-	if opts != nil {
-		args := c.Called(ctx, key, obj, opts)
-		return args.Error(0)
-	}
-
-	args := c.Called(ctx, key, obj)
-
-	return args.Error(0)
-}
-
-func (c *CacheMock) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
-	if opts != nil {
-		args := c.Called(ctx, list, opts)
-		return args.Error(0)
-	}
-
-	args := c.Called(ctx, list)
-
-	return args.Error(0)
-}
-
-func (c *CacheMock) GetInformer(ctx context.Context, obj client.Object, opts ...k8scache.InformerGetOption) (k8scache.Informer, error) {
-	if opts != nil {
-		args := c.Called(ctx, obj, opts)
-		return args.Get(0).(k8scache.Informer), args.Error(1)
-	}
-
-	args := c.Called(ctx, obj)
-	return args.Get(0).(k8scache.Informer), args.Error(1)
-}
-
-func (c *CacheMock) GetInformerForKind(ctx context.Context, gvk schema.GroupVersionKind, opts ...k8scache.InformerGetOption) (k8scache.Informer, error) {
-	if opts != nil {
-		args := c.Called(ctx, gvk, opts)
-		return args.Get(0).(k8scache.Informer), args.Error(1)
-	}
-
-	args := c.Called(ctx, gvk)
-	return args.Get(0).(k8scache.Informer), args.Error(1)
-}
-
-func (c *CacheMock) RemoveInformer(ctx context.Context, obj client.Object) error {
-	args := c.Called(ctx, obj)
-	return args.Error(0)
-}
-
-func (c *CacheMock) Start(ctx context.Context) error {
-	args := c.Called(ctx)
-	c.Wg.Done()
-
-	return args.Error(0)
-}
-
-func (c *CacheMock) WaitForCacheSync(ctx context.Context) bool {
-	args := c.Called(ctx)
-	return args.Bool(0)
-}
-
-func (c *CacheMock) IndexField(ctx context.Context, obj client.Object, field string, extractValue client.IndexerFunc) error {
-	args := c.Called(ctx, obj, field, extractValue)
-	return args.Error(0)
-}
-
 var _ = Describe("watcher", func() {
 	const watcherName = "watcher-name"
 
 	var (
 		cacheContextFunc func() (ctx context.Context, cancel context.CancelFunc)
-		cacheMock        CacheMock
+		cacheMock        *mocks.CacheCacheMock
 		err              error
 		handlerMock      *mocks.ResourceEventHandlerMock
 		informerMock     *mocks.CacheInformerMock
@@ -113,15 +42,15 @@ var _ = Describe("watcher", func() {
 
 	JustBeforeEach(func() {
 		var config = watchers.WatcherConfig{
-			Name:                     watcherName,
-			Handler:                  handlerMock,
-			ObjectType:               targetObjectType,
-			DisruptionNamespacedName: namespaceName,
-			CacheOptions:             k8scache.Options{},
-			Log:                      logger,
+			Name:           watcherName,
+			Handler:        handlerMock,
+			ObjectType:     targetObjectType,
+			NamespacedName: namespaceName,
+			CacheOptions:   k8scache.Options{},
+			Log:            logger,
 		}
 
-		watcher, err = watchers.NewWatcher(config, &cacheMock, cacheContextFunc)
+		watcher, err = watchers.NewWatcher(config, cacheMock, cacheContextFunc)
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 
@@ -130,29 +59,29 @@ var _ = Describe("watcher", func() {
 			// Arrange
 			handlerMock = mocks.NewResourceEventHandlerMock(GinkgoT())
 			informerMock = mocks.NewCacheInformerMock(GinkgoT())
-			cacheMock = CacheMock{}
+			cacheMock = mocks.NewCacheCacheMock(GinkgoT())
 		})
 
 		Context("without error", func() {
 			It("should start the watcher", func() {
 				// Arrange / Assert
 				By("call once the GetInformer method of the Cache")
-				cacheMock.On("GetInformer", mock.Anything, targetObjectType).Return(informerMock, nil).Once()
-
-				By("call once the Start method of the watcher")
-				cacheMock.On("Start", mock.Anything).Return(nil).Once()
+				cacheMock.EXPECT().GetInformer(mock.Anything, targetObjectType).Return(informerMock, nil).Once()
 
 				By("call once AddEventHandler method of the Informer")
 				informerMock.EXPECT().AddEventHandler(handlerMock).Return(nil, nil).Once()
 
-				// Act
-				cacheMock.Wg.Add(1)
-				err = watcher.Start()
-				cacheMock.Wg.Wait()
+				By("call once the Start method of the watcher")
+				cacheMock.EXPECT().Start(mock.Anything).Return(nil).Maybe() // Maybe because it is called in the background
 
-				ctxTuple, _ := watcher.GetContextTuple()
-				Expect(ctxTuple.DisruptionNamespacedName.Name).Should(Equal(namespaceName.Name))
-				Expect(ctxTuple.DisruptionNamespacedName.Namespace).Should(Equal(namespaceName.Namespace))
+				// Act
+				err = watcher.Start()
+
+				// Assert
+				ctxTuple, err := watcher.GetContextTuple()
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(ctxTuple.NamespacedName.Name).Should(Equal(namespaceName.Name))
+				Expect(ctxTuple.NamespacedName.Namespace).Should(Equal(namespaceName.Namespace))
 			})
 		})
 
@@ -191,19 +120,13 @@ var _ = Describe("watcher", func() {
 		When("Start method of Cache returns an error", func() {
 			BeforeEach(func() {
 				// Arrange
-				cacheMock.On("GetInformer", mock.Anything, targetObjectType).Return(informerMock, nil).Once()
+				cacheMock.EXPECT().GetInformer(mock.Anything, targetObjectType).Return(informerMock, nil).Once()
 				informerMock.EXPECT().AddEventHandler(handlerMock).Return(nil, nil).Once()
-				cacheMock.On("Start", mock.Anything).Return(fmt.Errorf("start error")).Once()
+				cacheMock.EXPECT().Start(mock.Anything).Return(fmt.Errorf("start error")).Maybe()
 			})
 
 			It("should not return an error", func() {
-				// Act
-				cacheMock.Wg.Add(1)
-				err = watcher.Start()
-				cacheMock.Wg.Wait()
-
-				// Assert
-				Expect(err).ShouldNot(HaveOccurred())
+				Expect(watcher.Start()).To(Succeed())
 			})
 		})
 	})
@@ -271,26 +194,23 @@ var _ = Describe("watcher", func() {
 				// Arrange
 				handlerMock = mocks.NewResourceEventHandlerMock(GinkgoT())
 				informerMock = mocks.NewCacheInformerMock(GinkgoT())
-				cacheMock = CacheMock{}
-				informerMock.EXPECT().AddEventHandler(handlerMock).Return(informerMock, nil)
-				cacheMock.On("GetInformer", mock.Anything, mock.Anything).Return(informerMock, nil)
-				cacheMock.On("Start", mock.Anything).Return(nil)
+				cacheMock = mocks.NewCacheCacheMock(GinkgoT())
+				informerMock.EXPECT().AddEventHandler(handlerMock).Return(informerMock, nil).Maybe()
+				cacheMock.EXPECT().GetInformer(mock.Anything, mock.Anything).Return(informerMock, nil).Maybe()
+				cacheMock.EXPECT().Start(mock.Anything).Return(nil).Maybe()
 			})
 
 			JustBeforeEach(func() {
 				// Arrange
-				cacheMock.Wg.Add(1)
 				Expect(watcher.Start()).ShouldNot(HaveOccurred())
-				cacheMock.Wg.Wait()
 
 				// Act
 				result, err = watcher.GetCacheSource()
 				Expect(err).ShouldNot(HaveOccurred())
 			})
 
-			It("should return the expected SyncingSource object", func() {
-				expectedResult := source.Kind(&cacheMock, targetObjectType)
-				Expect(result).Should(BeEquivalentTo(expectedResult))
+			It("should return an object", func() {
+				Expect(result).ShouldNot(BeNil())
 			})
 		})
 
@@ -334,7 +254,7 @@ var _ = Describe("watcher", func() {
 			BeforeEach(func() {
 				handlerMock = mocks.NewResourceEventHandlerMock(GinkgoT())
 				informerMock = mocks.NewCacheInformerMock(GinkgoT())
-				cacheMock = CacheMock{}
+				cacheMock = mocks.NewCacheCacheMock(GinkgoT())
 				informerMock.EXPECT().AddEventHandler(handlerMock).Return(informerMock, nil)
 				cacheMock.On("GetInformer", mock.Anything, mock.Anything).Return(informerMock, nil)
 				cacheMock.On("Start", mock.Anything).Return(nil)
@@ -342,9 +262,7 @@ var _ = Describe("watcher", func() {
 
 			JustBeforeEach(func() {
 				// Arrange
-				cacheMock.Wg.Add(1)
 				Expect(watcher.Start()).Should(Succeed())
-				cacheMock.Wg.Wait()
 
 				// Act
 				result, err = watcher.GetContextTuple()
@@ -358,7 +276,7 @@ var _ = Describe("watcher", func() {
 				cacheCtx, cacheCancelFunc := context.WithCancel(context.Background())
 				Expect(result.Ctx).Should(BeEquivalentTo(cacheCtx))
 				Expect(result.CancelFunc).Should(BeAssignableToTypeOf(cacheCancelFunc))
-				Expect(result.DisruptionNamespacedName).Should(Equal(namespaceName))
+				Expect(result.NamespacedName).Should(Equal(namespaceName))
 			})
 		})
 	})

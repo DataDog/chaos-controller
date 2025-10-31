@@ -39,7 +39,7 @@ var _ = Describe("UserInfoMutator", func() {
 
 	Describe("Mutate", func() {
 		var (
-			decoder         *admission.Decoder
+			decoder         admission.Decoder
 			mockClient      *mocks.K8SClientMock
 			userInfoMutator webhook.UserInfoMutator
 		)

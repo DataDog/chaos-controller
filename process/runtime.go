@@ -56,12 +56,12 @@ func NewRuntime(dryRun bool) Runtime {
 	}
 }
 
-func (r runtimeImpl) GOMAXPROCS(new int) int {
+func (r runtimeImpl) GOMAXPROCS(maxProcs int) int {
 	if r.dryRun {
-		return new
+		return maxProcs
 	}
 
-	return runtime.GOMAXPROCS(new)
+	return runtime.GOMAXPROCS(maxProcs)
 }
 
 func (r runtimeImpl) LockOSThread() {

@@ -9,13 +9,6 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/DataDog/chaos-controller/mocks"
-	metricsnoop "github.com/DataDog/chaos-controller/o11y/metrics/noop"
-	tracernoop "github.com/DataDog/chaos-controller/o11y/tracer/noop"
-	chaostypes "github.com/DataDog/chaos-controller/types"
-
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
 	authv1 "k8s.io/api/authentication/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,6 +18,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
+	"github.com/DataDog/chaos-controller/mocks"
+	metricsnoop "github.com/DataDog/chaos-controller/o11y/metrics/noop"
+	tracernoop "github.com/DataDog/chaos-controller/o11y/tracer/noop"
+	chaostypes "github.com/DataDog/chaos-controller/types"
+
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
 const (
@@ -62,43 +63,56 @@ var _ = Describe("Disruption Webhook", func() {
 			})
 
 			When("disruption is deleting without associated disruption pods", func() {
-				It("should succeed to remove finalizer (controller needs to be able to remove finalizer in such case)", func() {
-					// override client to return NO pod
+				It("should succeed to remove finalizer (controller needs to be able to remove finalizer in such case)", func(ctx SpecContext) {
+					// Arrange
 					k8sClient = fake.NewClientBuilder().WithScheme(scheme.Scheme).Build()
 
 					oldDisruption.DeletionTimestamp = &metav1.Time{
 						Time: time.Now(),
 					}
 
-					_, err := newDisruption.ValidateUpdate(oldDisruption)
+					// Act
+					_, err := newDisruption.ValidateUpdate(ctx, oldDisruption, newDisruption)
+
+					// Assert
 					Expect(err).Should(Succeed())
 				})
 			})
 
 			When("disruption is running and has pods", func() {
-				It("should fail to remove finalizer", func() {
-					_, err := newDisruption.ValidateUpdate(oldDisruption)
+				It("should fail to remove finalizer", func(ctx SpecContext) {
+					// Act
+					_, err := newDisruption.ValidateUpdate(ctx, oldDisruption, newDisruption)
+
+					// Assert
 					Expect(err).Should(HaveOccurred())
 				})
 			})
 
 			When("disruption is deleting WITH associated disruption pods", func() {
-				It("should fail to remove finalizer", func() {
+				It("should fail to remove finalizer", func(ctx SpecContext) {
+					// Arrange
 					oldDisruption.DeletionTimestamp = &metav1.Time{
 						Time: time.Now(),
 					}
 
-					_, err := newDisruption.ValidateUpdate(oldDisruption)
-					Expect(err).Should(HaveOccurred())
-					Expect(err.Error()).Should(HavePrefix("unable to remove disruption finalizer"))
+					// Act
+					_, err := newDisruption.ValidateUpdate(ctx, oldDisruption, newDisruption)
+
+					// Assert
+					Expect(err).Should(MatchError(HavePrefix("unable to remove disruption finalizer")))
 				})
 			})
 
 			When("disruption did not had finalizer", func() {
-				It("should be OK to stays without finalizer", func() {
+				It("should be OK to stays without finalizer", func(ctx SpecContext) {
+					// Arrange
 					oldDisruption.Finalizers = nil
 
-					_, err := newDisruption.ValidateUpdate(oldDisruption)
+					// Act
+					_, err := newDisruption.ValidateUpdate(ctx, oldDisruption, newDisruption)
+
+					// Assert
 					Expect(err).Should(Succeed())
 				})
 			})
@@ -106,7 +120,8 @@ var _ = Describe("Disruption Webhook", func() {
 
 		Describe("ValidateCreate-only invariants shouldn't affect Update", func() {
 			When("triggers.*.notBefore is in the past", func() {
-				It("triggers.inject should not return an error", func() {
+				It("triggers.inject should not return an error", func(ctx SpecContext) {
+					// Arrange
 					triggers := DisruptionTriggers{
 						Inject: DisruptionTrigger{
 							NotBefore: metav1.NewTime(time.Now().Add(time.Minute * 5 * -1)),
@@ -119,11 +134,15 @@ var _ = Describe("Disruption Webhook", func() {
 					oldDisruption.Spec.Duration = "30m"
 					oldDisruption.Spec.Triggers = &triggers
 
-					_, err := newDisruption.ValidateUpdate(oldDisruption)
+					// Act
+					_, err := newDisruption.ValidateUpdate(ctx, oldDisruption, newDisruption)
+
+					// Assert
 					Expect(err).Should(Succeed())
 				})
 
-				It("triggers.createPods should not return an error", func() {
+				It("triggers.createPods should not return an error", func(ctx SpecContext) {
+					// Arrange
 					triggers := DisruptionTriggers{
 						CreatePods: DisruptionTrigger{
 							NotBefore: metav1.NewTime(time.Now().Add(time.Hour * -1)),
@@ -135,7 +154,10 @@ var _ = Describe("Disruption Webhook", func() {
 					oldDisruption.Spec.Duration = "30m"
 					oldDisruption.Spec.Triggers = &triggers
 
-					_, err := newDisruption.ValidateUpdate(oldDisruption)
+					// Act
+					_, err := newDisruption.ValidateUpdate(ctx, oldDisruption, newDisruption)
+
+					// Assert
 					Expect(err).Should(Succeed())
 				})
 			})
@@ -143,20 +165,23 @@ var _ = Describe("Disruption Webhook", func() {
 
 		Describe("hash changes expectations", func() {
 			When("nothing is updated", func() {
-				It("should succeed", func() {
-					_, err := newDisruption.ValidateUpdate(oldDisruption)
+				It("should succeed", func(ctx SpecContext) {
+					// Act
+					_, err := newDisruption.ValidateUpdate(ctx, oldDisruption, newDisruption)
+
+					// Assert
 					Expect(err).Should(Succeed())
 				})
 			})
 
 			When("userInfo annotation is updated", func() {
 				Context("with an old disruption without user info", func() {
-					It("should allow the update", func() {
+					It("should allow the update", func(ctx SpecContext) {
 						// Arrange
 						delete(oldDisruption.Annotations, annotationUserInfoKey)
 
 						// Action
-						_, err := newDisruption.ValidateUpdate(oldDisruption)
+						_, err := newDisruption.ValidateUpdate(ctx, oldDisruption, newDisruption)
 
 						// Assert
 						By("not return an error")
@@ -166,12 +191,12 @@ var _ = Describe("Disruption Webhook", func() {
 
 				Context("with an old disruption with an empty user info", func() {
 					When("the user info of the new disruption is updated ", func() {
-						It("should not allow the update", func() {
+						It("should not allow the update", func(ctx SpecContext) {
 							// Arrange
 							Expect(newDisruption.SetUserInfo(authv1.UserInfo{})).Should(Succeed())
 
 							// Action
-							_, err := newDisruption.ValidateUpdate(oldDisruption)
+							_, err := newDisruption.ValidateUpdate(ctx, oldDisruption, newDisruption)
 
 							// Assert
 							By("return an error")
@@ -180,13 +205,13 @@ var _ = Describe("Disruption Webhook", func() {
 						})
 					})
 					When("the user info of the new disruption is empty too", func() {
-						It("should allow the update", func() {
+						It("should allow the update", func(ctx SpecContext) {
 							// Arrange
 							Expect(oldDisruption.SetUserInfo(authv1.UserInfo{})).Should(Succeed())
 							Expect(newDisruption.SetUserInfo(authv1.UserInfo{Username: "lorem"})).Should(Succeed())
 
 							// Action
-							_, err := newDisruption.ValidateUpdate(oldDisruption)
+							_, err := newDisruption.ValidateUpdate(ctx, oldDisruption, newDisruption)
 							Expect(err).Should(Succeed())
 						})
 					})
@@ -194,17 +219,16 @@ var _ = Describe("Disruption Webhook", func() {
 
 				Context("with an old disruption with a valid user info", func() {
 					When("the user info of the new disruption is updated", func() {
-						It("should not allow the update", func() {
+						It("should not allow the update", func(ctx SpecContext) {
 							// Arrange
 							Expect(oldDisruption.SetUserInfo(authv1.UserInfo{Username: "lorem"})).Should(Succeed())
 							Expect(newDisruption.SetUserInfo(authv1.UserInfo{Username: "ipsum"})).Should(Succeed())
 
 							// Action
-							_, err := newDisruption.ValidateUpdate(oldDisruption)
+							_, err := newDisruption.ValidateUpdate(ctx, oldDisruption, newDisruption)
 
 							// Assert
 							By("return an error")
-							Expect(err).Should(HaveOccurred())
 							Expect(err).To(MatchError("the user info annotation is immutable"))
 						})
 					})
@@ -217,18 +241,25 @@ var _ = Describe("Disruption Webhook", func() {
 				})
 
 				Context("DynamicTargeting (StaticTargeting=false)", func() {
-					It("should succeed", func() {
-						_, err := newDisruption.ValidateUpdate(oldDisruption)
+					It("should succeed", func(ctx SpecContext) {
+						// Act
+						_, err := newDisruption.ValidateUpdate(ctx, oldDisruption, newDisruption)
+
+						// Assert
 						Expect(err).Should(Succeed())
 					})
 				})
 
 				Context("StaticTargeting", func() {
-					It("should fail", func() {
+					It("should fail", func(ctx SpecContext) {
+						// Arrange
 						oldDisruption.Spec.StaticTargeting = true
 						newDisruption.Spec.StaticTargeting = true
 
-						_, err := newDisruption.ValidateUpdate(oldDisruption)
+						// Act
+						_, err := newDisruption.ValidateUpdate(ctx, oldDisruption, newDisruption)
+
+						// Assert
 						Expect(err).Should(HaveOccurred())
 					})
 				})
@@ -241,8 +272,11 @@ var _ = Describe("Disruption Webhook", func() {
 						newDisruption.Spec.StaticTargeting = false
 					})
 
-					It("should fail", func() {
-						_, err := newDisruption.ValidateUpdate(oldDisruption)
+					It("should fail", func(ctx SpecContext) {
+						// Act
+						_, err := newDisruption.ValidateUpdate(ctx, oldDisruption, newDisruption)
+
+						// Assert
 						Expect(err).Should(HaveOccurred())
 					})
 				})
@@ -253,8 +287,11 @@ var _ = Describe("Disruption Webhook", func() {
 						newDisruption.Spec.StaticTargeting = true
 					})
 
-					It("should fail", func() {
-						_, err := newDisruption.ValidateUpdate(oldDisruption)
+					It("should fail", func(ctx SpecContext) {
+						// Act
+						_, err := newDisruption.ValidateUpdate(ctx, oldDisruption, newDisruption)
+
+						// Assert
 						Expect(err).Should(HaveOccurred())
 					})
 				})
@@ -283,12 +320,12 @@ var _ = Describe("Disruption Webhook", func() {
 			})
 
 			When("disruption has delete-only mode enable", func() {
-				It("should return an error which deny the creation of a new disruption", func() {
+				It("should return an error which deny the creation of a new disruption", func(ctx SpecContext) {
 					// Arrange
 					deleteOnly = true
 
 					// Action
-					_, err := newDisruption.ValidateCreate()
+					_, err := newDisruption.ValidateCreate(ctx, newDisruption)
 
 					// Assert
 					Expect(err).Should(HaveOccurred())
@@ -297,12 +334,12 @@ var _ = Describe("Disruption Webhook", func() {
 			})
 
 			When("disruption has invalid name", func() {
-				It("should return an error for an invalid d", func() {
+				It("should return an error for an invalid d", func(ctx SpecContext) {
 					// Arrange
 					newDisruption.Name = "invalid-name!"
 
 					// Action
-					_, err := newDisruption.ValidateCreate()
+					_, err := newDisruption.ValidateCreate(ctx, newDisruption)
 
 					// Assert
 					Expect(err).Should(HaveOccurred())
@@ -311,12 +348,12 @@ var _ = Describe("Disruption Webhook", func() {
 			})
 
 			When("disruption using the onInit feature without the handler being enabled", func() {
-				It("should return an error", func() {
+				It("should return an error", func(ctx SpecContext) {
 					// Arrange
 					newDisruption.Spec.OnInit = true
 
 					// Action
-					_, err := newDisruption.ValidateCreate()
+					_, err := newDisruption.ValidateCreate(ctx, newDisruption)
 
 					// Assert
 					Expect(err).Should(HaveOccurred())
@@ -325,13 +362,13 @@ var _ = Describe("Disruption Webhook", func() {
 			})
 
 			When("disruption spec is invalid", func() {
-				It("should return an error", func() {
+				It("should return an error", func(ctx SpecContext) {
 					// Arrange
 					invalidDisruption := newDisruption.DeepCopy()
 					invalidDisruption.Spec.Selector = nil
 
 					// Action
-					_, err := invalidDisruption.ValidateCreate()
+					_, err := invalidDisruption.ValidateCreate(ctx, invalidDisruption)
 
 					// Assert
 					Expect(err).Should(HaveOccurred())
@@ -346,14 +383,14 @@ var _ = Describe("Disruption Webhook", func() {
 					originalMaxDefaultDuration = maxDuration
 				})
 
-				It("should return an error", func() {
+				It("should return an error", func(ctx SpecContext) {
 					// Arrange
 					invalidDisruption := newDisruption.DeepCopy()
 					maxDuration = time.Hour * 1
 					invalidDisruption.Spec.Duration = "2h"
 
 					// Action
-					_, err := invalidDisruption.ValidateCreate()
+					_, err := invalidDisruption.ValidateCreate(ctx, invalidDisruption)
 
 					// Assert
 					Expect(err).Should(HaveOccurred())
@@ -366,19 +403,23 @@ var _ = Describe("Disruption Webhook", func() {
 			})
 
 			When("disruption selectors are invalid", func() {
-				It("should return an error", func() {
+				It("should return an error", func(ctx SpecContext) {
+					// Arrange
 					invalidDisruption := newDisruption.DeepCopy()
 					invalidDisruption.Spec.Selector = map[string]string{"app": "demo-{nginx}"}
 
-					_, err := invalidDisruption.ValidateCreate()
+					// Act
+					_, err := invalidDisruption.ValidateCreate(ctx, invalidDisruption)
 
+					// Assert
 					Expect(err).Should(HaveOccurred())
 					Expect(err).To(MatchError("1 error occurred:\n\t* Spec: unable to parse requirement: values[0][app]: Invalid value: \"demo-{nginx}\": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')\n\n"))
 				})
 			})
 
 			When("disruption advanced selectors are invalid", func() {
-				It("should return an error", func() {
+				It("should return an error", func(ctx SpecContext) {
+					// Arrange
 					invalidDisruption := newDisruption.DeepCopy()
 					invalidDisruption.Spec.AdvancedSelector = []metav1.LabelSelectorRequirement{{
 						Key:      "app",
@@ -386,15 +427,18 @@ var _ = Describe("Disruption Webhook", func() {
 						Values:   []string{"*nginx"},
 					}}
 
-					_, err := invalidDisruption.ValidateCreate()
+					// Act
+					_, err := invalidDisruption.ValidateCreate(ctx, invalidDisruption)
 
+					// Assert
 					Expect(err).Should(HaveOccurred())
 					Expect(err).To(MatchError("1 error occurred:\n\t* Spec: error parsing given advanced selector to requirements: values[0][app]: Invalid value: \"*nginx\": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')\n\n"))
 				})
 			})
 
 			When("triggers.*.notBefore is in the past", func() {
-				It("triggers.inject should return an error", func() {
+				It("triggers.inject should return an error", func(ctx SpecContext) {
+					// Arrange
 					newDisruption.Spec.Duration = "30m"
 					newDisruption.Spec.Triggers = &DisruptionTriggers{
 						Inject: DisruptionTrigger{
@@ -402,11 +446,15 @@ var _ = Describe("Disruption Webhook", func() {
 						},
 					}
 
-					_, err := newDisruption.ValidateCreate()
+					// Act
+					_, err := newDisruption.ValidateCreate(ctx, newDisruption)
+
+					// Assert
 					Expect(err).Should(MatchError(ContainSubstring("only values in the future are accepted")))
 				})
 
-				It("triggers.createPods should return an error", func() {
+				It("triggers.createPods should return an error", func(ctx SpecContext) {
+					// Arrange
 					newDisruption.Spec.Duration = "30m"
 					newDisruption.Spec.Triggers = &DisruptionTriggers{
 						CreatePods: DisruptionTrigger{
@@ -414,13 +462,16 @@ var _ = Describe("Disruption Webhook", func() {
 						},
 					}
 
-					_, err := newDisruption.ValidateCreate()
+					// Act
+					_, err := newDisruption.ValidateCreate(ctx, newDisruption)
+
+					// Assert
 					Expect(err).Should(MatchError(ContainSubstring("only values in the future are accepted")))
 				})
 			})
 
 			When("triggers.*.notBefore is in the future", func() {
-				It("should not return an error", func() {
+				It("should not return an error", func(ctx SpecContext) {
 					// Arrange
 					newDisruption.Spec.Duration = "30m"
 					newDisruption.Spec.Triggers = &DisruptionTriggers{
@@ -439,7 +490,7 @@ var _ = Describe("Disruption Webhook", func() {
 					recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
 
 					// Action
-					_, err = newDisruption.ValidateCreate()
+					_, err = newDisruption.ValidateCreate(ctx, newDisruption)
 
 					// Assert
 					Expect(err).ShouldNot(HaveOccurred())
@@ -447,7 +498,8 @@ var _ = Describe("Disruption Webhook", func() {
 			})
 
 			When("triggers.inject.notBefore is before triggers.createPods.notBefore", func() {
-				It("should return an error", func() {
+				It("should return an error", func(ctx SpecContext) {
+					// Arrange
 					newDisruption.Spec.Duration = "30m"
 					newDisruption.Spec.Triggers = &DisruptionTriggers{
 						Inject: DisruptionTrigger{
@@ -458,24 +510,30 @@ var _ = Describe("Disruption Webhook", func() {
 						},
 					}
 
-					_, err := newDisruption.ValidateCreate()
+					// Act
+					_, err := newDisruption.ValidateCreate(ctx, newDisruption)
+
+					// Assert
 					Expect(err).Should(MatchError(ContainSubstring("inject.notBefore must come after createPods.notBefore if both are specified")))
 				})
 			})
 
 			When("user group membership is invalid", func() {
-				It("should return an error if they lack membership", func() {
+				It("should return an error if they lack membership", func(ctx SpecContext) {
+					// Arrange
 					permittedUserGroups = map[string]struct{}{}
 					permittedUserGroups["system:nobody"] = struct{}{}
 					permittedUserGroupWarningString = "system:nobody"
 
-					_, err := newDisruption.ValidateCreate()
+					// Act
+					_, err := newDisruption.ValidateCreate(ctx, newDisruption)
 
+					// Assert
 					Expect(err).Should(HaveOccurred())
 					Expect(err.Error()).Should(ContainSubstring("lacking sufficient authorization to create Disruption. your user groups are some, but you must be in one of the following groups: system:nobody"))
 				})
 
-				It("should not return an error if they are within a permitted group", func() {
+				It("should not return an error if they are within a permitted group", func(ctx SpecContext) {
 					// Arrange
 					permittedUserGroups = map[string]struct{}{}
 					permittedUserGroups["some"] = struct{}{}
@@ -492,7 +550,7 @@ var _ = Describe("Disruption Webhook", func() {
 					recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
 
 					// Action
-					_, err = newDisruption.ValidateCreate()
+					_, err = newDisruption.ValidateCreate(ctx, newDisruption)
 
 					// Assert
 					Expect(err).ShouldNot(HaveOccurred())
@@ -500,11 +558,14 @@ var _ = Describe("Disruption Webhook", func() {
 			})
 
 			When("controller has network-disruptions disabled", func() {
-				It("should return an error which denies the creation of a new disruption", func() {
+				It("should return an error which denies the creation of a new disruption", func(ctx SpecContext) {
+					// Arrange
 					disabledDisruptions = []string{"network-disruption"}
 
-					_, err := newDisruption.ValidateCreate()
+					// Act
+					_, err := newDisruption.ValidateCreate(ctx, newDisruption)
 
+					// Assert
 					Expect(err).Should(HaveOccurred())
 					Expect(err.Error()).Should(HavePrefix("disruption kind network-disruption is currently disabled"))
 				})
@@ -537,46 +598,52 @@ var _ = Describe("Disruption Webhook", func() {
 					newDisruption.Spec.Network = nil
 				})
 
-				It("should reject the disruption at node level", func() {
+				It("should reject the disruption at node level", func(ctx SpecContext) {
 					allowNodeFailure = false
 					newDisruption.Spec.Level = chaostypes.DisruptionLevelNode
 
-					_, err := newDisruption.ValidateCreate()
+					_, err := newDisruption.ValidateCreate(ctx, newDisruption)
 
-					Expect(err).Should(HaveOccurred())
-					Expect(err).Should(MatchError(ContainSubstring("at least one of the initial safety nets caught an issue")))
-					Expect(err.Error()).Should(ContainSubstring("node failure disruptions are not allowed in this cluster"))
+					Expect(err).Should(MatchError(And(
+						ContainSubstring("at least one of the initial safety nets caught an issue"),
+						ContainSubstring("node failure disruptions are not allowed in this cluster"),
+					)))
 
 				})
 
-				It("should reject the disruption at pod level", func() {
+				It("should reject the disruption at pod level", func(ctx SpecContext) {
+					// Arrange
 					allowNodeFailure = false
 
-					_, err := newDisruption.ValidateCreate()
+					// Act
+					_, err := newDisruption.ValidateCreate(ctx, newDisruption)
 
-					Expect(err).Should(HaveOccurred())
-					Expect(err.Error()).Should(ContainSubstring("at least one of the initial safety nets caught an issue"))
-					Expect(err.Error()).Should(ContainSubstring("node failure disruptions are not allowed in this cluster"))
+					// Assert
+					Expect(err).Should(MatchError(And(
+						ContainSubstring("at least one of the initial safety nets caught an issue"),
+						ContainSubstring("node failure disruptions are not allowed in this cluster"),
+					)))
 
 				})
 			})
 
 			Context("allowNodeLevel is false", func() {
-				It("should reject the disruption at node level", func() {
+				It("should reject the disruption at node level", func(ctx SpecContext) {
 					// Arrange
 					allowNodeLevel = false
 					newDisruption.Spec.Level = chaostypes.DisruptionLevelNode
 
 					// Action
-					_, err := newDisruption.ValidateCreate()
+					_, err := newDisruption.ValidateCreate(ctx, newDisruption)
 
 					// Assert
-					Expect(err).Should(HaveOccurred())
-					Expect(err.Error()).Should(ContainSubstring("at least one of the initial safety nets caught an issue"))
-					Expect(err.Error()).Should(ContainSubstring("node level disruptions are not allowed in this cluster"))
+					Expect(err).Should(MatchError(And(
+						ContainSubstring("at least one of the initial safety nets caught an issue"),
+						ContainSubstring("node level disruptions are not allowed in this cluster"),
+					)))
 				})
 
-				It("should allow the disruption at pod level", func() {
+				It("should allow the disruption at pod level", func(ctx SpecContext) {
 					// Arrange
 					disruptionJSON, err := json.Marshal(newDisruption)
 					Expect(err).ShouldNot(HaveOccurred())
@@ -588,7 +655,7 @@ var _ = Describe("Disruption Webhook", func() {
 					recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
 
 					// Action
-					_, err = newDisruption.ValidateCreate()
+					_, err = newDisruption.ValidateCreate(ctx, newDisruption)
 
 					// Assert
 					Expect(err).ShouldNot(HaveOccurred())
@@ -596,7 +663,7 @@ var _ = Describe("Disruption Webhook", func() {
 			})
 
 			Context("allowNodeFailure and allowNodeLevel are true", func() {
-				It("should allow a node level node failure disruption", func() {
+				It("should allow a node level node failure disruption", func(ctx SpecContext) {
 					// Arrange
 					allowNodeFailure = true
 					allowNodeLevel = true
@@ -614,7 +681,7 @@ var _ = Describe("Disruption Webhook", func() {
 					recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
 
 					// Action
-					_, err = newDisruption.ValidateCreate()
+					_, err = newDisruption.ValidateCreate(ctx, newDisruption)
 
 					// Assert
 					Expect(err).ShouldNot(HaveOccurred())
@@ -645,21 +712,22 @@ var _ = Describe("Disruption Webhook", func() {
 					newDisruption.Spec.Level = chaostypes.DisruptionLevelNode
 				})
 				Context("with the '/' path", func() {
-					It("should deny the usage of '/' path", func() {
+					It("should deny the usage of '/' path", func(ctx SpecContext) {
 						// Arrange
 						newDisruption.Spec.DiskFailure.Paths = []string{"/test", "/"}
 
 						// Action
-						_, err := newDisruption.ValidateCreate()
+						_, err := newDisruption.ValidateCreate(ctx, newDisruption)
 
 						// Assert
-						Expect(err).Should(HaveOccurred())
-						Expect(err.Error()).Should(ContainSubstring("at least one of the initial safety nets caught an issue"))
-						Expect(err.Error()).Should(ContainSubstring("the specified path for the disk failure disruption targeting a node must not be \"/\""))
+						Expect(err).Should(MatchError(And(
+							ContainSubstring("at least one of the initial safety nets caught an issue"),
+							ContainSubstring("the specified path for the disk failure disruption targeting a node must not be \"/\""),
+						)))
 					})
 				})
 				Context("with the '/test' path", func() {
-					It("should allow the usage", func() {
+					It("should allow the usage", func(ctx SpecContext) {
 						// Arrange
 						newDisruption.Spec.DiskFailure.Paths = []string{"/test"}
 
@@ -673,28 +741,29 @@ var _ = Describe("Disruption Webhook", func() {
 						recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
 
 						// Action
-						_, err = newDisruption.ValidateCreate()
+						_, err = newDisruption.ValidateCreate(ctx, newDisruption)
 
 						// Assert
 						Expect(err).ShouldNot(HaveOccurred())
 					})
 				})
 				Context("with the '  /  ' path", func() {
-					It("should deny the usage of '   /   ' path", func() {
+					It("should deny the usage of '   /   ' path", func(ctx SpecContext) {
 						// Arrange
 						newDisruption.Spec.DiskFailure.Paths = []string{"/test", "   /   "}
 
 						// Action
-						_, err := newDisruption.ValidateCreate()
+						_, err := newDisruption.ValidateCreate(ctx, newDisruption)
 
 						// Assert
-						Expect(err).Should(HaveOccurred())
-						Expect(err.Error()).Should(ContainSubstring("at least one of the initial safety nets caught an issue"))
-						Expect(err.Error()).Should(ContainSubstring("the specified path for the disk failure disruption targeting a node must not be \"/\""))
+						Expect(err).Should(MatchError(And(
+							ContainSubstring("at least one of the initial safety nets caught an issue"),
+							ContainSubstring("the specified path for the disk failure disruption targeting a node must not be \"/\""),
+						)))
 					})
 				})
 				Context("safe-mode disabled", func() {
-					It("should allow the '/' path", func() {
+					It("should allow the '/' path", func(ctx SpecContext) {
 						// Arrange
 						newDisruption.Spec.Unsafemode = &UnsafemodeSpec{
 							AllowRootDiskFailure: true,
@@ -710,7 +779,7 @@ var _ = Describe("Disruption Webhook", func() {
 						recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
 
 						// Action
-						_, err = newDisruption.ValidateCreate()
+						_, err = newDisruption.ValidateCreate(ctx, newDisruption)
 
 						// Assert
 						Expect(err).ShouldNot(HaveOccurred())
@@ -723,7 +792,7 @@ var _ = Describe("Disruption Webhook", func() {
 					newDisruption.Spec.Level = chaostypes.DisruptionLevelPod
 				})
 				Context("with the '/' path", func() {
-					It("should allow the usage of this path", func() {
+					It("should allow the usage of this path", func(ctx SpecContext) {
 						// Arrange
 						newDisruption.Spec.DiskFailure.Paths = []string{"/test", "/"}
 
@@ -737,14 +806,14 @@ var _ = Describe("Disruption Webhook", func() {
 						recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
 
 						// Action
-						_, err = newDisruption.ValidateCreate()
+						_, err = newDisruption.ValidateCreate(ctx, newDisruption)
 
 						// Assert
 						Expect(err).ShouldNot(HaveOccurred())
 					})
 				})
 				Context("with the safe-mode disabled", func() {
-					It("should allow the '/' path", func() {
+					It("should allow the '/' path", func(ctx SpecContext) {
 						// Arrange
 						newDisruption.Spec.Unsafemode = &UnsafemodeSpec{
 							AllowRootDiskFailure: true,
@@ -760,7 +829,7 @@ var _ = Describe("Disruption Webhook", func() {
 						recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
 
 						// Action
-						_, err = newDisruption.ValidateCreate()
+						_, err = newDisruption.ValidateCreate(ctx, newDisruption)
 
 						// Assert
 						Expect(err).ShouldNot(HaveOccurred())
@@ -788,7 +857,7 @@ var _ = Describe("Disruption Webhook", func() {
 			})
 
 			When("only services are defined", func() {
-				It("should pass validation", func() {
+				It("should pass validation", func(ctx SpecContext) {
 					// Arrange
 					newDisruption.Spec.Network.Hosts = nil
 					newDisruption.Spec.Network.Services = []NetworkDisruptionServiceSpec{{Name: "foo", Namespace: chaosNamespace}}
@@ -803,7 +872,7 @@ var _ = Describe("Disruption Webhook", func() {
 					recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
 
 					// Action
-					_, err = newDisruption.ValidateCreate()
+					_, err = newDisruption.ValidateCreate(ctx, newDisruption)
 
 					// Assert
 					Expect(err).ShouldNot(HaveOccurred())
@@ -811,7 +880,7 @@ var _ = Describe("Disruption Webhook", func() {
 			})
 
 			When("various host filters are defined", func() {
-				DescribeTable("should pass validation", func(hosts []NetworkDisruptionHostSpec) {
+				DescribeTable("should pass validation", func(ctx SpecContext, hosts []NetworkDisruptionHostSpec) {
 					// Arrange
 					newDisruption.Spec.Network.Hosts = hosts
 
@@ -825,7 +894,7 @@ var _ = Describe("Disruption Webhook", func() {
 					recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
 
 					// Action
-					_, err = newDisruption.ValidateCreate()
+					_, err = newDisruption.ValidateCreate(ctx, newDisruption)
 
 					// Assert
 					Expect(err).ShouldNot(HaveOccurred())
@@ -838,17 +907,21 @@ var _ = Describe("Disruption Webhook", func() {
 			})
 
 			When("no filters are defined", func() {
-				It("should be rejected", func() {
+				It("should be rejected", func(ctx SpecContext) {
+					// Arrange
 					newDisruption.Spec.Network.Hosts = nil
 
-					_, err := newDisruption.ValidateCreate()
+					// Act
+					_, err := newDisruption.ValidateCreate(ctx, newDisruption)
 
-					Expect(err).Should(HaveOccurred())
-					Expect(err.Error()).Should(ContainSubstring("at least one of the initial safety nets caught an issue"))
-					Expect(err.Error()).Should(ContainSubstring("the specified disruption either contains no Host or Service filters. This will result in all network traffic being affected"))
+					// Assert
+					Expect(err).Should(MatchError(And(
+						ContainSubstring("at least one of the initial safety nets caught an issue"),
+						ContainSubstring("the specified disruption either contains no Host or Service filters. This will result in all network traffic being affected"),
+					)))
 				})
 
-				It("should be allowed with DisableNeitherHostNorPort", func() {
+				It("should be allowed with DisableNeitherHostNorPort", func(ctx SpecContext) {
 					// Arrange
 					newDisruption.Spec.Network.Hosts = nil
 					newDisruption.Spec.Unsafemode = &UnsafemodeSpec{DisableNeitherHostNorPort: true}
@@ -863,7 +936,7 @@ var _ = Describe("Disruption Webhook", func() {
 					recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
 
 					// Action
-					_, err = newDisruption.ValidateCreate()
+					_, err = newDisruption.ValidateCreate(ctx, newDisruption)
 
 					// Assert
 					Expect(err).ShouldNot(HaveOccurred())

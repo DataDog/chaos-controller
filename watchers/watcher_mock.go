@@ -9,6 +9,8 @@ package watchers
 
 import (
 	mock "github.com/stretchr/testify/mock"
+	reconcile "sigs.k8s.io/controller-runtime/pkg/reconcile"
+
 	source "sigs.k8s.io/controller-runtime/pkg/source"
 )
 
@@ -58,23 +60,23 @@ func (_c *WatcherMock_Clean_Call) RunAndReturn(run func()) *WatcherMock_Clean_Ca
 }
 
 // GetCacheSource provides a mock function with no fields
-func (_m *WatcherMock) GetCacheSource() (source.SyncingSource, error) {
+func (_m *WatcherMock) GetCacheSource() (source.TypedSyncingSource[reconcile.Request], error) {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetCacheSource")
 	}
 
-	var r0 source.SyncingSource
+	var r0 source.TypedSyncingSource[reconcile.Request]
 	var r1 error
-	if rf, ok := ret.Get(0).(func() (source.SyncingSource, error)); ok {
+	if rf, ok := ret.Get(0).(func() (source.TypedSyncingSource[reconcile.Request], error)); ok {
 		return rf()
 	}
-	if rf, ok := ret.Get(0).(func() source.SyncingSource); ok {
+	if rf, ok := ret.Get(0).(func() source.TypedSyncingSource[reconcile.Request]); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(source.SyncingSource)
+			r0 = ret.Get(0).(source.TypedSyncingSource[reconcile.Request])
 		}
 	}
 
@@ -104,12 +106,12 @@ func (_c *WatcherMock_GetCacheSource_Call) Run(run func()) *WatcherMock_GetCache
 	return _c
 }
 
-func (_c *WatcherMock_GetCacheSource_Call) Return(_a0 source.SyncingSource, _a1 error) *WatcherMock_GetCacheSource_Call {
+func (_c *WatcherMock_GetCacheSource_Call) Return(_a0 source.TypedSyncingSource[reconcile.Request], _a1 error) *WatcherMock_GetCacheSource_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *WatcherMock_GetCacheSource_Call) RunAndReturn(run func() (source.SyncingSource, error)) *WatcherMock_GetCacheSource_Call {
+func (_c *WatcherMock_GetCacheSource_Call) RunAndReturn(run func() (source.TypedSyncingSource[reconcile.Request], error)) *WatcherMock_GetCacheSource_Call {
 	_c.Call.Return(run)
 	return _c
 }
