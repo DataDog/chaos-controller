@@ -41,6 +41,7 @@ const (
 
 var (
 	k8sClient  client.Client
+	APIReader  client.Reader
 	restConfig *rest.Config
 	namespace  string
 	lightCfg   lightConfig
@@ -115,6 +116,8 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 	Eventually(mgr.GetCache().WaitForCacheSync).WithContext(suiteCtx).Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).Should(BeTrue())
 
 	k8sClient = mgr.GetClient()
+
+	APIReader = mgr.GetAPIReader()
 
 	// Create namespace according to parallelization (and cleanup it on test cleanup)
 	namespace := corev1.Namespace{
