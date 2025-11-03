@@ -86,7 +86,7 @@ executors:
     docker:
       # This is circle ci images, provides default tool installed (like docker) to ease step definition and avoid apt-get/update things
       # https://circleci.com/docs/circleci-images/#next-gen-language-images
-      - image: cimg/go:1.25.3
+      - image: cimg/go:1.24.7
     resource_class: 2xlarge
   python:
     <<: *working_directory

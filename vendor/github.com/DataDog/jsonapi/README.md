@@ -94,7 +94,7 @@ Both [jsonapi.Marshal](https://pkg.go.dev/github.com/DataDog/jsonapi#Marshal) an
 | Option | Supports |
 | --- | --- |
 | [jsonapi.MarshalOption](https://pkg.go.dev/github.com/DataDog/jsonapi#MarshalOption) | [meta](https://pkg.go.dev/github.com/DataDog/jsonapi#MarshalMeta), [json:api](https://pkg.go.dev/github.com/DataDog/jsonapi#MarshalJSONAPI), [includes](https://pkg.go.dev/github.com/DataDog/jsonapi#MarshalInclude), [document links](https://pkg.go.dev/github.com/DataDog/jsonapi#MarshalLinks), [sparse fieldsets](https://pkg.go.dev/github.com/DataDog/jsonapi#MarshalFields), [name validation](https://pkg.go.dev/github.com/DataDog/jsonapi#MarshalSetNameValidation) |
-| [jsonapi.UnmarshalOption](https://pkg.go.dev/github.com/DataDog/jsonapi#UnmarshalOption) | [meta](https://pkg.go.dev/github.com/DataDog/jsonapi#UnmarshalMeta), [name validation](https://pkg.go.dev/github.com/DataDog/jsonapi#UnmarshalSetNameValidation) |
+| [jsonapi.UnmarshalOption](https://pkg.go.dev/github.com/DataDog/jsonapi#UnmarshalOption) | [meta](https://pkg.go.dev/github.com/DataDog/jsonapi#UnmarshalMeta), [document links](https://pkg.go.dev/github.com/DataDog/jsonapi#UnmarshalLinks), [name validation](https://pkg.go.dev/github.com/DataDog/jsonapi#UnmarshalSetNameValidation) |
 
 ## Non-String Identifiers
 

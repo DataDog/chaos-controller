@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"gopkg.in/DataDog/dd-trace-go.v1/internal/appsec/dyngo"
+	v2 "github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"gopkg.in/DataDog/dd-trace-go.v1/internal/version"
 )
 
@@ -87,6 +87,7 @@ func UseLogger(l Logger) (undo func()) {
 	defer mu.Unlock()
 	old := logger
 	logger = l
+	v2.UseLogger(l)
 	return func() {
 		logger = old
 	}
@@ -167,7 +168,7 @@ func init() {
 	// This is required because we really want to be able to log errors from dyngo
 	// but the log package depend on too much packages that we want to instrument.
 	// So we need to do this to avoid dependency cycles.
-	dyngo.LogError = Error
+	// TODO: fix dyngo.LogError = Error
 }
 
 func setLoggingRate(v string) {
@@ -239,15 +240,15 @@ func Flush() {
 
 func flushLocked() {
 	for _, report := range erragg {
-		msg := fmt.Sprintf("%v", report.err)
+		var extra string
 		if report.count > defaultErrorLimit {
-			msg += fmt.Sprintf(", %d+ additional messages skipped (first occurrence: %s)", defaultErrorLimit, report.first.Format(time.RFC822))
+			extra = fmt.Sprintf(", %d+ additional messages skipped (first occurrence: %s)", defaultErrorLimit, report.first.Format(time.RFC822))
 		} else if report.count > 1 {
-			msg += fmt.Sprintf(", %d additional messages skipped (first occurrence: %s)", report.count-1, report.first.Format(time.RFC822))
+			extra = fmt.Sprintf(", %d additional messages skipped (first occurrence: %s)", report.count-1, report.first.Format(time.RFC822))
 		} else {
-			msg += fmt.Sprintf(" (occurred: %s)", report.first.Format(time.RFC822))
+			extra = fmt.Sprintf(" (occurred: %s)", report.first.Format(time.RFC822))
 		}
-		printMsg("ERROR", msg)
+		printMsg("ERROR", "%v%s", report.err, extra)
 	}
 	for k := range erragg {
 		// compiler-optimized map-clearing post go1.11 (golang/go#20138)

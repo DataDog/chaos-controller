@@ -24,6 +24,40 @@ type histogramStats struct {
 	Max    float64 // aka P100
 }
 
+type distributionSample struct {
+	Value float64
+	Rate  float64
+}
+
+func distributionSamplesFromHist(h *metrics.Float64Histogram, samples []distributionSample) []distributionSample {
+	for i, count := range h.Counts {
+		start, end := h.Buckets[i], h.Buckets[i+1]
+		// Handle edge cases where start or end of buckets could be infinity
+		if i == 0 && math.IsInf(h.Buckets[0], -1) {
+			start = end
+		}
+		if i == len(h.Counts)-1 && math.IsInf(h.Buckets[len(h.Buckets)-1], 1) {
+			end = start
+		}
+		if start == end && math.IsInf(start, 0) {
+			// All buckets are empty, return early
+			return samples
+		}
+
+		if count == 0 {
+			// Don't submit empty buckets
+			continue
+		}
+
+		sample := distributionSample{
+			Value: (start + end) / 2,
+			Rate:  1 / float64(count),
+		}
+		samples = append(samples, sample)
+	}
+	return samples
+}
+
 func statsFromHist(h *metrics.Float64Histogram) *histogramStats {
 	p := percentiles(h, []float64{0, 0.5, 0.95, 0.99, 1})
 	return &histogramStats{

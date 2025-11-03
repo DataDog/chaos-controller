@@ -37,6 +37,10 @@ var (
 	// ErrRelationshipMissingRequiredMembers indicates that a relationship does not have at least one required member
 	ErrRelationshipMissingRequiredMembers = errors.New("relationship is missing required top-level members; must have one of: \"data\", \"meta\", \"links\"")
 
+	// ErrNonuniqueResource indicates that multiple resource objects across the primary data and included sections share
+	// the same type & id, or multiple resource linkages with the same type & id exist in a relationship section
+	ErrNonuniqueResource = errors.New("\"type\" and \"id\" must be unique across resources")
+
 	// ErrErrorUnmarshalingNotImplemented indicates that an attempt was made to unmarshal an error document
 	ErrErrorUnmarshalingNotImplemented = errors.New("error unmarshaling is not implemented")
 )
@@ -91,15 +95,17 @@ func (e *MemberNameValidationError) Error() string {
 	return fmt.Sprintf("invalid member name: %s", e.MemberName)
 }
 
-// ErrorLink represents a JSON:API error links object as defined by https://jsonapi.org/format/1.0/#error-objects.
+// ErrorLink represents a JSON:API error links object as defined by https://jsonapi.org/format/1.1/#error-objects.
 type ErrorLink struct {
 	About any `json:"about,omitempty"`
+	Type  any `json:"type,omitempty"`
 }
 
-// ErrorSource represents a JSON:API Error.Source as defined by https://jsonapi.org/format/1.0/#error-objects.
+// ErrorSource represents a JSON:API Error.Source as defined by https://jsonapi.org/format/1.1/#error-objects.
 type ErrorSource struct {
 	Pointer   string `json:"pointer,omitempty"`
 	Parameter string `json:"parameter,omitempty"`
+	Header    string `json:"header,omitempty"`
 }
 
 // Status provides a helper for setting an Error.Status value.
@@ -107,7 +113,7 @@ func Status(s int) *int {
 	return &s
 }
 
-// Error represents a JSON:API error object as defined by https://jsonapi.org/format/1.0/#error-objects.
+// Error represents a JSON:API error object as defined by https://jsonapi.org/format/1.1/#error-objects.
 type Error struct {
 	ID     string       `json:"id,omitempty"`
 	Links  *ErrorLink   `json:"links,omitempty"`

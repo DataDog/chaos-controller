@@ -44,6 +44,10 @@ func (ro *resourceObject) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+func (ro *resourceObject) getIdentifier() string {
+	return fmt.Sprintf("{Type: %v, ID: %v}", ro.Type, ro.ID)
+}
+
 // JSONAPI is a JSON:API object as defined by https://jsonapi.org/format/1.0/#document-jsonapi-object.
 type jsonAPI struct {
 	Version string `json:"version"`
@@ -71,15 +75,17 @@ type LinkObject struct {
 }
 
 // Link is the top-level links object as defined by https://jsonapi.org/format/1.0/#document-top-level.
-// First|Last|Next|Previous are provided to support pagination as defined by https://jsonapi.org/format/1.0/#fetching-pagination.
+// First|Last|Next|Prev are provided to support pagination as defined by https://jsonapi.org/format/1.0/#fetching-pagination.
 type Link struct {
 	Self    any `json:"self,omitempty"`
 	Related any `json:"related,omitempty"`
 
-	First    string `json:"first,omitempty"`
-	Last     string `json:"last,omitempty"`
-	Next     string `json:"next,omitempty"`
+	First string `json:"first,omitempty"`
+	Last  string `json:"last,omitempty"`
+	Next  string `json:"next,omitempty"`
+	// Previous is deprecated and kept for backwards compatibility. Instead, use the Prev field.
 	Previous string `json:"previous,omitempty"`
+	Prev     string `json:"prev,omitempty"`
 }
 
 func checkLinkValue(linkValue any) (bool, *TypeError) {
@@ -143,7 +149,7 @@ type document struct {
 	// JSONAPI is a JSON:API object as defined by https://jsonapi.org/format/1.0/#document-jsonapi-object.
 	JSONAPI *jsonAPI `json:"jsonapi,omitempty"`
 
-	// Errors is a list of JSON:API error objects as defined by https://jsonapi.org/format/1.0/#error-objects.
+	// Errors is a list of JSON:API error objects as defined by https://jsonapi.org/format/1.1/#error-objects.
 	Errors []*Error `json:"errors,omitempty"`
 
 	// Links is the top-level links object as defined by https://jsonapi.org/format/1.0/#document-top-level.
@@ -235,26 +241,22 @@ func (d *document) isEmpty() bool {
 	return len(d.DataMany) == 0 && d.DataOne == nil
 }
 
+func (d *document) getResourceObjectSlice() []*resourceObject {
+	if d.hasMany {
+		return d.DataMany
+	}
+	if d.DataOne == nil {
+		return nil
+	}
+	return []*resourceObject{d.DataOne}
+}
+
 // verifyFullLinkage returns an error if the given compound document is not fully-linked as
 // described by https://jsonapi.org/format/1.1/#document-compound-documents. That is, there must be
 // a chain of relationships linking all included data to primary data transitively.
 func (d *document) verifyFullLinkage(aliasRelationships bool) error {
 	if len(d.Included) == 0 {
 		return nil
-	}
-
-	getResourceObjectSlice := func(d *document) []*resourceObject {
-		if d.hasMany {
-			return d.DataMany
-		}
-		if d.DataOne == nil {
-			return nil
-		}
-		return []*resourceObject{d.DataOne}
-	}
-
-	resourceIdentifier := func(ro *resourceObject) string {
-		return fmt.Sprintf("{Type: %v, ID: %v}", ro.Type, ro.ID)
 	}
 
 	// a list of related resource identifiers, and a flag to mark nodes as visited
@@ -270,16 +272,16 @@ func (d *document) verifyFullLinkage(aliasRelationships bool) error {
 		relatedTo := make([]*resourceObject, 0)
 
 		for _, relationship := range included.Relationships {
-			relatedTo = append(relatedTo, getResourceObjectSlice(relationship)...)
+			relatedTo = append(relatedTo, relationship.getResourceObjectSlice()...)
 		}
 
-		includeGraph[resourceIdentifier(included)] = &includeNode{included, relatedTo, false}
+		includeGraph[included.getIdentifier()] = &includeNode{included, relatedTo, false}
 	}
 
 	// helper to traverse the graph from a given key and mark nodes as visited
 	var visit func(ro *resourceObject)
 	visit = func(ro *resourceObject) {
-		node, ok := includeGraph[resourceIdentifier(ro)]
+		node, ok := includeGraph[ro.getIdentifier()]
 		if !ok {
 			return
 		}
@@ -299,10 +301,10 @@ func (d *document) verifyFullLinkage(aliasRelationships bool) error {
 	}
 
 	// visit all include nodes that are accessible from the primary data
-	primaryData := getResourceObjectSlice(d)
+	primaryData := d.getResourceObjectSlice()
 	for _, data := range primaryData {
 		for _, relationship := range data.Relationships {
-			for _, ro := range getResourceObjectSlice(relationship) {
+			for _, ro := range relationship.getResourceObjectSlice() {
 				visit(ro)
 			}
 		}
@@ -320,6 +322,35 @@ func (d *document) verifyFullLinkage(aliasRelationships bool) error {
 	}
 
 	return nil
+}
+
+// verifyResourceUniqueness checks if the given document contains unique resources as described
+// by https://jsonapi.org/format/1.1/#document-resource-object-identification. Resource objects
+// across primary data and included must be unique, and resource linkages must be unique in
+// any given relationship section.
+func (d *document) verifyResourceUniqueness() bool {
+	topLevelSeen := make(map[string]bool)
+
+	for _, ro := range append(d.getResourceObjectSlice(), d.Included...) {
+		rid := ro.getIdentifier()
+		if ro.ID != "" && topLevelSeen[rid] {
+			return false
+		}
+		topLevelSeen[rid] = true
+
+		for _, rel := range ro.Relationships {
+			relSeen := make(map[string]bool)
+			for _, relRo := range rel.getResourceObjectSlice() {
+				relRid := relRo.getIdentifier()
+				if relRo.ID != "" && relSeen[relRid] {
+					return false
+				}
+				relSeen[relRid] = true
+			}
+		}
+	}
+
+	return true
 }
 
 // Linkable can be implemented to marshal resource object links as defined by https://jsonapi.org/format/1.0/#document-resource-object-links.
@@ -353,4 +384,28 @@ type MarshalIdentifier interface {
 //  3. Fail
 type UnmarshalIdentifier interface {
 	UnmarshalID(id string) error
+}
+
+// MarshalType can be optionally implemented to control marshaling of the type field.
+//
+// The order of operations for marshaling the type field is:
+//
+//  1. Use MarshalType if it is implemented
+//  2. Use the value from the jsonapi tag on the primary field
+//  3. Fail
+type MarshalType interface {
+	MarshalType() string
+}
+
+// UnmarshalType can be optionally implemented to control unmarshaling of the type field from a string.
+// Since the type is not typically set as a field on the object, this is an opportunity to return an error
+// if the passed in type from the payload is unexpected. This allows customization of the expected type field.
+//
+// The order of operations for checking the type field is:
+//
+//  1. Use UnmarshalType if it is implemented, fail if it returns an error
+//  2. Compare against the type provided in the jsonapi tag on the primary field
+//  3. Fail
+type UnmarshalType interface {
+	UnmarshalType(jsonapiType string) error
 }
