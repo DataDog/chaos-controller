@@ -24,12 +24,13 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
+	"github.com/containerd/log"
+
+	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/remotes/docker/auth"
 	remoteerrors "github.com/containerd/containerd/remotes/errors"
-	"github.com/containerd/errdefs"
-	"github.com/containerd/log"
-	"github.com/sirupsen/logrus"
 )
 
 type dockerAuthorizer struct {
@@ -43,13 +44,6 @@ type dockerAuthorizer struct {
 	handlers map[string]*authHandler
 
 	onFetchRefreshToken OnFetchRefreshToken
-}
-
-// NewAuthorizer creates a Docker authorizer using the provided function to
-// get credentials for the token server or basic auth.
-// Deprecated: Use NewDockerAuthorizer
-func NewAuthorizer(client *http.Client, f func(string) (string, string, error)) Authorizer {
-	return NewDockerAuthorizer(WithAuthClient(client), WithAuthCreds(f))
 }
 
 type authorizerConfig struct {
@@ -213,9 +207,10 @@ func (a *dockerAuthorizer) AddResponses(ctx context.Context, responses []*http.R
 // authResult is used to control limit rate.
 type authResult struct {
 	sync.WaitGroup
-	token        string
-	refreshToken string
-	err          error
+	token          string
+	refreshToken   string
+	expirationTime *time.Time
+	err            error
 }
 
 // authHandler is used to handle auth request per registry server.
@@ -278,8 +273,12 @@ func (ah *authHandler) doBearerAuth(ctx context.Context) (token, refreshToken st
 	// Docs: https://docs.docker.com/registry/spec/auth/scope
 	scoped := strings.Join(to.Scopes, " ")
 
+	// Keep track of the expiration time of cached bearer tokens so they can be
+	// refreshed when they expire without a server roundtrip.
+	var expirationTime *time.Time
+
 	ah.Lock()
-	if r, exist := ah.scopedTokens[scoped]; exist {
+	if r, exist := ah.scopedTokens[scoped]; exist && (r.expirationTime == nil || r.expirationTime.After(time.Now())) {
 		ah.Unlock()
 		r.Wait()
 		return r.token, r.refreshToken, r.err
@@ -293,7 +292,7 @@ func (ah *authHandler) doBearerAuth(ctx context.Context) (token, refreshToken st
 
 	defer func() {
 		token = fmt.Sprintf("Bearer %s", token)
-		r.token, r.refreshToken, r.err = token, refreshToken, err
+		r.token, r.refreshToken, r.err, r.expirationTime = token, refreshToken, err, expirationTime
 		r.Done()
 	}()
 
@@ -319,15 +318,17 @@ func (ah *authHandler) doBearerAuth(ctx context.Context) (token, refreshToken st
 					if err != nil {
 						return "", "", err
 					}
+					expirationTime = getExpirationTime(resp.ExpiresInSeconds)
 					return resp.Token, resp.RefreshToken, nil
 				}
-				log.G(ctx).WithFields(logrus.Fields{
+				log.G(ctx).WithFields(log.Fields{
 					"status": errStatus.Status,
 					"body":   string(errStatus.Body),
 				}).Debugf("token request failed")
 			}
 			return "", "", err
 		}
+		expirationTime = getExpirationTime(resp.ExpiresInSeconds)
 		return resp.AccessToken, resp.RefreshToken, nil
 	}
 	// do request anonymously
@@ -335,7 +336,16 @@ func (ah *authHandler) doBearerAuth(ctx context.Context) (token, refreshToken st
 	if err != nil {
 		return "", "", fmt.Errorf("failed to fetch anonymous token: %w", err)
 	}
+	expirationTime = getExpirationTime(resp.ExpiresInSeconds)
 	return resp.Token, resp.RefreshToken, nil
+}
+
+func getExpirationTime(expiresInSeconds int) *time.Time {
+	if expiresInSeconds <= 0 {
+		return nil
+	}
+	expirationTime := time.Now().Add(time.Duration(expiresInSeconds) * time.Second)
+	return &expirationTime
 }
 
 func invalidAuthorization(ctx context.Context, c auth.Challenge, responses []*http.Response) (retry bool, _ error) {

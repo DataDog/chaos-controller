@@ -60,9 +60,9 @@ const (
 )
 
 var messages = map[Warning]string{
-	PullSchema1Image: "Schema 1 images will be deprecated in containerd v1.7 and removed in containerd v2.0. " +
-		`Since containerd v1.6.25, schema 1 images are identified by the "io.containerd.image/converted-docker-schema1" label.`,
-	GoPluginLibrary: "Dynamically-linked Go plugins as containerd runtimes are deprecated since containerd v2.0 and removed in containerd v2.1.",
+	PullSchema1Image: "Schema 1 images are deprecated since containerd v1.7 and removed in containerd v2.0. " +
+		`Since containerd v1.7.8, schema 1 images are identified by the "io.containerd.image/converted-docker-schema1" label.`,
+	GoPluginLibrary: "Dynamically-linked Go plugins as containerd runtimes will be deprecated in containerd v2.0 and removed in containerd v2.1.",
 	CRISystemdCgroupV1: "The `systemd_cgroup` property (old form) of `[plugins.\"io.containerd.grpc.v1.cri\"] is deprecated since containerd v1.3 and will be removed in containerd v2.0. " +
 		"Use `SystemdCgroup` in [plugins.\"io.containerd.grpc.v1.cri\".containerd.runtimes.runc.options] options instead.",
 	CRIUntrustedWorkloadRuntime: "The `untrusted_workload_runtime` property of [plugins.\"io.containerd.grpc.v1.cri\".containerd] is deprecated since containerd v1.2 and will be removed in containerd v2.0. " +

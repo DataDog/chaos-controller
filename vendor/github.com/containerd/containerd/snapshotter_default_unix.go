@@ -1,5 +1,4 @@
 //go:build darwin || freebsd || solaris
-// +build darwin freebsd solaris
 
 /*
    Copyright The containerd Authors.
@@ -24,4 +23,6 @@ const (
 	// This will be based on the client compilation target, so take that into
 	// account when choosing this value.
 	DefaultSnapshotter = "native"
+	// DefaultDiffer will set the default differ for the platform.
+	DefaultDiffer = "walking"
 )
