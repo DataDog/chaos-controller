@@ -331,8 +331,6 @@ func (d *Disruption) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Ob
 		}
 	}()
 
-	// oldDisruption is already assigned as old
-
 	if err = validateUserInfoImmutable(oldDisruption, newDisruptionObj); err != nil {
 		return nil, err
 	}
