@@ -17,12 +17,13 @@ import (
 	"github.com/stretchr/testify/mock"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 var _ = Describe("Disruptions watchers manager", func() {
 	var (
 		chaosPodWatcherMock                                              *watchers.WatcherMock
-		cacheMock                                                        *CacheMock
+		cacheMock                                                        *mocks.CacheCacheMock
 		disruption                                                       *chaosv1beta1.Disruption
 		disruptionsWatchersManager                                       watchers.DisruptionsWatchersManager
 		disruptionTargetWatcherMock                                      *watchers.WatcherMock
@@ -36,7 +37,7 @@ var _ = Describe("Disruptions watchers manager", func() {
 
 	BeforeEach(func() {
 		// Arrange
-		cacheMock = &CacheMock{}
+		cacheMock = mocks.NewCacheCacheMock(GinkgoT())
 		readerMock = mocks.NewReaderMock(GinkgoT())
 		twoDisruptions = []*chaosv1beta1.Disruption{
 			{
@@ -58,7 +59,7 @@ var _ = Describe("Disruptions watchers manager", func() {
 
 	JustBeforeEach(func() {
 		// Arrange
-		controllerMock := mocks.NewRuntimeControllerMock(GinkgoT())
+		controllerMock := mocks.NewRuntimeControllerMock[reconcile.Request](GinkgoT())
 
 		// Act
 		disruptionsWatchersManager = watchers.NewDisruptionsWatchersManager(controllerMock, watcherFactoryMock, readerMock)

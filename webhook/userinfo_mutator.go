@@ -23,7 +23,7 @@ import (
 type UserInfoMutator struct {
 	Client  client.Client
 	Log     *zap.SugaredLogger
-	Decoder *admission.Decoder
+	Decoder admission.Decoder
 }
 
 func (m UserInfoMutator) Handle(ctx context.Context, request admission.Request) admission.Response {

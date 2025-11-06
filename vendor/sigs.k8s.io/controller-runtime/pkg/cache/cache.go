@@ -19,10 +19,12 @@ package cache
 import (
 	"context"
 	"fmt"
+	"maps"
 	"net/http"
+	"slices"
+	"sort"
 	"time"
 
-	"golang.org/x/exp/maps"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,11 +40,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache/internal"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
-	logf "sigs.k8s.io/controller-runtime/pkg/internal/log"
 )
 
 var (
-	log               = logf.RuntimeLog.WithName("object-cache")
 	defaultSyncPeriod = 10 * time.Hour
 )
 
@@ -113,13 +113,17 @@ type Informer interface {
 	// the handler again and an error if the handler cannot be added.
 	AddEventHandlerWithResyncPeriod(handler toolscache.ResourceEventHandler, resyncPeriod time.Duration) (toolscache.ResourceEventHandlerRegistration, error)
 
+	// AddEventHandlerWithOptions is a variant of AddEventHandlerWithResyncPeriod where
+	// all optional parameters are passed in as a struct.
+	AddEventHandlerWithOptions(handler toolscache.ResourceEventHandler, options toolscache.HandlerOptions) (toolscache.ResourceEventHandlerRegistration, error)
+
 	// RemoveEventHandler removes a previously added event handler given by
 	// its registration handle.
 	// This function is guaranteed to be idempotent and thread-safe.
 	RemoveEventHandler(handle toolscache.ResourceEventHandlerRegistration) error
 
-	// AddIndexers adds indexers to this store. If this is called after there is already data
-	// in the store, the results are undefined.
+	// AddIndexers adds indexers to this store. It is valid to add indexers
+	// after an informer was started.
 	AddIndexers(indexers toolscache.Indexers) error
 
 	// HasSynced return true if the informers underlying store has synced.
@@ -202,13 +206,16 @@ type Options struct {
 
 	// DefaultTransform will be used as transform for all object types
 	// unless there is already one set in ByObject or DefaultNamespaces.
+	//
+	// A typical usecase for this is to use TransformStripManagedFields
+	// to reduce the caches memory usage.
 	DefaultTransform toolscache.TransformFunc
 
-	// DefaultWatchErrorHandler will be used to the WatchErrorHandler which is called
+	// DefaultWatchErrorHandler will be used to set the WatchErrorHandler which is called
 	// whenever ListAndWatch drops the connection with an error.
 	//
 	// After calling this handler, the informer will backoff and retry.
-	DefaultWatchErrorHandler toolscache.WatchErrorHandler
+	DefaultWatchErrorHandler toolscache.WatchErrorHandlerWithContext
 
 	// DefaultUnsafeDisableDeepCopy is the default for UnsafeDisableDeepCopy
 	// for everything that doesn't specify this.
@@ -220,12 +227,25 @@ type Options struct {
 	// DefaultNamespaces.
 	DefaultUnsafeDisableDeepCopy *bool
 
+	// DefaultEnableWatchBookmarks requests watch events with type "BOOKMARK".
+	// Servers that do not implement bookmarks may ignore this flag and
+	// bookmarks are sent at the server's discretion. Clients should not
+	// assume bookmarks are returned at any specific interval, nor may they
+	// assume the server will send any BOOKMARK event during a session.
+	//
+	// This will be used for all object types, unless it is set in ByObject or
+	// DefaultNamespaces.
+	//
+	// Defaults to true.
+	DefaultEnableWatchBookmarks *bool
+
 	// ByObject restricts the cache's ListWatch to the desired fields per GVK at the specified object.
-	// object, this will fall through to Default* settings.
+	// If unset, this will fall through to the Default* settings.
 	ByObject map[client.Object]ByObject
 
-	// newInformer allows overriding of NewSharedIndexInformer for testing.
-	newInformer *func(toolscache.ListerWatcher, runtime.Object, time.Duration, toolscache.Indexers) toolscache.SharedIndexInformer
+	// NewInformer allows overriding of NewSharedIndexInformer, for example for testing
+	// or if someone wants to write their own Informer.
+	NewInformer func(toolscache.ListerWatcher, runtime.Object, time.Duration, toolscache.Indexers) toolscache.SharedIndexInformer
 }
 
 // ByObject offers more fine-grained control over the cache's ListWatch by object.
@@ -270,6 +290,15 @@ type ByObject struct {
 	// Be very careful with this, when enabled you must DeepCopy any object before mutating it,
 	// otherwise you will mutate the object in the cache.
 	UnsafeDisableDeepCopy *bool
+
+	// EnableWatchBookmarks requests watch events with type "BOOKMARK".
+	// Servers that do not implement bookmarks may ignore this flag and
+	// bookmarks are sent at the server's discretion. Clients should not
+	// assume bookmarks are returned at any specific interval, nor may they
+	// assume the server will send any BOOKMARK event during a session.
+	//
+	// Defaults to true.
+	EnableWatchBookmarks *bool
 }
 
 // Config describes all potential options for a given watch.
@@ -296,6 +325,15 @@ type Config struct {
 	// UnsafeDisableDeepCopy specifies if List and Get requests against the
 	// cache should not DeepCopy. A nil value allows to default this.
 	UnsafeDisableDeepCopy *bool
+
+	// EnableWatchBookmarks requests watch events with type "BOOKMARK".
+	// Servers that do not implement bookmarks may ignore this flag and
+	// bookmarks are sent at the server's discretion. Clients should not
+	// assume bookmarks are returned at any specific interval, nor may they
+	// assume the server will send any BOOKMARK event during a session.
+	//
+	// Defaults to true.
+	EnableWatchBookmarks *bool
 }
 
 // NewCacheFunc - Function for creating a new cache from the options and a rest config.
@@ -345,12 +383,27 @@ func New(cfg *rest.Config, opts Options) (Cache, error) {
 	return delegating, nil
 }
 
+// TransformStripManagedFields strips the managed fields of an object before it is committed to the cache.
+// If you are not explicitly accessing managedFields from your code, setting this as `DefaultTransform`
+// on the cache can lead to a significant reduction in memory usage.
+func TransformStripManagedFields() toolscache.TransformFunc {
+	return func(in any) (any, error) {
+		// Nilcheck managed fields to avoid hitting https://github.com/kubernetes/kubernetes/issues/124337
+		if obj, err := meta.Accessor(in); err == nil && obj.GetManagedFields() != nil {
+			obj.SetManagedFields(nil)
+		}
+
+		return in, nil
+	}
+}
+
 func optionDefaultsToConfig(opts *Options) Config {
 	return Config{
 		LabelSelector:         opts.DefaultLabelSelector,
 		FieldSelector:         opts.DefaultFieldSelector,
 		Transform:             opts.DefaultTransform,
 		UnsafeDisableDeepCopy: opts.DefaultUnsafeDisableDeepCopy,
+		EnableWatchBookmarks:  opts.DefaultEnableWatchBookmarks,
 	}
 }
 
@@ -360,6 +413,7 @@ func byObjectToConfig(byObject ByObject) Config {
 		FieldSelector:         byObject.Field,
 		Transform:             byObject.Transform,
 		UnsafeDisableDeepCopy: byObject.UnsafeDisableDeepCopy,
+		EnableWatchBookmarks:  byObject.EnableWatchBookmarks,
 	}
 }
 
@@ -382,7 +436,8 @@ func newCache(restConfig *rest.Config, opts Options) newCacheFunc {
 				Transform:             config.Transform,
 				WatchErrorHandler:     opts.DefaultWatchErrorHandler,
 				UnsafeDisableDeepCopy: ptr.Deref(config.UnsafeDisableDeepCopy, false),
-				NewInformer:           opts.newInformer,
+				EnableWatchBookmarks:  ptr.Deref(config.EnableWatchBookmarks, true),
+				NewInformer:           opts.NewInformer,
 			}),
 			readerFailOnMissingInformer: opts.ReaderFailOnMissingInformer,
 		}
@@ -418,14 +473,8 @@ func defaultOpts(config *rest.Config, opts Options) (Options, error) {
 		}
 	}
 
-	for namespace, cfg := range opts.DefaultNamespaces {
-		cfg = defaultConfig(cfg, optionDefaultsToConfig(&opts))
-		if namespace == metav1.NamespaceAll {
-			cfg.FieldSelector = fields.AndSelectors(appendIfNotNil(namespaceAllSelector(maps.Keys(opts.DefaultNamespaces)), cfg.FieldSelector)...)
-		}
-		opts.DefaultNamespaces[namespace] = cfg
-	}
-
+	opts.ByObject = maps.Clone(opts.ByObject)
+	opts.DefaultNamespaces = maps.Clone(opts.DefaultNamespaces)
 	for obj, byObject := range opts.ByObject {
 		isNamespaced, err := apiutil.IsObjectNamespaced(obj, opts.Scheme, opts.Mapper)
 		if err != nil {
@@ -435,11 +484,17 @@ func defaultOpts(config *rest.Config, opts Options) (Options, error) {
 			return opts, fmt.Errorf("type %T is not namespaced, but its ByObject.Namespaces setting is not nil", obj)
 		}
 
-		// Default the namespace-level configs first, because they need to use the undefaulted type-level config.
+		if isNamespaced && byObject.Namespaces == nil {
+			byObject.Namespaces = maps.Clone(opts.DefaultNamespaces)
+		} else {
+			byObject.Namespaces = maps.Clone(byObject.Namespaces)
+		}
+
+		// Default the namespace-level configs first, because they need to use the undefaulted type-level config
+		// to be able to potentially fall through to settings from DefaultNamespaces.
 		for namespace, config := range byObject.Namespaces {
 			// 1. Default from the undefaulted type-level config
 			config = defaultConfig(config, byObjectToConfig(byObject))
-
 			// 2. Default from the namespace-level config. This was defaulted from the global default config earlier, but
 			//    might not have an entry for the current namespace.
 			if defaultNamespaceSettings, hasDefaultNamespace := opts.DefaultNamespaces[namespace]; hasDefaultNamespace {
@@ -452,7 +507,7 @@ func defaultOpts(config *rest.Config, opts Options) (Options, error) {
 			if namespace == metav1.NamespaceAll {
 				config.FieldSelector = fields.AndSelectors(
 					appendIfNotNil(
-						namespaceAllSelector(maps.Keys(byObject.Namespaces)),
+						namespaceAllSelector(slices.Collect(maps.Keys(byObject.Namespaces))),
 						config.FieldSelector,
 					)...,
 				)
@@ -461,17 +516,34 @@ func defaultOpts(config *rest.Config, opts Options) (Options, error) {
 			byObject.Namespaces[namespace] = config
 		}
 
-		defaultedConfig := defaultConfig(byObjectToConfig(byObject), optionDefaultsToConfig(&opts))
-		byObject.Label = defaultedConfig.LabelSelector
-		byObject.Field = defaultedConfig.FieldSelector
-		byObject.Transform = defaultedConfig.Transform
-		byObject.UnsafeDisableDeepCopy = defaultedConfig.UnsafeDisableDeepCopy
-
-		if isNamespaced && byObject.Namespaces == nil {
-			byObject.Namespaces = opts.DefaultNamespaces
+		// Only default ByObject iself if it isn't namespaced or has no namespaces configured, as only
+		// then any of this will be honored.
+		if !isNamespaced || len(byObject.Namespaces) == 0 {
+			defaultedConfig := defaultConfig(byObjectToConfig(byObject), optionDefaultsToConfig(&opts))
+			byObject.Label = defaultedConfig.LabelSelector
+			byObject.Field = defaultedConfig.FieldSelector
+			byObject.Transform = defaultedConfig.Transform
+			byObject.UnsafeDisableDeepCopy = defaultedConfig.UnsafeDisableDeepCopy
+			byObject.EnableWatchBookmarks = defaultedConfig.EnableWatchBookmarks
 		}
 
 		opts.ByObject[obj] = byObject
+	}
+
+	// Default namespaces after byObject has been defaulted, otherwise a namespace without selectors
+	// will get the `Default` selectors, then get copied to byObject and then not get defaulted from
+	// byObject, as it already has selectors.
+	for namespace, cfg := range opts.DefaultNamespaces {
+		cfg = defaultConfig(cfg, optionDefaultsToConfig(&opts))
+		if namespace == metav1.NamespaceAll {
+			cfg.FieldSelector = fields.AndSelectors(
+				appendIfNotNil(
+					namespaceAllSelector(slices.Collect(maps.Keys(opts.DefaultNamespaces))),
+					cfg.FieldSelector,
+				)...,
+			)
+		}
+		opts.DefaultNamespaces[namespace] = cfg
 	}
 
 	// Default the resync period to 10 hours if unset
@@ -494,24 +566,27 @@ func defaultConfig(toDefault, defaultFrom Config) Config {
 	if toDefault.UnsafeDisableDeepCopy == nil {
 		toDefault.UnsafeDisableDeepCopy = defaultFrom.UnsafeDisableDeepCopy
 	}
-
+	if toDefault.EnableWatchBookmarks == nil {
+		toDefault.EnableWatchBookmarks = defaultFrom.EnableWatchBookmarks
+	}
 	return toDefault
 }
 
-func namespaceAllSelector(namespaces []string) fields.Selector {
+func namespaceAllSelector(namespaces []string) []fields.Selector {
 	selectors := make([]fields.Selector, 0, len(namespaces)-1)
+	sort.Strings(namespaces)
 	for _, namespace := range namespaces {
 		if namespace != metav1.NamespaceAll {
 			selectors = append(selectors, fields.OneTermNotEqualSelector("metadata.namespace", namespace))
 		}
 	}
 
-	return fields.AndSelectors(selectors...)
+	return selectors
 }
 
-func appendIfNotNil[T comparable](a, b T) []T {
+func appendIfNotNil[T comparable](a []T, b T) []T {
 	if b != *new(T) {
-		return []T{a, b}
+		return append(a, b)
 	}
-	return []T{a}
+	return a
 }

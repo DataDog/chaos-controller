@@ -322,15 +322,15 @@ type Disruption struct {
 
 // TimeToInject calculates the time at which the disruption should be injected based on its own creationTimestamp.
 // It considers the specified triggers for injection timing in the disruption's specification.
-func (r *Disruption) TimeToInject() time.Time {
-	triggers := r.Spec.Triggers
+func (d *Disruption) TimeToInject() time.Time {
+	triggers := d.Spec.Triggers
 
 	if triggers == nil || triggers.IsZero() {
-		return r.CreationTimestamp.Time
+		return d.CreationTimestamp.Time
 	}
 
 	if triggers.Inject.IsZero() {
-		return r.TimeToCreatePods()
+		return d.TimeToCreatePods()
 	}
 
 	var notInjectedBefore time.Time
@@ -342,11 +342,11 @@ func (r *Disruption) TimeToInject() time.Time {
 
 	if triggers.Inject.Offset.Duration() > 0 {
 		// We measure the offset from the latter of two timestamps: creationTimestamp of the disruption, and spec.triggers.createPods
-		notInjectedBefore = r.TimeToCreatePods().Add(triggers.Inject.Offset.Duration())
+		notInjectedBefore = d.TimeToCreatePods().Add(triggers.Inject.Offset.Duration())
 	}
 
-	if r.CreationTimestamp.Time.After(notInjectedBefore) {
-		return r.CreationTimestamp.Time
+	if d.CreationTimestamp.Time.After(notInjectedBefore) {
+		return d.CreationTimestamp.Time
 	}
 
 	return notInjectedBefore
@@ -354,15 +354,15 @@ func (r *Disruption) TimeToInject() time.Time {
 
 // TimeToCreatePods takes the DisruptionTriggers field from a Disruption spec, along with the time.Time at which that disruption was created
 // It returns the earliest time.Time at which the chaos-controller should begin creating chaos pods, given the specified DisruptionTriggers
-func (r *Disruption) TimeToCreatePods() time.Time {
-	triggers := r.Spec.Triggers
+func (d *Disruption) TimeToCreatePods() time.Time {
+	triggers := d.Spec.Triggers
 
 	if triggers == nil || triggers.IsZero() {
-		return r.CreationTimestamp.Time
+		return d.CreationTimestamp.Time
 	}
 
 	if triggers.CreatePods.IsZero() {
-		return r.CreationTimestamp.Time
+		return d.CreationTimestamp.Time
 	}
 
 	var noPodsBefore time.Time
@@ -373,25 +373,25 @@ func (r *Disruption) TimeToCreatePods() time.Time {
 	}
 
 	if triggers.CreatePods.Offset.Duration() > 0 {
-		noPodsBefore = r.CreationTimestamp.Add(triggers.CreatePods.Offset.Duration())
+		noPodsBefore = d.CreationTimestamp.Add(triggers.CreatePods.Offset.Duration())
 	}
 
-	if r.CreationTimestamp.After(noPodsBefore) {
-		return r.CreationTimestamp.Time
+	if d.CreationTimestamp.After(noPodsBefore) {
+		return d.CreationTimestamp.Time
 	}
 
 	return noPodsBefore
 }
 
 // RemainingDuration return the remaining duration of the disruption.
-func (r *Disruption) RemainingDuration() time.Duration {
-	return r.calculateDeadline(
-		r.Spec.Duration.Duration(),
-		r.TimeToInject(),
+func (d *Disruption) RemainingDuration() time.Duration {
+	return d.calculateDeadline(
+		d.Spec.Duration.Duration(),
+		d.TimeToInject(),
 	)
 }
 
-func (r *Disruption) calculateDeadline(duration time.Duration, creationTime time.Time) time.Duration {
+func (d *Disruption) calculateDeadline(duration time.Duration, creationTime time.Time) time.Duration {
 	// first we must calculate the timeout from when the disruption was created, not from now
 	timeout := creationTime.Add(duration)
 	now := time.Now() // rather not take the risk that the time changes by a second during this function
@@ -401,21 +401,21 @@ func (r *Disruption) calculateDeadline(duration time.Duration, creationTime time
 }
 
 // TerminationStatus determines the termination status of a disruption based on various factors.
-func (r *Disruption) TerminationStatus(chaosPods []corev1.Pod) TerminationStatus {
+func (d *Disruption) TerminationStatus(chaosPods []corev1.Pod) TerminationStatus {
 	// a not yet created disruption is neither temporarily nor definitively ended
-	if r.CreationTimestamp.IsZero() {
+	if d.CreationTimestamp.IsZero() {
 		return TSNotTerminated
 	}
 
 	// a definitive state (expired duration or deletion) imply a definitively deleted injection
 	// and should be returned prior to a temporarily terminated state
-	if r.RemainingDuration() <= 0 || !r.DeletionTimestamp.IsZero() {
+	if d.RemainingDuration() <= 0 || !d.DeletionTimestamp.IsZero() {
 		return TSDefinitivelyTerminated
 	}
 
 	if len(chaosPods) == 0 {
 		// we were never injected, we are hence not terminated if we reach here
-		if r.Status.InjectionStatus.NeverInjected() {
+		if d.Status.InjectionStatus.NeverInjected() {
 			return TSNotTerminated
 		}
 
@@ -443,58 +443,58 @@ func (r *Disruption) TerminationStatus(chaosPods []corev1.Pod) TerminationStatus
 // // is a percentage string value it's treated as a percentage and scaled appropriately
 // // in accordance to the total, if it's an int value it's treated as a simple value and
 // // if it is a string value which is either non-numeric or numeric but lacking a trailing '%' it returns an error.
-func (r *Disruption) GetTargetsCountAsInt(targetTotal int, roundUp bool) (int, error) {
-	if r.Spec.Count == nil {
+func (d *Disruption) GetTargetsCountAsInt(targetTotal int, roundUp bool) (int, error) {
+	if d.Spec.Count == nil {
 		return 0, apierrors.NewBadRequest("nil value for IntOrString")
 	}
 
-	return intstr.GetScaledValueFromIntOrPercent(r.Spec.Count, targetTotal, roundUp)
+	return intstr.GetScaledValueFromIntOrPercent(d.Spec.Count, targetTotal, roundUp)
 }
 
 // IsDeletionExpired checks if a Disruption resource has exceeded a specified deletion timeout duration
 // for deletion. It returns true if the resource should be considered deleted based on
 // the DeletionTimestamp and the deletion timeout duration.
-func (r *Disruption) IsDeletionExpired(deletionTimeout time.Duration) bool {
-	if r.DeletionTimestamp.IsZero() {
+func (d *Disruption) IsDeletionExpired(deletionTimeout time.Duration) bool {
+	if d.DeletionTimestamp.IsZero() {
 		return false
 	}
 
-	return time.Now().After(r.DeletionTimestamp.Add(deletionTimeout))
+	return time.Now().After(d.DeletionTimestamp.Add(deletionTimeout))
 }
 
 // IsReadyToRemoveFinalizer checks if a disruption has been cleaned and has waited for finalizerDelay duration before removing finalizer
-func (r *Disruption) IsReadyToRemoveFinalizer(finalizerDelay time.Duration) bool {
-	return r.Status.CleanedAt != nil && time.Now().After(r.Status.CleanedAt.Add(finalizerDelay))
+func (d *Disruption) IsReadyToRemoveFinalizer(finalizerDelay time.Duration) bool {
+	return d.Status.CleanedAt != nil && time.Now().After(d.Status.CleanedAt.Add(finalizerDelay))
 }
 
 // CopyOwnerAnnotations copies the annotations from the owner object to the disruption.
 // This ensures that any important metadata from the owner, such as custom annotations,
 // is preserved in the newly created disruption.
-func (r *Disruption) CopyOwnerAnnotations(owner metav1.Object) {
-	if r.Annotations == nil {
-		r.Annotations = make(map[string]string)
+func (d *Disruption) CopyOwnerAnnotations(owner metav1.Object) {
+	if d.Annotations == nil {
+		d.Annotations = make(map[string]string)
 	}
 
 	ownerAnnotations := owner.GetAnnotations()
 	for k, v := range ownerAnnotations {
-		r.Annotations[k] = v
+		d.Annotations[k] = v
 	}
 }
 
 // SetScheduledAtAnnotation sets the scheduled time of the disruption in the annotations.
-func (r *Disruption) SetScheduledAtAnnotation(scheduledTime time.Time) {
-	if r.Annotations == nil {
-		r.Annotations = make(map[string]string)
+func (d *Disruption) SetScheduledAtAnnotation(scheduledTime time.Time) {
+	if d.Annotations == nil {
+		d.Annotations = make(map[string]string)
 	}
 
 	scheduledAt := scheduledTime.Format(time.RFC3339)
-	r.Annotations[chaostypes.ScheduledAtAnnotation] = scheduledAt
+	d.Annotations[chaostypes.ScheduledAtAnnotation] = scheduledAt
 }
 
 // GetScheduledAtAnnotation retrieves the scheduled time from the disruption's annotations.
 // Returns an error if the annotation is not found or cannot be parsed.
-func (r *Disruption) GetScheduledAtAnnotation() (time.Time, error) {
-	scheduledAt, exists := r.Annotations[chaostypes.ScheduledAtAnnotation]
+func (d *Disruption) GetScheduledAtAnnotation() (time.Time, error) {
+	scheduledAt, exists := d.Annotations[chaostypes.ScheduledAtAnnotation]
 	if !exists {
 		return time.Time{}, errors.New("scheduledAt annotation not found")
 	}
@@ -510,9 +510,9 @@ func (r *Disruption) GetScheduledAtAnnotation() (time.Time, error) {
 // CopyUserInfoToAnnotations copies the user-related annotations from the owner object to the disruption.
 // Any UserInfo annotations will be overwritten when the Disruption is created, so this function ensures
 // that the parent resource's user information is preserved by storing it in separate annotations.
-func (r *Disruption) CopyUserInfoToAnnotations(owner metav1.Object) error {
-	if r.Annotations == nil {
-		r.Annotations = make(map[string]string)
+func (d *Disruption) CopyUserInfoToAnnotations(owner metav1.Object) error {
+	if d.Annotations == nil {
+		d.Annotations = make(map[string]string)
 	}
 
 	ownerAnnotations := owner.GetAnnotations()
@@ -523,8 +523,8 @@ func (r *Disruption) CopyUserInfoToAnnotations(owner metav1.Object) error {
 		}
 
 		// Set user-related annotations using the parsed UserInfo struct
-		r.Annotations[chaostypes.UserAnnotation] = userInfo.Username
-		r.Annotations[chaostypes.UserGroupsAnnotation] = strings.Join(userInfo.Groups, ",")
+		d.Annotations[chaostypes.UserAnnotation] = userInfo.Username
+		d.Annotations[chaostypes.UserGroupsAnnotation] = strings.Join(userInfo.Groups, ",")
 	}
 
 	return nil

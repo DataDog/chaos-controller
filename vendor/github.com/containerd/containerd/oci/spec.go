@@ -23,11 +23,11 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/containerd/containerd/namespaces"
-	"github.com/containerd/containerd/platforms"
+	"github.com/opencontainers/runtime-spec/specs-go"
 
 	"github.com/containerd/containerd/containers"
-	specs "github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/containerd/containerd/namespaces"
+	"github.com/containerd/platforms"
 )
 
 const (
@@ -64,7 +64,7 @@ func ReadSpec(path string) (*Spec, error) {
 // GenerateSpec will generate a default spec from the provided image
 // for use as a containerd container
 func GenerateSpec(ctx context.Context, client Client, c *containers.Container, opts ...SpecOpts) (*Spec, error) {
-	return GenerateSpecWithPlatform(ctx, client, platforms.DefaultString(), c, opts...)
+	return GenerateSpecWithPlatform(ctx, client, platforms.Format(platforms.DefaultSpec()), c, opts...) // For 1.7 continue using the old format without os-version included.
 }
 
 // GenerateSpecWithPlatform will generate a default spec from the provided image
@@ -84,15 +84,19 @@ func generateDefaultSpecWithPlatform(ctx context.Context, platform, id string, s
 		return err
 	}
 
-	if plat.OS == "windows" {
+	switch plat.OS {
+	case "windows":
 		err = populateDefaultWindowsSpec(ctx, s, id)
-	} else {
+	case "darwin":
+		err = populateDefaultDarwinSpec(s)
+	default:
 		err = populateDefaultUnixSpec(ctx, s, id)
 		if err == nil && runtime.GOOS == "windows" {
 			// To run LCOW we have a Linux and Windows section. Add an empty one now.
 			s.Windows = &specs.Windows{}
 		}
 	}
+
 	return err
 }
 
@@ -223,6 +227,15 @@ func populateDefaultWindowsSpec(ctx context.Context, s *Spec, id string) error {
 			Cwd: `C:\`,
 		},
 		Windows: &specs.Windows{},
+	}
+	return nil
+}
+
+func populateDefaultDarwinSpec(s *Spec) error {
+	*s = Spec{
+		Version: specs.Version,
+		Root:    &specs.Root{},
+		Process: &specs.Process{Cwd: "/"},
 	}
 	return nil
 }

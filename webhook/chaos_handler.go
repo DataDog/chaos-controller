@@ -25,7 +25,7 @@ type ChaosHandlerMutator struct {
 	Image        string
 	Timeout      time.Duration
 	MaxTimeout   time.Duration
-	Decoder      *admission.Decoder
+	Decoder      admission.Decoder
 	ResourceList *corev1.ResourceList
 }
 

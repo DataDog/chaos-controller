@@ -29,10 +29,11 @@ import (
 
 	"github.com/containerd/containerd/archive/compression"
 	"github.com/containerd/containerd/content"
+	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/images"
-	"github.com/containerd/containerd/platforms"
-	"github.com/containerd/errdefs"
+	"github.com/containerd/containerd/labels"
 	"github.com/containerd/log"
+	"github.com/containerd/platforms"
 	digest "github.com/opencontainers/go-digest"
 	specs "github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -264,11 +265,11 @@ func resolveLayers(ctx context.Context, store content.Store, layerFiles []string
 		}
 		layers[i] = desc
 		descs[desc.Digest] = &layers[i]
-		filters = append(filters, "labels.\"containerd.io/uncompressed\"=="+desc.Digest.String())
+		filters = append(filters, fmt.Sprintf("labels.\"%s\"==%s", labels.LabelUncompressed, desc.Digest.String()))
 	}
 
 	err := store.Walk(ctx, func(info content.Info) error {
-		dgst, ok := info.Labels["containerd.io/uncompressed"]
+		dgst, ok := info.Labels[labels.LabelUncompressed]
 		if ok {
 			desc := descs[digest.Digest(dgst)]
 			if desc != nil {
@@ -308,7 +309,7 @@ func resolveLayers(ctx context.Context, store content.Store, layerFiles []string
 				}
 				ref := fmt.Sprintf("compress-blob-%s-%s", desc.Digest.Algorithm().String(), desc.Digest.Encoded())
 				labels := map[string]string{
-					"containerd.io/uncompressed": desc.Digest.String(),
+					labels.LabelUncompressed: desc.Digest.String(),
 				}
 				layers[i], err = compressBlob(ctx, store, s, ref, content.WithLabels(labels))
 				if err != nil {

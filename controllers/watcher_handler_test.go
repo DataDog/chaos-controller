@@ -6,16 +6,17 @@
 package controllers
 
 import (
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	tagutil "github.com/DataDog/chaos-controller/o11y/tags"
 	chaostypes "github.com/DataDog/chaos-controller/types"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
+
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Cache Handler", func() {
@@ -99,7 +100,9 @@ func allNamespaceEvents(ctx SpecContext) []corev1.Event {
 
 	items := []corev1.Event{}
 	for {
-		Eventually(k8sClient.List).
+		// Use APIReader instead of cached client for pagination support
+		// https://github.com/kubernetes-sigs/controller-runtime/issues/3044
+		Eventually(APIReader.List).
 			WithContext(ctx).WithArguments(&eventList, &opts).
 			Within(k8sAPIServerResponseTimeout).ProbeEvery(k8sAPIPotentialChangesEvery).
 			Should(Succeed())

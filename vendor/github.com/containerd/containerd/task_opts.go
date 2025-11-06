@@ -24,12 +24,12 @@ import (
 	"syscall"
 
 	"github.com/containerd/containerd/api/types"
+	"github.com/containerd/containerd/api/types/runc/options"
 	"github.com/containerd/containerd/content"
+	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/mount"
 	"github.com/containerd/containerd/runtime/linux/runctypes"
-	"github.com/containerd/containerd/runtime/v2/runc/options"
-	"github.com/containerd/errdefs"
 	imagespec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/opencontainers/runtime-spec/specs-go"
 )
@@ -69,8 +69,8 @@ func WithTaskCheckpoint(im Image) NewTaskOpts {
 			if m.MediaType == images.MediaTypeContainerd1Checkpoint {
 				info.Checkpoint = &types.Descriptor{
 					MediaType:   m.MediaType,
-					Size_:       m.Size,
-					Digest:      m.Digest,
+					Size:        m.Size,
+					Digest:      m.Digest.String(),
 					Annotations: m.Annotations,
 				}
 				return nil

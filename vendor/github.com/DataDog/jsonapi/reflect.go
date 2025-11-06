@@ -47,3 +47,10 @@ func setFieldValue(fv reflect.Value, v any) {
 	}
 	fv.Set(vv)
 }
+
+func canBeNil(fv reflect.Value) bool {
+	return fv.Kind() == reflect.Interface ||
+		fv.Kind() == reflect.Map ||
+		fv.Kind() == reflect.Pointer ||
+		fv.Kind() == reflect.Slice
+}

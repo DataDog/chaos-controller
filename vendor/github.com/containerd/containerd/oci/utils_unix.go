@@ -1,5 +1,4 @@
 //go:build !windows
-// +build !windows
 
 /*
    Copyright The containerd Authors.
@@ -25,7 +24,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/containerd/containerd/pkg/userns"
+	"github.com/moby/sys/userns"
 	specs "github.com/opencontainers/runtime-spec/specs-go"
 	"golang.org/x/sys/unix"
 )

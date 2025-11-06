@@ -18,10 +18,11 @@ syntax = "proto3";
 
 package containerd.services.introspection.v1;
 
+import "google/protobuf/any.proto";
+import "github.com/containerd/containerd/api/types/introspection.proto";
 import "github.com/containerd/containerd/api/types/platform.proto";
 import "google/rpc/status.proto";
 import "google/protobuf/empty.proto";
-import weak "gogoproto/gogo.proto";
 import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/containerd/containerd/api/services/introspection/v1;introspection";
@@ -34,6 +35,8 @@ service Introspection {
 	rpc Plugins(PluginsRequest) returns (PluginsResponse);
 	// Server returns information about the containerd server
 	rpc Server(google.protobuf.Empty) returns (ServerResponse);
+	// PluginInfo returns information directly from a plugin if the plugin supports it
+	rpc PluginInfo(PluginInfoRequest) returns (PluginInfoResponse);
 }
 
 message Plugin {
@@ -58,7 +61,7 @@ message Plugin {
 	//
 	// If the plugin prefers certain platforms over others, they should be
 	// listed from most to least preferred.
-	repeated types.Platform platforms = 4 [(gogoproto.nullable) = false];
+	repeated types.Platform platforms = 4;
 
 	// Exports allows plugins to provide values about state or configuration to
 	// interested parties.
@@ -97,11 +100,11 @@ message PluginsRequest {
 }
 
 message PluginsResponse {
-	repeated Plugin plugins = 1 [(gogoproto.nullable) = false];
+	repeated Plugin plugins = 1;
 }
 
 message ServerResponse {
-	string uuid = 1 [(gogoproto.customname) = "UUID"];
+	string uuid = 1;
 	uint64 pid = 2;
 	uint64 pidns = 3; // PID namespace, such as 4026531836
 	repeated DeprecationWarning deprecations = 4;
@@ -111,4 +114,20 @@ message DeprecationWarning {
 	string id = 1;
 	string message = 2;
 	google.protobuf.Timestamp last_occurrence = 3;
+}
+
+message PluginInfoRequest {
+	string type = 1;
+	string id = 2;
+
+	// Options may be used to request extra dynamic information from
+	// a plugin.
+	// This object is determined by the plugin and the plugin may return
+	// NotImplemented or InvalidArgument if it is not supported
+	google.protobuf.Any options = 3;
+}
+
+message PluginInfoResponse {
+	Plugin plugin = 1;
+	google.protobuf.Any extra = 2;
 }

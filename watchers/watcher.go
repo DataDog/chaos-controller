@@ -16,6 +16,8 @@ import (
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	k8scontrollercache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
@@ -66,13 +68,13 @@ type WatcherConfig struct {
 	Name string
 
 	// Namespace of the resource to watch.
-	DisruptionNamespacedName types.NamespacedName
+	NamespacedName types.NamespacedName
 
 	// ObjectType of the object to watch.
 	ObjectType client.Object
 }
 
-// CtxTuple is a struct that holds a context and its cancel function, as well as a NamespacedName that identifies a Disruption resource.
+// CtxTuple is a struct that holds a context and its cancel function, as well as a NamespacedName that identifies a resource.
 type CtxTuple struct {
 	// CancelFunc is a function that can be called to cancel the associated context.
 	CancelFunc context.CancelFunc
@@ -80,8 +82,8 @@ type CtxTuple struct {
 	// Ctx is a context.Context object that is used to manage the lifetime of an operation.
 	Ctx context.Context
 
-	// DisruptionNamespacedName is the namespaced name of a Disruption resource that is associated with this CtxTuple.
-	DisruptionNamespacedName types.NamespacedName
+	// NamespacedName is the namespaced name of a resource that is associated with this CtxTuple.
+	NamespacedName types.NamespacedName
 }
 
 // CacheContextFunc is a function that returns a context and a cancel function.
@@ -127,7 +129,7 @@ func NewWatcher(config WatcherConfig, cacheMock k8scontrollercache.Cache, cacheC
 	// Used by unit test to allow mocking
 	if cacheContextMockFunc != nil {
 		cacheCtx, cacheCancelFunc := cacheContextMockFunc()
-		watcherInstance.ctxTuple = CtxTuple{cacheCancelFunc, cacheCtx, config.DisruptionNamespacedName}
+		watcherInstance.ctxTuple = CtxTuple{cacheCancelFunc, cacheCtx, config.NamespacedName}
 	}
 
 	return &watcherInstance, nil
@@ -187,7 +189,7 @@ func (w *watcher) Start() error {
 
 	// create context and cancel function for the watcher
 	cacheCtx, cacheCancelFunc := context.WithCancel(context.Background())
-	w.ctxTuple = CtxTuple{cacheCancelFunc, cacheCtx, w.config.DisruptionNamespacedName}
+	w.ctxTuple = CtxTuple{cacheCancelFunc, cacheCtx, w.config.NamespacedName}
 
 	// start the cache in a goroutine
 	go func() {
@@ -197,7 +199,11 @@ func (w *watcher) Start() error {
 	}()
 
 	// create a SyncingSource for the controller
-	w.cacheSource = source.Kind(w.cache, w.config.ObjectType)
+	w.cacheSource = source.Kind(w.cache, w.config.ObjectType, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, a client.Object) []reconcile.Request {
+		return []reconcile.Request{
+			{NamespacedName: w.ctxTuple.NamespacedName},
+		}
+	}))
 
 	return nil
 }

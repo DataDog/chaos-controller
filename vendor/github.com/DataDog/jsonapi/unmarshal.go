@@ -3,6 +3,7 @@ package jsonapi
 import (
 	"encoding"
 	"encoding/json"
+	"errors"
 	"reflect"
 )
 
@@ -10,7 +11,10 @@ import (
 // It's used to configure the Unmarshaling by decoding optional fields like Meta.
 type Unmarshaler struct {
 	unmarshalMeta            bool
+	unmarshalLinks           bool
+	checkUniqueness          bool
 	meta                     any
+	links                    *Link
 	memberNameValidationMode MemberNameValidationMode
 }
 
@@ -22,6 +26,21 @@ func UnmarshalMeta(meta any) UnmarshalOption {
 	return func(m *Unmarshaler) {
 		m.unmarshalMeta = true
 		m.meta = meta
+	}
+}
+
+// UnmarshalLinks copies the Document.Links into the given link.
+func UnmarshalLinks(link *Link) UnmarshalOption {
+	return func(m *Unmarshaler) {
+		m.unmarshalLinks = true
+		m.links = link
+	}
+}
+
+// UnmarshalCheckUniqueness enables checking for unique resources during unmarshaling.
+func UnmarshalCheckUniqueness() UnmarshalOption {
+	return func(m *Unmarshaler) {
+		m.checkUniqueness = true
 	}
 }
 
@@ -78,6 +97,11 @@ func Unmarshal(data []byte, v any, opts ...UnmarshalOption) (err error) {
 }
 
 func (d *document) unmarshal(v any, m *Unmarshaler) (err error) {
+	if m.checkUniqueness {
+		if ok := d.verifyResourceUniqueness(); !ok {
+			return ErrNonuniqueResource
+		}
+	}
 	// verify full-linkage in-case this is a compound document
 	if err = d.verifyFullLinkage(true); err != nil {
 		return
@@ -101,7 +125,6 @@ func (d *document) unmarshal(v any, m *Unmarshaler) (err error) {
 	err = d.unmarshalOptionalFields(m)
 
 	return
-
 }
 
 func (d *document) unmarshalOptionalFields(m *Unmarshaler) error {
@@ -121,6 +144,11 @@ func (d *document) unmarshalOptionalFields(m *Unmarshaler) error {
 			return err
 		}
 	}
+	if m.unmarshalLinks {
+		if d.Links != nil {
+			*m.links = *d.Links
+		}
+	}
 	return nil
 }
 
@@ -128,7 +156,7 @@ func unmarshalResourceObjects(ros []*resourceObject, v any, m *Unmarshaler) erro
 	outType := derefType(reflect.TypeOf(v))
 	outValue := derefValue(reflect.ValueOf(v))
 
-	// first, it must be a struct since we'll be parsing the jsonapi struct tags
+	// first, it must be a slice since we'll be parsing multiple resource objects
 	if outType.Kind() != reflect.Slice {
 		return &TypeError{Actual: outType.String(), Expected: []string{"slice"}}
 	}
@@ -205,7 +233,17 @@ func (ro *resourceObject) unmarshalFields(v any, rv reflect.Value, rt reflect.Ty
 			if setPrimary {
 				return ErrUnmarshalDuplicatePrimaryField
 			}
-			if ro.Type != jsonapiTag.resourceType {
+
+			if vut, ok := v.(UnmarshalType); ok {
+				err := vut.UnmarshalType(ro.Type)
+				if err != nil {
+					return errors.Join(
+						&TypeError{Actual: ro.Type, Expected: []string{jsonapiTag.resourceType}},
+						err,
+					)
+				}
+
+			} else if ro.Type != jsonapiTag.resourceType {
 				return &TypeError{Actual: ro.Type, Expected: []string{jsonapiTag.resourceType}}
 			}
 			if !isValidMemberName(ro.Type, m.memberNameValidationMode) {
@@ -266,6 +304,9 @@ func (ro *resourceObject) unmarshalFields(v any, rv reflect.Value, rt reflect.Ty
 			}
 			if !relDocument.hasMany && relDocument.isEmpty() {
 				// ensure struct field is nil for data:null cases only (we want empty slice for data:[])
+				if canBeNil(fv) {
+					fv.Set(reflect.Zero(ft.Type))
+				}
 				continue
 			}
 

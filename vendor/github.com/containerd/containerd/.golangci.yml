@@ -13,7 +13,7 @@ linters:
     - tenv # Detects using os.Setenv instead of t.Setenv since Go 1.17
     - unconvert
     - unused
-    - govet
+    - vet
     - dupword # Checks for duplicate words in the source code
   disable:
     - errcheck
@@ -36,6 +36,10 @@ issues:
 
   # Only using / doesn't work due to https://github.com/golangci/golangci-lint/issues/1398.
   exclude-rules:
+    - path: 'cmd[\\/]containerd[\\/]builtins[\\/]'
+      text: "blank-imports:"
+    - path: 'contrib[\\/]fuzz[\\/]'
+      text: "exported: func name will be used as fuzz.Fuzz"
     - path: 'archive[\\/]tarheader[\\/]'
       # conversion is necessary on Linux, unnecessary on macOS
       text: "unnecessary conversion"
@@ -58,18 +62,24 @@ issues:
         - revive
       text: "redefines-builtin-id"
 
+    # FIXME temporarily suppress deprecation warnings for the logs package. See https://github.com/containerd/containerd/pull/9086
+    - text: "SA1019: log\\.(G|L|Fields|Entry|RFC3339NanoFixed|Level|TraceLevel|DebugLevel|InfoLevel|WarnLevel|ErrorLevel|FatalLevel|PanicLevel|SetLevel|GetLevel|OutputFormat|TextFormat|JSONFormat|SetFormat|WithLogger|GetLogger)"
+      linters:
+        - staticcheck
+    - text: "SA1019: logtest\\.WithT"
+      linters:
+        - staticcheck
+
+
 linters-settings:
   depguard:
     rules:
       main:
         deny:
-          - pkg: "github.com/containerd/containerd/errdefs"
-            desc: The containerd errdefs package was migrated to a separate module. Use github.com/containerd/errdefs instead.
           - pkg: "github.com/containerd/containerd/log"
             desc: The containerd log package was migrated to a separate module. Use github.com/containerd/log instead.
-          # TODO: enable once 1.6 migrated to github.com/containerd/platforms
-          # - pkg: "github.com/containerd/containerd/platforms"
-          #   desc: The containerd platforms package was migrated to a separate module. Use github.com/containerd/platforms instead.
+          - pkg: "github.com/containerd/containerd/platforms"
+            desc: The containerd platforms package was migrated to a separate module. Use github.com/containerd/platforms instead.
   gosec:
     # The following issues surfaced when `gosec` linter
     # was enabled. They are temporarily excluded to unblock
@@ -81,6 +91,7 @@ linters-settings:
       - G306
       - G402
       - G404
+      - G115
 
 run:
   timeout: 8m

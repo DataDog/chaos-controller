@@ -39,6 +39,10 @@ linters:
     - gocritic
 issues:
   exclude-use-default: false
+  exclude-dirs:
+    - mocks
+  exclude-files:
+    - ".*mock.*\\.go$"
   exclude:
     # gosec
     - Subprocess launch(ed with variable|ing should be audited)

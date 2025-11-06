@@ -257,7 +257,7 @@ func GetLabelSelectorFromInstance(instance *chaosv1beta1.Disruption) (labels.Sel
 			return nil, fmt.Errorf("error adding the disrupt-on-init label requirement: %w", err)
 		}
 
-		selector.Add(*onInitRequirement)
+		selector = selector.Add(*onInitRequirement)
 	}
 
 	return selector, nil
