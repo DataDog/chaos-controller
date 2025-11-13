@@ -81,6 +81,8 @@ const (
 	DisruptionKindGRPCDisruption = "grpc-disruption"
 	// DisruptionKindPodReplacement is a pod replacement disruption
 	DisruptionKindPodReplacement = "pod-replacement"
+	// DisruptionKindClockSkew is a clock/time skew disruption
+	DisruptionKindClockSkew = "clock-skew"
 
 	// DisruptionLevelPod is a disruption injected at the pod level
 	DisruptionLevelPod DisruptionLevel = "pod"
@@ -157,4 +159,5 @@ var DisruptionKindNames = []DisruptionKindName{
 	DisruptionKindDiskFailure,
 	DisruptionKindGRPCDisruption,
 	DisruptionKindPodReplacement,
+	DisruptionKindClockSkew,
 }
