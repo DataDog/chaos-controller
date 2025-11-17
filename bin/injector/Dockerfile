@@ -5,7 +5,8 @@ RUN apt-get update && \
     # coreutils => df
     # iptables => iptables libs
     # libelf1 => EBPF libs
-    apt-get -y install --no-install-recommends iproute2 coreutils iptables libelf1 tree curl tar ca-certificates && \
+    # libfaketime => clock skew disruption
+    apt-get -y install --no-install-recommends iproute2 coreutils iptables libelf1 libfaketime tree curl tar ca-certificates && \
     # make copy from binaries unified and possible
     mkdir -p /lib64 && \
     curl -LO https://github.com/libbpf/bpftool/releases/download/v7.5.0/bpftool-v7.5.0-arm64.tar.gz && \
@@ -37,6 +38,9 @@ COPY --from=binaries /lib/aarch64-linux-gn[u] /lib/aarch64-linux-gnu/
 COPY --from=binaries /lib/x86_64-linux-gn[u] /lib/x86_64-linux-gnu/
 COPY --from=binaries /usr/lib/aarch64-linux-gn[u] /usr/lib/aarch64-linux-gnu/
 COPY --from=binaries /usr/lib/x86_64-linux-gn[u] /usr/lib/x86_64-linux-gnu/
+
+# libfaketime library for clock skew disruption
+COPY --from=binaries /usr/lib/*/faketime/ /usr/local/lib/faketime/
 
 # no more sh
 COPY --from=binaries /usr/bin/test /bin/sh

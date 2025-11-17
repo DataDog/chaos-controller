@@ -90,6 +90,7 @@ func init() {
 	rootCmd.AddCommand(diskFailureCmd)
 	rootCmd.AddCommand(diskPressureCmd)
 	rootCmd.AddCommand(grpcDisruptionCmd)
+	rootCmd.AddCommand(clockSkewCmd)
 
 	// basic args
 	rootCmd.PersistentFlags().BoolVar(&disruptionArgs.DryRun, "dry-run", false, "Enable dry-run mode")
