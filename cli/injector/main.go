@@ -222,6 +222,16 @@ func initConfig() {
 	// assign to the pointer to level the new value to persist it after this method
 	disruptionArgs.Level = chaostypes.DisruptionLevel(disruptionLevelRaw)
 
+	// check if we're running pod-replacement command which doesn't need containers
+	isPodReplacement := false
+
+	for _, arg := range os.Args {
+		if arg == chaostypes.DisruptionKindPodReplacement {
+			isPodReplacement = true
+			break
+		}
+	}
+
 	switch disruptionArgs.Level {
 	case chaostypes.DisruptionLevelPod:
 		// check for container ID flag
@@ -231,33 +241,39 @@ func initConfig() {
 			return
 		}
 
-		for containerName, containerID := range disruptionArgs.TargetContainers {
-			// retrieve container info
-			ctn, err := container.New(containerID, containerName)
-			if err != nil {
-				log.Fatalw("can't create container object", tags.ErrorKey, err)
+		if !isPodReplacement {
+			// Pod replacement operates at the pod level and doesn't need container information
+			for containerName, containerID := range disruptionArgs.TargetContainers {
+				// retrieve container info
+				ctn, err := container.New(containerID, containerName)
+				if err != nil {
+					log.Fatalw("can't create container object", tags.ErrorKey, err)
+
+					return
+				}
+
+				log.Infow("injector targeting container", tags.ContainerIDKey, containerID, tags.ContainerNameKey, containerName)
+
+				pid := ctn.PID()
+
+				// keep pid for later if this is a chaos handler container
+				if disruptionArgs.OnInit && ctn.Name() == chaosInitContName {
+					handlerPID = pid
+				}
+
+				ctns = append(ctns, ctn)
+				pids = append(pids, pid)
+			}
+		} else {
+			// check for pod IP flag
+			if disruptionArgs.TargetPodIP == "" {
+				log.Fatal("--target-pod-ip flag must be passed when --level=pod")
 
 				return
 			}
 
-			log.Infow("injector targeting container", tags.ContainerIDKey, containerID, tags.ContainerNameKey, containerName)
-
-			pid := ctn.PID()
-
-			// keep pid for later if this is a chaos handler container
-			if disruptionArgs.OnInit && ctn.Name() == chaosInitContName {
-				handlerPID = pid
-			}
-
-			ctns = append(ctns, ctn)
-			pids = append(pids, pid)
-		}
-
-		// check for pod IP flag
-		if disruptionArgs.TargetPodIP == "" {
-			log.Fatal("--target-pod-ip flag must be passed when --level=pod")
-
-			return
+			pids = []uint32{1}
+			ctns = []container.Container{nil}
 		}
 	case chaostypes.DisruptionLevelNode:
 		pids = []uint32{1}
