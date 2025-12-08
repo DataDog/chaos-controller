@@ -493,8 +493,8 @@ func pulse(isInjected bool, cmdName string) (bool, time.Duration, error) {
 		}
 
 		return false, disruptionArgs.PulseDormantDuration, nil
-
 	}
+
 	// if the disruption is not injected, we inject it
 	log.Debugw("pulse: attempt at injecting the disruption for the active duration", tags.DurationKey, disruptionArgs.PulseActiveDuration)
 
@@ -585,7 +585,7 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 
 			// at that point, the disruption is injected. We start the pulsing loop with the active duration
 			isInjected := true
-			sleepDuration := time.Duration(disruptionArgs.PulseActiveDuration)
+			sleepDuration := disruptionArgs.PulseActiveDuration
 
 			// using a label for the loop to be able to break out of it
 		pulsingLoop:
@@ -635,7 +635,7 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 		// we watch for targeted pod containers restart to reinject
 		if err := backoff.RetryNotify(
 			func() error {
-				return watchTargetAndReinject(deadline, cmd.Name(), time.Duration(disruptionArgs.PulseActiveDuration), time.Duration(disruptionArgs.PulseDormantDuration))
+				return watchTargetAndReinject(deadline, cmd.Name(), disruptionArgs.PulseActiveDuration, disruptionArgs.PulseDormantDuration)
 			}, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 5), func(err error, delay time.Duration) {
 				log.Warnln("couldn't watch targeted pod, retrying", tags.ErrorKey, err, tags.RetryingKey, delay)
 			}); err != nil {
