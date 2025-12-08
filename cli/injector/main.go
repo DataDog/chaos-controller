@@ -483,27 +483,26 @@ func clean(kind string, sendToMetrics bool, reinjectionClean bool) bool {
 
 // pulse pulse disruptions (injection and cleaning)
 // nolint: unparam,staticcheck
-func pulse(isInjected *bool, sleepDuration *time.Duration, action func(string, bool, bool) bool, cmdName string) (func(string, bool, bool) bool, error) {
-	actionName := ""
+func pulse(isInjected bool, cmdName string) (bool, time.Duration, error) {
+	// if the disruption is injected, we clean it
+	if isInjected {
+		log.Debugw("pulse: attempt at cleaning the disruption for the dormant duration", tags.DurationKey, disruptionArgs.PulseDormantDuration)
 
-	if !*isInjected {
-		action = inject
-		actionName = "inject"
-		*sleepDuration = disruptionArgs.PulseDormantDuration
-	} else {
-		action = clean
-		actionName = "clean"
-		*sleepDuration = disruptionArgs.PulseActiveDuration
+		if ok := clean(cmdName, true, true); !ok {
+			return true, disruptionArgs.PulseDormantDuration, fmt.Errorf("error on pulsing disruption mechanism when attempting to clean the disruption for the dormant pulse")
+		}
+
+		return false, disruptionArgs.PulseDormantDuration, nil
+
+	}
+	// if the disruption is not injected, we inject it
+	log.Debugw("pulse: attempt at injecting the disruption for the active duration", tags.DurationKey, disruptionArgs.PulseActiveDuration)
+
+	if ok := inject(cmdName, true, true); !ok {
+		return false, disruptionArgs.PulseActiveDuration, fmt.Errorf("error on pulsing disruption mechanism when attempting to inject the disruption for the active pulse")
 	}
 
-	if ok := action(cmdName, true, true); !ok {
-		return nil, fmt.Errorf("error on pulsing disruption mechanism when attempting to %s", actionName)
-	}
-
-	newInjected := !*isInjected
-	*isInjected = newInjected
-
-	return action, nil
+	return true, disruptionArgs.PulseActiveDuration, nil
 }
 
 // injectAndWait injects the disruption with the configured injector and waits
@@ -581,12 +580,12 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 	case disruptionArgs.Level == chaostypes.DisruptionLevelNode:
 		if disruptionArgs.PulseActiveDuration > 0 && disruptionArgs.PulseDormantDuration > 0 {
 			var (
-				action func(string, bool, bool) bool
-				err    error
+				err error
 			)
 
+			// at that point, the disruption is injected. We start the pulsing loop with the active duration
 			isInjected := true
-			sleepDuration := disruptionArgs.PulseActiveDuration
+			sleepDuration := time.Duration(disruptionArgs.PulseActiveDuration)
 
 			// using a label for the loop to be able to break out of it
 		pulsingLoop:
@@ -601,7 +600,7 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 
 					return
 				case <-time.After(sleepDuration):
-					action, err = pulse(&isInjected, &sleepDuration, action, cmd.Name())
+					isInjected, sleepDuration, err = pulse(isInjected, cmd.Name())
 					if err != nil {
 						log.Errorw("an error occurred when calling pulse", tags.ErrorKey, err)
 
@@ -636,7 +635,7 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 		// we watch for targeted pod containers restart to reinject
 		if err := backoff.RetryNotify(
 			func() error {
-				return watchTargetAndReinject(deadline, cmd.Name(), disruptionArgs.PulseActiveDuration, disruptionArgs.PulseDormantDuration)
+				return watchTargetAndReinject(deadline, cmd.Name(), time.Duration(disruptionArgs.PulseActiveDuration), time.Duration(disruptionArgs.PulseDormantDuration))
 			}, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 5), func(err error, delay time.Duration) {
 				log.Warnln("couldn't watch targeted pod, retrying", tags.ErrorKey, err, tags.RetryingKey, delay)
 			}); err != nil {
@@ -694,6 +693,7 @@ func watchTargetAndReinject(deadline time.Time, commandName string, pulseActiveD
 		return err
 	}
 
+	// at that point, the disruption is injected. We start the pulsing loop with the active duration
 	pulseIndexIsInjected := true
 
 	var pulseSleepDuration time.Duration
@@ -706,8 +706,6 @@ func watchTargetAndReinject(deadline time.Time, commandName string, pulseActiveD
 	}
 
 	var channel <-chan watch.Event
-
-	var actionOnPulse func(string, bool, bool) bool
 
 	for {
 		if channel == nil {
@@ -734,7 +732,7 @@ func watchTargetAndReinject(deadline time.Time, commandName string, pulseActiveD
 				break
 			}
 
-			actionOnPulse, err = pulse(&pulseIndexIsInjected, &pulseSleepDuration, actionOnPulse, commandName)
+			pulseIndexIsInjected, pulseSleepDuration, err = pulse(pulseIndexIsInjected, commandName)
 			if err != nil {
 				return err
 			}
