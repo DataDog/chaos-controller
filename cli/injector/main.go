@@ -600,7 +600,6 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 
 					return
 				case <-time.After(getDuration(pulseDeadline)):
-					log.Infow("duration before pulse action has expired")
 					isInjected, pulseDeadline, err = pulse(isInjected, cmd.Name())
 					if err != nil {
 						log.Errorw("an error occurred when calling pulse", tags.ErrorKey, err)
@@ -608,6 +607,8 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 						// break of PulsingLoop only
 						break pulsingLoop
 					}
+
+					log.Infow("pulse action has been performed", tags.PulseNextActionTimestampKey, pulseDeadline)
 				}
 			}
 		}
@@ -733,13 +734,12 @@ func watchTargetAndReinject(deadline time.Time, commandName string, pulseActiveD
 				break
 			}
 
-			log.Infow("duration before pulse action has expired")
-
 			pulseIndexIsInjected, pulseDeadline, err = pulse(pulseIndexIsInjected, commandName)
 			if err != nil {
 				return err
 			}
 
+			log.Infow("pulse action has been performed", tags.PulseNextActionTimestampKey, pulseDeadline)
 		case event, ok := <-channel: // We have changes in the pod watched
 			log.Debugw("received event during target watch", tags.TypeKey, event.Type)
 
