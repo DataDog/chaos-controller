@@ -14,6 +14,9 @@ LIBBPF_OBJ := /usr/lib/$(UNAME_ARCH)-linux-gnu/libbpf.a
 
 .PHONY: all $(PROJECTS)
 
+# Enable parallel builds by default - use all available CPUs
+MAKEFLAGS += -j$(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 1)
+
 all: $(PROJECTS)
 
 go_env := CC=clang CGO_CFLAGS="-I /usr/include/$(UNAME_ARCH)-linux-gnu" CGO_LDFLAGS="$(LIBBPF_OBJ)"

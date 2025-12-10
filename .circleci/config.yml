@@ -42,38 +42,6 @@ commands:
       - run:
           name: Install git
           command: apk add --no-cache git openssh
-  ebpf_builder_save_cache:
-    description: Save ebpf-builder tar for later use
-    parameters:
-      path:
-        type: string
-        default: bin/ebpf-builder/ebpf-builder.tar.gz
-        description: ebpf-builder tar location
-    steps:
-      - run: docker save ebpf-builder-amd64 -o <<parameters.path>>
-      # Here we want to store this for the long term and reuse it in next builds
-      # It aims to speed up the docker build time, like it does already locally
-      # It's safe to reuse as we are caching by using the Dockerfile checksum as part of the key
-      # if key is not found we will fallback to earliest tar available
-      # we will ALWAYS rebuild the image no matter what
-      - save_cache:
-          key: v1-ebpf-builder-{{ checksum "bin/ebpf-builder/Dockerfile" }}
-          paths:
-            - <<parameters.path>>
-  ebpf_builder_restore_cache:
-    description: Restore ebpf-builder tar from cache
-    parameters:
-      path:
-        type: string
-        default: bin/ebpf-builder/ebpf-builder.tar.gz
-        description: ebpf-builder tar location
-    steps:
-      - restore_cache:
-          keys:
-            - v1-ebpf-builder-{{ checksum "bin/ebpf-builder/Dockerfile" }}
-            # if cache for exact version of docker image is not present, then load any most recent one
-            - v1-ebpf-builder-
-      - run: docker load -i <<parameters.path>> || true
 
 templates:
   # sets the working directory to the project path
@@ -129,19 +97,9 @@ jobs:
       - go_restore_cache
       - setup_remote_docker:
           docker_layer_caching: true
-      - when:
-          condition:
-            equal: [injector, << parameters.target >>]
-          steps:
-            - ebpf_builder_restore_cache
       - run:
           name: Build docker image for <<parameters.target>>
-          command: make docker-build-<<parameters.target>> USE_VOLUMES=true
-      - when:
-          condition:
-            equal: [injector, << parameters.target >>]
-          steps:
-            - ebpf_builder_save_cache
+          command: make docker-build-<<parameters.target>>
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory. This is a directory on the container which is
           # taken to be the root directory of the workspace.
