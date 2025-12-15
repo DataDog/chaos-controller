@@ -222,6 +222,16 @@ func initConfig() {
 	// assign to the pointer to level the new value to persist it after this method
 	disruptionArgs.Level = chaostypes.DisruptionLevel(disruptionLevelRaw)
 
+	// check if we're running pod-replacement command which doesn't need containers
+	isPodReplacement := false
+
+	for _, arg := range os.Args {
+		if arg == chaostypes.DisruptionKindPodReplacement {
+			isPodReplacement = true
+			break
+		}
+	}
+
 	switch disruptionArgs.Level {
 	case chaostypes.DisruptionLevelPod:
 		// check for container ID flag
@@ -231,33 +241,39 @@ func initConfig() {
 			return
 		}
 
-		for containerName, containerID := range disruptionArgs.TargetContainers {
-			// retrieve container info
-			ctn, err := container.New(containerID, containerName)
-			if err != nil {
-				log.Fatalw("can't create container object", tags.ErrorKey, err)
+		if !isPodReplacement {
+			// Pod replacement operates at the pod level and doesn't need container information
+			for containerName, containerID := range disruptionArgs.TargetContainers {
+				// retrieve container info
+				ctn, err := container.New(containerID, containerName)
+				if err != nil {
+					log.Fatalw("can't create container object", tags.ErrorKey, err)
+
+					return
+				}
+
+				log.Infow("injector targeting container", tags.ContainerIDKey, containerID, tags.ContainerNameKey, containerName)
+
+				pid := ctn.PID()
+
+				// keep pid for later if this is a chaos handler container
+				if disruptionArgs.OnInit && ctn.Name() == chaosInitContName {
+					handlerPID = pid
+				}
+
+				ctns = append(ctns, ctn)
+				pids = append(pids, pid)
+			}
+		} else {
+			// check for pod IP flag
+			if disruptionArgs.TargetPodIP == "" {
+				log.Fatal("--target-pod-ip flag must be passed when --level=pod")
 
 				return
 			}
 
-			log.Infow("injector targeting container", tags.ContainerIDKey, containerID, tags.ContainerNameKey, containerName)
-
-			pid := ctn.PID()
-
-			// keep pid for later if this is a chaos handler container
-			if disruptionArgs.OnInit && ctn.Name() == chaosInitContName {
-				handlerPID = pid
-			}
-
-			ctns = append(ctns, ctn)
-			pids = append(pids, pid)
-		}
-
-		// check for pod IP flag
-		if disruptionArgs.TargetPodIP == "" {
-			log.Fatal("--target-pod-ip flag must be passed when --level=pod")
-
-			return
+			pids = []uint32{1}
+			ctns = []container.Container{nil}
 		}
 	case chaostypes.DisruptionLevelNode:
 		pids = []uint32{1}
@@ -483,27 +499,26 @@ func clean(kind string, sendToMetrics bool, reinjectionClean bool) bool {
 
 // pulse pulse disruptions (injection and cleaning)
 // nolint: unparam,staticcheck
-func pulse(isInjected *bool, sleepDuration *time.Duration, action func(string, bool, bool) bool, cmdName string) (func(string, bool, bool) bool, error) {
-	actionName := ""
+func pulse(isInjected bool, cmdName string) (bool, time.Time, error) {
+	// if the disruption is injected, we clean it
+	if isInjected {
+		log.Debugw("pulse: attempt at cleaning the disruption for the dormant duration", tags.DurationKey, disruptionArgs.PulseDormantDuration)
 
-	if !*isInjected {
-		action = inject
-		actionName = "inject"
-		*sleepDuration = disruptionArgs.PulseDormantDuration
-	} else {
-		action = clean
-		actionName = "clean"
-		*sleepDuration = disruptionArgs.PulseActiveDuration
+		if ok := clean(cmdName, true, true); !ok {
+			return true, time.Now().Add(disruptionArgs.PulseDormantDuration), fmt.Errorf("error on pulsing disruption mechanism when attempting to clean the disruption for the dormant pulse")
+		}
+
+		return false, time.Now().Add(disruptionArgs.PulseDormantDuration), nil
 	}
 
-	if ok := action(cmdName, true, true); !ok {
-		return nil, fmt.Errorf("error on pulsing disruption mechanism when attempting to %s", actionName)
+	// if the disruption is not injected, we inject it
+	log.Debugw("pulse: attempt at injecting the disruption for the active duration", tags.DurationKey, disruptionArgs.PulseActiveDuration)
+
+	if ok := inject(cmdName, true, true); !ok {
+		return false, time.Now().Add(disruptionArgs.PulseActiveDuration), fmt.Errorf("error on pulsing disruption mechanism when attempting to inject the disruption for the active pulse")
 	}
 
-	newInjected := !*isInjected
-	*isInjected = newInjected
-
-	return action, nil
+	return true, time.Now().Add(disruptionArgs.PulseActiveDuration), nil
 }
 
 // injectAndWait injects the disruption with the configured injector and waits
@@ -581,12 +596,12 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 	case disruptionArgs.Level == chaostypes.DisruptionLevelNode:
 		if disruptionArgs.PulseActiveDuration > 0 && disruptionArgs.PulseDormantDuration > 0 {
 			var (
-				action func(string, bool, bool) bool
-				err    error
+				err error
 			)
 
+			// at that point, the disruption is injected. We start the pulsing loop with the active duration
 			isInjected := true
-			sleepDuration := disruptionArgs.PulseActiveDuration
+			pulseDeadline := time.Now().Add(disruptionArgs.PulseActiveDuration)
 
 			// using a label for the loop to be able to break out of it
 		pulsingLoop:
@@ -600,14 +615,16 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 					log.Infow("duration has expired")
 
 					return
-				case <-time.After(sleepDuration):
-					action, err = pulse(&isInjected, &sleepDuration, action, cmd.Name())
+				case <-time.After(getDuration(pulseDeadline)):
+					isInjected, pulseDeadline, err = pulse(isInjected, cmd.Name())
 					if err != nil {
 						log.Errorw("an error occurred when calling pulse", tags.ErrorKey, err)
 
 						// break of PulsingLoop only
 						break pulsingLoop
 					}
+
+					log.Infow("pulse action has been performed", tags.PulseNextActionTimestampKey, pulseDeadline)
 				}
 			}
 		}
@@ -694,20 +711,19 @@ func watchTargetAndReinject(deadline time.Time, commandName string, pulseActiveD
 		return err
 	}
 
+	// at that point, the disruption is injected. We start the pulsing loop with the active duration
 	pulseIndexIsInjected := true
 
-	var pulseSleepDuration time.Duration
+	var pulseDeadline time.Time
 
 	// set sleepDuration to after deadline duration to never go into the pulsing condition
 	if pulseActiveDuration > 0 && pulseDormantDuration > 0 {
-		pulseSleepDuration = pulseActiveDuration
+		pulseDeadline = time.Now().Add(pulseActiveDuration)
 	} else {
-		pulseSleepDuration = getDuration(deadline) + time.Hour
+		pulseDeadline = time.Now().Add(getDuration(deadline) + time.Hour)
 	}
 
 	var channel <-chan watch.Event
-
-	var actionOnPulse func(string, bool, bool) bool
 
 	for {
 		if channel == nil {
@@ -729,15 +745,17 @@ func watchTargetAndReinject(deadline time.Time, commandName string, pulseActiveD
 
 			return nil
 		// shouldn't go there if it's not a pulsing disruption
-		case <-time.After(pulseSleepDuration):
+		case <-time.After(getDuration(pulseDeadline)):
 			if pulseActiveDuration == 0 || pulseDormantDuration == 0 {
 				break
 			}
 
-			actionOnPulse, err = pulse(&pulseIndexIsInjected, &pulseSleepDuration, actionOnPulse, commandName)
+			pulseIndexIsInjected, pulseDeadline, err = pulse(pulseIndexIsInjected, commandName)
 			if err != nil {
 				return err
 			}
+
+			log.Infow("pulse action has been performed", tags.PulseNextActionTimestampKey, pulseDeadline)
 		case event, ok := <-channel: // We have changes in the pod watched
 			log.Debugw("received event during target watch", tags.TypeKey, event.Type)
 
@@ -762,9 +780,6 @@ func watchTargetAndReinject(deadline time.Time, commandName string, pulseActiveD
 						}
 
 						if updResourceVersion == resourceVersion {
-							// We don't have the latest resource version, but we can't seem to find a new one.
-							// Wait 10 seconds and retry.
-							time.Sleep(time.Second * 10)
 							// An unset resource version is an implicit "latest" request.
 							resourceVersion = ""
 						} else {

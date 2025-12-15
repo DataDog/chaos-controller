@@ -5,7 +5,11 @@
 
 package v1beta1
 
-import "strconv"
+import (
+	"strconv"
+
+	chaostypes "github.com/DataDog/chaos-controller/types"
+)
 
 // PodReplacementSpec represents a pod replacement disruption
 type PodReplacementSpec struct {
@@ -27,7 +31,7 @@ func (s *PodReplacementSpec) Validate() error {
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
 func (s *PodReplacementSpec) GenerateArgs() []string {
 	args := []string{
-		"pod-replacement",
+		chaostypes.DisruptionKindPodReplacement,
 		"inject",
 	}
 

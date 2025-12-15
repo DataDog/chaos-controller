@@ -44,11 +44,6 @@ func (e defaultBpftoolExecutor) Run(args []string) (int, string, error) {
 	// run command
 	e.log.Debugf("running bpftool command: %v", cmd.String())
 
-	// early exit if dry-run mode is enabled
-	if e.dryRun {
-		return 0, "", nil
-	}
-
 	err := cmd.Run()
 	if err != nil {
 		err = fmt.Errorf("encountered error (%w) using args (%s): %s", err, args, stderr.String())

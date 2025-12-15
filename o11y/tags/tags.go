@@ -170,6 +170,7 @@ const (
 	TimeoutKey                    = "timeout"
 	TimestampKey                  = "timestamp"
 	TimeUntilNotInjectedBeforeKey = "time_until_not_injected_before"
+	PulseNextActionTimestampKey   = "pulse_next_action_timestamp"
 
 	// System and process
 	AppKey              = "app"
