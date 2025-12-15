@@ -8,14 +8,16 @@ package main
 import (
 	"strconv"
 
+	"github.com/spf13/cobra"
+
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/injector"
 	"github.com/DataDog/chaos-controller/o11y/tags"
-	"github.com/spf13/cobra"
+	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
 var podReplacementCmd = &cobra.Command{
-	Use:   "pod-replacement",
+	Use:   chaostypes.DisruptionKindPodReplacement,
 	Short: "Pod replacement subcommands",
 	Run:   injectAndWait,
 	PreRun: func(cmd *cobra.Command, args []string) {

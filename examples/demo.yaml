@@ -217,6 +217,30 @@ spec:
             requests:
               memory: 16Mi
               cpu: 10m
+        ## Create a second container to ensure the pod replace is working as expected
+        - name: storage-monitor-2
+          image: alpine:latest
+          command: ["/bin/sh"]
+          args:
+            - -c
+            - |
+              echo "Storage monitoring container started"
+              # Create a test file to demonstrate persistence
+              echo "demo-storage-$(date)" > /mnt/shared/storage-info.txt
+              # Keep container running and periodically update the file
+              while true; do
+                echo "$(date): Storage is available" >> /mnt/shared/heartbeat.log
+                sleep 30
+              done
+          volumeMounts:
+            - mountPath: /mnt/shared
+              name: shared-storage
+          resources:
+            limits:
+              memory: 16Mi
+              cpu: 10m
+            requests:
+              memory: 16Mi
   volumeClaimTemplates:
     - metadata:
         name: shared-storage
