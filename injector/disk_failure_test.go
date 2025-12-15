@@ -273,6 +273,27 @@ var _ = Describe("Disk Failure", func() {
 						})
 					})
 				})
+
+				Context("with dry run mode enabled", func() {
+					BeforeEach(func() {
+						config.Disruption.DryRun = true
+					})
+
+					It("should validate eBPF capabilities and start successfully", func() {
+						Expect(err).ShouldNot(HaveOccurred())
+
+						// Verify that validation still occurs in dry run mode since bpftool probe is read-only
+						BPFConfigInformerMock.AssertCalled(GinkgoT(), "ValidateRequiredSystemConfig")
+						BPFConfigInformerMock.AssertCalled(GinkgoT(), "GetMapTypes")
+
+						// Verify that the command was still created
+						cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
+							"-process", strconv.Itoa(0),
+							"-path", "/",
+							"-probability", "100",
+						})
+					})
+				})
 			})
 		})
 	})
