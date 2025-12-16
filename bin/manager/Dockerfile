@@ -20,7 +20,7 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
 # Final stage
 FROM gcr.io/distroless/base-debian12:nonroot
 
-COPY --chmod=+x --from=builder /go/src/github.com/chaos-controller/manager /usr/local/bin/manager
+COPY --chmod=100 --from=builder /go/src/github.com/chaos-controller/manager /usr/local/bin/manager
 
 ENTRYPOINT ["/usr/local/bin/manager"]
 

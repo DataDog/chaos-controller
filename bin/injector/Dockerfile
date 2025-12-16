@@ -98,12 +98,12 @@ COPY --from=binaries /usr/lib/x86_64-linux-gn[u] /usr/lib/x86_64-linux-gnu/
 # no more sh
 COPY --from=binaries /usr/bin/test /bin/sh
 
-# Copy the Go binary from the builder stage with execute permissions
-COPY --chmod=+x --from=go-builder /go/src/github.com/chaos-controller/bin/injector/injector /usr/local/bin/chaos-injector
-COPY --chmod=+x --from=go-builder /go/src/github.com/chaos-controller/bin/injector/injector /usr/local/bin/injector
+# Copy the Go binary wrifrom the builder stage with execute permissions
+COPY --chmod=100 --from=go-builder /go/src/github.com/chaos-controller/bin/injector/injector /usr/local/bin/chaos-injector
+COPY --chmod=100 --from=go-builder /go/src/github.com/chaos-controller/bin/injector/injector /usr/local/bin/injector
 
 # Copy EBPF binaries from the EBPF builder stage with execute permissions
-COPY --chmod=+x --from=ebpf-builder /app/bin/injector/ebpf/${TARGETARCH}/ /usr/local/bin/
+COPY --chmod=100 --from=ebpf-builder /app/bin/injector/ebpf/${TARGETARCH}/ /usr/local/bin/
 
 ENTRYPOINT ["/usr/local/bin/chaos-injector"]
 
