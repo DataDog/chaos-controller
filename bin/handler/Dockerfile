@@ -20,7 +20,7 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
 # Final stage
 FROM scratch AS handler
 
-COPY --from=builder /go/src/github.com/chaos-controller/cli/handler /usr/local/bin/handler
+COPY --chmod=+x --from=builder /go/src/github.com/chaos-controller/handler /usr/local/bin/handler
 
 ENTRYPOINT ["/usr/local/bin/handler"]
 
