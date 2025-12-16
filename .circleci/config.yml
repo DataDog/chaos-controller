@@ -67,7 +67,7 @@ executors:
   ubuntu:
     <<: *working_directory
     machine:
-      image: ubuntu-2404:2024.05.1
+      image: ubuntu-2404:2025.09.1
     resource_class: xlarge # if you change the resource_class here, please adapt Makefile/minikube start cpu/memory accordingly
 jobs:
   # prepares the CI environment by checking out the code,
