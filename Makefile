@@ -34,6 +34,8 @@ CONTAINER_BUILD_EXTRA_ARGS ?=
 
 SIGN_IMAGE ?= false
 
+SKIP_GENERATE ?= false
+
 # Image URL to use all building/pushing image targets
 MANAGER_IMAGE ?= ${CONTAINER_REGISTRY}/chaos-controller
 INJECTOR_IMAGE ?= ${CONTAINER_REGISTRY}/chaos-injector
@@ -94,66 +96,27 @@ ifeq (v2,$(CGROUPS))
 LIMA_CGROUPS=v2
 endif
 
-# we define target specific variables values https://www.gnu.org/software/make/manual/html_node/Target_002dspecific.html
-injector handler: BINARY_PATH=./cli/$(BINARY_NAME)
-manager: BINARY_PATH=.
+# Docker builds now happen entirely within Docker using multi-stage builds
+# All binaries (Go + EBPF) are built inside Docker - no local build steps required
 
+# Set container names for each component
 docker-build-injector docker-build-only-injector: CONTAINER_NAME=$(INJECTOR_IMAGE)
 docker-build-handler docker-build-only-handler: CONTAINER_NAME=$(HANDLER_IMAGE)
 docker-build-manager docker-build-only-manager: CONTAINER_NAME=$(MANAGER_IMAGE)
 
-docker-build-ebpf:
-	docker buildx build --platform linux/$(GOARCH) --build-arg BUILDGOVERSION=$(BUILDGOVERSION) -t ebpf-builder-$(GOARCH) -f bin/ebpf-builder/Dockerfile .
-	-rm -r bin/injector/ebpf/$(GOARCH)/
-ifeq (true,$(USE_VOLUMES))
-# create a dummy container with volume to store files
-# circleci remote docker does not allow to use volumes, locally we fallbakc to standard volume but can call this target with USE_VOLUMES=true to debug if necessary
-# https://circleci.com/docs/building-docker-images/#mounting-folders
-	-docker rm ebpf-volume
-	-docker create --platform linux/$(GOARCH) -v /app --name ebpf-volume ebpf-builder-$(GOARCH) /bin/true
-	-docker cp . ebpf-volume:/app
-	-docker rm ebpf-builder
-	docker run --platform linux/$(GOARCH) --volumes-from ebpf-volume --name=ebpf-builder ebpf-builder-$(GOARCH)
-	mkdir -p bin/injector/ebpf/$(GOARCH)
-	docker cp ebpf-builder:/app/bin/injector/ebpf/$(GOARCH) bin/injector/ebpf/$(GOARCH)
-	docker rm ebpf-builder
-else
-	docker run --rm --platform linux/$(GOARCH) -v $(shell pwd):/app ebpf-builder-$(GOARCH)
-endif
-
-docker-build-ebpf_arm:
-	$(MAKE) docker-build-ebpf GOARCH=arm64
-
-docker-build-ebpf_amd:
-	$(MAKE) docker-build-ebpf GOARCH=amd64
-
 lima-push-injector lima-push-handler lima-push-manager: FAKE_FOR=COMPLETION
 
-_injector:;
-_handler:;
-_manager: generate
-
-_docker-build-injector:
-ifneq (true,$(SKIP_EBPF))
-	$(MAKE) docker-build-ebpf
+# Generate manifests before building manager
+# Skip generate if SKIP_GENERATE=true (useful in CI when manifests are already committed)
+ifneq ($(SKIP_GENERATE),true)
+docker-build-manager docker-build-only-manager: generate
 endif
-_docker-build-handler:;
-_docker-build-manager:;
 
-# we define the template we expect for each target
+# Define template for docker build targets
 # $(1) is the target name: injector|handler|manager
 define TARGET_template
-$(1): BINARY_NAME=$(1)
 
-_$(1)_arm:
-	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o ./bin/$(1)/$(1)_arm64 $$(BINARY_PATH)
-
-_$(1)_amd:
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o ./bin/$(1)/$(1)_amd64 $$(BINARY_PATH)
-
-$(1): _$(1) _$(1)_arm _$(1)_amd
-
-docker-build-$(1): _docker-build-$(1) $(1) docker-build-only-$(1)
+docker-build-$(1): docker-build-only-$(1)
 	docker save $$(CONTAINER_NAME):$(CONTAINER_TAG) -o ./bin/$(1)/$(1).tar.gz
 
 docker-build-only-$(1):
@@ -163,7 +126,7 @@ docker-build-only-$(1):
 		-t $$(CONTAINER_NAME):$(CONTAINER_TAG) \
 		--metadata-file ./bin/$(1)/docker-metadata.json \
 		$(CONTAINER_BUILD_EXTRA_ARGS) \
-		-f bin/$(1)/Dockerfile ./bin/$(1)/
+		-f bin/$(1)/Dockerfile .
 
 	if [ "$${SIGN_IMAGE}" = "true" ]; then \
 		ddsign sign $$(CONTAINER_NAME):$(CONTAINER_VERSION) --docker-metadata-file ./bin/$(1)/docker-metadata.json; \
@@ -174,22 +137,21 @@ lima-push-$(1): docker-build-$(1)
 	limactl shell $(LIMA_INSTANCE) -- sudo k3s ctr i import /tmp/$(1).tar.gz
 
 minikube-load-$(1):
-# let's fail if the file does not exists so we know, mk load is not failing
 	ls -la ./bin/$(1)/$(1).tar.gz
 	minikube image load --daemon=false --overwrite=true ./bin/$(1)/$(1).tar.gz
 endef
 
-# we define the targers we want to generate make target for
+# Define targets we want to generate make targets for
 TARGETS = injector handler manager
 
-# we generate the exact same rules as for target specific variables, hence completion works and no duplication 😎
+# Generate docker build rules for each target
 $(foreach tgt,$(TARGETS),$(eval $(call TARGET_template,$(tgt))))
 
 # Build actions
-all: $(TARGETS)
-
 docker-build-all: $(addprefix docker-build-,$(TARGETS))
+
 docker-build-only-all: $(addprefix docker-build-only-,$(TARGETS))
+
 lima-push-all: $(addprefix lima-push-,$(TARGETS))
 minikube-load-all: $(addprefix minikube-load-,$(TARGETS))
 
