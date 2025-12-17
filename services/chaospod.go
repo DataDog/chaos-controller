@@ -559,6 +559,11 @@ func (m *chaosPodService) generateChaosPodSpec(targetNodeName string, terminatio
 						ReadOnly:  true,
 					},
 					{
+						Name:      "systemd-resolve",
+						MountPath: "/mnt/host/etc/resolv.conf",
+						ReadOnly:  true,
+					},
+					{
 						Name:      "boot",
 						MountPath: "/boot",
 						ReadOnly:  true,
@@ -618,6 +623,15 @@ func (m *chaosPodService) generateChaosPodSpec(targetNodeName string, terminatio
 					HostPath: &corev1.HostPathVolumeSource{
 						Path: "/",
 						Type: &hostPathDirectory,
+					},
+				},
+			},
+			{
+				Name: "systemd-resolve",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/run/systemd/resolve/resolv.conf",
+						Type: &hostPathFile,
 					},
 				},
 			},
