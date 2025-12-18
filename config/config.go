@@ -77,15 +77,16 @@ type safeModeConfig struct {
 }
 
 type injectorConfig struct {
-	Image             string                          `json:"image" yaml:"image"`
-	Annotations       map[string]string               `json:"annotations" yaml:"annotations"`
-	Labels            map[string]string               `json:"labels" yaml:"labels"`
-	ChaosNamespace    string                          `json:"chaosNamespace" yaml:"chaosNamespace"`
-	ServiceAccount    string                          `json:"serviceAccount" yaml:"serviceAccount"`
-	NetworkDisruption injectorNetworkDisruptionConfig `json:"networkDisruption" yaml:"networkDisruption"`
-	ImagePullSecrets  string                          `json:"imagePullSecrets" yaml:"imagePullSecrets"`
-	Tolerations       []Toleration                    `json:"tolerations" yaml:"tolerations,omitempty"`
-	LogLevel          string                          `json:"logLevel" yaml:"logLevel"`
+	Image               string                          `json:"image" yaml:"image"`
+	Annotations         map[string]string               `json:"annotations" yaml:"annotations"`
+	Labels              map[string]string               `json:"labels" yaml:"labels"`
+	ChaosNamespace      string                          `json:"chaosNamespace" yaml:"chaosNamespace"`
+	ServiceAccount      string                          `json:"serviceAccount" yaml:"serviceAccount"`
+	MountSystemdResolve bool                            `json:"mountSystemdResolve" yaml:"mountSystemdResolve"`
+	NetworkDisruption   injectorNetworkDisruptionConfig `json:"networkDisruption" yaml:"networkDisruption"`
+	ImagePullSecrets    string                          `json:"imagePullSecrets" yaml:"imagePullSecrets"`
+	Tolerations         []Toleration                    `json:"tolerations" yaml:"tolerations,omitempty"`
+	LogLevel            string                          `json:"logLevel" yaml:"logLevel"`
 }
 
 type Toleration struct {
@@ -323,6 +324,12 @@ func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osAr
 	mainFS.StringVar(&cfg.Injector.LogLevel, "injector-log-level", "DEBUG", "The LOG_LEVEL used for the injector pods")
 
 	if err := viper.BindPFlag("injector.logLevel", mainFS.Lookup("injector-log-level")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.BoolVar(&cfg.Injector.MountSystemdResolve, "injector-mount-systemd-resolve", false, "Mount /run/systemd/resolve/resolv.conf into injector pods")
+
+	if err := viper.BindPFlag("injector.mountSystemdResolve", mainFS.Lookup("injector-mount-systemd-resolve")); err != nil {
 		return cfg, err
 	}
 

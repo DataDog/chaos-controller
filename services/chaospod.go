@@ -34,6 +34,12 @@ import (
 	chaostypes "github.com/DataDog/chaos-controller/types"
 )
 
+const (
+	systemdResolveVolumeName    = "systemd-resolve"
+	systemdResolveHostMountPath = "/mnt/host/etc/resolv.conf"
+	systemdResolveHostPath      = "/run/systemd/resolve/resolv.conf"
+)
+
 // ChaosPodService is an interface that defines methods for managing chaos pods of a disruption on Kubernetes pods.
 type ChaosPodService interface {
 	// GetChaosPodsOfDisruption retrieves a list chaos pods of a disruption for the given labels.
@@ -73,6 +79,7 @@ type ChaosPodServiceInjectorConfig struct {
 	ImagePullSecrets              string              // Image pull secrets for the injector.
 	Tolerations                   []config.Toleration // Tolerations to be applied to injected pods.
 	LogLevel                      string
+	MountSystemdResolve           bool
 }
 
 // ChaosPodServiceConfig contains configuration options for the chaosPodService.
@@ -559,11 +566,6 @@ func (m *chaosPodService) generateChaosPodSpec(targetNodeName string, terminatio
 						ReadOnly:  true,
 					},
 					{
-						Name:      "systemd-resolve",
-						MountPath: "/mnt/host/etc/resolv.conf",
-						ReadOnly:  true,
-					},
-					{
 						Name:      "boot",
 						MountPath: "/boot",
 						ReadOnly:  true,
@@ -627,15 +629,6 @@ func (m *chaosPodService) generateChaosPodSpec(targetNodeName string, terminatio
 				},
 			},
 			{
-				Name: "systemd-resolve",
-				VolumeSource: corev1.VolumeSource{
-					HostPath: &corev1.HostPathVolumeSource{
-						Path: "/run/systemd/resolve/resolv.conf",
-						Type: &hostPathFile,
-					},
-				},
-			},
-			{
 				Name: "boot",
 				VolumeSource: corev1.VolumeSource{
 					HostPath: &corev1.HostPathVolumeSource{
@@ -653,6 +646,24 @@ func (m *chaosPodService) generateChaosPodSpec(targetNodeName string, terminatio
 				Name: m.config.ImagePullSecrets,
 			},
 		}
+	}
+
+	if m.config.Injector.MountSystemdResolve {
+		podSpec.Containers[0].VolumeMounts = append(podSpec.Containers[0].VolumeMounts, corev1.VolumeMount{
+			Name:      systemdResolveVolumeName,
+			MountPath: systemdResolveHostMountPath,
+			ReadOnly:  true,
+		})
+
+		podSpec.Volumes = append(podSpec.Volumes, corev1.Volume{
+			Name: systemdResolveVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				HostPath: &corev1.HostPathVolumeSource{
+					Path: systemdResolveHostPath,
+					Type: &hostPathFile,
+				},
+			},
+		})
 	}
 
 	return podSpec

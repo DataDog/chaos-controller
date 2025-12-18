@@ -206,6 +206,7 @@ func main() {
 			NetworkDisruptionAllowedHosts: cfg.Injector.NetworkDisruption.AllowedHosts,
 			ImagePullSecrets:              cfg.Injector.ImagePullSecrets,
 			LogLevel:                      cfg.Injector.LogLevel,
+			MountSystemdResolve:           cfg.Injector.MountSystemdResolve,
 		},
 		ImagePullSecrets: cfg.Injector.ImagePullSecrets,
 		MetricsSink:      metricsSink,

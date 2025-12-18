@@ -105,6 +105,7 @@ injector:
     repo: chaos-injector
   annotations: {} # extra annotations passed to the chaos injector pods
   labels: {} # extra labels passed to the chaos injector pods
+  mountSystemdResolve: false # bind-mount /run/systemd/resolve/resolv.conf into injector pods
   tolerations: [] # extra tolerations passed to the chaos injector pods
   # (here's the expected format, key/effect are required, all other fields are optional)
   # tolerations:

@@ -127,6 +127,7 @@ data:
       {{- if .Values.injector.logLevel }}
       logLevel: {{ .Values.injector.logLevel }}
       {{- end }}
+      mountSystemdResolve: {{ .Values.injector.mountSystemdResolve }}
       serviceAccount: {{ .Values.injector.serviceAccount | quote }}
       chaosNamespace: {{ .Values.chaosNamespace | quote }}
       {{- if .Values.injector.networkDisruption.allowedHosts }}

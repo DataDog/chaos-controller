@@ -971,6 +971,48 @@ var _ = Describe("Chaos Pod Service", func() {
 				).WithLabels(DefaultInjectorLabels),
 				DefaultInjectorLabels),
 		)
+
+		Context("when mounting systemd resolver is enabled", func() {
+			It("should add the resolver volume and mount", func() {
+				chaosPodServiceConfig.Injector = services.ChaosPodServiceInjectorConfig{
+					ServiceAccount:                DefaultInjectorServiceAccount,
+					Image:                         DefaultInjectorImage,
+					Annotations:                   map[string]string{},
+					Labels:                        map[string]string{},
+					ImagePullSecrets:              "",
+					LogLevel:                      DefaultInjectorLogLevel,
+					MountSystemdResolve:           true,
+					NetworkDisruptionAllowedHosts: nil,
+				}
+
+				chaosPodService, err := services.NewChaosPodService(chaosPodServiceConfig)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				chaosPod := chaosPodService.GenerateChaosPodOfDisruption(disruption, DefaultTargetName, DefaultTargetNodeName, []string{}, chaostypes.DisruptionKindNames[0])
+
+				var resolverMount *corev1.VolumeMount
+				for i := range chaosPod.Spec.Containers[0].VolumeMounts {
+					if chaosPod.Spec.Containers[0].VolumeMounts[i].Name == "systemd-resolve" {
+						resolverMount = &chaosPod.Spec.Containers[0].VolumeMounts[i]
+						break
+					}
+				}
+				Expect(resolverMount).ToNot(BeNil())
+				Expect(resolverMount.MountPath).To(Equal("/mnt/host/etc/resolv.conf"))
+				Expect(resolverMount.ReadOnly).To(BeTrue())
+
+				var resolverVolume *corev1.Volume
+				for i := range chaosPod.Spec.Volumes {
+					if chaosPod.Spec.Volumes[i].Name == "systemd-resolve" {
+						resolverVolume = &chaosPod.Spec.Volumes[i]
+						break
+					}
+				}
+				Expect(resolverVolume).ToNot(BeNil())
+				Expect(resolverVolume.VolumeSource.HostPath).ToNot(BeNil())
+				Expect(resolverVolume.VolumeSource.HostPath.Path).To(Equal("/run/systemd/resolve/resolv.conf"))
+			})
+		})
 	})
 
 	Describe("GetPodInjectorArgs", func() {
