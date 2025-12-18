@@ -567,6 +567,10 @@ var _ = Describe("Disruption Controller", func() {
 				return err, 0
 			}
 
+			if len(l.Items) == 0 {
+				return fmt.Errorf("no chaos pods found yet"), 0
+			}
+
 			hosts := make([]int, len(l.Items))
 
 			// sum up injectors
