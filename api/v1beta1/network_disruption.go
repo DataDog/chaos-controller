@@ -105,6 +105,8 @@ type NetworkDisruptionHostSpec struct {
 	Flow string `json:"flow,omitempty" chaos_validate:"omitempty,oneofci=ingress egress"`
 	// +kubebuilder:validation:Enum=new;est;""
 	ConnState string `json:"connState,omitempty" chaos_validate:"omitempty,oneofci=new est"`
+	// +kubebuilder:validation:Enum=pod;node;pod-fallback-node;node-fallback-pod;""
+	DNSResolver string `json:"dnsResolver,omitempty" chaos_validate:"omitempty,oneofci=pod node pod-fallback-node node-fallback-pod"`
 }
 
 type NetworkDisruptionServiceSpec struct {
@@ -356,12 +358,20 @@ func (s *NetworkDisruptionSpec) GenerateArgs() []string {
 
 	// append hosts
 	for _, host := range s.Hosts {
-		args = append(args, "--hosts", fmt.Sprintf("%s;%d;%s;%s;%s", host.Host, host.Port, host.Protocol, host.Flow, host.ConnState))
+		if host.DNSResolver == "" {
+			args = append(args, "--hosts", fmt.Sprintf("%s;%d;%s;%s;%s", host.Host, host.Port, host.Protocol, host.Flow, host.ConnState))
+		} else {
+			args = append(args, "--hosts", fmt.Sprintf("%s;%d;%s;%s;%s;%s", host.Host, host.Port, host.Protocol, host.Flow, host.ConnState, host.DNSResolver))
+		}
 	}
 
 	// append allowed hosts
 	for _, host := range s.AllowedHosts {
-		args = append(args, "--allowed-hosts", fmt.Sprintf("%s;%d;%s;%s;%s", host.Host, host.Port, host.Protocol, host.Flow, host.ConnState))
+		if host.DNSResolver == "" {
+			args = append(args, "--allowed-hosts", fmt.Sprintf("%s;%d;%s;%s;%s", host.Host, host.Port, host.Protocol, host.Flow, host.ConnState))
+		} else {
+			args = append(args, "--allowed-hosts", fmt.Sprintf("%s;%d;%s;%s;%s;%s", host.Host, host.Port, host.Protocol, host.Flow, host.ConnState, host.DNSResolver))
+		}
 	}
 
 	// append services
@@ -597,7 +607,7 @@ func (s *NetworkDisruptionCloudSpec) Explain() []string {
 }
 
 // NetworkDisruptionHostSpecFromString parses the given hosts to host specs
-// The expected format for hosts is <host>;<port>;<protocol>;<flow>;<connState>
+// The expected format for hosts is <host>;<port>;<protocol>;<flow>;<connState>;<dnsResolver>
 func NetworkDisruptionHostSpecFromString(hosts []string) ([]NetworkDisruptionHostSpec, error) {
 	var err error
 
@@ -609,9 +619,10 @@ func NetworkDisruptionHostSpecFromString(hosts []string) ([]NetworkDisruptionHos
 		protocol := ""
 		flow := ""
 		connState := ""
+		dnsResolver := ""
 
-		// parse host with format <host>;<port>;<protocol>;<flow>;<connState>
-		parsedHost := strings.SplitN(host, ";", 5)
+		// parse host with format <host>;<port>;<protocol>;<flow>;<connState>;<dnsResolver>
+		parsedHost := strings.SplitN(host, ";", 6)
 
 		// cast port to int if specified
 		if len(parsedHost) > 1 && parsedHost[1] != "" {
@@ -636,13 +647,19 @@ func NetworkDisruptionHostSpecFromString(hosts []string) ([]NetworkDisruptionHos
 			connState = parsedHost[4]
 		}
 
+		// get DNS resolver strategy if specified
+		if len(parsedHost) > 5 && parsedHost[5] != "" {
+			dnsResolver = parsedHost[5]
+		}
+
 		// generate host spec
 		parsedHosts = append(parsedHosts, NetworkDisruptionHostSpec{
-			Host:      parsedHost[0],
-			Port:      port,
-			Protocol:  protocol,
-			Flow:      flow,
-			ConnState: connState,
+			Host:        parsedHost[0],
+			Port:        port,
+			Protocol:    protocol,
+			Flow:        flow,
+			ConnState:   connState,
+			DNSResolver: dnsResolver,
 		})
 	}
 

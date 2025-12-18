@@ -14,6 +14,17 @@ import (
 	"github.com/miekg/dns"
 )
 
+const (
+	// DNSResolverPod uses only pod DNS configuration
+	DNSResolverPod = "pod"
+	// DNSResolverNode uses only node DNS configuration
+	DNSResolverNode = "node"
+	// DNSResolverPodFallbackNode tries pod first, then falls back to node (default behavior)
+	DNSResolverPodFallbackNode = "pod-fallback-node"
+	// DNSResolverNodeFallbackPod tries node first, then falls back to pod
+	DNSResolverNodeFallbackPod = "node-fallback-pod"
+)
+
 type DNSConfig struct {
 	DNSServer string
 	KubeDNS   string
@@ -22,6 +33,7 @@ type DNSConfig struct {
 // DNSClient is a client being able to resolve the given host
 type DNSClient interface {
 	Resolve(host string) ([]net.IP, error)
+	ResolveWithStrategy(host string, strategy string) ([]net.IP, error)
 }
 
 type dnsClient struct{}
@@ -32,35 +44,20 @@ func NewDNSClient() DNSClient {
 }
 
 func (c dnsClient) Resolve(host string) ([]net.IP, error) {
-	ips := []net.IP{}
+	// Default behavior: pod-fallback-node for backward compatibility
+	return c.ResolveWithStrategy(host, DNSResolverPodFallbackNode)
+}
 
-	// NOTE: we read both the pod and the node DNS configurations here
-	// in case some of the given hosts are not resolvable from a pod
-
-	// read the pod resolv conf file to get search domain
-	// and other dns configurations
-	podDNSConfig, err := dns.ClientConfigFromFile("/etc/resolv.conf")
+func (c dnsClient) ResolveWithStrategy(host string, strategy string) ([]net.IP, error) {
+	resolvers, names, err := c.getResolversAndNames(host, strategy)
 	if err != nil {
-		return nil, fmt.Errorf("can't read '/etc/resolv.conf' file: %w", err)
+		return nil, err
 	}
-
-	// also read the node resolv conf file to get search domain
-	// and other dns configurations
-	nodeDNSConfig, err := dns.ClientConfigFromFile("/mnt/host/etc/resolv.conf")
-	if err != nil {
-		return nil, fmt.Errorf("can't read '/mnt/host/etc/resolv.conf' file: %w", err)
-	}
-
-	// compute resolvers list
-	resolvers := append([]string{}, podDNSConfig.Servers...)
-	resolvers = append(resolvers, nodeDNSConfig.Servers...)
-
-	// compute possible names to resolve
-	names := append([]string{}, podDNSConfig.NameList(host)...)
-	names = append(names, nodeDNSConfig.NameList(host)...)
 
 	// do the request on the first configured dns resolver
 	response := &dns.Msg{}
+
+	var ips []net.IP
 
 	err = retry.Do(func() error {
 		// query possible resolvers and fqdn based on servers and search domains specified in the dns configuration
@@ -109,6 +106,61 @@ func (c dnsClient) Resolve(host string) ([]net.IP, error) {
 	}
 
 	return ips, nil
+}
+
+// getResolversAndNames reads DNS configs based on strategy and returns resolvers and names lists
+func (c dnsClient) getResolversAndNames(host string, strategy string) (resolvers, names []string, err error) {
+	// Default to pod-fallback-node if strategy is empty
+	if strategy == "" {
+		strategy = DNSResolverPodFallbackNode
+	}
+
+	switch strategy {
+	case DNSResolverPod:
+		podDNSConfig, err := dns.ClientConfigFromFile("/etc/resolv.conf")
+		if err != nil {
+			return nil, nil, fmt.Errorf("can't read '/etc/resolv.conf' file: %w", err)
+		}
+
+		resolvers = podDNSConfig.Servers
+		names = podDNSConfig.NameList(host)
+	case DNSResolverNode:
+		nodeDNSConfig, err := dns.ClientConfigFromFile("/mnt/host/etc/resolv.conf")
+		if err != nil {
+			return nil, nil, fmt.Errorf("can't read '/mnt/host/etc/resolv.conf' file: %w", err)
+		}
+
+		resolvers = nodeDNSConfig.Servers
+		names = nodeDNSConfig.NameList(host)
+	case DNSResolverPodFallbackNode, DNSResolverNodeFallbackPod:
+		podDNSConfig, err := dns.ClientConfigFromFile("/etc/resolv.conf")
+		if err != nil {
+			return nil, nil, fmt.Errorf("can't read '/etc/resolv.conf' file: %w", err)
+		}
+
+		nodeDNSConfig, err := dns.ClientConfigFromFile("/mnt/host/etc/resolv.conf")
+		if err != nil {
+			return nil, nil, fmt.Errorf("can't read '/mnt/host/etc/resolv.conf' file: %w", err)
+		}
+
+		if strategy == DNSResolverPodFallbackNode {
+			// Pod first, then node
+			resolvers = append([]string{}, podDNSConfig.Servers...)
+			resolvers = append(resolvers, nodeDNSConfig.Servers...)
+			names = append([]string{}, podDNSConfig.NameList(host)...)
+			names = append(names, nodeDNSConfig.NameList(host)...)
+		} else {
+			// Node first, then pod
+			resolvers = append([]string{}, nodeDNSConfig.Servers...)
+			resolvers = append(resolvers, podDNSConfig.Servers...)
+			names = append([]string{}, nodeDNSConfig.NameList(host)...)
+			names = append(names, podDNSConfig.NameList(host)...)
+		}
+	default:
+		return nil, nil, fmt.Errorf("unknown DNS resolver strategy: %s", strategy)
+	}
+
+	return resolvers, names, nil
 }
 
 func (c dnsClient) resolve(hostName string, protocol string, resolvers []string) (response *dns.Msg, multiErr error) {

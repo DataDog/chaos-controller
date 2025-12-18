@@ -1114,7 +1114,7 @@ func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interf
 
 		perHost:
 			for host, currentTcFilters := range hosts.hostFilterMap {
-				newIps, err := resolveHost(i.config.DNSClient, host.Host)
+				newIps, err := resolveHost(i.config.DNSClient, host.Host, host.DNSResolver)
 				if err != nil {
 					hostWatcherLog.Errorw("error resolving Host", tags.ErrorKey, err, tags.HostKey, host.Host)
 
@@ -1204,7 +1204,7 @@ func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, host
 		}
 
 		// resolve given hosts if needed
-		ips, err := resolveHost(i.config.DNSClient, host.Host)
+		ips, err := resolveHost(i.config.DNSClient, host.Host, host.DNSResolver)
 		if err != nil {
 			return nil, fmt.Errorf("error resolving given host %s: %w", host.Host, err)
 		}

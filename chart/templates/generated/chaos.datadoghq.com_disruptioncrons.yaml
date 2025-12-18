@@ -267,6 +267,14 @@ spec:
                                   - est
                                   - ""
                                 type: string
+                              dnsResolver:
+                                enum:
+                                  - pod
+                                  - node
+                                  - pod-fallback-node
+                                  - node-fallback-pod
+                                  - ""
+                                type: string
                               flow:
                                 enum:
                                   - ingress
@@ -405,6 +413,14 @@ spec:
                                 enum:
                                   - new
                                   - est
+                                  - ""
+                                type: string
+                              dnsResolver:
+                                enum:
+                                  - pod
+                                  - node
+                                  - pod-fallback-node
+                                  - node-fallback-pod
                                   - ""
                                 type: string
                               flow:

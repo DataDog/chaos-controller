@@ -15,7 +15,8 @@ import (
 // resolveHost tries to resolve the given host
 // it tries to resolve it as a CIDR, as a single IP, or as a hostname
 // it returns a list of IP or an error if it fails to resolve the hostname
-func resolveHost(client network.DNSClient, host string) ([]*net.IPNet, error) {
+// dnsStrategy specifies the DNS resolution strategy to use (empty string uses default)
+func resolveHost(client network.DNSClient, host string, dnsStrategy string) ([]*net.IPNet, error) {
 	var ips []*net.IPNet
 
 	// return the wildcard 0.0.0.0/0 CIDR if the given host is an empty string
@@ -33,7 +34,13 @@ func resolveHost(client network.DNSClient, host string) ([]*net.IPNet, error) {
 		if ip == nil {
 			// if no IP has been parsed, fallback on a hostname
 			// and try to resolve it by using the container resolv.conf file
-			resolvedIPs, err := client.Resolve(host)
+			var resolvedIPs []net.IP
+			if dnsStrategy != "" {
+				resolvedIPs, err = client.ResolveWithStrategy(host, dnsStrategy)
+			} else {
+				resolvedIPs, err = client.Resolve(host)
+			}
+
 			if err != nil {
 				return nil, fmt.Errorf("can't resolve the given host with the configured dns resolver: %w", err)
 			}

@@ -223,6 +223,105 @@ If the `hosts` field contains a CIDR, the routing table is consulted. If the lis
 Instead of a CIDR block, hostnames can be provided in the `hosts` field. If the `chaos-controller` fails to resolve the `hosts` field to an IP address or a CIDR block, it then tries to resolve the potential hostname on each resolver listed in `/etc/resolv.conf` in order.
 Remember, this hostname must _not_ be a kubernetes service's hostname.
 
+### Case 5: Controlling DNS Resolution with `dnsResolver`
+
+When specifying hostnames in the `hosts` or `allowedHosts` fields, you can control which DNS resolver is used to resolve the hostname to an IP address. This is particularly useful in environments with service mesh proxies (like Istio) that intercept DNS queries and return virtual IPs (VIPs) that may not work for traffic disruption.
+
+The `dnsResolver` field supports the following strategies:
+
+| Strategy            | Description                                                                        |
+|---------------------|------------------------------------------------------------------------------------|
+| `pod`               | Uses only the pod's DNS configuration (`/etc/resolv.conf`)                         |
+| `node`              | Uses only the node's DNS configuration (`/mnt/host/etc/resolv.conf`)               |
+| `pod-fallback-node` | Tries pod DNS first, falls back to node DNS if resolution fails (default behavior) |
+| `node-fallback-pod` | Tries node DNS first, falls back to pod DNS if resolution fails                    |
+
+**Example: Bypassing Istio DNS Proxy in `hosts`**
+
+When Istio DNS proxy is enabled, pod-level DNS lookups may return VIP addresses (Class E subnet: 240.0.0.0/4) that don't work for network disruptions. In this case, use `dnsResolver: node` to bypass the Istio proxy and get the actual service IPs:
+
+```yaml
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: network-disruption-istio
+spec:
+  level: pod
+  selector:
+    app: my-service
+  network:
+    drop: 50
+    hosts:
+      - host: external-api.example.com
+        port: 443
+        protocol: tcp
+        dnsResolver: node  # Bypasses Istio DNS proxy, gets real IPs
+```
+
+**Example: Using `dnsResolver` with `allowedHosts`**
+
+The `dnsResolver` field is also available for `allowedHosts`, which is useful when you want to exclude specific hosts from disruption but need to control how their hostnames are resolved:
+
+```yaml
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: network-disruption-with-exclusions
+spec:
+  level: pod
+  selector:
+    app: my-service
+  network:
+    drop: 100
+    allowedHosts:
+      - host: critical-internal-service.cluster.local
+        port: 443
+        protocol: tcp
+        dnsResolver: pod  # Use pod DNS for internal service
+      - host: monitoring.example.com
+        port: 443
+        protocol: tcp
+        dnsResolver: node  # Use node DNS for external monitoring service
+```
+
+**Example: Multiple hosts with different DNS strategies**
+
+```yaml
+network:
+  drop: 50
+  hosts:
+    # External service - use node DNS to avoid service mesh VIPs
+    - host: external-service.example.com
+      port: 443
+      protocol: tcp
+      dnsResolver: node
+
+    # Internal cluster service - use pod DNS for cluster-internal resolution
+    - host: internal-service.cluster.local
+      port: 8080
+      protocol: tcp
+      dnsResolver: pod
+
+    # Public API - use default behavior (pod-fallback-node)
+    - host: api.public.com
+      port: 443
+      protocol: tcp
+      # dnsResolver not specified = uses default "pod-fallback-node"
+  allowedHosts:
+    # Critical dependency that should never be disrupted
+    - host: database.internal.example.com
+      port: 5432
+      protocol: tcp
+      dnsResolver: node  # Ensure reliable resolution using node DNS
+```
+
+**When to use each strategy:**
+
+- **`node`**: Use when working with service meshes (Istio, Linkerd) that proxy DNS, or when you need to resolve external hostnames using the node's DNS servers (e.g., corporate DNS servers)
+- **`pod`**: Use for cluster-internal services or when you specifically want to use the pod's DNS configuration
+- **`pod-fallback-node`** (default): Use when you want resilience - try pod DNS first but fall back to node DNS if it fails
+- **`node-fallback-pod`**: Use when node DNS is preferred but you want pod DNS as a backup
+
 ### Some special cases
 
 Cluster IPs can also be specified to target the relevant pods.
