@@ -129,15 +129,21 @@ data:
       {{- end }}
       serviceAccount: {{ .Values.injector.serviceAccount | quote }}
       chaosNamespace: {{ .Values.chaosNamespace | quote }}
-      {{- if .Values.injector.networkDisruption.allowedHosts }}
       networkDisruption:
         hostResolveInterval: {{ .Values.injector.networkDisruption.hostResolveInterval | quote }}
+        {{- if .Values.injector.networkDisruption.allowedHosts }}
         allowedHosts:
           {{- range $index, $allowedHost := .Values.injector.networkDisruption.allowedHosts }}
           {{ $v := printf "%s;%v;%s;%s" ($allowedHost.host | default "") ($allowedHost.port | default "") ($allowedHost.protocol | default "") ($allowedHost.flow | default "") -}}
           - {{ tpl $v $ }}
           {{- end }}
-      {{- end }}
+        {{- end }}
+        {{- if .Values.injector.networkDisruption.dnsPodResolvConf }}
+        dnsPodResolvConf: {{ .Values.injector.networkDisruption.dnsPodResolvConf | quote }}
+        {{- end }}
+        {{- if .Values.injector.networkDisruption.dnsNodeResolvConf }}
+        dnsNodeResolvConf: {{ .Values.injector.networkDisruption.dnsNodeResolvConf | quote }}
+        {{- end }}
     handler:
       image: {{ template "chaos-controller.format-image" deepCopy .Values.global.chaos.defaultImage | merge .Values.global.oci | merge .Values.handler.image }}
       enabled: {{ .Values.handler.enabled }}

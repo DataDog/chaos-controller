@@ -132,6 +132,8 @@ injector:
     #     port: 81
     #     protocol: tcp
     #     flow: ingress
+#    dnsPodResolvConf: "/etc/resolv.conf" # (optional) path for pod DNS resolv.conf
+#    dnsNodeResolvConf: "/mnt/host/etc/resolv.conf" # (optional)  path for node DNS resolv.conf
 handler:
   image:
     repo: chaos-handler

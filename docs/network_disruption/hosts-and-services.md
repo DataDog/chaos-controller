@@ -245,10 +245,12 @@ apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
   name: network-disruption-istio
+  namespace: chaos-demo
 spec:
   level: pod
   selector:
     app: my-service
+  count: 1
   network:
     drop: 50
     hosts:
@@ -321,6 +323,81 @@ network:
 - **`pod`**: Use for cluster-internal services or when you specifically want to use the pod's DNS configuration
 - **`pod-fallback-node`** (default): Use when you want resilience - try pod DNS first but fall back to node DNS if it fails
 - **`node-fallback-pod`**: Use when node DNS is preferred but you want pod DNS as a backup
+
+#### Customizing resolv.conf Paths
+
+By default, the chaos-controller uses these locations for resolv.conf files:
+
+- **Pod DNS**: `/etc/resolv.conf`
+- **Node DNS**: `/mnt/host/etc/resolv.conf`
+
+These defaults are set in the controller configuration. Some Kubernetes distributions or node configurations may use different locations for resolv.conf. You can override the defaults using Helm values:
+
+**Helm Configuration:**
+
+Override resolv.conf paths in your Helm values:
+
+```yaml
+injector:
+  networkDisruption:
+    # Path for pod DNS resolv.conf
+    # Default: /etc/resolv.conf
+    dnsPodResolvConf: "/run/systemd/resolve/resolv.conf"
+
+    # Path for node DNS resolv.conf
+    # Default: /mnt/host/etc/resolv.conf
+    dnsNodeResolvConf: "/mnt/host/run/systemd/resolve/stub-resolv.conf"
+```
+
+**Behavior:**
+- Defaults are defined in the controller configuration (can be overridden via ConfigMap, environment variables, or CLI flags)
+- The specified resolv.conf file must exist and be readable
+- Configuration is passed to injector pods as command-line arguments
+- Logging will indicate which resolv.conf file was loaded
+
+**Example: Full Helm configuration for systemd-resolved nodes**
+
+```yaml
+# values.yaml
+injector:
+  networkDisruption:
+    hostResolveInterval: 1m
+
+    # For nodes using systemd-resolved (Ubuntu, Debian, etc.)
+    dnsNodeResolvConf: "/mnt/host/run/systemd/resolve/stub-resolv.conf"
+
+    # For pods with custom DNS configuration
+    dnsPodResolvConf: "/run/systemd/resolve/resolv.conf"
+```
+
+**How it works:**
+
+When you deploy with these Helm values:
+1. The controller reads the configuration from the ConfigMap
+2. For each network disruption, the controller creates an injector pod with CLI arguments:
+   ```bash
+   /chaos-injector network-disruption \
+     --dns-pod-resolv-conf /run/systemd/resolve/resolv.conf \
+     --dns-node-resolv-conf /mnt/host/run/systemd/resolve/stub-resolv.conf \
+     ...
+   ```
+3. The injector uses these paths for DNS resolution
+4. Logs will show which resolv.conf files were loaded:
+   ```
+   INFO  loaded pod DNS configuration  resolv_conf_path=/run/systemd/resolve/resolv.conf  nameservers=[8.8.8.8, 8.8.4.4]
+   INFO  loaded node DNS configuration  resolv_conf_path=/mnt/host/run/systemd/resolve/stub-resolv.conf  nameservers=[10.0.0.1]
+   ```
+
+You can verify the paths used by an injector pod:
+```bash
+kubectl describe pod chaos-injector-xxxxx -n chaos-engineering | grep dns-
+```
+
+**Use cases:**
+- **systemd-resolved**: Nodes using systemd-resolved may have resolv.conf at `/run/systemd/resolve/resolv.conf` or `/run/systemd/resolve/stub-resolv.conf`
+- **NetworkManager**: Some distributions use `/run/NetworkManager/resolv.conf`
+- **Custom Kubernetes distributions**: Distributions like k3s, microk8s, or OpenShift may use non-standard paths
+- **Custom DNS configurations**: Environments with custom DNS setups that require specific resolv.conf locations
 
 ### Some special cases
 

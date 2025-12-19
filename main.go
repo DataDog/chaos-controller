@@ -204,6 +204,8 @@ func main() {
 			Labels:                        cfg.Injector.Labels,
 			Tolerations:                   cfg.Injector.Tolerations,
 			NetworkDisruptionAllowedHosts: cfg.Injector.NetworkDisruption.AllowedHosts,
+			DNSPodResolvConf:              cfg.Injector.NetworkDisruption.DNSPodResolvConf,
+			DNSNodeResolvConf:             cfg.Injector.NetworkDisruption.DNSNodeResolvConf,
 			ImagePullSecrets:              cfg.Injector.ImagePullSecrets,
 			LogLevel:                      cfg.Injector.LogLevel,
 		},
