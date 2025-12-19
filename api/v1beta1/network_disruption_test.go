@@ -617,9 +617,9 @@ var _ = Describe("NetworkDisruptionSpec", func() {
 				"--bandwidth-limit",
 				"6",
 				"--hosts",
-				"lorem;8080;TCP;ingress;open",
+				"lorem;8080;TCP;ingress;open;",
 				"--allowed-hosts",
-				"localhost;9090;UDP;egress;closed",
+				"localhost;9090;UDP;egress;closed;",
 				"--services",
 				"name;namespace;9191-default",
 			}
@@ -722,7 +722,7 @@ var _ = Describe("NetworkDisruptionSpec", func() {
 					"name;namespace;9191-default",
 				},
 			),
-			Entry("with DNSResolver empty (backward compatibility)",
+			Entry("with DNSResolver empty (always includes trailing semicolon)",
 				func() NetworkDisruptionSpec {
 					networkDisruption := defaultNetworkDisruption.DeepCopy()
 					networkDisruption.Hosts[0].DNSResolver = ""
@@ -745,11 +745,102 @@ var _ = Describe("NetworkDisruptionSpec", func() {
 					"--bandwidth-limit",
 					"6",
 					"--hosts",
-					"lorem;8080;TCP;ingress;open",
+					"lorem;8080;TCP;ingress;open;",
 					"--allowed-hosts",
-					"localhost;9090;UDP;egress;closed",
+					"localhost;9090;UDP;egress;closed;",
 					"--services",
 					"name;namespace;9191-default",
+				},
+			),
+			Entry("with percentage set on hosts",
+				func() NetworkDisruptionSpec {
+					networkDisruption := defaultNetworkDisruption.DeepCopy()
+					pct50 := 50
+					networkDisruption.Hosts[0].Percentage = &pct50
+
+					return *networkDisruption
+				}(),
+				[]string{
+					"network-disruption",
+					"--corrupt",
+					"3",
+					"--drop",
+					"1",
+					"--duplicate",
+					"2",
+					"--delay",
+					"4",
+					"--delay-jitter",
+					"5",
+					"--bandwidth-limit",
+					"6",
+					"--hosts",
+					"lorem;8080;TCP;ingress;open;;50",
+					"--allowed-hosts",
+					"localhost;9090;UDP;egress;closed;",
+					"--services",
+					"name;namespace;9191-default",
+				},
+			),
+			Entry("with percentage and DNSResolver set on hosts",
+				func() NetworkDisruptionSpec {
+					networkDisruption := defaultNetworkDisruption.DeepCopy()
+					pct30 := 30
+					networkDisruption.Hosts[0].DNSResolver = "pod"
+					networkDisruption.Hosts[0].Percentage = &pct30
+
+					return *networkDisruption
+				}(),
+				[]string{
+					"network-disruption",
+					"--corrupt",
+					"3",
+					"--drop",
+					"1",
+					"--duplicate",
+					"2",
+					"--delay",
+					"4",
+					"--delay-jitter",
+					"5",
+					"--bandwidth-limit",
+					"6",
+					"--hosts",
+					"lorem;8080;TCP;ingress;open;pod;30",
+					"--allowed-hosts",
+					"localhost;9090;UDP;egress;closed;",
+					"--services",
+					"name;namespace;9191-default",
+				},
+			),
+			Entry("with percentage set on services",
+				func() NetworkDisruptionSpec {
+					networkDisruption := defaultNetworkDisruption.DeepCopy()
+					pct75 := 75
+					networkDisruption.Services[0].Percentage = &pct75
+
+					return *networkDisruption
+				}(),
+				[]string{
+					"network-disruption",
+					"--corrupt",
+					"3",
+					"--drop",
+					"1",
+					"--duplicate",
+					"2",
+					"--delay",
+					"4",
+					"--delay-jitter",
+					"5",
+					"--bandwidth-limit",
+					"6",
+					"--hosts",
+					"lorem;8080;TCP;ingress;open;",
+					"--allowed-hosts",
+					"localhost;9090;UDP;egress;closed;",
+					"--services",
+					"name;namespace;9191-default;75",
 				},
 			))
 	})

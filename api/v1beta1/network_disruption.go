@@ -107,6 +107,9 @@ type NetworkDisruptionHostSpec struct {
 	ConnState string `json:"connState,omitempty" chaos_validate:"omitempty,oneofci=new est"`
 	// +kubebuilder:validation:Enum=pod;node;pod-fallback-node;node-fallback-pod;""
 	DNSResolver string `json:"dnsResolver,omitempty" chaos_validate:"omitempty,oneofci=pod node pod-fallback-node node-fallback-pod"`
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=100
+	Percentage *int `json:"percentage,omitempty" chaos_validate:"omitempty,gte=1,lte=100"`
 }
 
 type NetworkDisruptionServiceSpec struct {
@@ -114,6 +117,9 @@ type NetworkDisruptionServiceSpec struct {
 	Namespace string `json:"namespace"`
 	// +optional
 	Ports []NetworkDisruptionServicePortSpec `json:"ports,omitempty" chaos_validate:"omitempty,dive"`
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=100
+	Percentage *int `json:"percentage,omitempty" chaos_validate:"omitempty,gte=1,lte=100"`
 }
 
 type NetworkDisruptionServicePortSpec struct {
@@ -358,20 +364,24 @@ func (s *NetworkDisruptionSpec) GenerateArgs() []string {
 
 	// append hosts
 	for _, host := range s.Hosts {
-		if host.DNSResolver == "" {
-			args = append(args, "--hosts", fmt.Sprintf("%s;%d;%s;%s;%s", host.Host, host.Port, host.Protocol, host.Flow, host.ConnState))
-		} else {
-			args = append(args, "--hosts", fmt.Sprintf("%s;%d;%s;%s;%s;%s", host.Host, host.Port, host.Protocol, host.Flow, host.ConnState, host.DNSResolver))
+		hostStr := fmt.Sprintf("%s;%d;%s;%s;%s;%s", host.Host, host.Port, host.Protocol, host.Flow, host.ConnState, host.DNSResolver)
+
+		if host.Percentage != nil {
+			hostStr = fmt.Sprintf("%s;%d", hostStr, *host.Percentage)
 		}
+
+		args = append(args, "--hosts", hostStr)
 	}
 
 	// append allowed hosts
 	for _, host := range s.AllowedHosts {
-		if host.DNSResolver == "" {
-			args = append(args, "--allowed-hosts", fmt.Sprintf("%s;%d;%s;%s;%s", host.Host, host.Port, host.Protocol, host.Flow, host.ConnState))
-		} else {
-			args = append(args, "--allowed-hosts", fmt.Sprintf("%s;%d;%s;%s;%s;%s", host.Host, host.Port, host.Protocol, host.Flow, host.ConnState, host.DNSResolver))
+		hostStr := fmt.Sprintf("%s;%d;%s;%s;%s;%s", host.Host, host.Port, host.Protocol, host.Flow, host.ConnState, host.DNSResolver)
+
+		if host.Percentage != nil {
+			hostStr = fmt.Sprintf("%s;%d", hostStr, *host.Percentage)
 		}
+
+		args = append(args, "--allowed-hosts", hostStr)
 	}
 
 	// append services
@@ -381,7 +391,13 @@ func (s *NetworkDisruptionSpec) GenerateArgs() []string {
 			ports += fmt.Sprintf(";%d-%s", port.Port, port.Name)
 		}
 
-		args = append(args, "--services", fmt.Sprintf("%s;%s%s", service.Name, service.Namespace, ports))
+		serviceStr := fmt.Sprintf("%s;%s%s", service.Name, service.Namespace, ports)
+
+		if service.Percentage != nil {
+			serviceStr = fmt.Sprintf("%s;%d", serviceStr, *service.Percentage)
+		}
+
+		args = append(args, "--services", serviceStr)
 	}
 
 	if s.HTTP != nil {
@@ -607,7 +623,7 @@ func (s *NetworkDisruptionCloudSpec) Explain() []string {
 }
 
 // NetworkDisruptionHostSpecFromString parses the given hosts to host specs
-// The expected format for hosts is <host>;<port>;<protocol>;<flow>;<connState>;<dnsResolver>
+// The expected format for hosts is <host>;<port>;<protocol>;<flow>;<connState>;<dnsResolver>;<percentage>
 func NetworkDisruptionHostSpecFromString(hosts []string) ([]NetworkDisruptionHostSpec, error) {
 	var err error
 
@@ -621,8 +637,10 @@ func NetworkDisruptionHostSpecFromString(hosts []string) ([]NetworkDisruptionHos
 		connState := ""
 		dnsResolver := ""
 
-		// parse host with format <host>;<port>;<protocol>;<flow>;<connState>;<dnsResolver>
-		parsedHost := strings.SplitN(host, ";", 6)
+		var percentage *int
+
+		// parse host with format <host>;<port>;<protocol>;<flow>;<connState>;<dnsResolver>;<percentage>
+		parsedHost := strings.SplitN(host, ";", 7)
 
 		// cast port to int if specified
 		if len(parsedHost) > 1 && parsedHost[1] != "" {
@@ -652,6 +670,16 @@ func NetworkDisruptionHostSpecFromString(hosts []string) ([]NetworkDisruptionHos
 			dnsResolver = parsedHost[5]
 		}
 
+		// get percentage if specified
+		if len(parsedHost) > 6 && parsedHost[6] != "" {
+			pct, err := strconv.Atoi(parsedHost[6])
+			if err != nil {
+				return nil, fmt.Errorf("unexpected percentage parameter in %s: %w", host, err)
+			}
+
+			percentage = &pct
+		}
+
 		// generate host spec
 		parsedHosts = append(parsedHosts, NetworkDisruptionHostSpec{
 			Host:        parsedHost[0],
@@ -660,6 +688,7 @@ func NetworkDisruptionHostSpecFromString(hosts []string) ([]NetworkDisruptionHos
 			Flow:        flow,
 			ConnState:   connState,
 			DNSResolver: dnsResolver,
+			Percentage:  percentage,
 		})
 	}
 
@@ -667,21 +696,38 @@ func NetworkDisruptionHostSpecFromString(hosts []string) ([]NetworkDisruptionHos
 }
 
 // NetworkDisruptionServiceSpecFromString parses the given services to service specs
-// The expected format for services is <serviceName>;<serviceNamespace>
+// The expected format for services is <serviceName>;<serviceNamespace>;<port-value>-<port-name>;<port-value>-<port-name>...;<percentage>
+// The percentage field is optional and should be a plain integer at the end (no dash)
 func NetworkDisruptionServiceSpecFromString(services []string) ([]NetworkDisruptionServiceSpec, error) {
 	parsedServices := []NetworkDisruptionServiceSpec{}
 
 	// parse given services
 	for _, service := range services {
-		// parse service with format <name>;<namespace>;<port-value>-<port-name>;<port-value>-<port-name>...
+		// parse service with format <name>;<namespace>;<port-value>-<port-name>;<port-value>-<port-name>...;<percentage>
 		parsedService := strings.Split(service, ";")
 		if len(parsedService) < 2 {
-			return nil, fmt.Errorf("service format is expected to follow '<name>;<namespace>;<port-value>-<port-name>;<port-value>-<port-name>', unexpected format detected: %s", service)
+			return nil, fmt.Errorf("service format is expected to follow '<name>;<namespace>;<port-value>-<port-name>;<port-value>-<port-name>;<percentage>', unexpected format detected: %s", service)
 		}
 
 		ports := []NetworkDisruptionServicePortSpec{}
 
-		for _, unparsedPort := range parsedService[2:] {
+		var percentage *int
+
+		portFields := parsedService[2:]
+
+		// Check if the last field is a percentage (plain integer without dash)
+		if len(portFields) > 0 {
+			lastField := portFields[len(portFields)-1]
+			if !strings.Contains(lastField, "-") {
+				// This might be a percentage
+				if pct, err := strconv.Atoi(lastField); err == nil {
+					percentage = &pct
+					portFields = portFields[:len(portFields)-1] // Remove percentage from port fields
+				}
+			}
+		}
+
+		for _, unparsedPort := range portFields {
 			// <port-value>-<port-name>
 			portValue, portName, ok := strings.Cut(unparsedPort, "-")
 			if !ok {
@@ -701,9 +747,10 @@ func NetworkDisruptionServiceSpecFromString(services []string) ([]NetworkDisrupt
 
 		// generate service spec
 		parsedServices = append(parsedServices, NetworkDisruptionServiceSpec{
-			Name:      parsedService[0],
-			Namespace: parsedService[1],
-			Ports:     ports,
+			Name:       parsedService[0],
+			Namespace:  parsedService[1],
+			Ports:      ports,
+			Percentage: percentage,
 		})
 	}
 

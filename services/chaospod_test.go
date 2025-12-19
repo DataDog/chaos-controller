@@ -11,6 +11,18 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/stretchr/testify/mock"
+	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
 	chaosapi "github.com/DataDog/chaos-controller/api"
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	builderstest "github.com/DataDog/chaos-controller/builderstest"
@@ -22,17 +34,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/stretchr/testify/mock"
-	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 const (
@@ -708,6 +709,7 @@ var _ = Describe("Chaos Pod Service", func() {
 				TargetNodeName:       DefaultTargetNodeName,
 				TargetPodIP:          DefaultTargetPodIp,
 				DryRun:               disruption.Spec.DryRun,
+				DisruptionUID:        string(disruption.UID),
 				DisruptionName:       disruption.Name,
 				DisruptionNamespace:  DefaultNamespace,
 				OnInit:               disruption.Spec.OnInit,
@@ -737,7 +739,9 @@ var _ = Describe("Chaos Pod Service", func() {
 			args.Level = disruption.Spec.Level
 			args.TargetContainers = targetContainers
 			args.DryRun = disruption.Spec.DryRun
+			args.DisruptionUID = string(disruption.UID)
 			args.DisruptionName = disruption.Name
+			args.DisruptionNamespace = disruption.Namespace
 			args.OnInit = disruption.Spec.OnInit
 			args.NotInjectedBefore = notInjectedBefore
 

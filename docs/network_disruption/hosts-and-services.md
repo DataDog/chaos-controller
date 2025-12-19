@@ -399,6 +399,182 @@ kubectl describe pod chaos-injector-xxxxx -n chaos-engineering | grep dns-
 - **Custom Kubernetes distributions**: Distributions like k3s, microk8s, or OpenShift may use non-standard paths
 - **Custom DNS configurations**: Environments with custom DNS setups that require specific resolv.conf locations
 
+### Case 6: Targeting a Percentage of Resolved IPs
+
+You can optionally specify a `percentage` field (1-100) to target only a subset of the resolved IPs for a given host. 
+This is useful for testing partial unavailability scenarios without needing to know the specific IP addresses upfront.
+
+**Example: Disrupting 30% of database instances**
+
+```yaml
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: partial-database-disruption
+  namespace: chaos-demo
+spec:
+  level: pod
+  selector:
+    app: my-service
+  count: 1
+  network:
+    drop: 100
+    hosts:
+      - host: database.example.com
+        port: 5432
+        protocol: tcp
+        percentage: 30  # Only disrupt 30% of resolved IPs
+```
+
+**How it works:**
+
+1. **IP Resolution**: The hostname is first resolved to a list of IP addresses (e.g., `database.example.com` resolves to 10 IPs)
+2. **Consistent Selection**: A consistent hashing algorithm (SHA-256) selects the specified percentage of IPs based on:
+   - The hostname or service name
+   - The Kubernetes Disruption UID (unique per disruption run)
+   - This ensures the same subset is selected across all chaos pods and target pods within the same disruption
+3. **Disruption**: Only packets to/from the selected IPs are disrupted
+4. **Re-resolution**: If DNS is re-resolved during the disruption (due to `hostResolveInterval`), the same percentage-based selection is reapplied using the same seed, maintaining consistency
+
+**Key characteristics:**
+
+- **Deterministic**: The same IPs are selected every time for the same hostname and disruption run
+- **Consistent across target pods**: All target pods within the same disruption run will disrupt the same subset of IPs
+- **Consistent across chaos pods**: If the disruption targets multiple pods (e.g., `count: 3`), all chaos injector pods will select the same subset of IPs
+- **Different between disruption runs**: Each new disruption (even with the same configuration) will select a different subset based on the Kubernetes Disruption UID
+- **Stable during disruption**: The selected IPs remain consistent throughout the disruption lifecycle, even during DNS re-resolution cycles
+- **Dynamic with host changes**: If the hostname resolves to different IPs (e.g., due to scaling), the percentage-based selection adapts automatically while maintaining consistency
+
+**Use cases:**
+
+- **Testing degraded performance**: Simulate scenarios where only some instances of a dependency are unavailable
+- **Partial cloud service outages**: Test resilience when a portion of a cloud service's endpoints are down
+- **Gradual blast radius increase**: Start with a small percentage (e.g., 10%) and gradually increase to test different failure scenarios
+- **Load balancer behavior**: Verify that your application properly handles when some backend instances are unavailable
+
+**Example: Multiple hosts with different percentages**
+
+```yaml
+network:
+  drop: 100
+  hosts:
+    # Disrupt 50% of database replicas
+    - host: database-read-replicas.example.com
+      port: 5432
+      protocol: tcp
+      percentage: 50
+
+    # Disrupt only 10% of cache instances for gradual testing
+    - host: cache.example.com
+      port: 6379
+      protocol: tcp
+      percentage: 10
+
+    # Disrupt 25% of external API endpoints
+    - host: external-api.example.com
+      port: 443
+      protocol: tcp
+      dnsResolver: node
+      percentage: 25
+```
+
+**Percentage-based selection for Kubernetes services:**
+
+The `percentage` field also works with `network.services` to target only a subset of service endpoints:
+
+```yaml
+network:
+  drop: 100
+  services:
+    - name: backend-service
+      namespace: prod
+      percentage: 30  # Only disrupt 30% of backend-service pods
+      ports:
+        - port: 8080
+          name: http
+```
+
+This is particularly useful for:
+- Testing how your application handles partial unavailability of dependent services
+- Simulating pod failures in a controlled manner
+- Validating circuit breaker and retry logic when only some instances are down
+
+**Percentage-based selection for allowed hosts:**
+
+The `percentage` field also works with `allowedHosts`, allowing you to exclude only a subset of resolved IPs from disruption. This is useful when you want to maintain partial connectivity to a critical service while still testing degraded scenarios.
+
+```yaml
+network:
+  drop: 100
+  allowedHosts:
+    - host: critical-database.example.com
+      port: 5432
+      protocol: tcp
+      percentage: 50  # Only allow traffic to 50% of database instances
+      # The other 50% will still be disrupted
+```
+
+**How it works with `allowedHosts`:**
+
+When you specify a `percentage` on an `allowedHosts` entry:
+1. The hostname is resolved to a list of IP addresses
+2. The specified percentage of IPs is selected using the same consistent hashing algorithm
+3. Traffic to **only the selected IPs** is allowed (excluded from disruption)
+4. Traffic to the remaining IPs (the other 50% in the example above) continues to be disrupted
+
+**Use cases:**
+- **Partial critical service protection**: Allow traffic to only some instances of a critical service while testing degraded performance
+- **Gradual blast radius control**: Start by allowing traffic to most instances (e.g., `percentage: 90`), then gradually decrease to test increasing failure scenarios
+- **Simulating partial outages of dependencies**: Test how your application handles when only a portion of a critical dependency is available
+- **Testing failover logic**: Verify that your application can failover between available and unavailable instances of a service
+
+**Example: Complex scenario with both hosts and allowedHosts using percentage**
+
+```yaml
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: complex-partial-disruption
+  namespace: chaos-demo
+spec:
+  level: pod
+  selector:
+    app: my-service
+  count: 1
+  network:
+    drop: 100
+    hosts:
+      # Disrupt 30% of external API endpoints
+      - host: external-api.example.com
+        port: 443
+        protocol: tcp
+        percentage: 30
+
+      # Disrupt all traffic to cache
+      - host: cache.example.com
+        port: 6379
+        protocol: tcp
+
+    allowedHosts:
+      # But always allow traffic to 70% of monitoring endpoints
+      - host: monitoring.example.com
+        port: 443
+        protocol: tcp
+        percentage: 70  # Maintain connectivity to 70% of monitoring instances
+
+      # And allow traffic to 50% of logging instances
+      - host: logging.example.com
+        port: 514
+        protocol: tcp
+        percentage: 50  # Maintain connectivity to 50% of logging instances
+```
+
+This configuration creates a nuanced disruption scenario:
+- 30% of external API endpoints are disrupted
+- All cache instances are disrupted
+- 70% of monitoring endpoints remain reachable (30% are disrupted)
+- 50% of logging endpoints remain reachable (50% are disrupted)
+
 ### Some special cases
 
 Cluster IPs can also be specified to target the relevant pods.

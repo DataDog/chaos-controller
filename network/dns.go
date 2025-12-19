@@ -151,9 +151,7 @@ func (c dnsClient) getResolversAndNames(host string, strategy string) (resolvers
 			return nil, nil, fmt.Errorf("can't read pod resolv.conf file: %w", err)
 		}
 
-		if c.log != nil {
-			c.log.Infow("loaded pod DNS configuration", "resolv_conf_path", podPath, "nameservers", podDNSConfig.Servers)
-		}
+		c.log.Infow("loaded pod DNS configuration", "resolv_conf_path", podPath, "nameservers", podDNSConfig.Servers)
 
 		resolvers = podDNSConfig.Servers
 		names = podDNSConfig.NameList(host)
@@ -163,9 +161,7 @@ func (c dnsClient) getResolversAndNames(host string, strategy string) (resolvers
 			return nil, nil, fmt.Errorf("can't read node resolv.conf file: %w", err)
 		}
 
-		if c.log != nil {
-			c.log.Infow("loaded node DNS configuration", "resolv_conf_path", nodePath, "nameservers", nodeDNSConfig.Servers)
-		}
+		c.log.Infow("loaded node DNS configuration", "resolv_conf_path", nodePath, "nameservers", nodeDNSConfig.Servers)
 
 		resolvers = nodeDNSConfig.Servers
 		names = nodeDNSConfig.NameList(host)
