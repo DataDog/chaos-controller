@@ -225,7 +225,7 @@ Remember, this hostname must _not_ be a kubernetes service's hostname.
 
 ### Case 5: Controlling DNS Resolution with `dnsResolver`
 
-When specifying hostnames in the `hosts` or `allowedHosts` fields, you can control which DNS resolver is used to resolve the hostname to an IP address. This is particularly useful in environments with service mesh proxies (like Istio) that intercept DNS queries and return virtual IPs (VIPs) that may not work for traffic disruption.
+When specifying hostnames in the `hosts` or `allowedHosts` fields, you can control which DNS resolver is used to resolve the hostname to an IP address. This is particularly useful in environments with service mesh proxies (like Istio) that intercept DNS queries and return virtual IPs (VIPs) that may not work for traffic disruption. In these cases, you should rely on the node-level resolver to ensure the hostnames resolve to the actual destination IPs rather than the service mesh VIP.
 
 The `dnsResolver` field supports the following strategies:
 
