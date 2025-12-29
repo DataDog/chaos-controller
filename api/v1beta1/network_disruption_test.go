@@ -691,6 +691,66 @@ var _ = Describe("NetworkDisruptionSpec", func() {
 
 					return expectedArgs
 				}(),
+			),
+			Entry("with DNSResolver set on hosts",
+				func() NetworkDisruptionSpec {
+					networkDisruption := defaultNetworkDisruption.DeepCopy()
+					networkDisruption.Hosts[0].DNSResolver = "pod"
+					networkDisruption.AllowedHosts[0].DNSResolver = "node"
+
+					return *networkDisruption
+				}(),
+				[]string{
+					"network-disruption",
+					"--corrupt",
+					"3",
+					"--drop",
+					"1",
+					"--duplicate",
+					"2",
+					"--delay",
+					"4",
+					"--delay-jitter",
+					"5",
+					"--bandwidth-limit",
+					"6",
+					"--hosts",
+					"lorem;8080;TCP;ingress;open;pod",
+					"--allowed-hosts",
+					"localhost;9090;UDP;egress;closed;node",
+					"--services",
+					"name;namespace;9191-default",
+				},
+			),
+			Entry("with DNSResolver empty (backward compatibility)",
+				func() NetworkDisruptionSpec {
+					networkDisruption := defaultNetworkDisruption.DeepCopy()
+					networkDisruption.Hosts[0].DNSResolver = ""
+					networkDisruption.AllowedHosts[0].DNSResolver = ""
+
+					return *networkDisruption
+				}(),
+				[]string{
+					"network-disruption",
+					"--corrupt",
+					"3",
+					"--drop",
+					"1",
+					"--duplicate",
+					"2",
+					"--delay",
+					"4",
+					"--delay-jitter",
+					"5",
+					"--bandwidth-limit",
+					"6",
+					"--hosts",
+					"lorem;8080;TCP;ingress;open",
+					"--allowed-hosts",
+					"localhost;9090;UDP;egress;closed",
+					"--services",
+					"name;namespace;9191-default",
+				},
 			))
 	})
 })
