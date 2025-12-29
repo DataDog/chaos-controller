@@ -116,7 +116,10 @@ release-prod-ref:
 
 release-staging-tag:
   <<: *release-staging
-  when: manual
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: always  # Runs automatically for schedules
+    - when: manual  # Requires manual trigger otherwise
   only:
     - tags
   variables:
@@ -125,7 +128,10 @@ release-staging-tag:
 
 release-prod-tag:
   <<: *release-prod
-  when: always
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: always  # Runs automatically for schedules
+    - when: manual  # Requires manual trigger otherwise
   only:
     - tags
   variables:
