@@ -70,6 +70,8 @@ type ChaosPodServiceInjectorConfig struct {
 	Image                         string              // Image to be used for the injector.
 	Annotations, Labels           map[string]string   // Annotations and labels to be applied to injected pods.
 	NetworkDisruptionAllowedHosts []string            // List of hosts allowed during network disruption.
+	DNSPodResolvConf              string              // Custom path for pod DNS resolv.conf file.
+	DNSNodeResolvConf             string              // Custom path for node DNS resolv.conf file.
 	ImagePullSecrets              string              // Image pull secrets for the injector.
 	Tolerations                   []config.Toleration // Tolerations to be applied to injected pods.
 	LogLevel                      string
@@ -278,6 +280,17 @@ func (m *chaosPodService) GenerateChaosPodsOfDisruption(instance *chaosv1beta1.D
 		}
 
 		args := xargs.CreateCmdArgs(subspec.GenerateArgs())
+
+		// Append DNS resolv.conf paths for network disruptions if configured
+		if kind == chaostypes.DisruptionKindNetworkDisruption {
+			if m.config.Injector.DNSPodResolvConf != "" {
+				args = append(args, "--dns-pod-resolv-conf", m.config.Injector.DNSPodResolvConf)
+			}
+
+			if m.config.Injector.DNSNodeResolvConf != "" {
+				args = append(args, "--dns-node-resolv-conf", m.config.Injector.DNSNodeResolvConf)
+			}
+		}
 
 		pod := m.GenerateChaosPodOfDisruption(instance, targetName, targetNodeName, args, kind)
 

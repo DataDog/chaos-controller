@@ -35,11 +35,8 @@ func resolveHost(client network.DNSClient, host string, dnsStrategy string) ([]*
 			// if no IP has been parsed, fallback on a hostname
 			// and try to resolve it by using the container resolv.conf file
 			var resolvedIPs []net.IP
-			if dnsStrategy != "" {
-				resolvedIPs, err = client.ResolveWithStrategy(host, dnsStrategy)
-			} else {
-				resolvedIPs, err = client.Resolve(host)
-			}
+
+			resolvedIPs, err = client.ResolveWithStrategy(host, dnsStrategy)
 
 			if err != nil {
 				return nil, fmt.Errorf("can't resolve the given host with the configured dns resolver: %w", err)

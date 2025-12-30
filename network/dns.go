@@ -12,6 +12,7 @@ import (
 	"github.com/avast/retry-go"
 	"github.com/hashicorp/go-multierror"
 	"github.com/miekg/dns"
+	"go.uber.org/zap"
 )
 
 const (
@@ -23,6 +24,9 @@ const (
 	DNSResolverPodFallbackNode = "pod-fallback-node"
 	// DNSResolverNodeFallbackPod tries node first, then falls back to pod
 	DNSResolverNodeFallbackPod = "node-fallback-pod"
+
+	DefaultPodResolvConfPath  = "/etc/resolv.conf"
+	DefaultNodeResolvConfPath = "/mnt/host/etc/resolv.conf"
 )
 
 type DNSConfig struct {
@@ -32,20 +36,41 @@ type DNSConfig struct {
 
 // DNSClient is a client being able to resolve the given host
 type DNSClient interface {
-	Resolve(host string) ([]net.IP, error)
 	ResolveWithStrategy(host string, strategy string) ([]net.IP, error)
 }
 
-type dnsClient struct{}
-
-// NewDNSClient creates a standard DNS client
-func NewDNSClient() DNSClient {
-	return dnsClient{}
+type dnsClient struct {
+	podResolvConfPath  string
+	nodeResolvConfPath string
+	log                *zap.SugaredLogger
 }
 
-func (c dnsClient) Resolve(host string) ([]net.IP, error) {
-	// Default behavior: pod-fallback-node for backward compatibility
-	return c.ResolveWithStrategy(host, DNSResolverPodFallbackNode)
+// DNSClientConfig contains configuration for the DNS client
+type DNSClientConfig struct {
+	PodResolvConfPath  string
+	NodeResolvConfPath string
+	Logger             *zap.SugaredLogger
+}
+
+// NewDNSClient creates a standard DNS client with optional configuration
+func NewDNSClient(config DNSClientConfig) DNSClient {
+	client := dnsClient{
+		podResolvConfPath:  DefaultPodResolvConfPath,
+		nodeResolvConfPath: DefaultNodeResolvConfPath,
+	}
+
+	// Apply configuration if provided
+	if config.PodResolvConfPath != "" {
+		client.podResolvConfPath = config.PodResolvConfPath
+	}
+
+	if config.NodeResolvConfPath != "" {
+		client.nodeResolvConfPath = config.NodeResolvConfPath
+	}
+
+	client.log = config.Logger
+
+	return client
 }
 
 func (c dnsClient) ResolveWithStrategy(host string, strategy string) ([]net.IP, error) {
@@ -115,32 +140,44 @@ func (c dnsClient) getResolversAndNames(host string, strategy string) (resolvers
 		strategy = DNSResolverPodFallbackNode
 	}
 
+	// Use configured paths from the client
+	podPath := c.podResolvConfPath
+	nodePath := c.nodeResolvConfPath
+
 	switch strategy {
 	case DNSResolverPod:
-		podDNSConfig, err := dns.ClientConfigFromFile("/etc/resolv.conf")
+		podDNSConfig, err := dns.ClientConfigFromFile(podPath)
 		if err != nil {
-			return nil, nil, fmt.Errorf("can't read '/etc/resolv.conf' file: %w", err)
+			return nil, nil, fmt.Errorf("can't read pod resolv.conf file: %w", err)
+		}
+
+		if c.log != nil {
+			c.log.Infow("loaded pod DNS configuration", "resolv_conf_path", podPath, "nameservers", podDNSConfig.Servers)
 		}
 
 		resolvers = podDNSConfig.Servers
 		names = podDNSConfig.NameList(host)
 	case DNSResolverNode:
-		nodeDNSConfig, err := dns.ClientConfigFromFile("/mnt/host/etc/resolv.conf")
+		nodeDNSConfig, err := dns.ClientConfigFromFile(nodePath)
 		if err != nil {
-			return nil, nil, fmt.Errorf("can't read '/mnt/host/etc/resolv.conf' file: %w", err)
+			return nil, nil, fmt.Errorf("can't read node resolv.conf file: %w", err)
+		}
+
+		if c.log != nil {
+			c.log.Infow("loaded node DNS configuration", "resolv_conf_path", nodePath, "nameservers", nodeDNSConfig.Servers)
 		}
 
 		resolvers = nodeDNSConfig.Servers
 		names = nodeDNSConfig.NameList(host)
 	case DNSResolverPodFallbackNode, DNSResolverNodeFallbackPod:
-		podDNSConfig, err := dns.ClientConfigFromFile("/etc/resolv.conf")
+		podDNSConfig, err := dns.ClientConfigFromFile(podPath)
 		if err != nil {
-			return nil, nil, fmt.Errorf("can't read '/etc/resolv.conf' file: %w", err)
+			return nil, nil, fmt.Errorf("can't read pod resolv.conf file: %w", err)
 		}
 
-		nodeDNSConfig, err := dns.ClientConfigFromFile("/mnt/host/etc/resolv.conf")
+		nodeDNSConfig, err := dns.ClientConfigFromFile(nodePath)
 		if err != nil {
-			return nil, nil, fmt.Errorf("can't read '/mnt/host/etc/resolv.conf' file: %w", err)
+			return nil, nil, fmt.Errorf("can't read node resolv.conf file: %w", err)
 		}
 
 		if strategy == DNSResolverPodFallbackNode {
@@ -149,12 +186,24 @@ func (c dnsClient) getResolversAndNames(host string, strategy string) (resolvers
 			resolvers = append(resolvers, nodeDNSConfig.Servers...)
 			names = append([]string{}, podDNSConfig.NameList(host)...)
 			names = append(names, nodeDNSConfig.NameList(host)...)
+
+			c.log.Infow("loaded pod and node DNS configuration (pod-fallback-node strategy)",
+				"pod_resolv_conf_path", podPath,
+				"pod_nameservers", podDNSConfig.Servers,
+				"node_resolv_conf_path", nodePath,
+				"node_nameservers", nodeDNSConfig.Servers)
 		} else {
 			// Node first, then pod
 			resolvers = append([]string{}, nodeDNSConfig.Servers...)
 			resolvers = append(resolvers, podDNSConfig.Servers...)
 			names = append([]string{}, nodeDNSConfig.NameList(host)...)
 			names = append(names, podDNSConfig.NameList(host)...)
+
+			c.log.Infow("loaded pod and node DNS configuration (node-fallback-pod strategy)",
+				"node_resolv_conf_path", nodePath,
+				"node_nameservers", nodeDNSConfig.Servers,
+				"pod_resolv_conf_path", podPath,
+				"pod_nameservers", podDNSConfig.Servers)
 		}
 	default:
 		return nil, nil, fmt.Errorf("unknown DNS resolver strategy: %s", strategy)
@@ -193,4 +242,16 @@ func (c dnsClient) resolve(hostName string, protocol string, resolvers []string)
 	}
 
 	return response, multiErr
+}
+
+// Test helpers for unexported functions
+
+// ReadResolvConfFileForTest is a test helper that exposes readResolvConfFile for unit testing
+func ReadResolvConfFileForTest(path string) (*dns.ClientConfig, error) {
+	config, err := dns.ClientConfigFromFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read resolv.conf from %s: %w", path, err)
+	}
+
+	return config, nil
 }

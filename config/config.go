@@ -99,6 +99,8 @@ type Toleration struct {
 type injectorNetworkDisruptionConfig struct {
 	AllowedHosts        []string      `json:"allowedHosts" yaml:"allowedHosts"`
 	HostResolveInterval time.Duration `json:"hostResolveInterval" yaml:"hostResolveInterval"`
+	DNSPodResolvConf    string        `json:"dnsPodResolvConf" yaml:"dnsPodResolvConf"`
+	DNSNodeResolvConf   string        `json:"dnsNodeResolvConf" yaml:"dnsNodeResolvConf"`
 }
 
 type handlerConfig struct {
@@ -335,6 +337,18 @@ func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osAr
 	mainFS.DurationVar(&cfg.Injector.NetworkDisruption.HostResolveInterval, "injector-network-disruption-host-resolve-interval", time.Minute, "How often to re-resolve hostnames specified in a network disruption")
 
 	if err := viper.BindPFlag("injector.networkDisruption.hostResolveInterval", mainFS.Lookup("injector-network-disruption-host-resolve-interval")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.StringVar(&cfg.Injector.NetworkDisruption.DNSPodResolvConf, "injector-network-disruption-dns-pod-resolv-conf", "/etc/resolv.conf", "Path to pod DNS resolv.conf file")
+
+	if err := viper.BindPFlag("injector.networkDisruption.dnsPodResolvConf", mainFS.Lookup("injector-network-disruption-dns-pod-resolv-conf")); err != nil {
+		return cfg, err
+	}
+
+	mainFS.StringVar(&cfg.Injector.NetworkDisruption.DNSNodeResolvConf, "injector-network-disruption-dns-node-resolv-conf", "/mnt/host/etc/resolv.conf", "Path to node DNS resolv.conf file")
+
+	if err := viper.BindPFlag("injector.networkDisruption.dnsNodeResolvConf", mainFS.Lookup("injector-network-disruption-dns-node-resolv-conf")); err != nil {
 		return cfg, err
 	}
 

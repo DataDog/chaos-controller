@@ -32,6 +32,8 @@ var networkDisruptionCmd = &cobra.Command{
 		hostResolveInterval, _ := cmd.Flags().GetDuration("host-resolve-interval")
 		methods, _ := cmd.Flags().GetStringArray("method")
 		paths, _ := cmd.Flags().GetStringArray("path")
+		dnsPodResolvConf, _ := cmd.Flags().GetString("dns-pod-resolv-conf")
+		dnsNodeResolvConf, _ := cmd.Flags().GetString("dns-node-resolv-conf")
 
 		// prepare injectors
 		for i, config := range configs {
@@ -80,7 +82,12 @@ var networkDisruptionCmd = &cobra.Command{
 			}
 
 			// generate injector
-			inj, err := injector.NewNetworkDisruptionInjector(spec, injector.NetworkDisruptionInjectorConfig{Config: config, HostResolveInterval: hostResolveInterval})
+			inj, err := injector.NewNetworkDisruptionInjector(spec, injector.NetworkDisruptionInjectorConfig{
+				Config:              config,
+				HostResolveInterval: hostResolveInterval,
+				DNSPodResolvConf:    dnsPodResolvConf,
+				DNSNodeResolvConf:   dnsNodeResolvConf,
+			})
 			if err != nil {
 				log.Fatalw("error initializing the network disruption injector: %w", err)
 			}
@@ -103,4 +110,6 @@ func init() {
 	networkDisruptionCmd.Flags().Duration("host-resolve-interval", time.Minute, "Interval to resolve hostnames")
 	networkDisruptionCmd.Flags().StringArray("method", []string{}, "Filter by http method: GET, DELETE, POST, CREATE, PUT, HEAD, PATCH, CONNECT, OPTIONS or TRACE")
 	networkDisruptionCmd.Flags().StringArray("path", []string{v1beta1.DefaultHTTPPathFilter}, "Filter by path and must not exceed 100 characters")
+	networkDisruptionCmd.Flags().String("dns-pod-resolv-conf", "", "Path to pod DNS resolv.conf file (defaults to /etc/resolv.conf)")
+	networkDisruptionCmd.Flags().String("dns-node-resolv-conf", "", "Path to node DNS resolv.conf file (defaults to /mnt/host/etc/resolv.conf)")
 }

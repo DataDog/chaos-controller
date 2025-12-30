@@ -14,6 +14,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/stretchr/testify/mock"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/watch"
+	kubernetes "k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/testing"
+
 	"github.com/DataDog/chaos-controller/api"
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/cgroup"
@@ -24,15 +32,9 @@ import (
 	"github.com/DataDog/chaos-controller/netns"
 	"github.com/DataDog/chaos-controller/network"
 	chaostypes "github.com/DataDog/chaos-controller/types"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/stretchr/testify/mock"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/apimachinery/pkg/watch"
-	kubernetes "k8s.io/client-go/kubernetes/fake"
-	"k8s.io/client-go/testing"
 )
 
 const (
@@ -143,7 +145,7 @@ var _ = Describe("Failure", func() {
 
 		// dns
 		dns = network.NewDNSClientMock(GinkgoT())
-		dns.EXPECT().Resolve("kubernetes.default").Return([]net.IP{net.ParseIP("192.168.0.254")}, nil).Maybe()
+		dns.EXPECT().ResolveWithStrategy("kubernetes", "default").Return([]net.IP{net.ParseIP("192.168.0.254")}, nil).Maybe()
 
 		// container
 		ctn = container.NewContainerMock(GinkgoT())
@@ -398,7 +400,7 @@ var _ = Describe("Failure", func() {
 					},
 				}
 
-				dns.EXPECT().Resolve("testhost").Return([]net.IP{net.ParseIP(testHostIP), net.ParseIP(testHostIPTwo)}, nil).Once()
+				dns.EXPECT().ResolveWithStrategy("testhost", "").Return([]net.IP{net.ParseIP(testHostIP), net.ParseIP(testHostIPTwo)}, nil).Once()
 			})
 
 			It("should not raise an error", func() {
@@ -409,7 +411,7 @@ var _ = Describe("Failure", func() {
 				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNet(testHostIP), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
 				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNet(testHostIPTwo), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
 
-				dns.EXPECT().Resolve("testhost").Return([]net.IP{net.ParseIP(testHostIPTwo), net.ParseIP(testHostIPThree)}, nil).Maybe()
+				dns.EXPECT().ResolveWithStrategy("testhost", "").Return([]net.IP{net.ParseIP(testHostIPTwo), net.ParseIP(testHostIPThree)}, nil).Maybe()
 				time.Sleep(time.Second) // Wait for changed IPs to be caught by the hostWatcher
 
 				tc.AssertCalled(GinkgoT(), "DeleteFilter", "lo", uint32(0))
@@ -422,7 +424,7 @@ var _ = Describe("Failure", func() {
 				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNet(testHostIP), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
 				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNet(testHostIPTwo), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
 
-				dns.EXPECT().Resolve("testhost").Return([]net.IP{net.ParseIP(testHostIP), net.ParseIP(testHostIPTwo), net.ParseIP(testHostIPThree)}, nil).Maybe()
+				dns.EXPECT().ResolveWithStrategy("testhost", "").Return([]net.IP{net.ParseIP(testHostIP), net.ParseIP(testHostIPTwo), net.ParseIP(testHostIPThree)}, nil).Maybe()
 				time.Sleep(time.Second) // Wait for changed IPs to be caught by the hostWatcher
 
 				tc.AssertNotCalled(GinkgoT(), "DeleteFilter")
@@ -433,7 +435,7 @@ var _ = Describe("Failure", func() {
 				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNet(testHostIP), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
 				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNet(testHostIPTwo), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
 
-				dns.EXPECT().Resolve("testhost").Return([]net.IP{net.ParseIP(testHostIP)}, nil).Maybe()
+				dns.EXPECT().ResolveWithStrategy("testhost", "").Return([]net.IP{net.ParseIP(testHostIP)}, nil).Maybe()
 				time.Sleep(time.Second) // Wait for changed IPs to be caught by the hostWatcher
 
 				tc.AssertCalled(GinkgoT(), "DeleteFilter", "lo", uint32(0))

@@ -65,6 +65,8 @@ type NetworkDisruptionInjectorConfig struct {
 	DNSClient           network.DNSClient
 	HostResolveInterval time.Duration
 	BPFConfigInformer   ebpf.ConfigInformer
+	DNSPodResolvConf    string
+	DNSNodeResolvConf   string
 }
 
 // tcServiceFilter describes a tc filter, representing the service filtered and its priority
@@ -144,7 +146,13 @@ func NewNetworkDisruptionInjector(spec v1beta1.NetworkDisruptionSpec, config Net
 	}
 
 	if config.DNSClient == nil {
-		config.DNSClient = network.NewDNSClient()
+		// Create DNS client with custom resolv.conf paths if provided
+		dnsConfig := network.DNSClientConfig{
+			PodResolvConfPath:  config.DNSPodResolvConf,
+			NodeResolvConfPath: config.DNSNodeResolvConf,
+			Logger:             config.Log,
+		}
+		config.DNSClient = network.NewDNSClient(dnsConfig)
 	}
 
 	if spec.HasHTTPFilters() && config.BPFConfigInformer == nil {
