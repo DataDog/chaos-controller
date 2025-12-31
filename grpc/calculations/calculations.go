@@ -18,10 +18,9 @@ import (
  * See docs/grpc_disruption/interceptor_algorithm.md for examples.
  */
 
-// ConvertSpecifications takes a series of alterations configured for a target endpoint where
-// assignments are distributed based on percentage odds (QueryPercent) expected for different return alterations
-// and returns a slice where the slice's "index" between 0 and some number less than 100 are assigned
-// Alterations which reappear as many times as the requested query percentage
+// ConvertSpecifications converts a list of alteration specs for a target endpoint into a weighted slice.
+// Each alteration appears in the slice a number of times equal to its QueryPercent, enabling random
+// selection by index (0-99) to respect the configured probability distribution.
 func ConvertSpecifications(endpointSpecList []*pb.AlterationSpec) ([]AlterationConfiguration, error) {
 	alterationToQueryPercent, err := GetPercentagePerAlteration(endpointSpecList)
 	if err != nil {
@@ -37,7 +36,7 @@ func GetPercentagePerAlteration(endpointSpecList []*pb.AlterationSpec) (map[Alte
 	mapping := make(map[AlterationConfiguration]QueryPercent)
 
 	// unquantifiedAlts is a holding variable used later to calculate and assign percentages to alterations which do not specify queryPercent
-	unquantifiedAlts := []AlterationConfiguration{}
+	var unquantifiedAlts []AlterationConfiguration
 
 	pctClaimed := 0
 
@@ -45,7 +44,6 @@ func GetPercentagePerAlteration(endpointSpecList []*pb.AlterationSpec) (map[Alte
 		if altSpec.ErrorToReturn == "" && altSpec.OverrideToReturn == "" {
 			return nil, status.Error(codes.InvalidArgument, "cannot map alteration to assigned query percentage without specifying either ErrorToReturn or OverrideToReturn for a target endpoint")
 		}
-
 		if altSpec.ErrorToReturn != "" && altSpec.OverrideToReturn != "" {
 			return nil, status.Error(codes.InvalidArgument, "cannot map alteration to assigned query percentage when ErrorToReturn and OverrideToReturn are both specified for a target endpoint")
 		}

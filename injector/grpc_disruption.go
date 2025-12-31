@@ -11,15 +11,16 @@ import (
 	"strconv"
 	"time"
 
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
+
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	chaos_grpc "github.com/DataDog/chaos-controller/grpc"
 	pb "github.com/DataDog/chaos-controller/grpc/disruptionlistener"
 	"github.com/DataDog/chaos-controller/o11y/tags"
 	"github.com/DataDog/chaos-controller/types"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/status"
 )
 
 // Five Seconds timeout before aborting the attempt to connect to server
@@ -81,7 +82,6 @@ func (i *GRPCDisruptionInjector) Inject() error {
 	i.config.Log.Infow("adding grpc disruption", tags.SpecKey, i.spec)
 
 	err = chaos_grpc.SendGrpcDisruption(pb.NewDisruptionListenerClient(conn), i.spec)
-
 	if err != nil {
 		if s, ok := status.FromError(err); ok {
 			if s.Code() == codes.Unimplemented {
@@ -101,7 +101,7 @@ func (i *GRPCDisruptionInjector) Inject() error {
 			}
 		}
 
-		i.config.Log.Error("Received an error: %v", err)
+		i.config.Log.Errorf("Received an error: %v", err)
 	}
 
 	return conn.Close()
