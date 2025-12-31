@@ -364,22 +364,24 @@ func (s *NetworkDisruptionSpec) GenerateArgs() []string {
 
 	// append hosts
 	for _, host := range s.Hosts {
-		hostStr := fmt.Sprintf("%s;%d;%s;%s;%s;%s", host.Host, host.Port, host.Protocol, host.Flow, host.ConnState, host.DNSResolver)
-
+		percentage := 100
 		if host.Percentage != nil {
-			hostStr = fmt.Sprintf("%s;%d", hostStr, *host.Percentage)
+			percentage = *host.Percentage
 		}
+
+		hostStr := fmt.Sprintf("%s;%d;%s;%s;%s;%s;%d", host.Host, host.Port, host.Protocol, host.Flow, host.ConnState, host.DNSResolver, percentage)
 
 		args = append(args, "--hosts", hostStr)
 	}
 
 	// append allowed hosts
 	for _, host := range s.AllowedHosts {
-		hostStr := fmt.Sprintf("%s;%d;%s;%s;%s;%s", host.Host, host.Port, host.Protocol, host.Flow, host.ConnState, host.DNSResolver)
-
+		percentage := 100
 		if host.Percentage != nil {
-			hostStr = fmt.Sprintf("%s;%d", hostStr, *host.Percentage)
+			percentage = *host.Percentage
 		}
+
+		hostStr := fmt.Sprintf("%s;%d;%s;%s;%s;%s;%d", host.Host, host.Port, host.Protocol, host.Flow, host.ConnState, host.DNSResolver, percentage)
 
 		args = append(args, "--allowed-hosts", hostStr)
 	}
@@ -391,11 +393,12 @@ func (s *NetworkDisruptionSpec) GenerateArgs() []string {
 			ports += fmt.Sprintf(";%d-%s", port.Port, port.Name)
 		}
 
-		serviceStr := fmt.Sprintf("%s;%s%s", service.Name, service.Namespace, ports)
-
+		percentage := 100
 		if service.Percentage != nil {
-			serviceStr = fmt.Sprintf("%s;%d", serviceStr, *service.Percentage)
+			percentage = *service.Percentage
 		}
+
+		serviceStr := fmt.Sprintf("%s;%s%s;%d", service.Name, service.Namespace, ports, percentage)
 
 		args = append(args, "--services", serviceStr)
 	}

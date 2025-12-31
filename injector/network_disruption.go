@@ -819,7 +819,7 @@ func (i *networkDisruptionInjector) handlePodEndpointsServiceFiltersOnKubernetes
 	}
 
 	// apply percentage-based selection if specified
-	if serviceSpec.Percentage != nil && *serviceSpec.Percentage < 100 {
+	if serviceSpec.Percentage != nil && *serviceSpec.Percentage < 100 && *serviceSpec.Percentage > 0 {
 		tcFiltersToCreate = i.selectServiceFiltersByPercentage(tcFiltersToCreate, *serviceSpec.Percentage, serviceSpec.Name, serviceSpec.Namespace)
 	}
 
@@ -1284,7 +1284,7 @@ func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, host
 		i.config.Log.Infof("resolved %s as %s", host.Host, ips)
 
 		// apply percentage-based selection if specified
-		if host.Percentage != nil && *host.Percentage < 100 {
+		if host.Percentage != nil && *host.Percentage < 100 && *host.Percentage > 0 {
 			// use disruption UID as seed for consistent selection across all pods in the same disruption run
 			seed := fmt.Sprintf("%s-%s", host.Host, i.config.Disruption.DisruptionUID)
 			originalCount := len(ips)
