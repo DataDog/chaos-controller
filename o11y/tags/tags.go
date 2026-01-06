@@ -215,6 +215,11 @@ const (
 	TargetNsKey            = "targetns"
 	TargetNsPathKey        = "targetns_path"
 	TcServiceFilterKey     = "tc_service_filter"
+	GrpcEndpointsKey       = "grpc_endpoints"
+	GrpcEndpointKey        = "grpc_endpoint"
+	GrpcServerAddrKey      = "grpc_server_addr"
+	GrpcPortKey            = "grpc_port"
+	GrpcErrorKey           = "grpc_error"
 
 	// Container and pod lifecycle
 	DeleteStorageKey      = "delete_storage"

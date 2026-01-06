@@ -6,7 +6,6 @@
 package injector
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -64,10 +63,13 @@ func (i *GRPCDisruptionInjector) GetDisruptionKind() types.DisruptionKindName {
 
 // Inject injects the given grpc disruption into the given container
 func (i *GRPCDisruptionInjector) Inject() error {
-	i.config.Log.Infow("connecting to " + i.serverAddr + "...")
+	i.config.Log.Infow("injecting grpc disruption",
+		tags.GrpcEndpointsKey, i.spec.Endpoints,
+		tags.GrpcPortKey, i.spec.Port,
+	)
 
 	if i.config.Disruption.DryRun {
-		i.config.Log.Infow("adding dry run mode grpc disruption", tags.SpecKey, i.spec)
+		i.config.Log.Infow("adding dry run mode grpc disruption")
 		return nil
 	}
 
@@ -79,7 +81,9 @@ func (i *GRPCDisruptionInjector) Inject() error {
 	// as long as we managed to dial the server, then we have to assume we're injected
 	i.config.State = Injected
 
-	i.config.Log.Infow("adding grpc disruption", tags.SpecKey, i.spec)
+	i.config.Log.Infow("server dialed successfully",
+		tags.GrpcServerAddrKey, i.serverAddr,
+	)
 
 	err = chaos_grpc.SendGrpcDisruption(pb.NewDisruptionListenerClient(conn), i.spec)
 	if err != nil {
@@ -88,11 +92,12 @@ func (i *GRPCDisruptionInjector) Inject() error {
 				// error must have been --> code = Unimplemented desc = unknown service disruptionlistener.DisruptionListener
 				// We dialed a grpc server, but it does not have the chaos-interceptor, no disruption is possible
 				i.config.State = Created
-				i.config.Log.Warnw("disruption attempted on grpc server without the chaos-interceptor", tags.SpecKey, i.spec)
+				i.config.Log.Warnw("disruption attempted on grpc server without the chaos-interceptor")
 
 				logConnClose := func() {
 					connErr := conn.Close()
-					i.config.Log.Errorw("could not close grpc connection", tags.ErrorKey, connErr)
+					i.config.Log.Errorw("could not close grpc connection",
+						tags.ErrorKey, connErr)
 				}
 
 				defer logConnClose()
@@ -101,27 +106,36 @@ func (i *GRPCDisruptionInjector) Inject() error {
 			}
 		}
 
-		i.config.Log.Errorf("Received an error: %v", err)
+		i.config.Log.Errorw("error sending grpc disruption to grpc server",
+			tags.GrpcServerAddrKey, i.serverAddr,
+			tags.ErrorKey, err,
+		)
 	}
 
 	return conn.Close()
 }
 
 func (i *GRPCDisruptionInjector) UpdateConfig(config Config) {
+	i.config.Log.Debugw("updating grpc disruption config")
+
 	i.config.Config = config
 }
 
 // Clean removes the injected disruption from the given container
 func (i *GRPCDisruptionInjector) Clean() error {
+	i.config.Log.Infow("cleaning grpc disruption",
+		tags.GrpcEndpointsKey, i.spec.Endpoints,
+		tags.GrpcPortKey, i.spec.Port,
+	)
+
 	if i.config.State != Injected {
-		i.config.Log.Infow("nothing to clean", tags.SpecKey, i.spec, tags.StateKey, i.config.State)
+		i.config.Log.Warnw("nothing to clean, disruption is not injected",
+			tags.StateKey, i.config.State)
 		return nil
 	}
 
-	i.config.Log.Infow("connecting to " + i.serverAddr + "...")
-
 	if i.config.Disruption.DryRun {
-		i.config.Log.Infow("removing dry run mode grpc disruption", tags.SpecKey, i.spec)
+		i.config.Log.Debugw("disruption is in dry run mode, nothing to clean")
 		return nil
 	}
 
@@ -130,16 +144,21 @@ func (i *GRPCDisruptionInjector) Clean() error {
 		return fmt.Errorf("an error occurred when connecting to server (clean): %w", err)
 	}
 
-	i.config.Log.Infow("removing grpc disruption", tags.SpecKey, i.spec)
-
 	err = chaos_grpc.ClearGrpcDisruptions(pb.NewDisruptionListenerClient(conn))
-
 	if err != nil {
-		i.config.Log.Error("Received an error: %v", err)
+		i.config.Log.Errorw("error clearing grpc disruption",
+			tags.GrpcServerAddrKey, i.serverAddr,
+			tags.ErrorKey, err,
+		)
+
 		return err
 	}
 
 	i.config.State = Cleaned
+
+	i.config.Log.Infow("grpc disruption cleaned successfully",
+		tags.GrpcServerAddrKey, i.serverAddr,
+	)
 
 	return conn.Close()
 }
@@ -149,9 +168,18 @@ func (i *GRPCDisruptionInjector) connectToServer() (*grpc.ClientConn, error) {
 		grpc.WithTransportCredentials(insecure.NewCredentials()), // Future Work: make secure
 	}
 
+	i.config.Log.Debugw("connecting to grpc server",
+		tags.GrpcServerAddrKey, i.serverAddr,
+	)
+
 	conn, err := grpc.NewClient(i.serverAddr, opts...)
 	if err != nil {
-		return nil, errors.New("fail to dial: " + i.serverAddr)
+		i.config.Log.Errorw("error connecting to grpc server: could not create grpc client",
+			tags.GrpcServerAddrKey, i.serverAddr,
+			tags.ErrorKey, err,
+		)
+
+		return nil, fmt.Errorf("error connecting to grpc server: %w", err)
 	}
 
 	return conn, nil
