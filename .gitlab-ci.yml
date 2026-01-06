@@ -117,11 +117,11 @@ release-prod-ref:
 release-staging-tag:
   <<: *release-staging
   rules:
+    - if: $CI_COMMIT_TAG # If the pipeline is triggered by a tag
+      when: on_success
     - if: $CI_PIPELINE_SOURCE == "schedule"
-      when: always  # Runs automatically for schedules
+      when: on_success  # Runs automatically for schedules
     - when: manual  # Requires manual trigger otherwise
-  only:
-    - tags
   variables:
     TARGET_LABEL: "staging"
     TAG: "${CI_COMMIT_TAG}"
@@ -129,11 +129,11 @@ release-staging-tag:
 release-prod-tag:
   <<: *release-prod
   rules:
+    - if: $CI_COMMIT_TAG # If the pipeline is triggered by a tag
+      when: on_success
     - if: $CI_PIPELINE_SOURCE == "schedule"
-      when: always  # Runs automatically for schedules
+      when: on_success  # Runs automatically for schedules
     - when: manual  # Requires manual trigger otherwise
-  only:
-    - tags
   variables:
     TARGET_LABEL: "prod"
     TAG: "${CI_COMMIT_TAG}"
