@@ -49,6 +49,7 @@ func (d *ChaosDisruptionListener) Disrupt(ctx context.Context, disruptionSpec *p
 	}
 
 	d.logger.Debugw("launching interceptor", "nb_endpoints", len(disruptionSpec.GetEndpoints()))
+
 	config := grpccalc.DisruptionConfiguration{}
 
 	// from list of endpoints and alterations, build definitive list of alterations
