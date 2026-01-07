@@ -701,8 +701,10 @@ func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *ch
 		instance.Status.RunCount++
 		r.log.Infow("incremented disruption run count", tagutil.RunCountKey, instance.Status.RunCount, tagutil.DisruptionNameKey, instance.Name)
 
-		// Update the status in the cluster
-		if err := r.Client.Status().Update(ctx, instance); err != nil {
+		// Update the status in the cluster using a deep copy to preserve in-memory spec changes
+		// (such as cloud disruption hosts populated by UpdateHostsOnCloudDisruption)
+		statusCopy := instance.DeepCopy()
+		if err := r.Client.Status().Update(ctx, statusCopy); err != nil {
 			return fmt.Errorf("error updating disruption status with run count: %w", err)
 		}
 	}
