@@ -1,6 +1,6 @@
 module github.com/DataDog/chaos-controller
 
-go 1.24.7
+go 1.25.5
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
