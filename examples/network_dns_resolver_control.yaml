@@ -1,0 +1,27 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2025 Datadog, Inc.
+
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: network-dns-resolver-control
+  namespace: chaos-demo
+spec:
+  level: pod
+  selector:
+    app: demo-curl
+  count: 100%
+  network:
+    drop: 100
+    hosts:
+      # Example 1: Disrupt 50% of resolved IPs for example.com
+      # This demonstrates percentage-based selection for external hosts
+      - host: www.example.com
+        port: 443
+        protocol: tcp
+        percentage: 50
+        # With percentage, if example.com resolves to multiple IPs (e.g., CDN),
+        # only 50% will experience the delay. The selection is deterministic
+        # based on the disruption UID, ensuring consistency across all chaos pods.

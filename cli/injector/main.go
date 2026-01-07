@@ -109,6 +109,7 @@ func init() {
 	// log context args
 	rootCmd.PersistentFlags().StringVar(&disruptionArgs.DisruptionName, "log-context-disruption-name", "", "Log value: current disruption name")
 	rootCmd.PersistentFlags().StringVar(&disruptionArgs.DisruptionNamespace, "log-context-disruption-namespace", "", "Log value: current disruption namespace")
+	rootCmd.PersistentFlags().StringVar(&disruptionArgs.DisruptionUID, "log-context-disruption-uid", "", "Log value: current disruption UID")
 	rootCmd.PersistentFlags().StringVar(&disruptionArgs.TargetName, "log-context-target-name", "", "Log value: current target name")
 	rootCmd.PersistentFlags().StringVar(&disruptionArgs.TargetNodeName, "log-context-target-node-name", "", "Log value: node hosting the current target pod")
 
@@ -147,6 +148,7 @@ func initLogger() {
 	}
 
 	log = log.With(
+		tags.DisruptionUIDKey, disruptionArgs.DisruptionUID,
 		tags.DisruptionNameKey, disruptionArgs.DisruptionName,
 		tags.DisruptionNamespaceKey, disruptionArgs.DisruptionNamespace,
 		tags.TargetNameKey, disruptionArgs.TargetName,

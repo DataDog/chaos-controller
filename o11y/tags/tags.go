@@ -18,6 +18,7 @@ const (
 
 	// Disruption
 	DisruptionKey          = "disruption"
+	DisruptionUIDKey       = "disruption_uid"
 	DisruptionNameKey      = "disruption_name"
 	DisruptionNamespaceKey = "disruption_namespace"
 	DisruptionKindKey      = "disruption_kind"

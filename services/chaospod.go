@@ -269,6 +269,7 @@ func (m *chaosPodService) GenerateChaosPodsOfDisruption(instance *chaosv1beta1.D
 			DryRun:               instance.Spec.DryRun,
 			DisruptionName:       instance.Name,
 			DisruptionNamespace:  instance.Namespace,
+			DisruptionUID:        string(instance.UID),
 			OnInit:               instance.Spec.OnInit,
 			PulseInitialDelay:    pulseInitialDelay,
 			PulseActiveDuration:  pulseActiveDuration,

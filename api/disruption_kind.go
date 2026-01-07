@@ -31,6 +31,7 @@ type DisruptionArgs struct {
 	MetricsSink          string
 	DisruptionName       string
 	DisruptionNamespace  string
+	DisruptionUID        string
 	TargetName           string
 	TargetNodeName       string
 	ChaosNamespace       string
@@ -63,6 +64,7 @@ func (d DisruptionArgs) CreateCmdArgs(args []string) []string {
 		// log context args
 		"--log-context-disruption-name", d.DisruptionName,
 		"--log-context-disruption-namespace", d.DisruptionNamespace,
+		"--log-context-disruption-uid", d.DisruptionUID,
 		"--log-context-target-name", d.TargetName,
 		"--log-context-target-node-name", d.TargetNodeName,
 	)

@@ -755,6 +755,59 @@ func (i *networkDisruptionInjector) findServiceFilter(tcFilters []tcServiceFilte
 	return -1
 }
 
+// selectServiceFiltersByPercentage selects a subset of service filters based on percentage using consistent hashing
+func (i *networkDisruptionInjector) selectServiceFiltersByPercentage(filters []tcServiceFilter, percentage int, serviceName string, serviceNamespace string) []tcServiceFilter {
+	if percentage <= 0 || percentage >= 100 || len(filters) == 0 {
+		return filters
+	}
+
+	// Extract IPs from filters
+	ips := make([]*net.IPNet, 0, len(filters))
+	ipToFiltersMap := make(map[string][]tcServiceFilter)
+
+	for _, filter := range filters {
+		ipStr := filter.service.ip.String()
+		ipToFiltersMap[ipStr] = append(ipToFiltersMap[ipStr], filter)
+
+		// Only add unique IPs
+		alreadyAdded := false
+
+		for _, existingIP := range ips {
+			if existingIP.String() == ipStr {
+				alreadyAdded = true
+				break
+			}
+		}
+
+		if !alreadyAdded {
+			ips = append(ips, filter.service.ip)
+		}
+	}
+
+	// Use consistent hashing to select subset of IPs
+	seed := fmt.Sprintf("%s-%s-%s", serviceName, serviceNamespace, i.config.Disruption.DisruptionUID)
+	originalCount := len(ips)
+	selectedIPs := network.SelectIPsByPercentage(ips, percentage, seed)
+
+	i.config.Log.Infow("selected subset of service endpoints based on percentage",
+		"service", fmt.Sprintf("%s/%s", serviceNamespace, serviceName),
+		"percentage", percentage,
+		"original_count", originalCount,
+		"selected_count", len(selectedIPs),
+	)
+
+	// Build result filters from selected IPs
+	result := []tcServiceFilter{}
+
+	for _, selectedIP := range selectedIPs {
+		if filtersForIP, ok := ipToFiltersMap[selectedIP.String()]; ok {
+			result = append(result, filtersForIP...)
+		}
+	}
+
+	return result
+}
+
 // handlePodEndpointsOnServicePortsChange on service changes, delete old filters with the wrong service ports and create new filters
 func (i *networkDisruptionInjector) handlePodEndpointsServiceFiltersOnKubernetesServiceChanges(serviceSpec v1beta1.NetworkDisruptionServiceSpec, oldFilters []tcServiceFilter, pods []v1.Pod, servicePorts []v1.ServicePort, interfaces []string, flowid string) ([]tcServiceFilter, error) {
 	tcFiltersToCreate, finalTcFilters := []tcServiceFilter{}, []tcServiceFilter{}
@@ -763,6 +816,11 @@ func (i *networkDisruptionInjector) handlePodEndpointsServiceFiltersOnKubernetes
 		if pod.Status.PodIP != "" { // pods without ip are newly created and will be picked up in the other watcher
 			tcFiltersToCreate = append(tcFiltersToCreate, i.buildServiceFiltersFromPod(pod, servicePorts)...) // we build the updated list of tc filters
 		}
+	}
+
+	// apply percentage-based selection if specified
+	if serviceSpec.Percentage != nil && *serviceSpec.Percentage < 100 && *serviceSpec.Percentage > 0 {
+		tcFiltersToCreate = i.selectServiceFiltersByPercentage(tcFiltersToCreate, *serviceSpec.Percentage, serviceSpec.Name, serviceSpec.Namespace)
 	}
 
 	// update the list of tc filters by deleting old ones not in the new list of tc filters and creating new tc filters
@@ -1130,6 +1188,12 @@ func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interf
 					continue
 				}
 
+				// apply percentage-based selection if specified
+				if host.Percentage != nil && *host.Percentage < 100 {
+					seed := fmt.Sprintf("%s-%s", host.Host, i.config.Disruption.DisruptionUID)
+					newIps = network.SelectIPsByPercentage(newIps, *host.Percentage, seed)
+				}
+
 				oldIps := []*net.IPNet{}
 
 				for _, currentTcFilter := range currentTcFilters {
@@ -1218,6 +1282,20 @@ func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, host
 		}
 
 		i.config.Log.Infof("resolved %s as %s", host.Host, ips)
+
+		// apply percentage-based selection if specified
+		if host.Percentage != nil && *host.Percentage < 100 && *host.Percentage > 0 {
+			// use disruption UID as seed for consistent selection across all pods in the same disruption run
+			seed := fmt.Sprintf("%s-%s", host.Host, i.config.Disruption.DisruptionUID)
+			originalCount := len(ips)
+			ips = network.SelectIPsByPercentage(ips, *host.Percentage, seed)
+			i.config.Log.Infow("selected subset of IPs based on percentage",
+				tags.HostKey, host.Host,
+				"percentage", *host.Percentage,
+				"original_count", originalCount,
+				"selected_count", len(ips),
+			)
+		}
 
 		filtersForHost := tcFilters{}
 
