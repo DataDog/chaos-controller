@@ -9,9 +9,10 @@ import (
 	"context"
 	"time"
 
+	"google.golang.org/protobuf/types/known/emptypb"
+
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	pb "github.com/DataDog/chaos-controller/grpc/disruptionlistener"
-	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 // SendGrpcDisruption takes in a CRD specification for GRPC disruptions and
@@ -40,35 +41,36 @@ func ClearGrpcDisruptions(client pb.DisruptionListenerClient) error {
 // GenerateEndpointSpecs converts a slice of EndpointAlterations into a slice of EndpointSpecs which
 // can be sent through gRPC call to disruptionListener
 func GenerateEndpointSpecs(endpoints []chaosv1beta1.EndpointAlteration) []*pb.EndpointSpec {
-	targetToEndpointSpec := make(map[string]*pb.EndpointSpec)
+	endpointAlterationMap := make(map[string]*pb.EndpointSpec, len(endpoints))
 
-	for _, endptAlt := range endpoints {
-		targeted := endptAlt.TargetEndpoint
+	// a user can set one endpoint to multiple alterations. We transform the list of alterations into a map of endpoints to alterations
+	for _, endpoint := range endpoints {
+		targetedEndpoint := endpoint.TargetEndpoint
+		alteredSpec := &pb.AlterationSpec{
+			ErrorToReturn:    endpoint.ErrorToReturn,
+			OverrideToReturn: endpoint.OverrideToReturn,
+			QueryPercent:     int32(endpoint.QueryPercent),
+		}
 
-		if existingEndptSpec, ok := targetToEndpointSpec[targeted]; ok {
-			altSpec := &pb.AlterationSpec{
-				ErrorToReturn:    endptAlt.ErrorToReturn,
-				OverrideToReturn: endptAlt.OverrideToReturn,
-				QueryPercent:     int32(endptAlt.QueryPercent),
-			}
-			existingEndptSpec.Alterations = append(existingEndptSpec.Alterations, altSpec)
+		// if endpoint already exists in the list, we append to the alterations
+		if foundEndpoint, ok := endpointAlterationMap[targetedEndpoint]; ok {
+			foundEndpoint.Alterations = append(foundEndpoint.Alterations, alteredSpec)
 		} else {
-			targetToEndpointSpec[targeted] = &pb.EndpointSpec{
-				TargetEndpoint: targeted,
+			endpointAlterationMap[targetedEndpoint] = &pb.EndpointSpec{
+				TargetEndpoint: targetedEndpoint,
 				Alterations: []*pb.AlterationSpec{
-					{
-						ErrorToReturn:    endptAlt.ErrorToReturn,
-						OverrideToReturn: endptAlt.OverrideToReturn,
-						QueryPercent:     int32(endptAlt.QueryPercent),
-					},
+					alteredSpec,
 				},
 			}
 		}
 	}
 
-	endpointSpecs := []*pb.EndpointSpec{}
-	for _, endptSpec := range targetToEndpointSpec {
-		endpointSpecs = append(endpointSpecs, endptSpec)
+	endpointSpecs := make([]*pb.EndpointSpec, len(endpointAlterationMap))
+	i := 0
+
+	for _, endpointSpec := range endpointAlterationMap {
+		endpointSpecs[i] = endpointSpec
+		i++
 	}
 
 	return endpointSpecs
