@@ -84,6 +84,8 @@ type DisruptionSpec struct {
 	// +nullable
 	PodReplacement *PodReplacementSpec `json:"podReplacement,omitempty"`
 	// +nullable
+	ClockSkew *ClockSkewSpec `json:"clockSkew,omitempty"`
+	// +nullable
 	Reporting *Reporting `json:"reporting,omitempty"`
 }
 
@@ -692,25 +694,25 @@ func (s DisruptionSpec) validateGlobalDisruptionScope(requireSelectors bool) (re
 	}
 
 	// Rule: At least one disruption kind must be applied
-	if s.CPUPressure == nil && s.DiskPressure == nil && s.DiskFailure == nil && s.Network == nil && s.GRPC == nil && s.ContainerFailure == nil && s.NodeFailure == nil && s.PodReplacement == nil {
+	if s.CPUPressure == nil && s.DiskPressure == nil && s.DiskFailure == nil && s.Network == nil && s.GRPC == nil && s.ContainerFailure == nil && s.NodeFailure == nil && s.PodReplacement == nil && s.ClockSkew == nil {
 		retErr = multierror.Append(retErr, errors.New("at least one disruption kind must be specified, please read the docs to see your options"))
 	}
 
 	// Rule: ContainerFailure, NodeFailure, and PodReplacement disruptions are not compatible with other failure types
 	if s.ContainerFailure != nil {
-		if s.CPUPressure != nil || s.DiskPressure != nil || s.DiskFailure != nil || s.Network != nil || s.GRPC != nil || s.NodeFailure != nil || s.PodReplacement != nil {
+		if s.CPUPressure != nil || s.DiskPressure != nil || s.DiskFailure != nil || s.Network != nil || s.GRPC != nil || s.NodeFailure != nil || s.PodReplacement != nil || s.ClockSkew != nil {
 			retErr = multierror.Append(retErr, errors.New("container failure disruptions are not compatible with other disruption kinds. The container failure will remove the impact of the other disruption types"))
 		}
 	}
 
 	if s.NodeFailure != nil {
-		if s.CPUPressure != nil || s.DiskPressure != nil || s.DiskFailure != nil || s.Network != nil || s.GRPC != nil || s.ContainerFailure != nil || s.PodReplacement != nil {
+		if s.CPUPressure != nil || s.DiskPressure != nil || s.DiskFailure != nil || s.Network != nil || s.GRPC != nil || s.ContainerFailure != nil || s.PodReplacement != nil || s.ClockSkew != nil {
 			retErr = multierror.Append(retErr, errors.New("node failure disruptions are not compatible with other disruption kinds. The node failure will remove the impact of the other disruption types"))
 		}
 	}
 
 	if s.PodReplacement != nil {
-		if s.CPUPressure != nil || s.DiskPressure != nil || s.DiskFailure != nil || s.Network != nil || s.GRPC != nil || s.ContainerFailure != nil || s.NodeFailure != nil {
+		if s.CPUPressure != nil || s.DiskPressure != nil || s.DiskFailure != nil || s.Network != nil || s.GRPC != nil || s.ContainerFailure != nil || s.NodeFailure != nil || s.ClockSkew != nil {
 			retErr = multierror.Append(retErr, errors.New("pod replacement disruptions are not compatible with other disruption kinds. The pod replacement will remove the impact of the other disruption types"))
 		}
 		// Rule: container failure not possible if disruption is node-level
@@ -727,7 +729,8 @@ func (s DisruptionSpec) validateGlobalDisruptionScope(requireSelectors bool) (re
 			s.ContainerFailure != nil ||
 			s.DiskPressure != nil ||
 			s.GRPC != nil ||
-			s.DiskFailure != nil {
+			s.DiskFailure != nil ||
+			s.ClockSkew != nil {
 			retErr = multierror.Append(retErr, errors.New("OnInit is only compatible with network disruptions"))
 		}
 
@@ -769,7 +772,7 @@ func (s DisruptionSpec) validateGlobalDisruptionScope(requireSelectors bool) (re
 	// Rule: pulse compatibility
 	if s.Pulse != nil {
 		if s.Pulse.ActiveDuration.Duration() > 0 || s.Pulse.DormantDuration.Duration() > 0 {
-			if s.NodeFailure != nil || s.PodReplacement != nil || s.ContainerFailure != nil {
+			if s.NodeFailure != nil || s.PodReplacement != nil || s.ContainerFailure != nil || s.ClockSkew != nil {
 				retErr = multierror.Append(retErr, errors.New("pulse is only compatible with network, cpu pressure, disk pressure, and grpc disruptions"))
 			}
 		}
@@ -826,6 +829,8 @@ func (s DisruptionSpec) DisruptionKindPicker(kind chaostypes.DisruptionKindName)
 		disruptionKind = s.PodReplacement
 	case chaostypes.DisruptionKindDiskFailure:
 		disruptionKind = s.DiskFailure
+	case chaostypes.DisruptionKindClockSkew:
+		disruptionKind = s.ClockSkew
 	}
 
 	return disruptionKind
@@ -905,6 +910,10 @@ func (s DisruptionSpec) DisruptionCount() int {
 	}
 
 	if s.DiskFailure != nil {
+		count++
+	}
+
+	if s.ClockSkew != nil {
 		count++
 	}
 
@@ -1061,6 +1070,10 @@ func (s DisruptionSpec) Explain() []string {
 
 	if s.GRPC != nil {
 		explanation = append(explanation, s.GRPC.Explain()...)
+	}
+
+	if s.ClockSkew != nil {
+		explanation = append(explanation, s.ClockSkew.Explain()...)
 	}
 
 	return explanation

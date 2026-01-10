@@ -116,6 +116,7 @@ const (
 	// Generic fields
 	ConfigKey          = "config"
 	DataKey            = "data"
+	EnvFileKey         = "env_file"
 	HostKey            = "host"
 	IndexedValueKey    = "indexed_value"
 	KindKey            = "kind"
@@ -159,6 +160,7 @@ const (
 	MaxRunsKey                    = "max_runs"
 	NextRunKey                    = "next_run"
 	NowKey                        = "now"
+	OffsetKey                     = "offset"
 	PauseDurationKey              = "pause_duration"
 	RemainingDurationKey          = "remaining_duration"
 	RequeueAfterKey               = "requeue_after"
