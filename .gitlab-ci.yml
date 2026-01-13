@@ -38,6 +38,7 @@ check-lockfile:
   image: registry.ddbuild.io/images/mirror/python:3.11-slim
   tags: ["arch:amd64"]
   script:
+    - apt-get update && apt-get install -y --no-install-recommends git
     - pip install -q uv
     - uv pip compile --python-platform linux tasks/requirements.in -o tasks/requirements.txt.tmp
     - grep -v '^#' tasks/requirements.txt > tasks/requirements.txt.no-comments
