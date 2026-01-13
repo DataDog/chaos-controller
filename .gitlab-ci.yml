@@ -26,11 +26,23 @@ default:
       - api_failure
 
 stages:
+  - check
   - build
   - release-staging
   - release-prod
   - release-public
   - notify
+
+check-lockfile:
+  stage: check
+  image: registry.ddbuild.io/images/mirror/python:3.11-slim
+  tags: ["arch:amd64"]
+  script:
+    - pip install -q uv
+    - uv pip compile --python-platform linux tasks/requirements.in -o tasks/requirements.txt.tmp
+    - grep -v '^#' tasks/requirements.txt > tasks/requirements.txt.no-comments
+    - grep -v '^#' tasks/requirements.txt.tmp > tasks/requirements.txt.tmp.no-comments
+    - diff tasks/requirements.txt.no-comments tasks/requirements.txt.tmp.no-comments
 
 .install-make: &install-make
   - apt-get update
