@@ -11,7 +11,7 @@ metadata:
 spec:
   level: pod
   selector:
-    app: demo-curl
+    service: demo-curl
   count: 1
   duration: 15s # Disruption will time out after 15 seconds
   network:

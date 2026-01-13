@@ -11,7 +11,7 @@ metadata:
 spec:
   level: pod # selector targets pods
   selector:
-    app: demo-storage
+    service: demo-storage
   count: 1
   maxRuns: 1 # perform only 1 pod replacement, then become idle
   podReplacement: # replace the target pod by cordoning its node, deleting PVCs, and killing the pod

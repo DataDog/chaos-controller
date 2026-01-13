@@ -68,7 +68,7 @@ metadata:
 spec:
   level: pod
   selector:
-    app: demo-curl
+    service: demo-curl
   unsafeMode:
     disableNeitherHostNorPort: true
   count: 1
@@ -95,7 +95,7 @@ metadata:
 spec:
   level: pod
   selector:
-    app: demo-curl
+    service: demo-curl
   count: 1
   unsafeMode:
     config:

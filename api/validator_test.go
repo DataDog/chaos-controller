@@ -26,7 +26,7 @@ var _ = Describe("Validator", func() {
 	BeforeEach(func() {
 		yamlDisruptionSpec.Reset()
 		yamlDisruptionSpec.WriteString("\nselector:")
-		yamlDisruptionSpec.WriteString("\n  app: demo-curl")
+		yamlDisruptionSpec.WriteString("\n  service: demo-curl")
 		yamlDisruptionSpec.WriteString("\ncount: 1")
 	})
 

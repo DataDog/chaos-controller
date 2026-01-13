@@ -5,6 +5,7 @@ Pod replacement is a chaos engineering disruption that simulates the complete re
 ## Overview
 
 The pod replacement disruption performs the following steps:
+
 1. **Cordon the node** - Marks the node as unschedulable to prevent new pods from being scheduled
 2. **Delete PVCs** (optional) - Removes PersistentVolumeClaims associated with the target pod
 3. **Delete the target pod** - Terminates the pod, forcing it to reschedule elsewhere
@@ -23,12 +24,12 @@ metadata:
 spec:
   level: pod # Must be set to 'pod' for pod-level targeting
   selector:
-    app: my-application
+    service: my-application
   count: 1
   podReplacement:
-    deleteStorage: true        # Delete PVCs associated with the pod (default: true)
-    forceDelete: false         # Force delete with grace period 0 (default: false)
-    gracePeriodSeconds: 30     # Grace period for pod deletion (optional)
+    deleteStorage: true # Delete PVCs associated with the pod (default: true)
+    forceDelete: false # Force delete with grace period 0 (default: false)
+    gracePeriodSeconds: 30 # Grace period for pod deletion (optional)
 ```
 
 ### Configuration Options
@@ -52,7 +53,7 @@ metadata:
 spec:
   level: pod
   selector:
-    app: web-service
+    service: web-service
   count: 1
   maxRuns: 1
   podReplacement:
@@ -70,10 +71,10 @@ metadata:
 spec:
   level: pod
   selector:
-    app: database
+    service: database
   count: 1
   podReplacement:
-    deleteStorage: false  # Keep PVCs intact
+    deleteStorage: false # Keep PVCs intact
     gracePeriodSeconds: 60
 ```
 
@@ -88,31 +89,35 @@ metadata:
 spec:
   level: pod
   selector:
-    app: stuck-pod
+    service: stuck-pod
   count: 1
   podReplacement:
-    forceDelete: true  # Immediate termination
+    forceDelete: true # Immediate termination
 ```
 
 ## Behavior and Considerations
 
 ### Node Cordoning
+
 - The disruption cordons (marks as unschedulable) the node hosting the target pod
 - This prevents new pods from being scheduled on that node during the disruption
 - The node is automatically uncordoned during cleanup when the disruption ends
 - If the node is already cordoned, the disruption will not uncordon it during cleanup
 
 ### Storage Deletion
+
 - When `deleteStorage` is true (default), all PVCs referenced by the target pod are deleted
 - This simulates complete storage loss scenarios where data needs to be recreated or restored
 - Use `deleteStorage: false` when you want to preserve data and test pod rescheduling without data loss
 
 ### Pod Targeting
+
 - Pod replacement requires `level: pod` in the disruption specification
 - Only one specific pod is targeted per disruption instance
 - The target pod is identified by its IP address and must be in a running state
 
 ### Grace Period Handling
+
 - If `gracePeriodSeconds` is specified, it overrides the pod's default grace period
 - If `forceDelete` is true, the grace period is set to 0 regardless of other settings
 - Graceful shutdown allows applications to clean up resources before termination

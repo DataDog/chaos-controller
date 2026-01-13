@@ -41,7 +41,7 @@ chaos-dogfood-server-854cc5f49d-gjbnc   1/1     Running       0          4s
 
 ##### Sample client logs
 
-`chaos-controller/dogfood >> kubectl -n chaos-demo logs -l app=chaos-dogfood-client`
+`chaos-controller/dogfood >> kubectl -n chaos-demo logs -l service=chaos-dogfood-client`
 
 Might output:
 
@@ -73,7 +73,7 @@ x
 
 ##### Sample server logs
 
-`chaos-controller/dogfood >> kubectl -n chaos-demo logs -l app=chaos-dogfood-server`
+`chaos-controller/dogfood >> kubectl -n chaos-demo logs -l service=chaos-dogfood-server`
 Might output:
 
 ```bash

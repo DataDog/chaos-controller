@@ -20,13 +20,13 @@ spec:
     minNotificationType: Info # optional, minimal notification type to be notified, default is Success, available options are Info, Success, Warning, Error
   level: pod # level the disruption should be injected at (can be either pod or node, defaults to pod)
   selector: # label selector[s] to target pods
-    app: demo
+    service: demo
     team: developer
   filter:
     annotations:
       aws-zone: us-east-1b # filter selected targets to only those with this annotation
   advancedSelector: # advanced selectors can select targets on something else than an exact key/value match
-    - key: app
+    - key: service
       operator: Exists
   # - key: app
   #   operator: DoesNotExist

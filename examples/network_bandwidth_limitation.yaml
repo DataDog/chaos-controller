@@ -11,7 +11,7 @@ metadata:
 spec:
   level: pod
   selector:
-    app: demo-curl
+    service: demo-curl
   count: 1
   network:
     bandwidthLimit: 1024 # outgoing bandwidth limitation in bytes

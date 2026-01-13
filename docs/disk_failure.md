@@ -46,7 +46,7 @@ metadata:
 spec:
   level: node
   selector:
-    app: example
+    service: example
   count: 1
   diskFailure:
     paths:
@@ -66,7 +66,7 @@ metadata:
 spec:
   level: node
   selector:
-    app: example
+    service: example
   count: 1
   diskFailure:
     paths: 
@@ -87,7 +87,7 @@ metadata:
 spec:
   level: node
   selector:
-    app: example
+    service: example
   count: 1
   unsafeMode:
     AllowRootDiskFailure: true
@@ -111,7 +111,7 @@ metadata:
 spec:
   level: pod
   selector:
-    app: example
+    service: example
   count: 1
   diskFailure:
     paths: 
@@ -131,7 +131,7 @@ metadata:
 spec:
   level: pod
   selector:
-    app: example
+    service: example
   count: 1
   containers: # only target the dummy container, you can specify multiple containers here (all containers are targeted by default)
     - container-1
@@ -155,7 +155,7 @@ metadata:
 spec:
   level: pod
   selector:
-    app: example
+    service: example
   count: 1
   containers: # only target the dummy container, you can specify multiple containers here (all containers are targeted by default)
     - container-1

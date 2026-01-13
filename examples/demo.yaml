@@ -27,16 +27,16 @@ metadata:
   name: demo-nginx
   namespace: chaos-demo
   labels:
-    app: demo-nginx
+    service: demo-nginx
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: demo-nginx
+      service: demo-nginx
   template:
     metadata:
       labels:
-        app: demo-nginx
+        service: demo-nginx
     spec:
       containers:
         - name: nginx
@@ -65,18 +65,18 @@ metadata:
   name: demo-curl
   namespace: chaos-demo
   labels:
-    app: demo-curl
+    service: demo-curl
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: demo-curl
+      service: demo-curl
   template:
     metadata:
       annotations:
         app.kubernetes.io/component: client
       labels:
-        app: demo-curl
+        service: demo-curl
     #        chaos.datadoghq.com/disrupt-on-init: "true" # uncomment this and run `kubectl -n chaos-demo apply -f examples/demo.yaml`, for testing the examples/on_init.yaml disruption
     spec:
       containers:
@@ -172,7 +172,7 @@ spec:
       targetPort: 80
       protocol: TCP
   selector:
-    app: demo-nginx
+    service: demo-nginx
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -180,17 +180,17 @@ metadata:
   name: demo-storage
   namespace: chaos-demo
   labels:
-    app: demo-storage
+    service: demo-storage
 spec:
   replicas: 1
   serviceName: demo-storage
   selector:
     matchLabels:
-      app: demo-storage
+      service: demo-storage
   template:
     metadata:
       labels:
-        app: demo-storage
+        service: demo-storage
     spec:
       containers:
         - name: storage-monitor
@@ -259,4 +259,4 @@ metadata:
 spec:
   clusterIP: None
   selector:
-    app: demo-storage
+    service: demo-storage

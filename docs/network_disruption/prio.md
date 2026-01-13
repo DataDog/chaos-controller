@@ -43,7 +43,7 @@ Let us take the following node level disruption spec:
 spec:
   level: node
   selector:
-    app: demo
+    service: demo
   count: 1
   network:
     hosts:
@@ -105,7 +105,7 @@ Now, let us take the following pod level disruption spec:
 spec:
   level: pod
   selector:
-    app: demo
+    service: demo
   count: 1
   network:
     hosts:
@@ -205,7 +205,7 @@ Now, let us take the following pod level disruption spec with new filters:
 spec:
   level: pod
   selector:
-    app: demo
+    service: demo
   count: 1
   network:
     hosts:
@@ -245,7 +245,7 @@ I recommend to read the `Network Disruption implementation for pod level` to und
 spec:
   level: pod
   selector:
-    app: demo
+    service: demo
   count: 1
   network:
     hosts:
