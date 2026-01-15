@@ -1,0 +1,4 @@
+# Generate lockfile with: make update-deps
+git+https://github.com/bbqsrc/spdx-python@v2.5
+git+https://github.com/bbqsrc/spdx-lookup-python@v0.3.2
+invoke==2.2.1

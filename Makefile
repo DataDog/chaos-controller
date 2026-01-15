@@ -371,6 +371,13 @@ license: venv
 godeps:
 	go mod tidy; go mod vendor
 
+update-deps:
+	@echo "Updating Python dependencies..."
+	@pip install -q uv
+	@uv pip compile --python-platform linux tasks/requirements.in -o tasks/requirements.txt
+	@echo "Updated tasks/requirements.txt"
+	@echo "Please commit both tasks/requirements.in and tasks/requirements.txt"
+
 deps: godeps license
 
 generate-disruptionlistener-protobuf:
