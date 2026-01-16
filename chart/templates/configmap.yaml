@@ -91,6 +91,12 @@ data:
       {{- range $index, $kind := .Values.controller.disabledDisruptions }}
         - {{ $kind }}
       {{- end }}
+    {{- if .Values.controller.clientGoQPS }}
+      clientGoQPS: {{ .Values.controller.clientGoQPS }}
+    {{- end }}
+    {{- if .Values.controller.clientGoBurst }}
+      clientGoBurst: {{ .Values.controller.clientGoBurst }}
+    {{- end }}
     injector:
       image: {{ template "chaos-controller.format-image" deepCopy .Values.global.chaos.defaultImage | merge .Values.global.oci | merge .Values.injector.image }}
       imagePullSecrets: {{ .Values.injector.image.pullSecrets }}
