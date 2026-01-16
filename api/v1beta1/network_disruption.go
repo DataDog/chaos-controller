@@ -797,6 +797,7 @@ func (h NetworkDisruptionHostSpec) Explain() string {
 
 	if h.DNSResolver != "" {
 		resolverExplanation := ""
+
 		switch h.DNSResolver {
 		case "pod":
 			resolverExplanation = "resolving via pod's DNS configuration"
@@ -809,6 +810,7 @@ func (h NetworkDisruptionHostSpec) Explain() string {
 		default:
 			resolverExplanation = fmt.Sprintf("with DNS resolver: %s", h.DNSResolver)
 		}
+
 		hostExplanation += resolverExplanation + ". [See docs](https://github.com/DataDog/chaos-controller/blob/main/docs/network_disruption/hosts-and-services.md#case-5-controlling-dns-resolution-with-dnsresolver) "
 	}
 
