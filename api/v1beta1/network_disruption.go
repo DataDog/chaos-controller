@@ -791,6 +791,27 @@ func (h NetworkDisruptionHostSpec) Explain() string {
 		hostExplanation += fmt.Sprintf("using Protocol: %s ", h.Protocol)
 	}
 
+	if h.Percentage != nil {
+		hostExplanation += fmt.Sprintf("disrupting %d%% of resolved IPs (consistent across all pods). [See docs](https://github.com/DataDog/chaos-controller/blob/main/docs/network_disruption/hosts-and-services.md#case-6-targeting-a-percentage-of-resolved-ips) ", *h.Percentage)
+	}
+
+	if h.DNSResolver != "" {
+		resolverExplanation := ""
+		switch h.DNSResolver {
+		case "pod":
+			resolverExplanation = "resolving via pod's DNS configuration"
+		case "node":
+			resolverExplanation = "resolving via node's DNS configuration"
+		case "pod-fallback-node":
+			resolverExplanation = "resolving via pod's DNS with node DNS fallback (default)"
+		case "node-fallback-pod":
+			resolverExplanation = "resolving via node's DNS with pod DNS fallback"
+		default:
+			resolverExplanation = fmt.Sprintf("with DNS resolver: %s", h.DNSResolver)
+		}
+		hostExplanation += resolverExplanation + ". [See docs](https://github.com/DataDog/chaos-controller/blob/main/docs/network_disruption/hosts-and-services.md#case-5-controlling-dns-resolution-with-dnsresolver) "
+	}
+
 	return hostExplanation
 }
 
