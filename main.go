@@ -108,7 +108,17 @@ func main() {
 		logger.Fatalw("unable to create a valid configuration", tags.ErrorKey, err)
 	}
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	ctrlConfig := ctrl.GetConfigOrDie()
+
+	if cfg.Controller.ClientGoQPS >= 0 {
+		ctrlConfig.QPS = float32(cfg.Controller.ClientGoQPS)
+	}
+
+	if cfg.Controller.ClientGoBurst >= 0 {
+		ctrlConfig.Burst = cfg.Controller.ClientGoBurst
+	}
+
+	mgr, err := ctrl.NewManager(ctrlConfig, ctrl.Options{
 		Scheme:                 scheme,
 		HealthProbeBindAddress: cfg.Controller.HealthProbeBindAddr,
 		Metrics: metricsserver.Options{
