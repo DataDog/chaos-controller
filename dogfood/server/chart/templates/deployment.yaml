@@ -16,7 +16,7 @@ spec:
       protocol: TCP
       name: grpc
   selector:
-    app: {{ .Values.fullname }}
+    service: {{ .Values.fullname }}
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -33,11 +33,11 @@ spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: {{ .Values.fullname }}
+      service: {{ .Values.fullname }}
   template:
     metadata:
       labels:
-        app: {{ .Values.fullname }}
+        service: {{ .Values.fullname }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:

@@ -12,7 +12,7 @@ spec:
   onInit: true # apply the disruption on pod initialization (it requires the pod to target to be redeployed with the chaos.datadoghq.com/disrupt-on-init label to be held in the pending state)
   level: pod
   selector:
-    app: demo-curl
+    service: demo-curl
   count: 1
   network:
     drop: 100

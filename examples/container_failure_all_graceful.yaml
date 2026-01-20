@@ -10,7 +10,7 @@ metadata:
   namespace: chaos-demo
 spec:
   selector:
-    app: demo-curl
+    service: demo-curl
   count: 1
   containerFailure:
     forced: false # send a SIGTERM signal to all of the pod's containers

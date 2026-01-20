@@ -42,7 +42,7 @@ metadata:
 spec:
   level: pod
   selector:
-    app: demo-cirl
+    service: demo-curl
   count: 1
   network:
     cloud:

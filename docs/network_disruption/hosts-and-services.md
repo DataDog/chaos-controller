@@ -48,7 +48,7 @@ spec:
       targetPort: 80
       protocol: TCP
   selector:
-    app: demo-nginx
+    service: demo-nginx
 ```
 
 In order to only affect the service port `regular-port`, you can define in your disruption specs:
@@ -249,7 +249,7 @@ metadata:
 spec:
   level: pod
   selector:
-    app: my-service
+    service: my-service
   count: 1
   network:
     drop: 50
@@ -272,7 +272,7 @@ metadata:
 spec:
   level: pod
   selector:
-    app: my-service
+    service: my-service
   network:
     drop: 100
     allowedHosts:
@@ -415,7 +415,7 @@ metadata:
 spec:
   level: pod
   selector:
-    app: my-service
+    service: my-service
   count: 1
   network:
     drop: 100
@@ -539,7 +539,7 @@ metadata:
 spec:
   level: pod
   selector:
-    app: my-service
+    service: my-service
   count: 1
   network:
     drop: 100

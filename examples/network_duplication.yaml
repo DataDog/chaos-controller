@@ -10,7 +10,7 @@ metadata:
   namespace: chaos-demo
 spec:
   selector:
-    app: demo-curl
+    service: demo-curl
   count: 1
   network:
     duplicate: 100 # percentage of outgoing packets to duplicate

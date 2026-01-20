@@ -42,7 +42,7 @@ Which applies the following `disruption` spec ([examples/grpc_error.yaml](../../
 spec:
   level: pod
   selector:
-    app: chaos-dogfood-server
+    service: chaos-dogfood-server
   count: 100%
   grpc:
     port: 50050
@@ -55,7 +55,7 @@ spec:
 
 To break this down:
 
-- `app: chaos-dogfood-server` - a selector identifying which pods to disrupt (in this case, `chaos-dogfood-server-5fdcff889f-hblj2`).
+- `service: chaos-dogfood-server` - a selector identifying which pods to disrupt (in this case, `chaos-dogfood-server-5fdcff889f-hblj2`).
 - `port: 50050` - port to connect to the gRPC application on your pod (it's distinct from the port you expose on the Kubernetes `Service` which in this case would be `50051`, not `50050`).
 - Since the `endpoints` do not have `query_percent`s specified, the assigned errors will be applied to all queries for the respective endpoints.
 
@@ -104,7 +104,7 @@ Which applies the following `disruption` spec ([examples/grpc_override.yaml](../
 spec:
   level: pod
   selector:
-    app: chaos-dogfood-server
+    service: chaos-dogfood-server
   count: 100%
   grpc:
     port: 50050
@@ -152,7 +152,7 @@ Which applies the following `disruption` spec ([examples/grpc.yaml](../../exampl
 spec:
   level: pod
   selector:
-    app: chaos-dogfood-server
+    service: chaos-dogfood-server
   count: 100%
   grpc:
     port: 50050

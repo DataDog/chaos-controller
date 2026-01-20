@@ -12,7 +12,7 @@ spec:
   dryRun: true # enable dry-run mode (chaos pods will be created but won't inject anything)
   level: pod
   selector:
-    app: demo-curl
+    service: demo-curl
   count: 1
   nodeFailure:
     shutdown: false

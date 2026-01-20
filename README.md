@@ -40,7 +40,7 @@ metadata:
   namespace: chaos-demo # it must be in the same namespace as targeted resources
 spec:
   selector: # a label selector used to target resources
-    app: demo-curl
+    service: demo-curl
   count: 1 # the number of resources to target, can be a percentage if you suffix with "%", e.g. `count: 50%`
   duration: 1h # the amount of time before your disruption automatically terminates itself, for safety
   nodeFailure: # trigger a kernel panic on the target node

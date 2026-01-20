@@ -13,7 +13,7 @@ metadata:
 spec:
   level: pod
   selector:
-    app: demo-curl
+    service: demo-curl
   count: 1
   network:
     drop: 100 # percentage of outgoing packets to drop

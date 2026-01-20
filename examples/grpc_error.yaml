@@ -13,7 +13,7 @@ metadata:
 spec:
   level: pod
   selector:
-    app: chaos-dogfood-server
+    service: chaos-dogfood-server
   count: 100%
   grpc:
     port: 50050

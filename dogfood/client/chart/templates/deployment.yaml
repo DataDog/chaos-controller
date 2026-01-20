@@ -12,11 +12,11 @@ spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: {{ .Values.fullname }}
+      service: {{ .Values.fullname }}
   template:
     metadata:
       labels:
-        app: {{ .Values.fullname }}
+        service: {{ .Values.fullname }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
