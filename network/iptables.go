@@ -98,9 +98,15 @@ func (i *iptables) LogConntrack() error {
 	return i.insert("nat", "OUTPUT", "-m", "state", "--state", "new,established", "-j", "LOG")
 }
 
-// RedirectTo redirects the matching packets to the given destination IP
+// LogDNS creates a rule logging DNS packets in the CHAOS-DNS chain for debugging
+func (i *iptables) LogDNS(protocol string) error {
+	return i.insert("nat", chaosChainName, "-p", protocol, "-j", "LOG", "--log-prefix", "CHAOS-DNS: ", "--log-level", "6")
+}
+
+// RedirectTo redirects all packets in the CHAOS-DNS chain to the given destination
+// Note: This does not include --dport matching since packets are already filtered by the Intercept rule
 func (i *iptables) RedirectTo(protocol string, port string, destinationIP string) error {
-	return i.insert("nat", chaosChainName, "-p", protocol, "--dport", port, "-j", "DNAT", "--to-destination", destinationIP+":"+port)
+	return i.insert("nat", chaosChainName, "-p", protocol, "-j", "DNAT", "--to-destination", destinationIP+":"+port)
 }
 
 // Intercept jumps the matching packets to the injector dedicated chain except for

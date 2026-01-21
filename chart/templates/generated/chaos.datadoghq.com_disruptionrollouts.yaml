@@ -181,6 +181,32 @@ spec:
                         - path
                         - throttling
                       type: object
+                    dnsDisruption:
+                      description: DNSDisruptionSpec represents a DNS resolution failure injection
+                      nullable: true
+                      properties:
+                        domains:
+                          description: Domains is the list of domain names to disrupt DNS resolution for
+                          items:
+                            type: string
+                          type: array
+                        failureMode:
+                          description: |-
+                            FailureMode determines how DNS queries should fail
+                            Supported values: nxdomain, drop, servfail, random-ip
+                          type: string
+                        port:
+                          description: Port is the DNS port to intercept (optional, defaults to 53)
+                          type: integer
+                        protocol:
+                          description: |-
+                            Protocol determines which DNS protocols to disrupt (optional, defaults to both)
+                            Supported values: udp, tcp, both
+                          type: string
+                      required:
+                        - domains
+                        - failureMode
+                      type: object
                     dryRun:
                       type: boolean
                     duration:

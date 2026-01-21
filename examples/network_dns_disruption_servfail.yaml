@@ -1,0 +1,15 @@
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: dns-servfail
+  namespace: chaos-demo
+spec:
+  level: pod
+  selector:
+    app: demo-curl
+  count: 1
+  duration: 5m
+  dnsDisruption:
+    domains:
+      - www.example.com
+    failureMode: servfail
