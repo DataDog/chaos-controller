@@ -7,7 +7,7 @@ package datadog_test
 
 import (
 	"fmt"
-	
+
 	"github.com/DataDog/datadog-go/statsd"
 	"github.com/stretchr/testify/mock"
 	corev1 "k8s.io/api/core/v1"
