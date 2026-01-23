@@ -17,7 +17,7 @@ linters:
     - govet
     - ineffassign
     - staticcheck
-    - typecheck
+    # typecheck is built into v2 core, cannot be enabled/disabled
     - unused
     # extra linters
     - bodyclose
