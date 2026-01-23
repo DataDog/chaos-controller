@@ -2,7 +2,7 @@
 FROM ubuntu:24.04 AS ebpf-builder
 
 ARG TARGETARCH
-ARG BUILDGOVERSION=1.25.3
+ARG BUILDGOVERSION=1.25.6
 
 # Install build dependencies
 RUN apt-get update && \
@@ -36,7 +36,7 @@ WORKDIR /app/ebpf
 RUN make all
 
 # Build stage for Go binary
-FROM golang:1.25.3 AS go-builder
+FROM golang:1.25.6 AS go-builder
 
 ARG TARGETOS=linux
 ARG TARGETARCH
