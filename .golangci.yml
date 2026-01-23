@@ -3,16 +3,17 @@
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
 # Copyright 2026 Datadog, Inc.
 
+version: "2"
+
 run:
-  timeout: 5m
   tests: false
+
 linters:
-  # disable all linters by default
-  disable-all: true
+  default: none
   enable:
     # default linters
     - errcheck
-    - gosimple
+    # gosimple merged into staticcheck in v2
     - govet
     - ineffassign
     - staticcheck
@@ -22,8 +23,6 @@ linters:
     - bodyclose
     - dogsled
     - godox
-    - gofmt
-    - goimports
     - goprintffuncname
     - gosec
     - misspell
@@ -31,38 +30,60 @@ linters:
     - prealloc
     - revive
     - rowserrcheck
-    - stylecheck
+    # stylecheck merged into staticcheck in v2
     - unconvert
     - unparam
     - whitespace
     - wsl
     - gocritic
-issues:
-  exclude-use-default: false
-  exclude-dirs:
-    - mocks
-  exclude-files:
-    - ".*mock.*\\.go$"
-  exclude:
-    # gosec
-    - Subprocess launch(ed with variable|ing should be audited)
-    - Expect file permissions to be 0600 or less
-    - Blocklisted import `crypto/md5`
-    - weak cryptographic primitive
-    - weak random number generator
-    - memory aliasing in for loop
-    - file inclusion via variable
-    - integer overflow conversion # revisit this. existing usages are safe
-    # golint
-    - (comment on exported (method|function|type|const)|should have( a package)? comment|comment should be of the form)
+  exclusions:
+    generated: lax  # match v1 behavior (v2 default is strict)
+    paths:
+      - mocks
+      - '.*mock.*\.go$'
+    rules:
+      # gosec exclusions
+      - linters:
+          - gosec
+        text: 'Subprocess launch(ed with variable|ing should be audited)'
+      - linters:
+          - gosec
+        text: 'Expect file permissions to be 0600 or less'
+      - linters:
+          - gosec
+        text: 'Blocklisted import `crypto/md5`'
+      - linters:
+          - gosec
+        text: 'weak cryptographic primitive'
+      - linters:
+          - gosec
+        text: 'weak random number generator'
+      - linters:
+          - gosec
+        text: 'memory aliasing in for loop'
+      - linters:
+          - gosec
+        text: 'file inclusion via variable'
+      - linters:
+          - gosec
+        text: 'integer overflow conversion'
+      # revive exclusions
+      - linters:
+          - revive
+        text: 'unused-parameter:|and that stutters;|unexported-return:'
+      # staticcheck exclusions (was stylecheck in v1)
+      - linters:
+          - staticcheck
+        text: 'at least one file in a package should have a package comment'
+      # comment-related exclusions (was golint in v1)
+      - linters:
+          - revive
+        text: '(comment on exported (method|function|type|const)|should have( a package)? comment|comment should be of the form)'
 
-  exclude-rules:
-    - linters:
-        - revive
-      text: "unused-parameter:|and that stutters;|unexported-return:"
-    - linters:
-        - stylecheck
-      text: at least one file in a package should have a package comment
+formatters:
+  enable:
+    - gofmt
+    - goimports
 
 output:
   sort-results: true
