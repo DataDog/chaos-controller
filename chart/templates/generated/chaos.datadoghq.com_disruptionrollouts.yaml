@@ -87,6 +87,28 @@ spec:
                         - e.g. apply a CPU pressure and later, apply a container failure for a short duration
                         NB: it's ALWAYS forbidden to apply the same disruption kind to the same target to avoid unreliable effects due to competing interactions
                       type: boolean
+                    clockSkew:
+                      description: |-
+                        ClockSkewSpec represents a clock/time skew disruption
+                        This disruption manipulates the perceived system time for targeted containers,
+                        useful for testing time-sensitive behavior like certificate expiration,
+                        distributed locks, time-based tokens, and more.
+                      nullable: true
+                      properties:
+                        offset:
+                          description: |-
+                            Offset specifies the time shift to apply
+                            Positive values advance time into the future (e.g., "+24h" to simulate tomorrow)
+                            Negative values move time into the past (e.g., "-1h" to simulate an hour ago)
+                            Format follows Go's time.Duration format: "300ms", "1.5h", "2h45m", etc.
+                            Examples:
+                              "+24h" - advance time by 24 hours (test cert expiry in 1 day)
+                              "+8760h" - advance time by 1 year (365 days)
+                              "-30m" - go back 30 minutes
+                          type: string
+                      required:
+                        - offset
+                      type: object
                     containerFailure:
                       description: ContainerFailureSpec represents a container failure injection
                       nullable: true
