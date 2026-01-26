@@ -180,6 +180,61 @@ spec:
                         - path
                         - throttling
                       type: object
+                    dns:
+                      description: DNSDisruptionSpec represents a DNS resolution disruption with flexible record-based configuration
+                      nullable: true
+                      properties:
+                        port:
+                          description: Port is the DNS port to intercept (optional, defaults to 53)
+                          type: integer
+                        protocol:
+                          description: |-
+                            Protocol determines which DNS protocols to disrupt (optional, defaults to both)
+                            Supported values: udp, tcp, both
+                          type: string
+                        records:
+                          description: Records defines the list of DNS records to fake/disrupt
+                          items:
+                            description: DNSRecord represents a single DNS record to fake
+                            properties:
+                              hostname:
+                                description: Hostname is the domain name to intercept (e.g., "app.datadoghq.com")
+                                type: string
+                              record:
+                                description: Record defines the DNS record configuration to return
+                                properties:
+                                  ttl:
+                                    description: TTL is the time-to-live for the record in seconds (optional, defaults to 0)
+                                    format: int32
+                                    type: integer
+                                  type:
+                                    description: |-
+                                      Type is the DNS record type
+                                      Supported values: A, AAAA, CNAME, MX, TXT, SRV
+                                    type: string
+                                  value:
+                                    description: |-
+                                      Value is the record value(s)
+                                      For A: comma-separated IPv4 addresses or special values (NXDOMAIN, DROP, SERVFAIL, RANDOM)
+                                      For AAAA: comma-separated IPv6 addresses or special values (NXDOMAIN, DROP, SERVFAIL, RANDOM)
+                                      For CNAME: target hostname
+                                      For MX: comma-separated "priority hostname" pairs (e.g., "10 mail.example.com,20 mail2.example.com")
+                                      For TXT: text content
+                                      For SRV: comma-separated "priority weight port target" tuples (e.g., "10 60 5060 sipserver.example.com")
+                                    type: string
+                                required:
+                                  - type
+                                  - value
+                                type: object
+                            required:
+                              - hostname
+                              - record
+                            type: object
+                          minItems: 1
+                          type: array
+                      required:
+                        - records
+                      type: object
                     dryRun:
                       type: boolean
                     duration:

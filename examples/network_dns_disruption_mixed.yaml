@@ -1,0 +1,64 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2026 Datadog, Inc.
+
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: dns-mixed-records
+  namespace: chaos-demo
+spec:
+  level: pod
+  selector:
+    service: demo-curl
+  count: 1
+  duration: 15m
+  dns:
+    records:
+      # A record with multiple IPs for load balancing simulation
+      - hostname: www.example.com
+        record:
+          type: A
+          value: "192.168.1.10,192.168.1.11,192.168.1.12"
+          ttl: 60
+
+      # IPv6 record
+#      - hostname: www.example.com
+#        record:
+#          type: AAAA
+#          value: "2001:db8::1,2001:db8::2"
+#          ttl: 60
+
+      # Redirect www.example.com to another hostname
+#      - hostname: www.example.com
+#        record:
+#          type: CNAME
+#          value: "www.google.com"
+#          ttl: 300
+
+      # MX records for mail server configuration
+#      - hostname: example.com
+#        record:
+#          type: MX
+#          value: "10 mail1.example.com,20 mail2.example.com"
+#          ttl: 3600
+
+      # TXT record for verification
+#      - hostname: _verification.example.com
+#        record:
+#          type: TXT
+#          value: "verification-token-12345"
+#          ttl: 300
+
+      # SRV record for service discovery
+#      - hostname: _http._tcp.example.com
+#        record:
+#          type: SRV
+#          value: "10 60 8080 server1.example.com,20 40 8080 server2.example.com"
+#          ttl: 600
+
+    # Optional: specify non-standard DNS port
+    port: 53
+    # Optional: protocol (udp, tcp, or both)
+    protocol: both
