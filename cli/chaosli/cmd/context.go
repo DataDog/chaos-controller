@@ -126,7 +126,7 @@ func showPods(pods v1.PodList) []v1.Pod {
 
 func showNodes(nodes v1.NodeList) []v1.Node {
 	targetsShow := []string{}
-	targetsAll := []v1.Node{}
+	targetsAll := make([]v1.Node, 0, len(nodes.Items))
 
 	for _, node := range nodes.Items {
 		if len(targetsShow) < maxtargetshow {

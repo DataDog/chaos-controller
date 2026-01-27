@@ -261,23 +261,23 @@ func (d *DisruptionCron) emitEvent(eventReason EventReason) {
 }
 
 func (d *DisruptionCron) validateDisruptionCronName() error {
-	if len(d.ObjectMeta.Name) == 0 {
+	if len(d.Name) == 0 {
 		return errors.New("disruption cron name must be specified")
 	}
 
-	if len(d.ObjectMeta.Name) > validationutils.DNS1035LabelMaxLength-16 {
+	if len(d.Name) > validationutils.DNS1035LabelMaxLength-16 {
 		// The disruption name length is 63 character like all Kubernetes objects
 		// (which must fit in a DNS subdomain). The disruption cron controller appends
 		// a 16-character prefix (`disruption-cron-`) when creating
 		// a disruption. The disruption name length limit is 63 characters.
 		// Therefore disruption cron names must have length <= 63-16=47.
 		// If we don't validate this here, then disruption creation will fail later.
-		return fmt.Errorf("disruption cron name exceeds maximum length: must be no more than 47 characters, currently %d", len(d.ObjectMeta.Name))
+		return fmt.Errorf("disruption cron name exceeds maximum length: must be no more than 47 characters, currently %d", len(d.Name))
 	}
 
 	// reject disruption crons with a name which would not be a valid label value
 	// according to https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set
-	if _, err := labels.Parse(fmt.Sprintf("name=%s", d.ObjectMeta.Name)); err != nil {
+	if _, err := labels.Parse(fmt.Sprintf("name=%s", d.Name)); err != nil {
 		return fmt.Errorf("disruption cron name must follow Kubernetes label format: %w", err)
 	}
 

@@ -216,8 +216,8 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 					tagutil.FormatTag(tagutil.DisruptionNameKey, instance.Name),
 					tagutil.FormatTag(tagutil.DisruptionNamespaceKey, instance.Namespace),
 				}
-				r.handleMetricSinkError(r.MetricsSink.MetricCleanupDuration(time.Since(instance.ObjectMeta.DeletionTimestamp.Time), tags))
-				r.handleMetricSinkError(r.MetricsSink.MetricDisruptionCompletedDuration(time.Since(instance.ObjectMeta.CreationTimestamp.Time), tags))
+				r.handleMetricSinkError(r.MetricsSink.MetricCleanupDuration(time.Since(instance.DeletionTimestamp.Time), tags))
+				r.handleMetricSinkError(r.MetricsSink.MetricDisruptionCompletedDuration(time.Since(instance.CreationTimestamp.Time), tags))
 				r.emitKindCountMetrics(instance)
 
 				// close the ongoing disruption tracing Span
@@ -356,7 +356,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 		// send injection duration metric representing the time it took to fully inject the disruption until its creation
 		r.handleMetricSinkError(
-			r.MetricsSink.MetricInjectDuration(time.Since(instance.ObjectMeta.CreationTimestamp.Time),
+			r.MetricsSink.MetricInjectDuration(time.Since(instance.CreationTimestamp.Time),
 				[]string{
 					tagutil.FormatTag(tagutil.DisruptionNameKey, instance.Name),
 					tagutil.FormatTag(tagutil.DisruptionNamespaceKey, instance.Namespace),
@@ -1127,7 +1127,7 @@ func (r *DisruptionReconciler) ReportMetrics(ctx context.Context) {
 			chaosPodsCount += len(chaosPods)
 
 			r.handleMetricSinkError(r.MetricsSink.MetricDisruptionOngoingDuration(
-				time.Since(d.ObjectMeta.CreationTimestamp.Time),
+				time.Since(d.CreationTimestamp.Time),
 				[]string{
 					tagutil.FormatTag(tagutil.DisruptionNameKey, d.Name),
 					tagutil.FormatTag(tagutil.DisruptionNamespaceKey, d.Namespace),

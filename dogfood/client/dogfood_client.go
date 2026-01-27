@@ -109,7 +109,7 @@ func main() {
 	// create and eventually close connection
 	fmt.Printf("connecting to %v...\n", serverAddr)
 
-	var opts []grpc.DialOption
+	opts := make([]grpc.DialOption, 0, 1)
 	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 
 	conn, err := grpc.NewClient(serverAddr, opts...)

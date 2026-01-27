@@ -265,7 +265,7 @@ func (d DisruptionTargetHandler) findNotifiableEvents(eventsToSend map[v1beta1.E
 					tags.TargetNameKey, targetName,
 					tags.ReasonKey, event.Reason,
 					tags.MessageKey, event.Message,
-					tags.TimestampKey, event.LastTimestamp.Time.Unix(),
+					tags.TimestampKey, event.LastTimestamp.Unix(),
 				)
 			case event.Reason == "Started":
 				if recoverTimestamp == nil {
@@ -278,7 +278,7 @@ func (d DisruptionTargetHandler) findNotifiableEvents(eventsToSend map[v1beta1.E
 					tags.TargetNameKey, targetName,
 					tags.ReasonKey, event.Reason,
 					tags.MessageKey, event.Message,
-					tags.TimestampKey, event.LastTimestamp.Time.Unix(),
+					tags.TimestampKey, event.LastTimestamp.Unix(),
 				)
 			case event.Reason == "Killing" && strings.Contains(event.Message, "Stopping container") && eventsToSend[v1beta1.EventTargetContainerWarningState]:
 				// this event indicates a safe killing of a container (can occur when we rollout or manually delete a pod for example)
@@ -293,7 +293,7 @@ func (d DisruptionTargetHandler) findNotifiableEvents(eventsToSend map[v1beta1.E
 					tags.TargetNameKey, targetName,
 					tags.ReasonKey, event.Reason,
 					tags.MessageKey, event.Message,
-					tags.TimestampKey, event.LastTimestamp.Time.Unix(),
+					tags.TimestampKey, event.LastTimestamp.Unix(),
 				)
 			} else if event.Reason == "NodeReady" {
 				if recoverTimestamp == nil {
@@ -306,7 +306,7 @@ func (d DisruptionTargetHandler) findNotifiableEvents(eventsToSend map[v1beta1.E
 					tags.TargetNameKey, targetName,
 					tags.ReasonKey, event.Reason,
 					tags.MessageKey, event.Message,
-					tags.TimestampKey, event.LastTimestamp.Time.Unix(),
+					tags.TimestampKey, event.LastTimestamp.Unix(),
 				)
 			}
 		}

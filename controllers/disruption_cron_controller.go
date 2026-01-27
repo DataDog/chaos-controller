@@ -216,8 +216,8 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	// Add to history, then ensure only the last MaxHistoryLen items are kept
 	instance.Status.History = append(instance.Status.History, chaosv1beta1.DisruptionCronTrigger{
-		Name:      instance.ObjectMeta.Name,
-		Kind:      instance.TypeMeta.Kind,
+		Name:      instance.Name,
+		Kind:      instance.Kind,
 		CreatedAt: *instance.Status.LastScheduleTime,
 	})
 
@@ -346,7 +346,7 @@ func (r *DisruptionCronReconciler) getNextSchedule(instance *chaosv1beta1.Disrup
 	if instance.Status.LastScheduleTime != nil {
 		earliestTime = instance.Status.LastScheduleTime.Time
 	} else {
-		earliestTime = instance.ObjectMeta.CreationTimestamp.Time
+		earliestTime = instance.CreationTimestamp.Time
 	}
 
 	if earliestTime.After(now) {

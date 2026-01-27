@@ -106,11 +106,10 @@ func (s GRPCDisruptionSpec) Validate() (retErr error) {
 
 // GenerateArgs generates injection pod arguments for the given spec
 func (s GRPCDisruptionSpec) GenerateArgs() []string {
-	args := []string{
-		"grpc-disruption",
-	}
+	args := make([]string, 1, 3+len(s.Endpoints))
+	args[0] = "grpc-disruption"
 
-	endpointAlterationArgs := []string{}
+	endpointAlterationArgs := make([]string, 0, len(s.Endpoints))
 
 	for _, endptAlt := range s.Endpoints {
 		var alterationType, alterationValue string
@@ -150,13 +149,13 @@ func (s GRPCDisruptionSpec) GenerateArgs() []string {
 }
 
 func (s GRPCDisruptionSpec) Explain() []string {
-	explanation := []string{"",
-		"spec.grpc will activate the chaos interceptor on the targeted grpc server, replacing responses with specified errors.",
-		"This disruption type can only work on grpc servers, not on the clients, " +
-			"and requires [the server to cooperate by installing the chaos interceptor]" +
-			"(https://github.com/DataDog/chaos-controller/blob/main/docs/grpc_disruption/instructions.md)",
-		"The following endpoints will be intercepted:",
-	}
+	explanation := make([]string, 4, 4+len(s.Endpoints))
+	explanation[0] = ""
+	explanation[1] = "spec.grpc will activate the chaos interceptor on the targeted grpc server, replacing responses with specified errors."
+	explanation[2] = "This disruption type can only work on grpc servers, not on the clients, " +
+		"and requires [the server to cooperate by installing the chaos interceptor]" +
+		"(https://github.com/DataDog/chaos-controller/blob/main/docs/grpc_disruption/instructions.md)"
+	explanation[3] = "The following endpoints will be intercepted:"
 
 	for _, endpt := range s.Endpoints {
 		var spoof string

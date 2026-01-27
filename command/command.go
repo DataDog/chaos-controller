@@ -59,11 +59,11 @@ type cmd struct {
 }
 
 func (c *cmd) PID() int {
-	if c == nil || c.Cmd == nil || c.Cmd.Process == nil {
+	if c == nil || c.Cmd == nil || c.Process == nil {
 		return process.NotFoundProcessPID
 	}
 
-	return c.Cmd.Process.Pid
+	return c.Process.Pid
 }
 
 func (c *cmd) ExitCode() int {
@@ -71,7 +71,7 @@ func (c *cmd) ExitCode() int {
 		return NotFoundProcessExitCode
 	}
 
-	return c.Cmd.ProcessState.ExitCode()
+	return c.ProcessState.ExitCode()
 }
 
 func (c *cmd) DryRun() bool {
@@ -135,13 +135,13 @@ func (w *backgroundCmd) Start() error {
 	}
 
 	if err := w.Cmd.Start(); err != nil {
-		return fmt.Errorf("unable to exec command '%s': %w", w.Cmd.String(), err)
+		return fmt.Errorf("unable to exec command '%s': %w", w.String(), err)
 	}
 
 	chErr := make(chan error, 1)
 
 	go func() {
-		chErr <- w.Cmd.Wait()
+		chErr <- w.Wait()
 	}()
 
 	// Here we want to provide a small time for command to bootstrap
@@ -154,9 +154,9 @@ func (w *backgroundCmd) Start() error {
 		}
 	}
 
-	w.pid = w.Cmd.PID()
+	w.pid = w.PID()
 	if w.pid == process.NotFoundProcessPID {
-		return fmt.Errorf("no process created, processState exit code is %v", w.Cmd.ExitCode())
+		return fmt.Errorf("no process created, processState exit code is %v", w.ExitCode())
 	}
 
 	w.err = chErr
