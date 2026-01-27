@@ -46,7 +46,7 @@ type DisruptionArgs struct {
 
 // CreateCmdArgs is a helper function generating common and global args and appending them to the given args array
 func (d DisruptionArgs) CreateCmdArgs(args []string) []string {
-	formattedTargetContainers := []string{}
+	formattedTargetContainers := make([]string, 0, len(d.TargetContainers))
 
 	for name, id := range d.TargetContainers {
 		f := fmt.Sprintf("%s;%s", name, id)

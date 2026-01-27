@@ -933,7 +933,7 @@ func getPodResourceVersion() (string, error) {
 func updateTargetContainersAndDetectChange(pod v1.Pod) (bool, error) {
 	var err error
 	// transform map of targetContainer info (name, id) to only an array of names
-	targetContainerNames := []string{}
+	targetContainerNames := make([]string, 0, len(disruptionArgs.TargetContainers))
 	for name := range disruptionArgs.TargetContainers {
 		targetContainerNames = append(targetContainerNames, name)
 	}

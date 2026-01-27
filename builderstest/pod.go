@@ -87,7 +87,7 @@ func (p *PodBuilder) Parent() PodsBuilder {
 
 // TerminatedWith sets the termination state of the container in the Pod to a terminated state with the specified exit code.
 func (p *PodBuilder) TerminatedWith(exitCode int32) *PodBuilder {
-	p.Pod.Status.ContainerStatuses[0].State.Terminated = &v1.ContainerStateTerminated{
+	p.Status.ContainerStatuses[0].State.Terminated = &v1.ContainerStateTerminated{
 		ExitCode: exitCode,
 	}
 

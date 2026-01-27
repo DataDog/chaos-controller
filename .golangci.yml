@@ -71,6 +71,9 @@ linters:
       - linters:
           - revive
         text: 'unused-parameter:|and that stutters;|unexported-return:'
+      - linters:
+          - revive
+        text: 'var-naming: avoid (package names that conflict with Go standard library package names|meaningless package names)'
       # staticcheck exclusions (was stylecheck in v1)
       - linters:
           - staticcheck

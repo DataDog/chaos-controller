@@ -242,10 +242,7 @@ func (s *NetworkHTTPFilters) validatePaths(retErr error) error {
 		count int
 	})
 
-	isMultiplePath := false
-	if len(s.Paths) > 1 {
-		isMultiplePath = true
-	}
+	isMultiplePath := len(s.Paths) > 1
 
 	for _, path := range s.Paths {
 		visitedPath, isVisited := visitedPaths[path]

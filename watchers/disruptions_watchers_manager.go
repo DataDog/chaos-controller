@@ -60,7 +60,7 @@ var watchersNames = []WatcherName{
 // CreateAllWatchers creates all the Watchers associated with the given Disruption.
 func (d disruptionsWatchersManager) CreateAllWatchers(ctx context.Context, disruption *v1beta1.Disruption, watcherManagerMock Manager, cacheMock k8scontrollercache.Cache) error {
 	// Check that the disruption object has a name and namespace
-	if disruption.ObjectMeta.Name == "" || disruption.ObjectMeta.Namespace == "" {
+	if disruption.Name == "" || disruption.Namespace == "" {
 		return fmt.Errorf("the disruption is not valid. It should contain a name and a namespace")
 	}
 
@@ -202,8 +202,8 @@ func (d disruptionsWatchersManager) addWatcher(disruption *v1beta1.Disruption, w
 
 func getDisruptionNamespacedName(disruption *v1beta1.Disruption) types.NamespacedName {
 	return types.NamespacedName{
-		Namespace: disruption.ObjectMeta.Namespace,
-		Name:      disruption.ObjectMeta.Name,
+		Namespace: disruption.Namespace,
+		Name:      disruption.Name,
 	}
 }
 

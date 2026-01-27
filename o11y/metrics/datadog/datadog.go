@@ -84,7 +84,9 @@ func (d Sink) GetPrefix() string {
 // the `succeed` bool argument is false if there was an error while injecting.
 func (d Sink) MetricInjected(succeed bool, kind string, tags []string) error {
 	status := boolToStatus(succeed)
-	t := []string{tagutil.FormatTag(tagutil.StatusKey, status), tagutil.FormatTag(tagutil.KindKey, kind)}
+	t := make([]string, 2, 2+len(tags))
+	t[0] = tagutil.FormatTag(tagutil.StatusKey, status)
+	t[1] = tagutil.FormatTag(tagutil.KindKey, kind)
 	t = append(t, tags...)
 
 	return d.metricWithStatus(d.prefix+"injected", t)
@@ -95,7 +97,9 @@ func (d Sink) MetricInjected(succeed bool, kind string, tags []string) error {
 // if the chaos-injector pod is performing any injection after its first, i.e., when using the pulse feature
 func (d Sink) MetricReinjected(succeed bool, kind string, tags []string) error {
 	status := boolToStatus(succeed)
-	t := []string{tagutil.FormatTag(tagutil.StatusKey, status), tagutil.FormatTag(tagutil.KindKey, kind)}
+	t := make([]string, 2, 2+len(tags))
+	t[0] = tagutil.FormatTag(tagutil.StatusKey, status)
+	t[1] = tagutil.FormatTag(tagutil.KindKey, kind)
 	t = append(t, tags...)
 
 	return d.metricWithStatus(d.prefix+"reinjected", t)
@@ -105,7 +109,9 @@ func (d Sink) MetricReinjected(succeed bool, kind string, tags []string) error {
 // but expects to reinject, i.e., when using the spec.pulse feature
 func (d Sink) MetricCleanedForReinjection(succeed bool, kind string, tags []string) error {
 	status := boolToStatus(succeed)
-	t := []string{tagutil.FormatTag(tagutil.StatusKey, status), tagutil.FormatTag(tagutil.KindKey, kind)}
+	t := make([]string, 2, 2+len(tags))
+	t[0] = tagutil.FormatTag(tagutil.StatusKey, status)
+	t[1] = tagutil.FormatTag(tagutil.KindKey, kind)
 	t = append(t, tags...)
 
 	return d.metricWithStatus(d.prefix+"cleaned_for_reinjection", t)
@@ -115,7 +121,9 @@ func (d Sink) MetricCleanedForReinjection(succeed bool, kind string, tags []stri
 // and does not intend to re-inject.
 func (d Sink) MetricCleaned(succeed bool, kind string, tags []string) error {
 	status := boolToStatus(succeed)
-	t := []string{tagutil.FormatTag(tagutil.StatusKey, status), tagutil.FormatTag(tagutil.KindKey, kind)}
+	t := make([]string, 2, 2+len(tags))
+	t[0] = tagutil.FormatTag(tagutil.StatusKey, status)
+	t[1] = tagutil.FormatTag(tagutil.KindKey, kind)
 	t = append(t, tags...)
 
 	return d.metricWithStatus(d.prefix+"cleaned", t)

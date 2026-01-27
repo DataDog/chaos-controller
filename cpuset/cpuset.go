@@ -198,7 +198,7 @@ func (s CPUSet) Difference(s2 CPUSet) CPUSet {
 // ToSlice returns a slice of integers that contains all elements from
 // this set.
 func (s CPUSet) ToSlice() []int {
-	result := []int{}
+	result := make([]int, 0, len(s.elems))
 
 	for cpu := range s.elems {
 		result = append(result, cpu)
@@ -212,7 +212,7 @@ func (s CPUSet) ToSlice() []int {
 // ToSliceNoSort returns a slice of integers that contains all elements from
 // this set.
 func (s CPUSet) ToSliceNoSort() []int {
-	result := []int{}
+	result := make([]int, 0, len(s.elems))
 
 	for cpu := range s.elems {
 		result = append(result, cpu)
