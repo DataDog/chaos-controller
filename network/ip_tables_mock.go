@@ -256,9 +256,9 @@ func (_c *IPTablesMock_MarkClassID_Call) RunAndReturn(run func(string, string) e
 	return _c
 }
 
-// RedirectTo provides a mock function with given fields: protocol, port, destinationIP
-func (_m *IPTablesMock) RedirectTo(protocol string, port string, destinationIP string) error {
-	ret := _m.Called(protocol, port, destinationIP)
+// RedirectTo provides a mock function with given fields: protocol, port, destination
+func (_m *IPTablesMock) RedirectTo(protocol string, port string, destination string) error {
+	ret := _m.Called(protocol, port, destination)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RedirectTo")
@@ -266,7 +266,7 @@ func (_m *IPTablesMock) RedirectTo(protocol string, port string, destinationIP s
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(string, string, string) error); ok {
-		r0 = rf(protocol, port, destinationIP)
+		r0 = rf(protocol, port, destination)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -282,12 +282,12 @@ type IPTablesMock_RedirectTo_Call struct {
 // RedirectTo is a helper method to define mock.On call
 //   - protocol string
 //   - port string
-//   - destinationIP string
-func (_e *IPTablesMock_Expecter) RedirectTo(protocol interface{}, port interface{}, destinationIP interface{}) *IPTablesMock_RedirectTo_Call {
-	return &IPTablesMock_RedirectTo_Call{Call: _e.mock.On("RedirectTo", protocol, port, destinationIP)}
+//   - destination string
+func (_e *IPTablesMock_Expecter) RedirectTo(protocol interface{}, port interface{}, destination interface{}) *IPTablesMock_RedirectTo_Call {
+	return &IPTablesMock_RedirectTo_Call{Call: _e.mock.On("RedirectTo", protocol, port, destination)}
 }
 
-func (_c *IPTablesMock_RedirectTo_Call) Run(run func(protocol string, port string, destinationIP string)) *IPTablesMock_RedirectTo_Call {
+func (_c *IPTablesMock_RedirectTo_Call) Run(run func(protocol string, port string, destination string)) *IPTablesMock_RedirectTo_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(string), args[1].(string), args[2].(string))
 	})

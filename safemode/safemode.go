@@ -70,6 +70,12 @@ func AddAllSafemodeObjects(disruption v1beta1.Disruption, k8sClient client.Clien
 		safemodeList = append(safemodeList, &safemodeNode)
 	}
 
+	if disruption.Spec.DNS != nil {
+		safemodeDNS := DNS{}
+		safemodeDNS.Init(disruption, k8sClient)
+		safemodeList = append(safemodeList, &safemodeDNS)
+	}
+
 	return safemodeList
 }
 
