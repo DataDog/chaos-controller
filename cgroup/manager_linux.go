@@ -75,6 +75,7 @@ func (pkgManager) EnterPid(cgroupPaths map[string]string, pid int) error {
 			return err
 		}
 	}
+
 	return nil
 }
 
