@@ -70,7 +70,12 @@ func (pkgManager) PathExists(path string) bool {
 }
 
 func (pkgManager) EnterPid(cgroupPaths map[string]string, pid int) error {
-	return cgroups.EnterPid(cgroupPaths, pid)
+	for _, path := range cgroupPaths {
+		if err := cgroups.WriteCgroupProc(path, pid); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (pkgManager) ReadFile(dir, file string) (string, error) {
