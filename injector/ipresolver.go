@@ -37,7 +37,6 @@ func resolveHost(client network.DNSClient, host string, dnsStrategy string) ([]*
 			var resolvedIPs []net.IP
 
 			resolvedIPs, err = client.ResolveWithStrategy(host, dnsStrategy)
-
 			if err != nil {
 				return nil, fmt.Errorf("can't resolve the given host with the configured dns resolver: %w", err)
 			}

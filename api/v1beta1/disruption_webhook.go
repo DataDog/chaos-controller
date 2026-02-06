@@ -375,7 +375,6 @@ You first need to remove those chaos pods (and potentially their finalizers) to 
 		}
 
 		newHash, err = newDisruptionObj.Spec.Hash()
-
 		if err != nil {
 			return nil, fmt.Errorf("error getting new disruption hash: %w", err)
 		}

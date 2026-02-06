@@ -228,6 +228,7 @@ func (c dnsClient) resolve(hostName string, protocol string, resolvers []string)
 
 	for _, server := range resolvers {
 		var err error
+
 		response, _, err = client.Exchange(&dnsMessage, fmt.Sprintf("%s:53", server))
 
 		if response != nil && len(response.Answer) > 0 {

@@ -131,6 +131,7 @@ func (i *GRPCDisruptionInjector) Clean() error {
 	if i.config.State != Injected {
 		i.config.Log.Warnw("nothing to clean, disruption is not injected",
 			tags.StateKey, i.config.State)
+
 		return nil
 	}
 

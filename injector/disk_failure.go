@@ -45,8 +45,8 @@ func NewDiskFailureInjector(spec v1beta1.DiskFailureSpec, config DiskFailureInje
 
 	if config.BPFConfigInformer == nil {
 		var err error
-		config.BPFConfigInformer, err = ebpf.NewConfigInformer(config.Log, config.Disruption.DryRun, nil, nil, nil)
 
+		config.BPFConfigInformer, err = ebpf.NewConfigInformer(config.Log, config.Disruption.DryRun, nil, nil, nil)
 		if err != nil {
 			return nil, fmt.Errorf("could not create an instance of eBPF config informer for the disk failure disruption: %w", err)
 		}

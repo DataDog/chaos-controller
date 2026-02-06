@@ -189,7 +189,6 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	// Create disruption for current run
 	disruption, err := CreateDisruptionFromTemplate(ctx, r.Client, r.Scheme, instance, &instance.Spec.TargetResource, &instance.Spec.DisruptionTemplate, missedRun)
-
 	if err != nil {
 		r.log.Warnw("unable to construct disruption from template", tagutil.ErrorKey, err)
 		// Don't requeue until update to the spec is received
@@ -257,8 +256,8 @@ func (r *DisruptionCronReconciler) updateLastScheduleTime(ctx context.Context, i
 // - error: Represents any error that occurred during the execution of the function.
 func (r *DisruptionCronReconciler) updateTargetResourcePreviouslyMissing(ctx context.Context, instance *chaosv1beta1.DisruptionCron) (bool, bool, error) {
 	disruptionCronDeleted := false
-	targetResourceExists, err := CheckTargetResourceExists(ctx, r.Client, &instance.Spec.TargetResource, instance.Namespace)
 
+	targetResourceExists, err := CheckTargetResourceExists(ctx, r.Client, &instance.Spec.TargetResource, instance.Namespace)
 	if err != nil {
 		return targetResourceExists, disruptionCronDeleted, err
 	}
@@ -336,7 +335,6 @@ func (r *DisruptionCronReconciler) handleTargetResourceNowPresent(ctx context.Co
 // It returns the last missed schedule time, the next scheduled time, and any error encountered during parsing the schedule.
 func (r *DisruptionCronReconciler) getNextSchedule(instance *chaosv1beta1.DisruptionCron, now time.Time) (lastMissed time.Time, next time.Time, err error) {
 	sched, err := cron.ParseStandard(instance.Spec.Schedule)
-
 	if err != nil {
 		r.log.Errorw("Unparseable schedule", tagutil.ScheduleKey, instance.Spec.Schedule, tagutil.ErrorKey, err)
 		return time.Time{}, time.Time{}, err

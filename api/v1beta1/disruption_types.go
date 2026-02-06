@@ -926,6 +926,7 @@ func (s DisruptionSpec) Explain() []string {
 	}
 
 	var explanation []string
+
 	explanation = append(explanation, "Here's our best explanation of what this spec will do when run:")
 
 	durationExpl := s.Duration.Duration().String()

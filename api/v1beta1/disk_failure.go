@@ -71,8 +71,8 @@ func (s *DiskFailureSpec) validateProbability() error {
 	}
 
 	probabilityStr := strings.TrimSuffix(s.Probability, "%")
-	probabilityInt, err := strconv.Atoi(probabilityStr)
 
+	probabilityInt, err := strconv.Atoi(probabilityStr)
 	if err != nil {
 		return fmt.Errorf("the probability percentage of the disk failure disruption can't be converted to int: %w", err)
 	}

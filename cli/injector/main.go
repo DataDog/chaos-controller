@@ -114,6 +114,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&disruptionArgs.TargetNodeName, "log-context-target-node-name", "", "Log value: node hosting the current target pod")
 
 	_ = cobra.MarkFlagRequired(rootCmd.PersistentFlags(), "level")
+
 	cobra.OnInitialize(initLogger)
 	cobra.OnInitialize(initMetricsSink)
 	cobra.OnInitialize(initExitSignalsHandler)
@@ -340,6 +341,7 @@ func initExitSignalsHandler() {
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 
 	var injectorCancelFunc context.CancelFunc
+
 	injectorCtx, injectorCancelFunc = context.WithCancel(context.Background())
 
 	// In case the inject phase manages to take more than the disruption duration + activeDeadlineSeconds
@@ -535,6 +537,7 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 
 	if !disruptionArgs.NotInjectedBefore.IsZero() {
 		log.Infow("waiting for synchronized start to begin", tags.TimeUntilNotInjectedBeforeKey, time.Until(disruptionArgs.NotInjectedBefore).String())
+
 		select {
 		case sig := <-signals:
 			log.Infow("an exit signal has been received", tags.SignalKey, sig.String())
@@ -547,6 +550,7 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 
 	if disruptionArgs.PulseInitialDelay > 0 {
 		log.Infow("waiting for initialDelay to pass", tags.InitialDelayKey, disruptionArgs.PulseInitialDelay)
+
 		select {
 		case <-time.After(disruptionArgs.PulseInitialDelay):
 			break
@@ -640,6 +644,7 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 				for range time.Tick(1 * time.Second) {
 					if _, err := processManager.Exists(int(parentPID)); err != nil {
 						log.Errorw("an error occurred when looking at parent process, it may no longer exists, exiting...", tags.ErrorKey, err)
+
 						signals <- os.Interrupt
 					}
 				}

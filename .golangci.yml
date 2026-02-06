@@ -27,6 +27,7 @@ linters:
     - unparam
     - unused
     - whitespace
+    - wsl_v5
   exclusions:
     generated: lax
     rules:

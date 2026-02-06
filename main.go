@@ -133,7 +133,6 @@ func main() {
 			CertDir: cfg.Controller.Webhook.CertDir,
 		}),
 	})
-
 	if err != nil {
 		logger.Fatalw("unable to start manager", tags.ErrorKey, err)
 	}
@@ -222,7 +221,6 @@ func main() {
 		ImagePullSecrets: cfg.Injector.ImagePullSecrets,
 		MetricsSink:      metricsSink,
 	})
-
 	if err != nil {
 		logger.Fatalw("error initializing ChaosPodService", tags.ErrorKey, err)
 	}

@@ -1133,6 +1133,7 @@ func (i *networkDisruptionInjector) handleFiltersForServices(interfaces []string
 	}
 
 	var ctx context.Context
+
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	i.serviceWatcherCancel = cancelFunc
 
@@ -1155,6 +1156,7 @@ func (i *networkDisruptionInjector) handleFiltersForHosts(interfaces []string, f
 	hosts.hostFilterMap = hostFilterMap
 
 	var ctx context.Context
+
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	i.hostWatcherCancel = cancelFunc
 
@@ -1237,7 +1239,6 @@ func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interf
 				}
 
 				filterMap, err := i.addFiltersForHosts(interfaces, changedHosts, flowid)
-
 				if err != nil {
 					hostWatcherLog.Errorw("error updating filters for hosts", tags.HostsKey, changedHosts, tags.ErrorKey, err)
 					continue
