@@ -311,8 +311,6 @@ github.com/docker/docker,github.com/docker/docker/api/types/time,Apache-2.0
 github.com/docker/docker,github.com/docker/docker/api/types/versions,Apache-2.0
 github.com/docker/docker,github.com/docker/docker/api/types/volume,Apache-2.0
 github.com/docker/docker,github.com/docker/docker/client,Apache-2.0
-github.com/docker/docker,github.com/docker/docker/internal/lazyregexp,Apache-2.0
-github.com/docker/docker,github.com/docker/docker/internal/multierror,Apache-2.0
 github.com/docker/go-connections,github.com/docker/go-connections/nat,Apache-2.0
 github.com/docker/go-connections,github.com/docker/go-connections/sockets,Apache-2.0
 github.com/docker/go-connections,github.com/docker/go-connections/tlsconfig,Apache-2.0
@@ -380,16 +378,6 @@ github.com/gorilla/websocket,github.com/gorilla/websocket,BSD-2-Clause
 github.com/hashicorp/errwrap,github.com/hashicorp/errwrap,MPL-2.0
 github.com/hashicorp/go-multierror,github.com/hashicorp/go-multierror,MPL-2.0
 github.com/hashicorp/go-version,github.com/hashicorp/go-version,MPL-2.0
-github.com/hashicorp/hcl,github.com/hashicorp/hcl,MPL-2.0
-github.com/hashicorp/hcl,github.com/hashicorp/hcl/hcl/ast,MPL-2.0
-github.com/hashicorp/hcl,github.com/hashicorp/hcl/hcl/parser,MPL-2.0
-github.com/hashicorp/hcl,github.com/hashicorp/hcl/hcl/printer,MPL-2.0
-github.com/hashicorp/hcl,github.com/hashicorp/hcl/hcl/scanner,MPL-2.0
-github.com/hashicorp/hcl,github.com/hashicorp/hcl/hcl/strconv,MPL-2.0
-github.com/hashicorp/hcl,github.com/hashicorp/hcl/hcl/token,MPL-2.0
-github.com/hashicorp/hcl,github.com/hashicorp/hcl/json/parser,MPL-2.0
-github.com/hashicorp/hcl,github.com/hashicorp/hcl/json/scanner,MPL-2.0
-github.com/hashicorp/hcl,github.com/hashicorp/hcl/json/token,MPL-2.0
 github.com/inconshreveable/mousetrap,github.com/inconshreveable/mousetrap,Apache-2.0
 github.com/josharian/intern,github.com/josharian/intern,MIT
 github.com/json-iterator/go,github.com/json-iterator/go,MIT
@@ -408,7 +396,6 @@ github.com/leodido/go-urn,github.com/leodido/go-urn,MIT
 github.com/leodido/go-urn,github.com/leodido/go-urn/scim/schema,MIT
 github.com/liggitt/tabwriter,github.com/liggitt/tabwriter,BSD-3-Clause
 github.com/lufia/plan9stats,github.com/lufia/plan9stats,BSD-3-Clause
-github.com/magiconair/properties,github.com/magiconair/properties,BSD-2-Clause
 github.com/mailru/easyjson,github.com/mailru/easyjson/buffer,MIT
 github.com/mailru/easyjson,github.com/mailru/easyjson/jlexer,MIT
 github.com/mailru/easyjson,github.com/mailru/easyjson/jwriter,MIT
@@ -417,7 +404,6 @@ github.com/mattn/go-isatty,github.com/mattn/go-isatty,MIT
 github.com/mgutz/ansi,github.com/mgutz/ansi,MIT
 github.com/miekg/dns,github.com/miekg/dns,BSD-3-Clause
 github.com/mitchellh/go-homedir,github.com/mitchellh/go-homedir,MIT
-github.com/mitchellh/mapstructure,github.com/mitchellh/mapstructure,MIT
 github.com/moby/docker-image-spec,github.com/moby/docker-image-spec/specs-go/v1,Apache-2.0
 github.com/moby/locker,github.com/moby/locker,Apache-2.0
 github.com/moby/spdystream,github.com/moby/spdystream,Apache-2.0
@@ -437,6 +423,7 @@ github.com/onsi/ginkgo/v2,github.com/onsi/ginkgo/v2,MIT
 github.com/onsi/ginkgo/v2,github.com/onsi/ginkgo/v2/config,MIT
 github.com/onsi/ginkgo/v2,github.com/onsi/ginkgo/v2/formatter,MIT
 github.com/onsi/ginkgo/v2,github.com/onsi/ginkgo/v2/ginkgo,MIT
+github.com/onsi/ginkgo/v2,github.com/onsi/ginkgo/v2/ginkgo/automaxprocs,MIT
 github.com/onsi/ginkgo/v2,github.com/onsi/ginkgo/v2/ginkgo/build,MIT
 github.com/onsi/ginkgo/v2,github.com/onsi/ginkgo/v2/ginkgo/command,MIT
 github.com/onsi/ginkgo/v2,github.com/onsi/ginkgo/v2/ginkgo/generators,MIT
@@ -450,6 +437,7 @@ github.com/onsi/ginkgo/v2,github.com/onsi/ginkgo/v2/internal,MIT
 github.com/onsi/ginkgo/v2,github.com/onsi/ginkgo/v2/internal/global,MIT
 github.com/onsi/ginkgo/v2,github.com/onsi/ginkgo/v2/internal/interrupt_handler,MIT
 github.com/onsi/ginkgo/v2,github.com/onsi/ginkgo/v2/internal/parallel_support,MIT
+github.com/onsi/ginkgo/v2,github.com/onsi/ginkgo/v2/internal/reporters,MIT
 github.com/onsi/ginkgo/v2,github.com/onsi/ginkgo/v2/internal/testingtproxy,MIT
 github.com/onsi/ginkgo/v2,github.com/onsi/ginkgo/v2/reporters,MIT
 github.com/onsi/ginkgo/v2,github.com/onsi/ginkgo/v2/types,MIT
@@ -519,7 +507,6 @@ github.com/richardartoul/molecule,github.com/richardartoul/molecule/src/codec,MI
 github.com/richardartoul/molecule,github.com/richardartoul/molecule/src/protowire,MIT
 github.com/robfig/cron,github.com/robfig/cron,MIT
 github.com/sagikazarmark/locafero,github.com/sagikazarmark/locafero,MIT
-github.com/sagikazarmark/slog-shim,github.com/sagikazarmark/slog-shim,BSD-3-Clause
 github.com/secure-systems-lab/go-securesystemslib,github.com/secure-systems-lab/go-securesystemslib/cjson,MIT
 github.com/shirou/gopsutil/v4,github.com/shirou/gopsutil/v4/common,BSD-3-Clause
 github.com/shirou/gopsutil/v4,github.com/shirou/gopsutil/v4/cpu,BSD-3-Clause
@@ -545,11 +532,7 @@ github.com/spf13/cast,github.com/spf13/cast,MIT
 github.com/spf13/cobra,github.com/spf13/cobra,Apache-2.0
 github.com/spf13/pflag,github.com/spf13/pflag,BSD-3-Clause
 github.com/spf13/viper,github.com/spf13/viper,MIT
-github.com/spf13/viper,github.com/spf13/viper/internal/encoding,MIT
 github.com/spf13/viper,github.com/spf13/viper/internal/encoding/dotenv,MIT
-github.com/spf13/viper,github.com/spf13/viper/internal/encoding/hcl,MIT
-github.com/spf13/viper,github.com/spf13/viper/internal/encoding/ini,MIT
-github.com/spf13/viper,github.com/spf13/viper/internal/encoding/javaproperties,MIT
 github.com/spf13/viper,github.com/spf13/viper/internal/encoding/json,MIT
 github.com/spf13/viper,github.com/spf13/viper/internal/encoding/toml,MIT
 github.com/spf13/viper,github.com/spf13/viper/internal/encoding/yaml,MIT
@@ -611,6 +594,7 @@ go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp,go.opentelemetry.i
 go.opentelemetry.io/otel,go.opentelemetry.io/otel,Apache-2.0
 go.opentelemetry.io/otel,go.opentelemetry.io/otel/attribute,Apache-2.0
 go.opentelemetry.io/otel,go.opentelemetry.io/otel/attribute/internal,Apache-2.0
+go.opentelemetry.io/otel,go.opentelemetry.io/otel/attribute/internal/xxhash,Apache-2.0
 go.opentelemetry.io/otel,go.opentelemetry.io/otel/baggage,Apache-2.0
 go.opentelemetry.io/otel,go.opentelemetry.io/otel/codes,Apache-2.0
 go.opentelemetry.io/otel,go.opentelemetry.io/otel/internal/baggage,Apache-2.0
@@ -619,8 +603,8 @@ go.opentelemetry.io/otel,go.opentelemetry.io/otel/propagation,Apache-2.0
 go.opentelemetry.io/otel,go.opentelemetry.io/otel/semconv/v1.20.0,Apache-2.0
 go.opentelemetry.io/otel,go.opentelemetry.io/otel/semconv/v1.21.0,Apache-2.0
 go.opentelemetry.io/otel,go.opentelemetry.io/otel/semconv/v1.26.0,Apache-2.0
-go.opentelemetry.io/otel,go.opentelemetry.io/otel/semconv/v1.34.0,Apache-2.0
 go.opentelemetry.io/otel,go.opentelemetry.io/otel/semconv/v1.37.0,Apache-2.0
+go.opentelemetry.io/otel,go.opentelemetry.io/otel/semconv/v1.37.0/otelconv,Apache-2.0
 go.opentelemetry.io/otel/log,go.opentelemetry.io/otel/log,Apache-2.0
 go.opentelemetry.io/otel/log,go.opentelemetry.io/otel/log/embedded,Apache-2.0
 go.opentelemetry.io/otel/log,go.opentelemetry.io/otel/log/global,Apache-2.0
@@ -634,15 +618,12 @@ go.opentelemetry.io/otel/sdk,go.opentelemetry.io/otel/sdk/internal/env,Apache-2.
 go.opentelemetry.io/otel/sdk,go.opentelemetry.io/otel/sdk/internal/x,Apache-2.0
 go.opentelemetry.io/otel/sdk,go.opentelemetry.io/otel/sdk/resource,Apache-2.0
 go.opentelemetry.io/otel/sdk,go.opentelemetry.io/otel/sdk/trace,Apache-2.0
+go.opentelemetry.io/otel/sdk,go.opentelemetry.io/otel/sdk/trace/internal/x,Apache-2.0
 go.opentelemetry.io/otel/trace,go.opentelemetry.io/otel/trace,Apache-2.0
 go.opentelemetry.io/otel/trace,go.opentelemetry.io/otel/trace/embedded,Apache-2.0
 go.opentelemetry.io/otel/trace,go.opentelemetry.io/otel/trace/internal/telemetry,Apache-2.0
 go.opentelemetry.io/otel/trace,go.opentelemetry.io/otel/trace/noop,Apache-2.0
 go.uber.org/atomic,go.uber.org/atomic,MIT
-go.uber.org/automaxprocs,go.uber.org/automaxprocs,MIT
-go.uber.org/automaxprocs,go.uber.org/automaxprocs/internal/cgroups,MIT
-go.uber.org/automaxprocs,go.uber.org/automaxprocs/internal/runtime,MIT
-go.uber.org/automaxprocs,go.uber.org/automaxprocs/maxprocs,MIT
 go.uber.org/multierr,go.uber.org/multierr,MIT
 go.uber.org/zap,go.uber.org/zap,MIT
 go.uber.org/zap,go.uber.org/zap/buffer,MIT
@@ -657,12 +638,9 @@ go.uber.org/zap,go.uber.org/zap/zapcore,MIT
 go.uber.org/zap,go.uber.org/zap/zaptest,MIT
 go.uber.org/zap,go.uber.org/zap/zaptest/observer,MIT
 go.yaml.in/yaml/v2,go.yaml.in/yaml/v2,Apache-2.0
+go.yaml.in/yaml/v3,go.yaml.in/yaml/v3,Apache-2.0
 golang.org/x/crypto,golang.org/x/crypto/sha3,BSD-3-Clause
 golang.org/x/exp,golang.org/x/exp/constraints,BSD-3-Clause
-golang.org/x/exp,golang.org/x/exp/slices,BSD-3-Clause
-golang.org/x/exp,golang.org/x/exp/slog,BSD-3-Clause
-golang.org/x/exp,golang.org/x/exp/slog/internal,BSD-3-Clause
-golang.org/x/exp,golang.org/x/exp/slog/internal/buffer,BSD-3-Clause
 golang.org/x/mod,golang.org/x/mod/semver,BSD-3-Clause
 golang.org/x/net,golang.org/x/net/bpf,BSD-3-Clause
 golang.org/x/net,golang.org/x/net/context,BSD-3-Clause
@@ -752,7 +730,6 @@ google.golang.org/grpc,google.golang.org/grpc/balancer/endpointsharding,Apache-2
 google.golang.org/grpc,google.golang.org/grpc/balancer/grpclb/state,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/balancer/pickfirst,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/balancer/pickfirst/internal,Apache-2.0
-google.golang.org/grpc,google.golang.org/grpc/balancer/pickfirst/pickfirstleaf,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/balancer/roundrobin,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/binarylog/grpc_binarylog_v1,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/channelz,Apache-2.0
@@ -761,6 +738,7 @@ google.golang.org/grpc,google.golang.org/grpc/connectivity,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/credentials,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/credentials/insecure,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/encoding,Apache-2.0
+google.golang.org/grpc,google.golang.org/grpc/encoding/internal,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/encoding/proto,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/experimental/stats,Apache-2.0
 google.golang.org/grpc,google.golang.org/grpc/grpclog,Apache-2.0
@@ -900,7 +878,6 @@ k8s.io/api,k8s.io/api/flowcontrol/v1beta2,Apache-2.0
 k8s.io/api,k8s.io/api/flowcontrol/v1beta3,Apache-2.0
 k8s.io/api,k8s.io/api/imagepolicy/v1alpha1,Apache-2.0
 k8s.io/api,k8s.io/api/networking/v1,Apache-2.0
-k8s.io/api,k8s.io/api/networking/v1alpha1,Apache-2.0
 k8s.io/api,k8s.io/api/networking/v1beta1,Apache-2.0
 k8s.io/api,k8s.io/api/node/v1,Apache-2.0
 k8s.io/api,k8s.io/api/node/v1alpha1,Apache-2.0
@@ -910,6 +887,7 @@ k8s.io/api,k8s.io/api/policy/v1beta1,Apache-2.0
 k8s.io/api,k8s.io/api/rbac/v1,Apache-2.0
 k8s.io/api,k8s.io/api/rbac/v1alpha1,Apache-2.0
 k8s.io/api,k8s.io/api/rbac/v1beta1,Apache-2.0
+k8s.io/api,k8s.io/api/resource/v1,Apache-2.0
 k8s.io/api,k8s.io/api/resource/v1alpha3,Apache-2.0
 k8s.io/api,k8s.io/api/resource/v1beta1,Apache-2.0
 k8s.io/api,k8s.io/api/resource/v1beta2,Apache-2.0
@@ -928,10 +906,13 @@ k8s.io/apimachinery,k8s.io/apimachinery/pkg/api/meta,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/api/meta/testrestmapper,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/api/operation,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/api/resource,Apache-2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/api/safe,Apache-2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/api/validate,Apache-2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/api/validate/constraints,Apache-2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/api/validate/content,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/api/validation,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/apis/meta/internalversion,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/apis/meta/internalversion/scheme,Apache-2.0
-k8s.io/apimachinery,k8s.io/apimachinery/pkg/apis/meta/internalversion/validation,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/apis/meta/v1,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/apis/meta/v1/unstructured,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/apis/meta/v1/validation,Apache-2.0
@@ -1021,7 +1002,6 @@ k8s.io/client-go,k8s.io/client-go/applyconfigurations/imagepolicy/v1alpha1,Apach
 k8s.io/client-go,k8s.io/client-go/applyconfigurations/internal,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/applyconfigurations/meta/v1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/applyconfigurations/networking/v1,Apache-2.0
-k8s.io/client-go,k8s.io/client-go/applyconfigurations/networking/v1alpha1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/applyconfigurations/networking/v1beta1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/applyconfigurations/node/v1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/applyconfigurations/node/v1alpha1,Apache-2.0
@@ -1031,6 +1011,7 @@ k8s.io/client-go,k8s.io/client-go/applyconfigurations/policy/v1beta1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/applyconfigurations/rbac/v1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/applyconfigurations/rbac/v1alpha1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/applyconfigurations/rbac/v1beta1,Apache-2.0
+k8s.io/client-go,k8s.io/client-go/applyconfigurations/resource/v1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/applyconfigurations/resource/v1alpha3,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/applyconfigurations/resource/v1beta1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/applyconfigurations/resource/v1beta2,Apache-2.0
@@ -1091,7 +1072,6 @@ k8s.io/client-go,k8s.io/client-go/informers/flowcontrol/v1beta3,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/informers/internalinterfaces,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/informers/networking,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/informers/networking/v1,Apache-2.0
-k8s.io/client-go,k8s.io/client-go/informers/networking/v1alpha1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/informers/networking/v1beta1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/informers/node,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/informers/node/v1,Apache-2.0
@@ -1105,6 +1085,7 @@ k8s.io/client-go,k8s.io/client-go/informers/rbac/v1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/informers/rbac/v1alpha1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/informers/rbac/v1beta1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/informers/resource,Apache-2.0
+k8s.io/client-go,k8s.io/client-go/informers/resource/v1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/informers/resource/v1alpha3,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/informers/resource/v1beta1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/informers/resource/v1beta2,Apache-2.0
@@ -1191,8 +1172,6 @@ k8s.io/client-go,k8s.io/client-go/kubernetes/typed/flowcontrol/v1beta3,Apache-2.
 k8s.io/client-go,k8s.io/client-go/kubernetes/typed/flowcontrol/v1beta3/fake,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/kubernetes/typed/networking/v1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/kubernetes/typed/networking/v1/fake,Apache-2.0
-k8s.io/client-go,k8s.io/client-go/kubernetes/typed/networking/v1alpha1,Apache-2.0
-k8s.io/client-go,k8s.io/client-go/kubernetes/typed/networking/v1alpha1/fake,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/kubernetes/typed/networking/v1beta1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/kubernetes/typed/networking/v1beta1/fake,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/kubernetes/typed/node/v1,Apache-2.0
@@ -1211,6 +1190,8 @@ k8s.io/client-go,k8s.io/client-go/kubernetes/typed/rbac/v1alpha1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/kubernetes/typed/rbac/v1alpha1/fake,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/kubernetes/typed/rbac/v1beta1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/kubernetes/typed/rbac/v1beta1/fake,Apache-2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/resource/v1,Apache-2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/resource/v1/fake,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/kubernetes/typed/resource/v1alpha3,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/kubernetes/typed/resource/v1alpha3/fake,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/kubernetes/typed/resource/v1beta1,Apache-2.0
@@ -1262,7 +1243,6 @@ k8s.io/client-go,k8s.io/client-go/listers/flowcontrol/v1beta1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/listers/flowcontrol/v1beta2,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/listers/flowcontrol/v1beta3,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/listers/networking/v1,Apache-2.0
-k8s.io/client-go,k8s.io/client-go/listers/networking/v1alpha1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/listers/networking/v1beta1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/listers/node/v1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/listers/node/v1alpha1,Apache-2.0
@@ -1272,6 +1252,7 @@ k8s.io/client-go,k8s.io/client-go/listers/policy/v1beta1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/listers/rbac/v1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/listers/rbac/v1alpha1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/listers/rbac/v1beta1,Apache-2.0
+k8s.io/client-go,k8s.io/client-go/listers/resource/v1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/listers/resource/v1alpha3,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/listers/resource/v1beta1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/listers/resource/v1beta2,Apache-2.0
@@ -1325,7 +1306,6 @@ k8s.io/client-go,k8s.io/client-go/util/flowcontrol,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/util/homedir,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/util/jsonpath,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/util/keyutil,Apache-2.0
-k8s.io/client-go,k8s.io/client-go/util/watchlist,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/util/workqueue,Apache-2.0
 k8s.io/klog/v2,k8s.io/klog/v2,Apache-2.0
 k8s.io/klog/v2,k8s.io/klog/v2/internal/buffer,Apache-2.0
@@ -1402,10 +1382,9 @@ sigs.k8s.io/json,sigs.k8s.io/json,Apache-2.0
 sigs.k8s.io/json,sigs.k8s.io/json/internal/golang/encoding/json,Apache-2.0
 sigs.k8s.io/randfill,sigs.k8s.io/randfill,Apache-2.0
 sigs.k8s.io/randfill,sigs.k8s.io/randfill/bytesource,Apache-2.0
-sigs.k8s.io/structured-merge-diff/v4,sigs.k8s.io/structured-merge-diff/v4/fieldpath,Apache-2.0
-sigs.k8s.io/structured-merge-diff/v4,sigs.k8s.io/structured-merge-diff/v4/merge,Apache-2.0
-sigs.k8s.io/structured-merge-diff/v4,sigs.k8s.io/structured-merge-diff/v4/schema,Apache-2.0
-sigs.k8s.io/structured-merge-diff/v4,sigs.k8s.io/structured-merge-diff/v4/typed,Apache-2.0
-sigs.k8s.io/structured-merge-diff/v4,sigs.k8s.io/structured-merge-diff/v4/value,Apache-2.0
+sigs.k8s.io/structured-merge-diff/v6,sigs.k8s.io/structured-merge-diff/v6/fieldpath,Apache-2.0
+sigs.k8s.io/structured-merge-diff/v6,sigs.k8s.io/structured-merge-diff/v6/merge,Apache-2.0
+sigs.k8s.io/structured-merge-diff/v6,sigs.k8s.io/structured-merge-diff/v6/schema,Apache-2.0
+sigs.k8s.io/structured-merge-diff/v6,sigs.k8s.io/structured-merge-diff/v6/typed,Apache-2.0
+sigs.k8s.io/structured-merge-diff/v6,sigs.k8s.io/structured-merge-diff/v6/value,Apache-2.0
 sigs.k8s.io/yaml,sigs.k8s.io/yaml,Apache-2.0
-sigs.k8s.io/yaml,sigs.k8s.io/yaml/goyaml.v2,Apache-2.0
