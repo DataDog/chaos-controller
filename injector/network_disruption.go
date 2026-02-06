@@ -554,7 +554,8 @@ func (i *networkDisruptionInjector) applyOperations() error {
 	// depending on the network configuration, only one of those filters can be useful but we must add all of them
 	// those filters are only added if the related interface has been impacted by a disruption so far
 	// NOTE: those filters must be added after every other filters applied to the interface so they are used first
-	if i.config.Disruption.Level == types.DisruptionLevelPod {
+	switch i.config.Disruption.Level {
+	case types.DisruptionLevelPod:
 		// this filter allows the pod to communicate with the default route gateway IP
 		for _, defaultRoute := range defaultRoutes {
 			gatewayIP := &net.IPNet{
@@ -571,7 +572,7 @@ func (i *networkDisruptionInjector) applyOperations() error {
 		if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", "", nil, nodeIPNet, 0, 0, network.TCP, network.ConnStateUndefined, "1:1"); err != nil {
 			return fmt.Errorf("can't add the target pod node IP filter: %w", err)
 		}
-	} else if i.config.Disruption.Level == types.DisruptionLevelNode {
+	case types.DisruptionLevelNode:
 		// GENERIC SAFEGUARDS
 		// allow SSH connections on all interfaces (port 22/tcp)
 		if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", "", nil, nil, 22, 0, network.TCP, network.ConnStateUndefined, "1:1"); err != nil {

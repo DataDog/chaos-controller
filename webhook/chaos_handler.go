@@ -53,7 +53,7 @@ func (m *ChaosHandlerMutator) Handle(ctx context.Context, req admission.Request)
 	// the logged pod name will then be the pod prefix instead of the full name
 	podName := pod.Name
 	if podName == "" {
-		podName = pod.ObjectMeta.GenerateName
+		podName = pod.GenerateName
 	}
 
 	handlerTimeout := m.Timeout.String()

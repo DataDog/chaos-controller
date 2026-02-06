@@ -77,7 +77,7 @@ func (i *DiskFailureInjector) Inject() error {
 
 	pid := 0
 	if i.config.Disruption.Level == types.DisruptionLevelPod {
-		pid = int(i.config.Config.TargetContainer.PID())
+		pid = int(i.config.TargetContainer.PID())
 	}
 
 	exitCode := 0
