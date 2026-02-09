@@ -65,7 +65,7 @@ HELM_VERSION = v3.19.0
 HELM_INSTALLED_VERSION = $(shell (helm version --template="{{ .Version }}" || echo "") | awk '{ print $$1 }')
 
 # TODO: reenable depguard in .golangci.yml after upgrading golangci-lint again
-GOLANGCI_LINT_VERSION = 1.64.8
+GOLANGCI_LINT_VERSION = 2.8.0
 GOLANGCI_LINT_INSTALLED_VERSION = $(shell (golangci-lint --version || echo "") | sed -E 's/.*version ([^ ]+).*/\1/')
 
 CONTROLLER_GEN_VERSION = v0.19.0

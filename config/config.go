@@ -634,7 +634,6 @@ func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osAr
 					<-ticker.C
 
 					configMap, err := client.Get(context.Background(), configMapOverrides, metav1.GetOptions{})
-
 					if err != nil {
 						logger.Errorw(fmt.Sprintf("error getting %s configMap", configMapOverrides), tags.ErrorKey, err)
 						continue

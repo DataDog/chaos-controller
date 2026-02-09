@@ -3,66 +3,73 @@
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
 # Copyright 2026 Datadog, Inc.
 
+version: "2"
 run:
-  timeout: 5m
   tests: false
 linters:
-  # disable all linters by default
-  disable-all: true
+  default: none
   enable:
-    # default linters
-    - errcheck
-    - gosimple
-    - govet
-    - ineffassign
-    - staticcheck
-    - typecheck
-    - unused
-    # extra linters
     - bodyclose
     - dogsled
+    - errcheck
+    - gocritic
     - godox
-    - gofmt
-    - goimports
     - goprintffuncname
     - gosec
+    - govet
+    - ineffassign
     - misspell
     - nakedret
-    - prealloc
     - revive
     - rowserrcheck
-    - stylecheck
+    - staticcheck
     - unconvert
     - unparam
+    - unused
     - whitespace
-    - wsl
-    - gocritic
-issues:
-  exclude-use-default: false
-  exclude-dirs:
-    - mocks
-  exclude-files:
-    - ".*mock.*\\.go$"
-  exclude:
-    # gosec
-    - Subprocess launch(ed with variable|ing should be audited)
-    - Expect file permissions to be 0600 or less
-    - Blocklisted import `crypto/md5`
-    - weak cryptographic primitive
-    - weak random number generator
-    - memory aliasing in for loop
-    - file inclusion via variable
-    - integer overflow conversion # revisit this. existing usages are safe
-    # golint
-    - (comment on exported (method|function|type|const)|should have( a package)? comment|comment should be of the form)
-
-  exclude-rules:
-    - linters:
-        - revive
-      text: "unused-parameter:|and that stutters;|unexported-return:"
-    - linters:
-        - stylecheck
-      text: at least one file in a package should have a package comment
-
-output:
-  sort-results: true
+    - wsl_v5
+  exclusions:
+    generated: lax
+    rules:
+      - linters:
+          - revive
+        text: 'unused-parameter:|and that stutters;|unexported-return:|var-naming:'
+      - linters:
+          - staticcheck
+        text: 'at least one file in a package should have a package comment'
+      - path: (.+)\.go$
+        text: Subprocess launch(ed with variable|ing should be audited)
+      - path: (.+)\.go$
+        text: Expect file permissions to be 0600 or less
+      - path: (.+)\.go$
+        text: Blocklisted import `crypto/md5`
+      - path: (.+)\.go$
+        text: weak cryptographic primitive
+      - path: (.+)\.go$
+        text: weak random number generator
+      - path: (.+)\.go$
+        text: memory aliasing in for loop
+      - path: (.+)\.go$
+        text: file inclusion via variable
+      - path: (.+)\.go$
+        text: integer overflow conversion
+      - path: (.+)\.go$
+        text: (comment on exported (method|function|type|const)|should have( a package)? comment|comment should be of the form)
+    paths:
+      - .*mock.*\.go$
+      - mocks
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - .*mock.*\.go$
+      - mocks
+      - third_party$
+      - builtin$
+      - examples$

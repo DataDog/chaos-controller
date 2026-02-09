@@ -375,7 +375,6 @@ You first need to remove those chaos pods (and potentially their finalizers) to 
 		}
 
 		newHash, err = newDisruptionObj.Spec.Hash()
-
 		if err != nil {
 			return nil, fmt.Errorf("error getting new disruption hash: %w", err)
 		}
@@ -563,7 +562,7 @@ func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 	if r.Spec.Level == chaostypes.DisruptionLevelPod {
 		pods := &corev1.PodList{}
 		listOptions := &client.ListOptions{
-			Namespace: r.ObjectMeta.Namespace,
+			Namespace: r.Namespace,
 			// In an effort not to fill up memory on huge list calls, limiting to 1000 objects per call
 			Limit: 1000,
 		}
@@ -586,7 +585,7 @@ func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 		namespaceCount += len(pods.Items)
 
 		listOptions = &client.ListOptions{
-			Namespace:     r.ObjectMeta.Namespace,
+			Namespace:     r.Namespace,
 			LabelSelector: labels.SelectorFromValidatedSet(r.Spec.Selector),
 		}
 		// we grab the number of targets in the specified namespace

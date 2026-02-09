@@ -252,7 +252,6 @@ func validateStructTags(s interface{}) error {
 	}
 
 	err = validate.Struct(s)
-
 	if err != nil {
 		// this check is only needed when the rare case in which we produce
 		// an invalid value for validation such as interface with a nil value

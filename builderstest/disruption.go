@@ -236,12 +236,12 @@ func (b *DisruptionBuilder) WithAnnotations(annotations map[string]string) *Disr
 	b.modifiers = append(
 		b.modifiers,
 		func() {
-			if b.ObjectMeta.Annotations == nil {
-				b.ObjectMeta.Annotations = make(map[string]string)
+			if b.Annotations == nil {
+				b.Annotations = make(map[string]string)
 			}
 
 			for k, v := range annotations {
-				b.ObjectMeta.Annotations[k] = v
+				b.Annotations[k] = v
 			}
 		})
 

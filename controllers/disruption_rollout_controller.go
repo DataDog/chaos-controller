@@ -150,8 +150,8 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 	// Create disruption
 	scheduledTime := time.Now()
-	disruption, err := CreateDisruptionFromTemplate(ctx, r.Client, r.Scheme, instance, &instance.Spec.TargetResource, &instance.Spec.DisruptionTemplate, scheduledTime)
 
+	disruption, err := CreateDisruptionFromTemplate(ctx, r.Client, r.Scheme, instance, &instance.Spec.TargetResource, &instance.Spec.DisruptionTemplate, scheduledTime)
 	if err != nil {
 		r.log.Warnw("unable to construct disruption from template", tagutil.ErrorKey, err)
 		return scheduledResult, nil
@@ -201,8 +201,8 @@ func (r *DisruptionRolloutReconciler) updateLastScheduleTime(ctx context.Context
 // - error: Represents any error that occurred during the execution of the function.
 func (r *DisruptionRolloutReconciler) updateTargetResourcePreviouslyMissing(ctx context.Context, instance *chaosv1beta1.DisruptionRollout) (bool, bool, error) {
 	disruptionRolloutDeleted := false
-	targetResourceExists, err := CheckTargetResourceExists(ctx, r.Client, &instance.Spec.TargetResource, instance.Namespace)
 
+	targetResourceExists, err := CheckTargetResourceExists(ctx, r.Client, &instance.Spec.TargetResource, instance.Namespace)
 	if err != nil {
 		return targetResourceExists, disruptionRolloutDeleted, err
 	}

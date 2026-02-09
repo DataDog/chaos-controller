@@ -100,8 +100,8 @@ func (h StatefulSetHandler) FetchAssociatedDisruptionRollouts(statefulset *appsv
 	// It would be more efficient to use label selectors,
 	// however it would require a webhook to add those labels when new rollouts are created
 	disruptionRollouts := &chaosv1beta1.DisruptionRolloutList{}
-	err := h.Client.List(context.Background(), disruptionRollouts, client.MatchingFields{"targetResource": indexedValue})
 
+	err := h.Client.List(context.Background(), disruptionRollouts, client.MatchingFields{"targetResource": indexedValue})
 	if err != nil {
 		h.log.Errorw("unable to fetch DisruptionRollouts using index", tags.ErrorKey, err, tags.IndexedValueKey, indexedValue)
 		return nil, err
