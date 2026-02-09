@@ -8,7 +8,7 @@ GOARCH = $(shell go env GOARCH)
 
 # change also circleci go build version "cimb/go:" if you change the version below
 # https://github.com/DataDog/chaos-controller/blob/main/.circleci/config.yml#L85
-BUILDGOVERSION = 1.25.3
+BUILDGOVERSION = 1.25.6
 
 # GOBIN can be provided (gitlab), defined (custom user setup), or empty/guessed (default go setup)
 GOBIN ?= $(shell go env GOBIN)
