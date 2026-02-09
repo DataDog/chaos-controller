@@ -83,6 +83,33 @@ To schedule disruption in your cluster, run `kubectl apply -f <disruption_cron_f
 
 > :mag_right: Check out [DisruptionCron guide](docs/disruption_cron.md) for more detailed information on how to schedule disruptions.
 
+## Development Tools
+
+### License Checking
+
+Custom Go tool that generates `LICENSE-3rdparty.csv` from vendor dependencies using SPDX license classification.
+
+**Interactive mode** (prompts for unknown licenses): `make license`
+**CI mode** (fails on unknown licenses): `make license-ci`
+
+When a license cannot be detected, the tool will:
+
+1. Check for cached license from previous runs
+2. In interactive mode: prompt user to select or enter license type
+3. In CI mode: fail immediately with exit code 2
+
+### Header Checking
+
+Custom Go tool that enforces Apache 2.0 license headers on all source files.
+
+**Build & Run**: `make header`
+
+### Building Tools
+
+Build both development tools: `make build-devtools`
+
+See [tasks/README.md](tasks/README.md) for more detailed information about these tools.
+
 ## Contributing
 
 Chaos Engineering is necessarily different from system to system. We encourage you to try out this tool, and extend it for your own use cases. If you want to run the source code locally to make and test implementation changes, visit the [Contributing Doc](CONTRIBUTING.md). By the way, we welcome Pull Requests.

@@ -380,6 +380,8 @@ github.com/google/go-cmp,github.com/google/go-cmp/cmp/internal/diff,BSD-3-Clause
 github.com/google/go-cmp,github.com/google/go-cmp/cmp/internal/flags,BSD-3-Clause
 github.com/google/go-cmp,github.com/google/go-cmp/cmp/internal/function,BSD-3-Clause
 github.com/google/go-cmp,github.com/google/go-cmp/cmp/internal/value,BSD-3-Clause
+github.com/google/licenseclassifier/v2,github.com/google/licenseclassifier/v2,Apache-2.0
+github.com/google/licenseclassifier/v2,github.com/google/licenseclassifier/v2/assets,Apache-2.0
 github.com/google/pprof,github.com/google/pprof/profile,Apache-2.0
 github.com/google/uuid,github.com/google/uuid,BSD-3-Clause
 github.com/gorilla/websocket,github.com/gorilla/websocket,BSD-2-Clause
@@ -390,16 +392,16 @@ github.com/inconshreveable/mousetrap,github.com/inconshreveable/mousetrap,Apache
 github.com/josharian/intern,github.com/josharian/intern,MIT
 github.com/json-iterator/go,github.com/json-iterator/go,MIT
 github.com/kballard/go-shellquote,github.com/kballard/go-shellquote,MIT
-github.com/klauspost/compress,github.com/klauspost/compress,Apache-2.0
-github.com/klauspost/compress,github.com/klauspost/compress/flate,Apache-2.0
-github.com/klauspost/compress,github.com/klauspost/compress/fse,Apache-2.0
-github.com/klauspost/compress,github.com/klauspost/compress/gzip,Apache-2.0
-github.com/klauspost/compress,github.com/klauspost/compress/huff0,Apache-2.0
-github.com/klauspost/compress,github.com/klauspost/compress/internal/cpuinfo,Apache-2.0
-github.com/klauspost/compress,github.com/klauspost/compress/internal/le,Apache-2.0
-github.com/klauspost/compress,github.com/klauspost/compress/internal/snapref,Apache-2.0
-github.com/klauspost/compress,github.com/klauspost/compress/zstd,Apache-2.0
-github.com/klauspost/compress,github.com/klauspost/compress/zstd/internal/xxhash,Apache-2.0
+github.com/klauspost/compress,github.com/klauspost/compress,MIT
+github.com/klauspost/compress,github.com/klauspost/compress/flate,MIT
+github.com/klauspost/compress,github.com/klauspost/compress/fse,MIT
+github.com/klauspost/compress,github.com/klauspost/compress/gzip,MIT
+github.com/klauspost/compress,github.com/klauspost/compress/huff0,MIT
+github.com/klauspost/compress,github.com/klauspost/compress/internal/cpuinfo,MIT
+github.com/klauspost/compress,github.com/klauspost/compress/internal/le,MIT
+github.com/klauspost/compress,github.com/klauspost/compress/internal/snapref,MIT
+github.com/klauspost/compress,github.com/klauspost/compress/zstd,MIT
+github.com/klauspost/compress,github.com/klauspost/compress/zstd/internal/xxhash,MIT
 github.com/leodido/go-urn,github.com/leodido/go-urn,MIT
 github.com/leodido/go-urn,github.com/leodido/go-urn/scim/schema,MIT
 github.com/liggitt/tabwriter,github.com/liggitt/tabwriter,BSD-3-Clause
@@ -416,6 +418,7 @@ github.com/moby/docker-image-spec,github.com/moby/docker-image-spec/specs-go/v1,
 github.com/moby/locker,github.com/moby/locker,Apache-2.0
 github.com/moby/spdystream,github.com/moby/spdystream,Apache-2.0
 github.com/moby/spdystream,github.com/moby/spdystream/spdy,Apache-2.0
+github.com/moby/sys/atomicwriter,github.com/moby/sys/atomicwriter,Apache-2.0
 github.com/moby/sys/mountinfo,github.com/moby/sys/mountinfo,Apache-2.0
 github.com/moby/sys/sequential,github.com/moby/sys/sequential,Apache-2.0
 github.com/moby/sys/signal,github.com/moby/sys/signal,Apache-2.0
@@ -425,6 +428,7 @@ github.com/moby/term,github.com/moby/term,Apache-2.0
 github.com/moby/term,github.com/moby/term/windows,Apache-2.0
 github.com/modern-go/concurrent,github.com/modern-go/concurrent,Apache-2.0
 github.com/modern-go/reflect2,github.com/modern-go/reflect2,Apache-2.0
+github.com/morikuni/aec,github.com/morikuni/aec,MIT
 github.com/munnerz/goautoneg,github.com/munnerz/goautoneg,BSD-3-Clause
 github.com/mxk/go-flowrate,github.com/mxk/go-flowrate/flowrate,BSD-3-Clause
 github.com/onsi/ginkgo/v2,github.com/onsi/ginkgo/v2,MIT
@@ -511,6 +515,7 @@ github.com/richardartoul/molecule,github.com/richardartoul/molecule/src/protowir
 github.com/robfig/cron,github.com/robfig/cron,MIT
 github.com/sagikazarmark/locafero,github.com/sagikazarmark/locafero,MIT
 github.com/secure-systems-lab/go-securesystemslib,github.com/secure-systems-lab/go-securesystemslib/cjson,MIT
+github.com/sergi/go-diff,github.com/sergi/go-diff/diffmatchpatch,MIT
 github.com/shirou/gopsutil/v4,github.com/shirou/gopsutil/v4/common,BSD-3-Clause
 github.com/shirou/gopsutil/v4,github.com/shirou/gopsutil/v4/cpu,BSD-3-Clause
 github.com/shirou/gopsutil/v4,github.com/shirou/gopsutil/v4/internal/common,BSD-3-Clause
@@ -641,7 +646,7 @@ go.uber.org/zap,go.uber.org/zap/zapcore,MIT
 go.uber.org/zap,go.uber.org/zap/zaptest,MIT
 go.uber.org/zap,go.uber.org/zap/zaptest/observer,MIT
 go.yaml.in/yaml/v2,go.yaml.in/yaml/v2,Apache-2.0
-go.yaml.in/yaml/v3,go.yaml.in/yaml/v3,Apache-2.0
+go.yaml.in/yaml/v3,go.yaml.in/yaml/v3,MIT
 golang.org/x/crypto,golang.org/x/crypto/sha3,BSD-3-Clause
 golang.org/x/exp,golang.org/x/exp/constraints,BSD-3-Clause
 golang.org/x/mod,golang.org/x/mod/semver,BSD-3-Clause
@@ -839,7 +844,7 @@ gopkg.in/DataDog/dd-trace-go.v1,gopkg.in/DataDog/dd-trace-go.v1/profiler,Apache-
 gopkg.in/evanphx/json-patch.v4,gopkg.in/evanphx/json-patch.v4,BSD-3-Clause
 gopkg.in/inf.v0,gopkg.in/inf.v0,BSD-3-Clause
 gopkg.in/ini.v1,gopkg.in/ini.v1,Apache-2.0
-gopkg.in/yaml.v3,gopkg.in/yaml.v3,Apache-2.0
+gopkg.in/yaml.v3,gopkg.in/yaml.v3,MIT
 k8s.io/api,k8s.io/api/admission/v1,Apache-2.0
 k8s.io/api,k8s.io/api/admission/v1beta1,Apache-2.0
 k8s.io/api,k8s.io/api/admissionregistration/v1,Apache-2.0
@@ -1389,4 +1394,4 @@ sigs.k8s.io/structured-merge-diff/v6,sigs.k8s.io/structured-merge-diff/v6/merge,
 sigs.k8s.io/structured-merge-diff/v6,sigs.k8s.io/structured-merge-diff/v6/schema,Apache-2.0
 sigs.k8s.io/structured-merge-diff/v6,sigs.k8s.io/structured-merge-diff/v6/typed,Apache-2.0
 sigs.k8s.io/structured-merge-diff/v6,sigs.k8s.io/structured-merge-diff/v6/value,Apache-2.0
-sigs.k8s.io/yaml,sigs.k8s.io/yaml,Apache-2.0
+sigs.k8s.io/yaml,sigs.k8s.io/yaml,MIT

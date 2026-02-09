@@ -155,6 +155,15 @@ docker-build-only-all: $(addprefix docker-build-only-,$(TARGETS))
 lima-push-all: $(addprefix lima-push-,$(TARGETS))
 minikube-load-all: $(addprefix minikube-load-,$(TARGETS))
 
+# Build development tools
+build-devtools: build-header-checker build-license-checker
+
+build-header-checker:
+	cd tasks/header-checker && CGO_ENABLED=0 go build -o ../../bin/header-checker .
+
+build-license-checker:
+	cd tasks/license-checker && go build -o ../../bin/license-checker .
+
 # Build chaosli
 chaosli:
 	GOOS=darwin GOARCH=$(GOARCH) CGO_ENABLED=0 go build -ldflags="-X github.com/DataDog/chaos-controller/cli/chaosli/cmd.Version=$(VERSION)" -o bin/chaosli/chaosli_darwin_$(GOARCH) ./cli/chaosli/
@@ -352,31 +361,18 @@ lima-install-longhorn:
 
 # CI-specific actions
 
-venv:
-	test -d .venv || python3 -m venv .venv
-	. .venv/bin/activate; pip install -qr tasks/requirements.txt
+header: build-header-checker
+	./bin/header-checker
 
-header: venv
-	. .venv/bin/activate; inv header-check
+license: build-license-checker
+	./bin/license-checker
 
-header-fix:
-# First re-generate header, it should complain as just (re)generated mocks does not contains them
-	-$(MAKE) header
-# Then, re-generate header, it should succeed as now all files contains headers as expected, and command return with an happy exit code
-	$(MAKE) header
-
-license: venv
-	. .venv/bin/activate; inv license-check
+# For CI: fail fast without prompts
+license-ci: build-license-checker
+	./bin/license-checker --no-prompt
 
 godeps:
 	go mod tidy; go mod vendor
-
-update-deps:
-	@echo "Updating Python dependencies..."
-	@pip install -q uv
-	@uv pip compile --python-platform linux tasks/requirements.in -o tasks/requirements.txt
-	@echo "Updated tasks/requirements.txt"
-	@echo "Please commit both tasks/requirements.in and tasks/requirements.txt"
 
 deps: godeps license
 
@@ -398,7 +394,7 @@ clean-mocks:
 
 generate-mocks: clean-mocks install-mockery
 	go generate ./...
-	$(MAKE) header-fix
+	$(MAKE) header
 
 release:
 	VERSION=$(VERSION) ./tasks/release.sh

@@ -24,24 +24,18 @@ commands:
       - attach_workspace:
           # Must be absolute path or relative path from working_directory
           at: /home/circleci/go
-  python_install_requirements:
-    description: Install requirements in requirements.txt using pip
-    steps:
-      - run:
-          name: Install Python requirements
-          command: pip3 install -r tasks/requirements.txt
-  ubuntu_install_python:
-    description: Install python3.12
-    steps:
-      - run:
-          name: Install python 3.12
-          command: sudo apt update && sudo apt install python3.12 python3.12-venv
   alpine_install_git:
     description: Install required dependencies
     steps:
       - run:
           name: Install git
           command: apk add --no-cache git openssh
+  setup_github_ssh:
+    description: Add GitHub to SSH known hosts
+    steps:
+      - run:
+          name: Add github.com to known hosts
+          command: mkdir -p ~/.ssh && touch ~/.ssh/known_hosts && ssh-keyscan github.com >> ~/.ssh/known_hosts
 
 templates:
   # sets the working directory to the project path
@@ -56,10 +50,6 @@ executors:
       # https://circleci.com/docs/circleci-images/#next-gen-language-images
       - image: cimg/go:1.25.6
     resource_class: 2xlarge
-  python:
-    <<: *working_directory
-    docker:
-      - image: python:3.8.1-alpine3.10
   bash:
     <<: *working_directory
     docker:
@@ -85,6 +75,9 @@ jobs:
       - run:
           name: Install protoc
           command: make install-protobuf PROTOC_OS=linux
+      - run:
+          name: Build devtools
+          command: make build-devtools
       - go_save_cache
   # docker build image
   docker-build:
@@ -95,6 +88,7 @@ jobs:
         type: string
     steps:
       - go_restore_cache
+      - setup_github_ssh
       - setup_remote_docker:
           docker_layer_caching: true
       - run:
@@ -120,15 +114,9 @@ jobs:
       executor:
         type: string
         default: golang
-      with-python:
-        type: boolean
-        default: false
     steps:
       - go_restore_cache
-      - when:
-          condition: <<parameters.with-python>> # if the job needs python, we install it
-          steps:
-            - ubuntu_install_python
+      - setup_github_ssh
       - run:
           name: run make <<parameters.target>>
           command: make <<parameters.target>>
@@ -143,6 +131,7 @@ jobs:
     executor: golang
     steps:
       - go_restore_cache
+      - setup_github_ssh
       - run: make test
       - store_test_results:
           path: report-test.xml
@@ -151,6 +140,7 @@ jobs:
     executor: ubuntu
     steps:
       - go_restore_cache
+      - setup_github_ssh
       - run:
           name: Wait for Docker Daemon to be up and running
           command: timeout 3m /bin/sh -c 'until docker version; do sleep 5; done'
@@ -178,22 +168,6 @@ jobs:
           path: report-e2e-test.xml
       - store_artifacts:
           path: /tmp/logs
-  python-check:
-    executor: python
-    parameters:
-      target:
-        description: "which check to run"
-        type: string
-    steps:
-      - alpine_install_git
-      - checkout
-      - python_install_requirements
-      - run:
-          name: Ensure <<parameters.target>> are up-to-date
-          command: inv <<parameters.target>>
-      - run:
-          name: Check diffs following generate
-          command: git diff --exit-code
   protobuf:
     executor: golang
     parameters:
@@ -249,7 +223,6 @@ workflows:
           name: verify-mocks
           target: generate-mocks
           diff-fails: true
-          with-python: true
           requires: [prepare-env]
       - go-make:
           name: vet
@@ -272,12 +245,16 @@ workflows:
             - docker-build-injector
             - docker-build-manager
             - docker-build-handler
-      - python-check:
+      - go-make:
           name: third-party-licenses
-          target: license-check
-      - python-check:
+          target: license-ci
+          diff-fails: true
+          requires: [ prepare-env ]
+      - go-make:
           name: license-header
-          target: header-check
+          target: header
+          diff-fails: true
+          requires: [ prepare-env ]
       - protobuf:
           name: generate-disruptionlistener-protos
           target: disruptionlistener

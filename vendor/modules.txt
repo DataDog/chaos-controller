@@ -543,6 +543,10 @@ github.com/google/go-cmp/cmp/internal/diff
 github.com/google/go-cmp/cmp/internal/flags
 github.com/google/go-cmp/cmp/internal/function
 github.com/google/go-cmp/cmp/internal/value
+# github.com/google/licenseclassifier/v2 v2.0.0
+## explicit; go 1.16
+github.com/google/licenseclassifier/v2
+github.com/google/licenseclassifier/v2/assets
 # github.com/google/pprof v0.0.0-20250403155104-27863c87afa6
 ## explicit; go 1.23
 github.com/google/pprof/profile
@@ -790,6 +794,9 @@ github.com/sagikazarmark/locafero
 # github.com/secure-systems-lab/go-securesystemslib v0.9.0
 ## explicit; go 1.20
 github.com/secure-systems-lab/go-securesystemslib/cjson
+# github.com/sergi/go-diff v1.1.0
+## explicit; go 1.12
+github.com/sergi/go-diff/diffmatchpatch
 # github.com/shirou/gopsutil/v4 v4.25.3
 ## explicit; go 1.23
 github.com/shirou/gopsutil/v4/common
