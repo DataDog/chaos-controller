@@ -79,7 +79,7 @@ func NewDNSResponder(config DNSResponderConfig) DNSResponder {
 	}
 
 	// Build record map keyed by "hostname|type" to support multiple record types per hostname
-	recordMap := make(map[string]*DNSRecordEntry)
+	recordMap := make(map[string]*DNSRecordEntry, len(config.Records))
 
 	for i := range config.Records {
 		record := &config.Records[i]

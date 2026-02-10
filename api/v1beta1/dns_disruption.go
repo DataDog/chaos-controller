@@ -30,6 +30,22 @@ type DNSDisruptionSpec struct {
 	Protocol string `json:"protocol,omitempty" chaos_validate:"omitempty,oneofci=udp tcp both"`
 }
 
+// GetPortWithDefault returns the port to use, applying the default value of 53 if not specified
+func (s *DNSDisruptionSpec) GetPortWithDefault() int {
+	if s.Port == 0 {
+		return 53
+	}
+	return s.Port
+}
+
+// GetProtocolWithDefault returns the protocol to use, applying the default value of "both" if not specified
+func (s *DNSDisruptionSpec) GetProtocolWithDefault() string {
+	if s.Protocol == "" {
+		return "both"
+	}
+	return strings.ToLower(s.Protocol)
+}
+
 // DNSRecord represents a single DNS record to fake
 type DNSRecord struct {
 	// Hostname is the domain name to intercept (e.g., "app.datadoghq.com")
@@ -276,21 +292,11 @@ func (s *DNSDisruptionSpec) GenerateArgs() []string {
 		args = append(args, "--records", strings.Join(recordArgs, ";"))
 	}
 
-	// Add port if specified, otherwise use default 53
-	port := s.Port
-	if port == 0 {
-		port = 53
-	}
+	// Add port (defaults to 53 if not specified)
+	args = append(args, "--port", fmt.Sprintf("%d", s.GetPortWithDefault()))
 
-	args = append(args, "--port", fmt.Sprintf("%d", port))
-
-	// Add protocol if specified, otherwise use default "both"
-	protocol := s.Protocol
-	if protocol == "" {
-		protocol = "both"
-	}
-
-	args = append(args, "--protocol", strings.ToLower(protocol))
+	// Add protocol (defaults to "both" if not specified)
+	args = append(args, "--protocol", s.GetProtocolWithDefault())
 
 	return args
 }
@@ -353,15 +359,8 @@ func (s *DNSDisruptionSpec) Explain() []string {
 		explanation.WriteString("\n")
 	}
 
-	port := s.Port
-	if port == 0 {
-		port = 53
-	}
-
-	protocol := s.Protocol
-	if protocol == "" {
-		protocol = "both"
-	}
+	port := s.GetPortWithDefault()
+	protocol := s.GetProtocolWithDefault()
 
 	explanation.WriteString(fmt.Sprintf("The disruption will intercept DNS traffic on port %d using %s protocol(s).",
 		port, protocol))

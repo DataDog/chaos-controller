@@ -178,17 +178,11 @@ func (i *dnsDisruptionInjector) Inject() error {
 		return fmt.Errorf("%s environment variable must be set with the chaos pod IP", env.InjectorChaosPodIP)
 	}
 
-	// Determine ports
-	dnsPort := i.spec.Port
-	if dnsPort == 0 {
-		dnsPort = 53
-	}
+	// Determine ports (use helper method for consistency)
+	dnsPort := i.spec.GetPortWithDefault()
 
-	// Determine protocol
-	protocol := strings.ToLower(i.spec.Protocol)
-	if protocol == "" {
-		protocol = "both"
-	}
+	// Determine protocol (use helper method for consistency)
+	protocol := i.spec.GetProtocolWithDefault()
 
 	// DNS responder runs on different ports to avoid conflicts
 	// We'll redirect from dnsPort to responder ports via IPTables
