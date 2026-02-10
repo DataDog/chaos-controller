@@ -188,6 +188,7 @@ func (i *dnsDisruptionInjector) Inject() error {
 	// We'll redirect from dnsPort to responder ports via IPTables
 	// When protocol is "both", UDP and TCP need separate ports
 	const baseResponderPort = 5353
+
 	udpPort := baseResponderPort
 	tcpPort := baseResponderPort
 

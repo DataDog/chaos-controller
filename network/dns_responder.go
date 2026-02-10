@@ -158,6 +158,7 @@ func (r *dnsResponder) Start() error {
 			// Signal when server starts successfully
 			r.udpServer.NotifyStartedFunc = func() {
 				r.logger.Debugw("DNS responder UDP server started")
+
 				resultChan <- startResult{protocol: "udp", err: nil}
 			}
 
@@ -190,6 +191,7 @@ func (r *dnsResponder) Start() error {
 			// Signal when server starts successfully
 			r.tcpServer.NotifyStartedFunc = func() {
 				r.logger.Debugw("DNS responder TCP server started")
+
 				resultChan <- startResult{protocol: "tcp", err: nil}
 			}
 

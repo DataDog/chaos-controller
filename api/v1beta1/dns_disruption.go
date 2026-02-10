@@ -35,6 +35,7 @@ func (s *DNSDisruptionSpec) GetPortWithDefault() int {
 	if s.Port == 0 {
 		return 53
 	}
+
 	return s.Port
 }
 
@@ -43,6 +44,7 @@ func (s *DNSDisruptionSpec) GetProtocolWithDefault() string {
 	if s.Protocol == "" {
 		return "both"
 	}
+
 	return strings.ToLower(s.Protocol)
 }
 
