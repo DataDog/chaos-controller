@@ -19,7 +19,7 @@ import (
 type IPTables interface {
 	Clear() error
 	LogConntrack() error
-	RedirectTo(protocol string, port string, destinationIP string) error
+	RedirectTo(protocol string, port string, destination string) error
 	Intercept(protocol string, port string, cgroupPath string, cgroupClassID string, injectorPodIP string) error
 	MarkCgroupPath(cgroupPath string, mark string) error
 	MarkClassID(classid string, mark string) error
@@ -99,8 +99,8 @@ func (i *iptables) LogConntrack() error {
 }
 
 // RedirectTo redirects the matching packets to the given destination IP
-func (i *iptables) RedirectTo(protocol string, port string, destinationIP string) error {
-	return i.insert("nat", chaosChainName, "-p", protocol, "--dport", port, "-j", "DNAT", "--to-destination", destinationIP+":"+port)
+func (i *iptables) RedirectTo(protocol string, port string, destination string) error {
+	return i.insert("nat", chaosChainName, "-p", protocol, "--dport", port, "-j", "DNAT", "--to-destination", destination)
 }
 
 // Intercept jumps the matching packets to the injector dedicated chain except for

@@ -1,0 +1,46 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2026 Datadog, Inc.
+
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: dns-failure-modes
+  namespace: chaos-demo
+spec:
+  level: pod
+  selector:
+    service: demo-curl
+  count: 1
+  duration: 15m
+  dns:
+    protocol: both
+    records:
+      # NXDOMAIN: Domain does not exist error
+      # Applications will immediately receive "domain not found"
+#      - hostname: example.com
+#          type: A
+#          value: NXDOMAIN
+#
+      # DROP: Silently drop DNS queries (no response)
+      # Applications will experience timeout errors
+#      - hostname: demo.chaos-demo.svc.cluster.local
+#        record:
+#          type: A
+#          value: DROP
+
+      # SERVFAIL: DNS server failure error
+      # Applications will receive "server failure" response
+      - hostname: www.example.com
+        record:
+          type: A
+          value: SERVFAIL
+
+      # RANDOM: Return random/invalid IP addresses
+      # Applications will connect to unreachable addresses
+      - hostname: demo.chaos-demo.svc.cluster.local
+        record:
+          type: A
+          value: RANDOM
+          ttl: 300
