@@ -1,5 +1,6 @@
 # Build stage
-FROM golang:1.25.3 AS builder
+ARG BUILDGOVERSION=1.25.6
+FROM golang:${BUILDGOVERSION} AS builder
 
 ARG TARGETOS=linux
 ARG TARGETARCH

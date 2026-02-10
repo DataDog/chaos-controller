@@ -127,7 +127,7 @@ func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osAr
 	preConfigFS := pflag.NewFlagSet("pre-config", pflag.ContinueOnError)
 	mainFS := pflag.NewFlagSet("main-config", pflag.ContinueOnError)
 
-	preConfigFS.ParseErrorsWhitelist.UnknownFlags = true
+	preConfigFS.ParseErrorsAllowlist.UnknownFlags = true
 	preConfigFS.StringVar(&configPath, "config", "", "Configuration file path")
 	preConfigFS.StringVar(&configMapOverrides, "config-overrides", "", "Name of ConfigMap to provide config overrides")
 	// we redefine configuration flag into main flag to avoid removing it manually from provided args
