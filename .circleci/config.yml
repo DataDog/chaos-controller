@@ -42,6 +42,12 @@ commands:
       - run:
           name: Install git
           command: apk add --no-cache git openssh
+  setup_github_ssh:
+    description: Add GitHub to SSH known hosts
+    steps:
+      - run:
+          name: Add github.com to known hosts
+          command: mkdir -p ~/.ssh && touch ~/.ssh/known_hosts && ssh-keyscan github.com >> ~/.ssh/known_hosts
 
 templates:
   # sets the working directory to the project path
@@ -95,6 +101,7 @@ jobs:
         type: string
     steps:
       - go_restore_cache
+      - setup_github_ssh
       - setup_remote_docker:
           docker_layer_caching: true
       - run:
@@ -125,6 +132,7 @@ jobs:
         default: false
     steps:
       - go_restore_cache
+      - setup_github_ssh
       - when:
           condition: <<parameters.with-python>> # if the job needs python, we install it
           steps:
@@ -143,6 +151,7 @@ jobs:
     executor: golang
     steps:
       - go_restore_cache
+      - setup_github_ssh
       - run: make test
       - store_test_results:
           path: report-test.xml
@@ -151,6 +160,7 @@ jobs:
     executor: ubuntu
     steps:
       - go_restore_cache
+      - setup_github_ssh
       - run:
           name: Wait for Docker Daemon to be up and running
           command: timeout 3m /bin/sh -c 'until docker version; do sleep 5; done'
