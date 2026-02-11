@@ -224,11 +224,13 @@ spellcheck-format-spelling:
 	sort < .spelling | sort | uniq | grep -v '^-' | tee .spelling.tmp > /dev/null && mv .spelling.tmp .spelling
 
 ## This target is dedicated for CI and aims to reuse the Kubernetes version defined here as the source of truth
+MINIKUBE_CPUS ?= 6
+MINIKUBE_MEMORY ?= 28672
+
 ci-install-minikube:
 	curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube_latest_amd64.deb
 	sudo dpkg -i minikube_latest_amd64.deb
-# adapt here according to circleCI VM resource_class https://circleci.com/docs/configuration-reference/#linuxvm-execution-environment
-	minikube start --cpus='6' --memory='28672' --vm-driver=docker --container-runtime=containerd --kubernetes-version=${KUBERNETES_VERSION}
+	minikube start --cpus='$(MINIKUBE_CPUS)' --memory='$(MINIKUBE_MEMORY)' --vm-driver=docker --container-runtime=containerd --kubernetes-version=${KUBERNETES_VERSION}
 	minikube status
 
 SKIP_DEPLOY ?=
