@@ -51,6 +51,8 @@ def license_check(ctx):
             license_filename = None
             if os.path.isfile('{}/LICENSE'.format(base_path)):
                 license_filename = '{}/LICENSE'.format(base_path)
+            elif os.path.isfile('{}/COPYING'.format(base_path)):
+                license_filename = '{}/COPYING'.format(base_path)
             else:
                 license_files = glob.glob('{}/LICENSE.*'.format(base_path))
                 if len(license_files) > 1:
