@@ -160,13 +160,15 @@ chaosli:
 	GOOS=darwin GOARCH=$(GOARCH) CGO_ENABLED=0 go build -ldflags="-X github.com/DataDog/chaos-controller/cli/chaosli/cmd.Version=$(VERSION)" -o bin/chaosli/chaosli_darwin_$(GOARCH) ./cli/chaosli/
 
 # https://onsi.github.io/ginkgo/#recommended-continuous-integration-configuration
+GINKGO_PROCS ?= 4
+
 _ginkgo_test:
 # Run the test and write a file if succeed
 # Do not stop on any error
 	-go run github.com/onsi/ginkgo/v2/ginkgo --fail-on-pending --keep-going --vv \
 		--cover --coverprofile=cover.profile --randomize-all \
 		--race --trace --json-report=report-$(GO_TEST_REPORT_NAME).json --junit-report=report-$(GO_TEST_REPORT_NAME).xml \
-		--compilers=4 --procs=4 \
+		--compilers=$(GINKGO_PROCS) --procs=$(GINKGO_PROCS) \
 		--poll-progress-after=10s --poll-progress-interval=10s \
 		$(GINKGO_TEST_ARGS) \
 			&& touch report-$(GO_TEST_REPORT_NAME)-succeed

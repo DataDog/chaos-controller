@@ -32,17 +32,25 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
+      - name: Get Datadog credentials
+        id: dd-sts
+        uses: DataDog/dd-sts-action@main
+        with:
+          policy: chaos-controller
       - name: Install tools
         run: make -j4 install-controller-gen install-yamlfmt install-kubebuilder install-datadog-ci
       - name: Run unit tests
-        run: make test
+        run: make test GINKGO_PROCS=2
         env:
-          DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY }}
+          DATADOG_API_KEY: ${{ steps.dd-sts.outputs.api_key }}
       - name: Upload test report
         if: always()
         uses: actions/upload-artifact@v4
@@ -71,11 +79,19 @@ jobs:
     runs-on: ubuntu-latest
     needs: docker-build
     timeout-minutes: 45
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
+      - name: Get Datadog credentials
+        id: dd-sts
+        uses: DataDog/dd-sts-action@main
+        with:
+          policy: chaos-controller
       - name: Install tools
         run: make -j6 install-controller-gen install-yamlfmt install-helm install-kubebuilder install-datadog-ci
       - name: Download docker tarballs
@@ -97,7 +113,7 @@ jobs:
         run: make minikube-load-all
       - name: Run e2e tests
         env:
-          DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY }}
+          DATADOG_API_KEY: ${{ steps.dd-sts.outputs.api_key }}
         run: |
           for attempt in 1 2 3; do
             echo "=== Attempt ${attempt}/3 ==="
