@@ -21,6 +21,8 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
+      - name: Install lint tools
+        run: make install-golangci-lint install-controller-gen
       - name: Format
         run: |
           make fmt
