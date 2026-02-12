@@ -55,7 +55,7 @@ jobs:
           DATADOG_API_KEY: ${{ steps.dd-sts.outputs.api_key }}
       - name: Upload code coverage
         if: success()
-        run: datadog-ci coverage upload --flags "type:unit-tests" .
+        run: datadog-ci coverage upload --flags "type:unit-tests" cover.profile
         env:
           DATADOG_API_KEY: ${{ steps.dd-sts.outputs.api_key }}
       - name: Upload test report
