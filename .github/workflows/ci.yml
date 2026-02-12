@@ -53,6 +53,11 @@ jobs:
         run: make test GINKGO_PROCS=2
         env:
           DATADOG_API_KEY: ${{ steps.dd-sts.outputs.api_key }}
+      - name: Upload code coverage
+        if: success()
+        run: datadog-ci coverage upload --flags "type:unit-tests" .
+        env:
+          DATADOG_API_KEY: ${{ steps.dd-sts.outputs.api_key }}
       - name: Upload test report
         if: always()
         uses: actions/upload-artifact@v4
