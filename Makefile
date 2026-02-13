@@ -6,8 +6,8 @@ NOW_ISO8601 = $(shell date -u +"%Y-%m-%dT%H:%M:%S")
 GOOS = $(shell go env GOOS)
 GOARCH = $(shell go env GOARCH)
 
-# change also circleci go build version "cimb/go:" if you change the version below
-# https://github.com/DataDog/chaos-controller/blob/main/.circleci/config.yml#L85
+# change also github actions go build version "GO_VERSION:" if you change the version below
+# https://github.com/DataDog/chaos-controller/blob/main/.github/workflows/ci.yml#L13
 BUILDGOVERSION = 1.25.6
 
 # GOBIN can be provided (gitlab), defined (custom user setup), or empty/guessed (default go setup)
@@ -160,13 +160,15 @@ chaosli:
 	GOOS=darwin GOARCH=$(GOARCH) CGO_ENABLED=0 go build -ldflags="-X github.com/DataDog/chaos-controller/cli/chaosli/cmd.Version=$(VERSION)" -o bin/chaosli/chaosli_darwin_$(GOARCH) ./cli/chaosli/
 
 # https://onsi.github.io/ginkgo/#recommended-continuous-integration-configuration
+GINKGO_PROCS ?= 4
+
 _ginkgo_test:
 # Run the test and write a file if succeed
 # Do not stop on any error
 	-go run github.com/onsi/ginkgo/v2/ginkgo --fail-on-pending --keep-going --vv \
 		--cover --coverprofile=cover.profile --randomize-all \
 		--race --trace --json-report=report-$(GO_TEST_REPORT_NAME).json --junit-report=report-$(GO_TEST_REPORT_NAME).xml \
-		--compilers=4 --procs=4 \
+		--compilers=$(GINKGO_PROCS) --procs=$(GINKGO_PROCS) \
 		--poll-progress-after=10s --poll-progress-interval=10s \
 		$(GINKGO_TEST_ARGS) \
 			&& touch report-$(GO_TEST_REPORT_NAME)-succeed
@@ -224,11 +226,13 @@ spellcheck-format-spelling:
 	sort < .spelling | sort | uniq | grep -v '^-' | tee .spelling.tmp > /dev/null && mv .spelling.tmp .spelling
 
 ## This target is dedicated for CI and aims to reuse the Kubernetes version defined here as the source of truth
+MINIKUBE_CPUS ?= 6
+MINIKUBE_MEMORY ?= 28672
+
 ci-install-minikube:
 	curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube_latest_amd64.deb
 	sudo dpkg -i minikube_latest_amd64.deb
-# adapt here according to circleCI VM resource_class https://circleci.com/docs/configuration-reference/#linuxvm-execution-environment
-	minikube start --cpus='6' --memory='28672' --vm-driver=docker --container-runtime=containerd --kubernetes-version=${KUBERNETES_VERSION}
+	minikube start --cpus='$(MINIKUBE_CPUS)' --memory='$(MINIKUBE_MEMORY)' --vm-driver=docker --container-runtime=containerd --kubernetes-version=${KUBERNETES_VERSION}
 	minikube status
 
 SKIP_DEPLOY ?=
