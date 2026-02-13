@@ -6,8 +6,8 @@ NOW_ISO8601 = $(shell date -u +"%Y-%m-%dT%H:%M:%S")
 GOOS = $(shell go env GOOS)
 GOARCH = $(shell go env GOARCH)
 
-# change also circleci go build version "cimb/go:" if you change the version below
-# https://github.com/DataDog/chaos-controller/blob/main/.circleci/config.yml#L85
+# change also github actions go build version "GO_VERSION:" if you change the version below
+# https://github.com/DataDog/chaos-controller/blob/main/.github/workflows/ci.yml#L13
 BUILDGOVERSION = 1.25.6
 
 # GOBIN can be provided (gitlab), defined (custom user setup), or empty/guessed (default go setup)
