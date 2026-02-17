@@ -87,6 +87,8 @@ func init() {
 	rootCmd.AddCommand(containerFailureCmd)
 	rootCmd.AddCommand(cpuPressureCmd)
 	rootCmd.AddCommand(cpuPressureStressCmd)
+	rootCmd.AddCommand(memoryPressureCmd)
+	rootCmd.AddCommand(memoryPressureStressCmd)
 	rootCmd.AddCommand(diskFailureCmd)
 	rootCmd.AddCommand(diskPressureCmd)
 	rootCmd.AddCommand(grpcDisruptionCmd)

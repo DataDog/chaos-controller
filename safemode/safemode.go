@@ -58,6 +58,12 @@ func AddAllSafemodeObjects(disruption v1beta1.Disruption, k8sClient client.Clien
 		safemodeList = append(safemodeList, &safemodeCPU)
 	}
 
+	if disruption.Spec.MemoryPressure != nil {
+		safemodeMemory := Memory{}
+		safemodeMemory.Init(disruption, k8sClient)
+		safemodeList = append(safemodeList, &safemodeMemory)
+	}
+
 	if disruption.Spec.GRPC != nil {
 		safemodeGRPC := GRPC{}
 		safemodeGRPC.Init(disruption, k8sClient)
