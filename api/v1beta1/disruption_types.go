@@ -76,6 +76,8 @@ type DisruptionSpec struct {
 	// +nullable
 	CPUPressure *CPUPressureSpec `json:"cpuPressure,omitempty"`
 	// +nullable
+	MemoryPressure *MemoryPressureSpec `json:"memoryPressure,omitempty"`
+	// +nullable
 	DiskPressure *DiskPressureSpec `json:"diskPressure,omitempty"`
 	// +nullable
 	DiskFailure *DiskFailureSpec `json:"diskFailure,omitempty"`
@@ -694,25 +696,25 @@ func (s DisruptionSpec) validateGlobalDisruptionScope(requireSelectors bool) (re
 	}
 
 	// Rule: At least one disruption kind must be applied
-	if s.CPUPressure == nil && s.DiskPressure == nil && s.DiskFailure == nil && s.Network == nil && s.GRPC == nil && s.DNS == nil && s.ContainerFailure == nil && s.NodeFailure == nil && s.PodReplacement == nil {
+	if s.CPUPressure == nil && s.MemoryPressure == nil && s.DiskPressure == nil && s.DiskFailure == nil && s.Network == nil && s.GRPC == nil && s.DNS == nil && s.ContainerFailure == nil && s.NodeFailure == nil && s.PodReplacement == nil {
 		retErr = multierror.Append(retErr, errors.New("at least one disruption kind must be specified, please read the docs to see your options"))
 	}
 
 	// Rule: ContainerFailure, NodeFailure, and PodReplacement disruptions are not compatible with other failure types
 	if s.ContainerFailure != nil {
-		if s.CPUPressure != nil || s.DiskPressure != nil || s.DiskFailure != nil || s.Network != nil || s.GRPC != nil || s.DNS != nil || s.NodeFailure != nil || s.PodReplacement != nil {
+		if s.CPUPressure != nil || s.MemoryPressure != nil || s.DiskPressure != nil || s.DiskFailure != nil || s.Network != nil || s.GRPC != nil || s.DNS != nil || s.NodeFailure != nil || s.PodReplacement != nil {
 			retErr = multierror.Append(retErr, errors.New("container failure disruptions are not compatible with other disruption kinds. The container failure will remove the impact of the other disruption types"))
 		}
 	}
 
 	if s.NodeFailure != nil {
-		if s.CPUPressure != nil || s.DiskPressure != nil || s.DiskFailure != nil || s.Network != nil || s.GRPC != nil || s.DNS != nil || s.ContainerFailure != nil || s.PodReplacement != nil {
+		if s.CPUPressure != nil || s.MemoryPressure != nil || s.DiskPressure != nil || s.DiskFailure != nil || s.Network != nil || s.GRPC != nil || s.DNS != nil || s.ContainerFailure != nil || s.PodReplacement != nil {
 			retErr = multierror.Append(retErr, errors.New("node failure disruptions are not compatible with other disruption kinds. The node failure will remove the impact of the other disruption types"))
 		}
 	}
 
 	if s.PodReplacement != nil {
-		if s.CPUPressure != nil || s.DiskPressure != nil || s.DiskFailure != nil || s.Network != nil || s.GRPC != nil || s.DNS != nil || s.ContainerFailure != nil || s.NodeFailure != nil {
+		if s.CPUPressure != nil || s.MemoryPressure != nil || s.DiskPressure != nil || s.DiskFailure != nil || s.Network != nil || s.GRPC != nil || s.DNS != nil || s.ContainerFailure != nil || s.NodeFailure != nil {
 			retErr = multierror.Append(retErr, errors.New("pod replacement disruptions are not compatible with other disruption kinds. The pod replacement will remove the impact of the other disruption types"))
 		}
 		// Rule: container failure not possible if disruption is node-level
@@ -724,6 +726,7 @@ func (s DisruptionSpec) validateGlobalDisruptionScope(requireSelectors bool) (re
 	// Rule: on init compatibility
 	if s.OnInit {
 		if s.CPUPressure != nil ||
+			s.MemoryPressure != nil ||
 			s.NodeFailure != nil ||
 			s.PodReplacement != nil ||
 			s.ContainerFailure != nil ||
@@ -745,6 +748,11 @@ func (s DisruptionSpec) validateGlobalDisruptionScope(requireSelectors bool) (re
 	// Rule: No specificity of containers on a disk disruption
 	if len(s.Containers) != 0 && s.DiskPressure != nil {
 		retErr = multierror.Append(retErr, errors.New("disk pressure disruptions apply to all containers, specifying certain containers does not isolate the disruption"))
+	}
+
+	// Rule: No specificity of containers on a memory disruption
+	if len(s.Containers) != 0 && s.MemoryPressure != nil {
+		retErr = multierror.Append(retErr, errors.New("memory pressure disruptions apply to all containers, specifying certain containers does not isolate the disruption"))
 	}
 
 	// Rule: DisruptionTrigger
@@ -772,7 +780,7 @@ func (s DisruptionSpec) validateGlobalDisruptionScope(requireSelectors bool) (re
 	if s.Pulse != nil {
 		if s.Pulse.ActiveDuration.Duration() > 0 || s.Pulse.DormantDuration.Duration() > 0 {
 			if s.NodeFailure != nil || s.PodReplacement != nil || s.ContainerFailure != nil {
-				retErr = multierror.Append(retErr, errors.New("pulse is only compatible with network, cpu pressure, disk pressure, dns, and grpc disruptions"))
+				retErr = multierror.Append(retErr, errors.New("pulse is only compatible with network, cpu pressure, memory pressure, disk pressure, dns, and grpc disruptions"))
 			}
 		}
 
@@ -824,6 +832,8 @@ func (s DisruptionSpec) DisruptionKindPicker(kind chaostypes.DisruptionKindName)
 		disruptionKind = s.Network
 	case chaostypes.DisruptionKindCPUPressure:
 		disruptionKind = s.CPUPressure
+	case chaostypes.DisruptionKindMemoryPressure:
+		disruptionKind = s.MemoryPressure
 	case chaostypes.DisruptionKindDiskPressure:
 		disruptionKind = s.DiskPressure
 	case chaostypes.DisruptionKindGRPCDisruption:
@@ -885,6 +895,10 @@ func (s DisruptionSpec) DisruptionCount() int {
 	count := 0
 
 	if s.CPUPressure != nil {
+		count++
+	}
+
+	if s.MemoryPressure != nil {
 		count++
 	}
 
@@ -1058,6 +1072,10 @@ func (s DisruptionSpec) Explain() []string {
 
 	if s.CPUPressure != nil {
 		explanation = append(explanation, s.CPUPressure.Explain()...)
+	}
+
+	if s.MemoryPressure != nil {
+		explanation = append(explanation, s.MemoryPressure.Explain()...)
 	}
 
 	if s.DiskPressure != nil {
