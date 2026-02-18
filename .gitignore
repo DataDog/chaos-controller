@@ -42,6 +42,7 @@ cover.profile.*
 
 # other
 .venv
+.tools/
 
 # output of chaosli create
 disruption.yaml
