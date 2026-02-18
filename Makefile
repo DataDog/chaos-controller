@@ -52,12 +52,12 @@ E2E_TEST_CLUSTER_NAME ?= lima-$(LIMA_INSTANCE)
 E2E_TEST_KUBECTL_CONTEXT ?= lima
 
 KUBECTL ?= limactl shell $(LIMA_INSTANCE) sudo kubectl
-PROTOC_VERSION = 3.17.3
+PROTOC_VERSION = 29.6
 PROTOC_OS ?= osx
 PROTOC_ZIP = protoc-${PROTOC_VERSION}-${PROTOC_OS}-x86_64.zip
 # you might also want to change ~/lima.yaml k3s version
-KUBERNETES_MAJOR_VERSION ?= 1.28
-KUBERNETES_VERSION ?= v$(KUBERNETES_MAJOR_VERSION).0
+KUBERNETES_MAJOR_VERSION ?= 1.35
+KUBERNETES_VERSION ?= v$(KUBERNETES_MAJOR_VERSION).1
 USE_VOLUMES ?= false
 
 HELM_VALUES ?= dev.yaml
@@ -68,7 +68,7 @@ HELM_INSTALLED_VERSION = $(shell (helm version --template="{{ .Version }}" || ec
 GOLANGCI_LINT_VERSION = 2.8.0
 GOLANGCI_LINT_INSTALLED_VERSION = $(shell (golangci-lint --version || echo "") | sed -E 's/.*version ([^ ]+).*/\1/')
 
-CONTROLLER_GEN_VERSION = v0.19.0
+CONTROLLER_GEN_VERSION = v0.20.1
 CONTROLLER_GEN_INSTALLED_VERSION = $(shell (controller-gen --version || echo "") | awk '{ print $$2 }')
 
 MOCKERY_VERSION = 2.53.5
@@ -286,7 +286,7 @@ lima-redeploy: lima-push-all lima-install lima-restart
 
 ## Install cert-manager chart
 lima-install-cert-manager:
-	$(KUBECTL) apply -f https://github.com/jetstack/cert-manager/releases/download/v1.9.1/cert-manager.yaml
+	$(KUBECTL) apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.19.3/cert-manager.yaml
 	$(KUBECTL) -n cert-manager rollout status deployment/cert-manager-webhook --timeout=180s
 
 lima-install-demo:
@@ -352,7 +352,7 @@ lima-start: lima-kubectx-clean
 # unnamed devices are linked to 0 as a major device identifier, that blkio does not support
 # https://super-unix.com/unixlinux/can-you-throttle-the-bandwidth-to-a-tmpfs-based-ramdisk/
 lima-install-longhorn:
-	$(KUBECTL) apply -f https://raw.githubusercontent.com/longhorn/longhorn/v1.4.0/deploy/longhorn.yaml
+	$(KUBECTL) apply -f https://raw.githubusercontent.com/longhorn/longhorn/v1.11.0/deploy/longhorn.yaml
 
 # CI-specific actions
 
@@ -386,14 +386,14 @@ deps: godeps license
 
 generate-disruptionlistener-protobuf:
 	cd grpc/disruptionlistener && \
-	go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.27.1 && \
-	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.1.0 && \
+	go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11 && \
+	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.6.1 && \
 	protoc --proto_path=. --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative disruptionlistener.proto
 
 generate-chaosdogfood-protobuf:
 	cd dogfood/chaosdogfood && \
-	go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.27.1 && \
-	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.1.0 && \
+	go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11 && \
+	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.6.1 && \
 	protoc --proto_path=. --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative chaosdogfood.proto
 
 clean-mocks:
@@ -495,7 +495,7 @@ endif
 install-yamlfmt:
 ifeq (,$(wildcard $(GOBIN)/yamlfmt))
 	$(info installing yamlfmt...)
-	curl -sSLo /tmp/yamlfmt.tar.gz https://github.com/google/yamlfmt/releases/download/v0.9.0/yamlfmt_0.9.0_$(GOOS)_$(YAMLFMT_ARCH).tar.gz
+	curl -sSLo /tmp/yamlfmt.tar.gz https://github.com/google/yamlfmt/releases/download/v0.21.0/yamlfmt_0.21.0_$(GOOS)_$(YAMLFMT_ARCH).tar.gz
 	tar -xvzf /tmp/yamlfmt.tar.gz --directory=$(GOBIN) yamlfmt
 	rm /tmp/yamlfmt.tar.gz
 endif

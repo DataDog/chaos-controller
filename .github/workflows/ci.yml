@@ -16,7 +16,7 @@ jobs:
   lint-and-format:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
@@ -38,7 +38,7 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
@@ -73,7 +73,7 @@ jobs:
       matrix:
         target: [injector, manager, handler]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Build ${{ matrix.target }}
         run: make docker-build-${{ matrix.target }} SKIP_GENERATE=true
       - name: Upload tarball
@@ -91,7 +91,7 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
@@ -154,7 +154,7 @@ jobs:
   validate-codegen:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
@@ -185,7 +185,7 @@ jobs:
   python-checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Install Python dependencies
         run: pip install -r tasks/requirements.txt
       - name: Check third-party licenses
@@ -200,7 +200,7 @@ jobs:
   doc-spellcheck:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Install markdown-spellcheck
         run: npm install -g markdown-spellcheck
       - name: Spellcheck

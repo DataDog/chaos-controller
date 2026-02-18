@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	authV1 "k8s.io/api/authentication/v1"
-	"k8s.io/api/authentication/v1beta1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -109,7 +108,7 @@ func validateUserInfoImmutable(oldObject, newObject client.Object) error {
 		return nil
 	}
 
-	emptyUserInfo := fmt.Sprintf("%v", v1beta1.UserInfo{})
+	emptyUserInfo := fmt.Sprintf("%v", authV1.UserInfo{})
 	if fmt.Sprintf("%v", oldUserInfo) == emptyUserInfo {
 		return nil
 	}

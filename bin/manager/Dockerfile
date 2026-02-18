@@ -16,7 +16,7 @@ COPY . .
 
 # Build the manager binary
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-    go build -o manager .
+    go build -o manager ./cmd
 
 # Final stage
 FROM gcr.io/distroless/base-debian12:nonroot
