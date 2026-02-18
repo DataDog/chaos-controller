@@ -414,8 +414,6 @@ github.com/miekg/dns,github.com/miekg/dns,BSD-3-Clause
 github.com/mitchellh/go-homedir,github.com/mitchellh/go-homedir,MIT
 github.com/moby/docker-image-spec,github.com/moby/docker-image-spec/specs-go/v1,Apache-2.0
 github.com/moby/locker,github.com/moby/locker,Apache-2.0
-github.com/moby/spdystream,github.com/moby/spdystream,Apache-2.0
-github.com/moby/spdystream,github.com/moby/spdystream/spdy,Apache-2.0
 github.com/moby/sys/mountinfo,github.com/moby/sys/mountinfo,Apache-2.0
 github.com/moby/sys/sequential,github.com/moby/sys/sequential,Apache-2.0
 github.com/moby/sys/signal,github.com/moby/sys/signal,Apache-2.0
@@ -426,7 +424,6 @@ github.com/moby/term,github.com/moby/term/windows,Apache-2.0
 github.com/modern-go/concurrent,github.com/modern-go/concurrent,Apache-2.0
 github.com/modern-go/reflect2,github.com/modern-go/reflect2,Apache-2.0
 github.com/munnerz/goautoneg,github.com/munnerz/goautoneg,BSD-3-Clause
-github.com/mxk/go-flowrate,github.com/mxk/go-flowrate/flowrate,BSD-3-Clause
 github.com/onsi/ginkgo/v2,github.com/onsi/ginkgo/v2,MIT
 github.com/onsi/ginkgo/v2,github.com/onsi/ginkgo/v2/config,MIT
 github.com/onsi/ginkgo/v2,github.com/onsi/ginkgo/v2/formatter,MIT
@@ -662,7 +659,6 @@ golang.org/x/net,golang.org/x/net/ipv4,BSD-3-Clause
 golang.org/x/net,golang.org/x/net/ipv6,BSD-3-Clause
 golang.org/x/net,golang.org/x/net/proxy,BSD-3-Clause
 golang.org/x/net,golang.org/x/net/trace,BSD-3-Clause
-golang.org/x/net,golang.org/x/net/websocket,BSD-3-Clause
 golang.org/x/oauth2,golang.org/x/oauth2,BSD-3-Clause
 golang.org/x/oauth2,golang.org/x/oauth2/internal,BSD-3-Clause
 golang.org/x/sync,golang.org/x/sync/errgroup,BSD-3-Clause
@@ -942,9 +938,6 @@ k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/dump,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/duration,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/errors,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/framer,Apache-2.0
-k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/httpstream,Apache-2.0
-k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/httpstream/spdy,Apache-2.0
-k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/httpstream/wsstream,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/intstr,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/json,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/managedfields,Apache-2.0
@@ -952,10 +945,7 @@ k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/managedfields/internal,Apache-2
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/mergepatch,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/naming,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/net,Apache-2.0
-k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/portforward,Apache-2.0
-k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/proxy,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/rand,Apache-2.0
-k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/remotecommand,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/runtime,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/sets,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/strategicpatch,Apache-2.0
@@ -967,7 +957,6 @@ k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/yaml,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/version,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/watch,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/third_party/forked/golang/json,Apache-2.0
-k8s.io/apimachinery,k8s.io/apimachinery/third_party/forked/golang/netutil,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/third_party/forked/golang/reflect,Apache-2.0
 k8s.io/cli-runtime,k8s.io/cli-runtime/pkg/printers,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/applyconfigurations,Apache-2.0
@@ -1295,15 +1284,11 @@ k8s.io/client-go,k8s.io/client-go/tools/pager,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/tools/record,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/tools/record/util,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/tools/reference,Apache-2.0
-k8s.io/client-go,k8s.io/client-go/tools/remotecommand,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/transport,Apache-2.0
-k8s.io/client-go,k8s.io/client-go/transport/spdy,Apache-2.0
-k8s.io/client-go,k8s.io/client-go/transport/websocket,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/util/apply,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/util/cert,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/util/connrotation,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/util/consistencydetector,Apache-2.0
-k8s.io/client-go,k8s.io/client-go/util/exec,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/util/flowcontrol,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/util/homedir,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/util/jsonpath,Apache-2.0
