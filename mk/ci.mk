@@ -65,6 +65,14 @@ release: ## Create a release
 	VERSION=$(VERSION) ./tasks/release.sh
 
 # ------------------------------------------------------------------------------
+# Datadog coverage upload
+# ------------------------------------------------------------------------------
+
+.PHONY: coverage-upload
+coverage-upload: $(DATADOG_CI) ## Upload Go coverage report to Datadog
+	$(DATADOG_CI) coverage upload --format go-coverprofile --flags "type:unit-tests" cover.profile
+
+# ------------------------------------------------------------------------------
 # Datadog agent (Lima)
 # ------------------------------------------------------------------------------
 
