@@ -24,7 +24,7 @@ import (
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/cloudservice"
 	"github.com/DataDog/chaos-controller/config"
-	"github.com/DataDog/chaos-controller/controllers"
+	"github.com/DataDog/chaos-controller/internal/controller"
 	"github.com/DataDog/chaos-controller/eventbroadcaster"
 	"github.com/DataDog/chaos-controller/eventnotifier"
 	"github.com/DataDog/chaos-controller/log"
@@ -60,8 +60,8 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 )
 
-//go:generate mockery  --config .local.mockery.yaml
-//go:generate mockery  --config .vendor.mockery.yaml
+//go:generate mockery  --config ../.local.mockery.yaml
+//go:generate mockery  --config ../.vendor.mockery.yaml
 
 var scheme = runtime.NewScheme()
 
@@ -241,7 +241,7 @@ func main() {
 	}
 
 	// create disruption reconciler
-	disruptionReconciler := &controllers.DisruptionReconciler{
+	disruptionReconciler := &controller.DisruptionReconciler{
 		Client:                     mgr.GetClient(),
 		APIReader:                  mgr.GetAPIReader(),
 		BaseLog:                    logger,
@@ -347,7 +347,7 @@ func main() {
 		globalInformerFactory.Start(stopCh)
 
 		// create disruption rollout reconciler
-		disruptionRolloutReconciler := &controllers.DisruptionRolloutReconciler{
+		disruptionRolloutReconciler := &controller.DisruptionRolloutReconciler{
 			Client:  mgr.GetClient(),
 			BaseLog: logger,
 			Scheme:  mgr.GetScheme(),
@@ -416,7 +416,7 @@ func main() {
 		defer closeMetricsSink(logger, disruptionCronMetricsSink)
 
 		// create disruption cron reconciler
-		disruptionCronReconciler := &controllers.DisruptionCronReconciler{
+		disruptionCronReconciler := &controller.DisruptionCronReconciler{
 			Client:  mgr.GetClient(),
 			BaseLog: logger,
 			Scheme:  mgr.GetScheme(),
