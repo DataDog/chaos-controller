@@ -35,7 +35,7 @@ provision:
   - mode: system
     script: |
       #!/usr/bin/env bash
-      curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=v1.26.3+k3s1 sh -s - --kubelet-arg="--cpu-manager-policy=static" --kubelet-arg='--reserved-cpus=0'
+      curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=v1.35.1+k3s1 sh -s - --kubelet-arg="--cpu-manager-policy=static" --kubelet-arg='--reserved-cpus=0'
       if ! timeout 90s bash -c "until test -e /run/k3s/containerd/containerd.sock; do sleep 3; done"; then
               echo >&2 "containerd is not running"
               exit 1
