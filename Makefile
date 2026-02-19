@@ -194,7 +194,7 @@ endif
 test: generate manifests
 	$(if $(GOPATH),,$(error GOPATH is not set. Please set GOPATH before running make test))
 	$(MAKE) _ginkgo_test GO_TEST_REPORT_NAME=$@ \
-		GINKGO_TEST_ARGS="-r --skip-package=controllers --randomize-suites --timeout=10m $(TEST_ARGS)"
+		GINKGO_TEST_ARGS="-r --skip-package=internal/controller --randomize-suites --timeout=10m $(TEST_ARGS)"
 
 spellcheck-deps:
 ifeq (, $(shell which npm))
@@ -244,7 +244,7 @@ ifneq (true,$(SKIP_DEPLOY)) # we can only wait for a controller if it exists, lo
 	$(MAKE) lima-install HELM_VALUES=ci.yaml
 endif
 	E2E_TEST_CLUSTER_NAME=$(E2E_TEST_CLUSTER_NAME) E2E_TEST_KUBECTL_CONTEXT=$(E2E_TEST_KUBECTL_CONTEXT) $(MAKE) _ginkgo_test GO_TEST_REPORT_NAME=$@ \
-		GINKGO_TEST_ARGS="--flake-attempts=3 --timeout=25m controllers"
+		GINKGO_TEST_ARGS="--flake-attempts=3 --timeout=25m internal/controller"
 
 # Test chaosli API portability
 chaosli-test:
