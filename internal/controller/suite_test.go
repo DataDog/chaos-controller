@@ -69,7 +69,7 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 
 	log = zaptest.NewLogger(GinkgoT()).Sugar()
 
-	ciValues, err := os.ReadFile("../chart/values/ci.yaml")
+	ciValues, err := os.ReadFile("../../chart/values/ci.yaml")
 	Expect(err).ToNot(HaveOccurred())
 	Expect(yaml.Unmarshal(ciValues, &lightCfg)).To(Succeed())
 	Expect(lightCfg).ToNot(BeZero())
