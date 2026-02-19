@@ -895,7 +895,7 @@ k8s.io/api,k8s.io/api/scheduling/v1beta1,Apache-2.0
 k8s.io/api,k8s.io/api/storage/v1,Apache-2.0
 k8s.io/api,k8s.io/api/storage/v1alpha1,Apache-2.0
 k8s.io/api,k8s.io/api/storage/v1beta1,Apache-2.0
-k8s.io/api,k8s.io/api/storagemigration/v1alpha1,Apache-2.0
+k8s.io/api,k8s.io/api/storagemigration/v1beta1,Apache-2.0
 k8s.io/apiextensions-apiserver,k8s.io/apiextensions-apiserver/pkg/apis/apiextensions,Apache-2.0
 k8s.io/apiextensions-apiserver,k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/api/equality,Apache-2.0
@@ -911,6 +911,7 @@ k8s.io/apimachinery,k8s.io/apimachinery/pkg/api/validate/content,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/api/validation,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/apis/meta/internalversion,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/apis/meta/internalversion/scheme,Apache-2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/apis/meta/internalversion/validation,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/apis/meta/v1,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/apis/meta/v1/unstructured,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/apis/meta/v1/validation,Apache-2.0
@@ -952,6 +953,7 @@ k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/strategicpatch,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/uuid,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/validation,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/validation/field,Apache-2.0
+k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/version,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/wait,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/util/yaml,Apache-2.0
 k8s.io/apimachinery,k8s.io/apimachinery/pkg/version,Apache-2.0
@@ -1012,7 +1014,7 @@ k8s.io/client-go,k8s.io/client-go/applyconfigurations/scheduling/v1beta1,Apache-
 k8s.io/client-go,k8s.io/client-go/applyconfigurations/storage/v1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/applyconfigurations/storage/v1alpha1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/applyconfigurations/storage/v1beta1,Apache-2.0
-k8s.io/client-go,k8s.io/client-go/applyconfigurations/storagemigration/v1alpha1,Apache-2.0
+k8s.io/client-go,k8s.io/client-go/applyconfigurations/storagemigration/v1beta1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/discovery,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/discovery/fake,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/dynamic,Apache-2.0
@@ -1089,7 +1091,7 @@ k8s.io/client-go,k8s.io/client-go/informers/storage/v1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/informers/storage/v1alpha1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/informers/storage/v1beta1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/informers/storagemigration,Apache-2.0
-k8s.io/client-go,k8s.io/client-go/informers/storagemigration/v1alpha1,Apache-2.0
+k8s.io/client-go,k8s.io/client-go/informers/storagemigration/v1beta1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/kubernetes,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/kubernetes/fake,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/kubernetes/scheme,Apache-2.0
@@ -1201,8 +1203,8 @@ k8s.io/client-go,k8s.io/client-go/kubernetes/typed/storage/v1alpha1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/kubernetes/typed/storage/v1alpha1/fake,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/kubernetes/typed/storage/v1beta1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/kubernetes/typed/storage/v1beta1/fake,Apache-2.0
-k8s.io/client-go,k8s.io/client-go/kubernetes/typed/storagemigration/v1alpha1,Apache-2.0
-k8s.io/client-go,k8s.io/client-go/kubernetes/typed/storagemigration/v1alpha1/fake,Apache-2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/storagemigration/v1beta1,Apache-2.0
+k8s.io/client-go,k8s.io/client-go/kubernetes/typed/storagemigration/v1beta1/fake,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/listers,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/listers/admissionregistration/v1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/listers/admissionregistration/v1alpha1,Apache-2.0
@@ -1253,7 +1255,7 @@ k8s.io/client-go,k8s.io/client-go/listers/scheduling/v1beta1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/listers/storage/v1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/listers/storage/v1alpha1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/listers/storage/v1beta1,Apache-2.0
-k8s.io/client-go,k8s.io/client-go/listers/storagemigration/v1alpha1,Apache-2.0
+k8s.io/client-go,k8s.io/client-go/listers/storagemigration/v1beta1,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/metadata,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/openapi,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/pkg/apis/clientauthentication,Apache-2.0
@@ -1276,6 +1278,7 @@ k8s.io/client-go,k8s.io/client-go/tools/clientcmd,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/tools/clientcmd/api,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/tools/clientcmd/api/latest,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/tools/clientcmd/api/v1,Apache-2.0
+k8s.io/client-go,k8s.io/client-go/tools/events,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/tools/internal/events,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/tools/leaderelection,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/tools/leaderelection/resourcelock,Apache-2.0
@@ -1293,6 +1296,7 @@ k8s.io/client-go,k8s.io/client-go/util/flowcontrol,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/util/homedir,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/util/jsonpath,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/util/keyutil,Apache-2.0
+k8s.io/client-go,k8s.io/client-go/util/watchlist,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/util/workqueue,Apache-2.0
 k8s.io/klog/v2,k8s.io/klog/v2,Apache-2.0
 k8s.io/klog/v2,k8s.io/klog/v2/internal/buffer,Apache-2.0
@@ -1308,6 +1312,7 @@ k8s.io/kube-openapi,k8s.io/kube-openapi/pkg/internal,Apache-2.0
 k8s.io/kube-openapi,k8s.io/kube-openapi/pkg/internal/third_party/go-json-experiment/json,Apache-2.0
 k8s.io/kube-openapi,k8s.io/kube-openapi/pkg/schemaconv,Apache-2.0
 k8s.io/kube-openapi,k8s.io/kube-openapi/pkg/spec3,Apache-2.0
+k8s.io/kube-openapi,k8s.io/kube-openapi/pkg/util,Apache-2.0
 k8s.io/kube-openapi,k8s.io/kube-openapi/pkg/util/proto,Apache-2.0
 k8s.io/kube-openapi,k8s.io/kube-openapi/pkg/validation/spec,Apache-2.0
 k8s.io/utils,k8s.io/utils/buffer,Apache-2.0
@@ -1316,7 +1321,6 @@ k8s.io/utils,k8s.io/utils/internal/third_party/forked/golang/golang-lru,Apache-2
 k8s.io/utils,k8s.io/utils/internal/third_party/forked/golang/net,Apache-2.0
 k8s.io/utils,k8s.io/utils/lru,Apache-2.0
 k8s.io/utils,k8s.io/utils/net,Apache-2.0
-k8s.io/utils,k8s.io/utils/pointer,Apache-2.0
 k8s.io/utils,k8s.io/utils/ptr,Apache-2.0
 k8s.io/utils,k8s.io/utils/trace,Apache-2.0
 sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime,Apache-2.0
@@ -1364,6 +1368,7 @@ sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/webhook,Apache
 sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/webhook/admission,Apache-2.0
 sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/webhook/admission/metrics,Apache-2.0
 sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/webhook/conversion,Apache-2.0
+sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/webhook/conversion/metrics,Apache-2.0
 sigs.k8s.io/controller-runtime,sigs.k8s.io/controller-runtime/pkg/webhook/internal/metrics,Apache-2.0
 sigs.k8s.io/json,sigs.k8s.io/json,Apache-2.0
 sigs.k8s.io/json,sigs.k8s.io/json/internal/golang/encoding/json,Apache-2.0
@@ -1375,3 +1380,4 @@ sigs.k8s.io/structured-merge-diff/v6,sigs.k8s.io/structured-merge-diff/v6/schema
 sigs.k8s.io/structured-merge-diff/v6,sigs.k8s.io/structured-merge-diff/v6/typed,Apache-2.0
 sigs.k8s.io/structured-merge-diff/v6,sigs.k8s.io/structured-merge-diff/v6/value,Apache-2.0
 sigs.k8s.io/yaml,sigs.k8s.io/yaml,Apache-2.0
+sigs.k8s.io/yaml,sigs.k8s.io/yaml/kyaml,Apache-2.0
