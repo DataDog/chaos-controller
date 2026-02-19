@@ -45,7 +45,7 @@ jobs:
           cache: true
       - name: Get Datadog credentials
         id: dd-sts
-        uses: DataDog/dd-octo-sts-action@acaa02eee7e3bb0839e4272dacb37b8f3b58ba80 # v1.0.3
+        uses: DataDog/dd-sts-action@main
         with:
           policy: chaos-controller
       - name: Install tools
@@ -98,7 +98,7 @@ jobs:
           cache: true
       - name: Get Datadog credentials
         id: dd-sts
-        uses: DataDog/dd-octo-sts-action@acaa02eee7e3bb0839e4272dacb37b8f3b58ba80 # v1.0.3
+        uses: DataDog/dd-sts-action@main
         with:
           policy: chaos-controller
       - name: Install tools
