@@ -7,6 +7,7 @@ package cgroup
 
 import (
 	"path/filepath"
+	"strings"
 
 	"github.com/opencontainers/runc/libcontainer/cgroups"
 	"github.com/opencontainers/runc/libcontainer/cgroups/fs"
@@ -37,6 +38,13 @@ func newAllCGroupManager(cgroupFile string, cgroupMount string, log *zap.Sugared
 
 	// prefix the cgroup path with the mount point path
 	for subsystem, path := range cgroupPaths {
+		// Skip named hierarchies (e.g. "name=systemd"): they are not resource controllers
+		// and their mount directory name differs from the subsystem key, making the path wrong.
+		if strings.HasPrefix(subsystem, "name=") {
+			delete(cgroupPaths, subsystem)
+			continue
+		}
+
 		log.Debugw("adding cgroup subsystem path to manager", tags.SubsystemKey, subsystem, tags.PathKey, path)
 		cgroupPaths[subsystem] = filepath.Join(cgroupMount, subsystem, path)
 	}
