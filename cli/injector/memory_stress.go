@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/DataDog/chaos-controller/injector"
+	"github.com/DataDog/chaos-controller/o11y/tags"
 	"github.com/DataDog/chaos-controller/process"
 )
 
@@ -36,9 +37,9 @@ var memoryPressureStressCmd = &cobra.Command{
 		rampDuration, _ := cmd.Flags().GetDuration(memoryRampDurationFlagName)
 
 		log.Infow("stressing memory allocated to target",
-			"targetPercent", targetPercent,
-			"rampDuration", rampDuration,
-			"targetName", config.TargetName(),
+			tags.TargetPercentKey, targetPercent,
+			tags.RampDurationKey, rampDuration,
+			tags.TargetNameKey, config.TargetName(),
 		)
 
 		processManager := process.NewManager(config.Disruption.DryRun)

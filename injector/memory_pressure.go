@@ -14,6 +14,7 @@ import (
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/command"
+	"github.com/DataDog/chaos-controller/o11y/tags"
 	"github.com/DataDog/chaos-controller/types"
 )
 
@@ -52,7 +53,7 @@ func (i *memoryPressureInjector) GetDisruptionKind() types.DisruptionKindName {
 }
 
 func (i *memoryPressureInjector) Inject() error {
-	i.config.Log.Infow("creating process to stress target memory", "targetPercent", i.spec.TargetPercent, "rampDuration", i.spec.RampDuration)
+	i.config.Log.Infow("creating process to stress target memory", tags.TargetPercentKey, i.spec.TargetPercent, tags.RampDurationKey, i.spec.RampDuration)
 
 	pct, err := v1beta1.ParseTargetPercent(i.spec.TargetPercent)
 	if err != nil {
@@ -86,7 +87,7 @@ func (i *memoryPressureInjector) Inject() error {
 
 	i.backgroundCmd.KeepAlive()
 
-	i.config.Log.Infow("memory stress process started successfully", "targetPercent", pct, "rampDuration", rampDuration)
+	i.config.Log.Infow("memory stress process started successfully", tags.TargetPercentKey, pct, tags.RampDurationKey, rampDuration)
 
 	return nil
 }

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/DataDog/chaos-controller/o11y/tags"
 	"github.com/DataDog/chaos-controller/process"
 	"github.com/DataDog/chaos-controller/types"
 )
@@ -54,7 +55,7 @@ func (m *memoryStressInjector) Inject() error {
 
 	stressPID := m.process.ProcessID()
 
-	m.config.Log.Infow("joining target cgroup for memory stress", "pid", stressPID)
+	m.config.Log.Infow("joining target cgroup for memory stress", tags.PidKey, stressPID)
 
 	if err := m.config.Cgroup.Join(stressPID); err != nil {
 		return fmt.Errorf("unable to join cgroup for process '%d': %w", stressPID, err)
@@ -75,14 +76,14 @@ func (m *memoryStressInjector) Inject() error {
 	targetBytes := (memoryLimit * int64(m.targetPercent) / 100) - currentUsage
 	if targetBytes <= 0 {
 		m.config.Log.Infow("current memory usage already exceeds target, nothing to allocate",
-			"memoryLimit", memoryLimit, "currentUsage", currentUsage, "targetPercent", m.targetPercent)
+			tags.MemoryLimitKey, memoryLimit, tags.CurrentUsageKey, currentUsage, tags.TargetPercentKey, m.targetPercent)
 
 		return nil
 	}
 
 	m.config.Log.Infow("starting memory stress",
-		"memoryLimit", memoryLimit, "currentUsage", currentUsage,
-		"targetBytes", targetBytes, "targetPercent", m.targetPercent, "rampDuration", m.rampDuration)
+		tags.MemoryLimitKey, memoryLimit, tags.CurrentUsageKey, currentUsage,
+		tags.TargetBytesKey, targetBytes, tags.TargetPercentKey, m.targetPercent, tags.RampDurationKey, m.rampDuration)
 
 	m.exitCh = make(chan struct{}, 1)
 	m.exitCompleted = make(chan struct{}, 1)
@@ -135,14 +136,14 @@ func (m *memoryStressInjector) stress(targetBytes int64, ready chan<- struct{}) 
 		steps = 1
 	}
 
-	m.config.Log.Infow("memory allocation plan", "steps", steps, "chunkSize", chunkSize, "stepDelay", stepDelay)
+	m.config.Log.Infow("memory allocation plan", tags.StepsKey, steps, tags.ChunkSizeKey, chunkSize, tags.StepDelayKey, stepDelay)
 
 	ready <- struct{}{}
 
 	for i := 0; i < steps; i++ {
 		select {
 		case <-m.exitCh:
-			m.config.Log.Infow("exit signal received during ramp, stopping allocation", "completedSteps", i, "totalSteps", steps)
+			m.config.Log.Infow("exit signal received during ramp, stopping allocation", tags.CompletedStepsKey, i, tags.TotalStepsKey, steps)
 			return
 		default:
 		}
@@ -159,7 +160,7 @@ func (m *memoryStressInjector) stress(targetBytes int64, ready chan<- struct{}) 
 
 		data, err := mmapAnonymous(allocSize)
 		if err != nil {
-			m.config.Log.Warnw("mmap allocation failed, stopping ramp", "error", err, "step", i, "allocSize", allocSize)
+			m.config.Log.Warnw("mmap allocation failed, stopping ramp", tags.ErrorKey, err, tags.StepKey, i, tags.AllocSizeKey, allocSize)
 			break
 		}
 
@@ -168,20 +169,20 @@ func (m *memoryStressInjector) stress(targetBytes int64, ready chan<- struct{}) 
 		if stepDelay > 0 && i < steps-1 {
 			select {
 			case <-m.exitCh:
-				m.config.Log.Infow("exit signal received during ramp delay", "completedSteps", i+1, "totalSteps", steps)
+				m.config.Log.Infow("exit signal received during ramp delay", tags.CompletedStepsKey, i+1, tags.TotalStepsKey, steps)
 				return
 			case <-time.After(stepDelay):
 			}
 		}
 	}
 
-	m.config.Log.Infow("memory allocation complete, waiting for exit signal", "allocations", len(m.allocations))
+	m.config.Log.Infow("memory allocation complete, waiting for exit signal", tags.AllocationsKey, len(m.allocations))
 
 	<-m.exitCh
 }
 
 func (m *memoryStressInjector) Clean() error {
-	m.config.Log.Infow("cleaning memory stress", "allocations", len(m.allocations))
+	m.config.Log.Infow("cleaning memory stress", tags.AllocationsKey, len(m.allocations))
 
 	if m.exitCh != nil {
 		m.exitCh <- struct{}{}
@@ -197,7 +198,7 @@ func (m *memoryStressInjector) Clean() error {
 
 	for _, alloc := range m.allocations {
 		if err := munmapMemory(alloc); err != nil {
-			m.config.Log.Warnw("failed to munmap allocation", "error", err)
+			m.config.Log.Warnw("failed to munmap allocation", tags.ErrorKey, err)
 		}
 	}
 
