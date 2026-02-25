@@ -228,7 +228,19 @@ func (m *memoryStressInjector) readMemoryLimit() (int64, error) {
 		return 0, fmt.Errorf("unable to read memory.limit_in_bytes: %w", err)
 	}
 
-	return strconv.ParseInt(strings.TrimSpace(content), 10, 64)
+	limit, err := strconv.ParseInt(strings.TrimSpace(content), 10, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	// cgroupv1 reports PAGE_ALIGN(math.MaxInt64) = 9223372036854771712 when no memory limit is set.
+	// Use a 4 PiB threshold to detect this sentinel: no real workload has that much RAM.
+	const cgroupV1UnlimitedThreshold = int64(4 * 1024 * 1024 * 1024 * 1024 * 1024) // 4 PiB
+	if limit >= cgroupV1UnlimitedThreshold {
+		return 0, fmt.Errorf("memory limit is unlimited (memory.limit_in_bytes=%d), cannot determine target bytes", limit)
+	}
+
+	return limit, nil
 }
 
 func (m *memoryStressInjector) readMemoryUsage() (int64, error) {
