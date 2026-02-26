@@ -91,9 +91,13 @@ var _ = Describe("CPU Pressure", func() {
 
 				CreateDisruption(ctx, stopTargetedContainer, targetPod)
 
+				// First, we wait to have the container failure injected
 				ExpectDisruptionStatus(ctx, stopTargetedContainer, chaostypes.DisruptionInjectionStatusInjected)
+
+				// Then the container failure disruption should disappear so we stop killing the container we want to stress
 				ExpectDisruptionStatus(ctx, stopTargetedContainer, chaostypes.DisruptionInjectionStatusPreviouslyInjected)
 
+				// once it's done, we expect to eventually have stressers back before the end of the disruption
 				Eventually(func(g Gomega, ctx SpecContext) {
 					var freshDisruption chaosv1beta1.Disruption
 

@@ -2,6 +2,148 @@
 
 The `memoryPressure` field generates memory load on the targeted pod by gradually allocating anonymous memory pages until a target utilization percentage is reached.
 
+> :warning: **Warning:** At node level, memory pressure affects the entire node. When the kernel runs out of available memory, the OOM killer will terminate processes to reclaim pages — this can violently kill any workload on the node, not just the targeted one. This may be the desired outcome (e.g. testing OOM resilience), but be aware that it can cause collateral damage to co-located pods. At pod level, the allocated memory counts against the container's cgroup limit, so the OOM killer scope is narrower but still destructive for the targeted container.
+
+## Usage
+
+### Spec fields
+
+| Field           | Type   | Default | Description                                                                        |
+| --------------- | ------ | ------- | ---------------------------------------------------------------------------------- |
+| `targetPercent` | string | —       | Target memory utilization percentage of the cgroup limit (e.g. `"76%"`, required)  |
+| `rampDuration`  | string | `0`     | Duration over which memory is gradually consumed (e.g. `"10m"`, Go duration format) |
+
+#### targetPercent
+
+A string representing the target memory utilization as a percentage of the container's cgroup memory limit. Can be specified with or without a `%` suffix (e.g. `"76%"` or `"76"`). Must be between 1 and 100.
+
+The injector calculates the actual bytes to allocate as: `(limit * targetPercent / 100) - currentUsage`. If current usage already exceeds the target, no additional memory is allocated.
+
+#### rampDuration
+
+A Go duration string (e.g. `"10m"`, `"30s"`, `"1h5m"`) specifying how long the ramp-up period should last. If omitted or `0`, all memory is allocated immediately in a single step.
+
+### Examples
+
+#### Gradual memory pressure (realistic memory leak)
+
+```yaml
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: memory-pressure-gradual
+  namespace: chaos-demo
+spec:
+  level: pod
+  selector:
+    service: demo-app
+  count: 1
+  duration: 30m
+  memoryPressure:
+    targetPercent: "76%"
+    rampDuration: 10m
+```
+
+#### Immediate memory pressure (sudden allocation spike)
+
+```yaml
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: memory-pressure-immediate
+  namespace: chaos-demo
+spec:
+  level: pod
+  selector:
+    service: demo-app
+  count: 1
+  duration: 15m
+  memoryPressure:
+    targetPercent: "50%"
+```
+
+#### Combined with CPU pressure (resource exhaustion)
+
+```yaml
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: resource-exhaustion
+  namespace: chaos-demo
+spec:
+  level: pod
+  selector:
+    service: demo-app
+  count: 1
+  duration: 15m
+  cpuPressure:
+    count: "50%"
+  memoryPressure:
+    targetPercent: "60%"
+    rampDuration: 5m
+```
+
+#### Pulsing memory pressure
+
+```yaml
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: memory-pressure-pulse
+  namespace: chaos-demo
+spec:
+  level: pod
+  selector:
+    service: demo-app
+  count: 1
+  duration: 30m
+  pulse:
+    activeDuration: 2m
+    dormantDuration: 1m
+  memoryPressure:
+    targetPercent: "80%"
+    rampDuration: 30s
+```
+
+#### Node-level memory pressure
+
+```yaml
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: memory-pressure-node
+  namespace: chaos-demo
+spec:
+  level: node
+  selector:
+    node.kubernetes.io/instance-type: k3s
+  count: 1
+  duration: 10m
+  memoryPressure:
+    targetPercent: "70%"
+    rampDuration: 5m
+```
+
+### Compatibility
+
+| Feature             | Compatible |
+| ------------------- | ---------- |
+| `level: pod`        | Yes        |
+| `level: node`       | Yes        |
+| `containers` scoping | No — applies to all containers |
+| `onInit`            | No         |
+| `pulse`             | Yes        |
+| `dryRun`            | Yes        |
+| Container Failure   | No (exclusive) |
+| Node Failure        | No (exclusive) |
+| Pod Replacement     | No (exclusive) |
+| Network             | Yes        |
+| DNS                 | Yes        |
+| gRPC                | Yes        |
+| CPU Pressure        | Yes        |
+| Disk Pressure       | Yes        |
+| Disk Failure        | Yes        |
+
 ## How it works
 
 Containers achieve resource limitation (cpu, disk, memory) through cgroups. The memory cgroup controller tracks and limits memory usage of processes within a cgroup. Docker and containerd containers get their own memory cgroup with limits derived from Kubernetes resource requests and limits.
@@ -52,144 +194,6 @@ When `rampDuration` is specified, memory is consumed gradually rather than all a
 - It allows operators to observe the progression and abort if needed
 
 The ramp divides the total allocation into equal-sized chunks allocated at 1-second intervals. For example, with `targetPercent: "80%"` and `rampDuration: 10m`, the injector allocates 1/600th of the target amount every second over 10 minutes.
-
-## Spec fields
-
-| Field           | Type   | Default | Description                                                                        |
-| --------------- | ------ | ------- | ---------------------------------------------------------------------------------- |
-| `targetPercent` | string | —       | Target memory utilization percentage of the cgroup limit (e.g. `"76%"`, required)  |
-| `rampDuration`  | string | `0`     | Duration over which memory is gradually consumed (e.g. `"10m"`, Go duration format) |
-
-### targetPercent
-
-A string representing the target memory utilization as a percentage of the container's cgroup memory limit. Can be specified with or without a `%` suffix (e.g. `"76%"` or `"76"`). Must be between 1 and 100.
-
-The injector calculates the actual bytes to allocate as: `(limit * targetPercent / 100) - currentUsage`. If current usage already exceeds the target, no additional memory is allocated.
-
-### rampDuration
-
-A Go duration string (e.g. `"10m"`, `"30s"`, `"1h5m"`) specifying how long the ramp-up period should last. If omitted or `0`, all memory is allocated immediately in a single step.
-
-## Compatibility
-
-| Feature             | Compatible |
-| ------------------- | ---------- |
-| `level: pod`        | Yes        |
-| `level: node`       | Yes        |
-| `containers` scoping | No — applies to all containers |
-| `onInit`            | No         |
-| `pulse`             | Yes        |
-| `dryRun`            | Yes        |
-| Container Failure   | No (exclusive) |
-| Node Failure        | No (exclusive) |
-| Pod Replacement     | No (exclusive) |
-| Network             | Yes        |
-| DNS                 | Yes        |
-| gRPC                | Yes        |
-| CPU Pressure        | Yes        |
-| Disk Pressure       | Yes        |
-| Disk Failure        | Yes        |
-
-## Examples
-
-### Gradual memory pressure (realistic memory leak)
-
-```yaml
-apiVersion: chaos.datadoghq.com/v1beta1
-kind: Disruption
-metadata:
-  name: memory-pressure-gradual
-  namespace: chaos-demo
-spec:
-  level: pod
-  selector:
-    service: demo-app
-  count: 1
-  duration: 30m
-  memoryPressure:
-    targetPercent: "76%"
-    rampDuration: 10m
-```
-
-### Immediate memory pressure (sudden allocation spike)
-
-```yaml
-apiVersion: chaos.datadoghq.com/v1beta1
-kind: Disruption
-metadata:
-  name: memory-pressure-immediate
-  namespace: chaos-demo
-spec:
-  level: pod
-  selector:
-    service: demo-app
-  count: 1
-  duration: 15m
-  memoryPressure:
-    targetPercent: "50%"
-```
-
-### Combined with CPU pressure (resource exhaustion)
-
-```yaml
-apiVersion: chaos.datadoghq.com/v1beta1
-kind: Disruption
-metadata:
-  name: resource-exhaustion
-  namespace: chaos-demo
-spec:
-  level: pod
-  selector:
-    service: demo-app
-  count: 1
-  duration: 15m
-  cpuPressure:
-    count: "50%"
-  memoryPressure:
-    targetPercent: "60%"
-    rampDuration: 5m
-```
-
-### Pulsing memory pressure
-
-```yaml
-apiVersion: chaos.datadoghq.com/v1beta1
-kind: Disruption
-metadata:
-  name: memory-pressure-pulse
-  namespace: chaos-demo
-spec:
-  level: pod
-  selector:
-    service: demo-app
-  count: 1
-  duration: 30m
-  pulse:
-    activeDuration: 2m
-    dormantDuration: 1m
-  memoryPressure:
-    targetPercent: "80%"
-    rampDuration: 30s
-```
-
-### Node-level memory pressure
-
-```yaml
-apiVersion: chaos.datadoghq.com/v1beta1
-kind: Disruption
-metadata:
-  name: memory-pressure-node
-  namespace: chaos-demo
-spec:
-  level: node
-  selector:
-    node.kubernetes.io/instance-type: k3s
-  count: 1
-  duration: 10m
-  memoryPressure:
-    targetPercent: "70%"
-    rampDuration: 5m
-```
 
 ## Manually confirming memory pressure
 
