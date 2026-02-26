@@ -309,6 +309,21 @@ spec:
                         After this many runs, the disruption will become idle (default: unlimited for continuous disruptions)
                       minimum: 1
                       type: integer
+                    memoryPressure:
+                      description: MemoryPressureSpec represents a memory pressure disruption
+                      nullable: true
+                      properties:
+                        rampDuration:
+                          description: |-
+                            Duration over which memory is gradually consumed (e.g., "10m")
+                            If empty, memory is consumed immediately
+                          type: string
+                        targetPercent:
+                          description: Target memory utilization as a percentage (e.g., "76%")
+                          type: string
+                      required:
+                        - targetPercent
+                      type: object
                     network:
                       description: NetworkDisruptionSpec represents a network disruption injection
                       nullable: true

@@ -81,6 +81,10 @@ const (
 	DisruptionKindGRPCDisruption = "grpc-disruption"
 	// DisruptionKindPodReplacement is a pod replacement disruption
 	DisruptionKindPodReplacement = "pod-replacement"
+	// DisruptionKindMemoryPressure is a memory pressure disruption
+	DisruptionKindMemoryPressure = "memory-pressure"
+	// DisruptionKindMemoryStress is a memory pressure sub-disruption that stress a single container
+	DisruptionKindMemoryStress = "memory-pressure-stress"
 	// DisruptionKindDNSDisruption is a DNS disruption
 	DisruptionKindDNSDisruption = "dns-disruption"
 
@@ -155,6 +159,7 @@ var DisruptionKindNames = []DisruptionKindName{
 	DisruptionKindNodeFailure,
 	DisruptionKindContainerFailure,
 	DisruptionKindCPUPressure,
+	DisruptionKindMemoryPressure,
 	DisruptionKindDiskPressure,
 	DisruptionKindDiskFailure,
 	DisruptionKindGRPCDisruption,

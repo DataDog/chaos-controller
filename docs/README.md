@@ -20,6 +20,7 @@ This folder contains the detailed documentation of most parts of the project.
   - [Container Failure](container_disruption.md)
   - [Node Failure](node_disruption.md)
   - [CPU Pressure](cpu_pressure.md)
+  - [Memory Pressure](memory_disruption.md)
   - [Disk Failure](disk_failure.md)
   - [Disk Pressure](disk_pressure.md)
   - [DNS Disruption](dns_disruption.md)

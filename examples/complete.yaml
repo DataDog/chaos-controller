@@ -103,6 +103,9 @@ spec:
     delayJitter: 5 # add X % (1-100) of delay as jitter to delay (+- X% ms to original delay), defaults to 10%
     bandwidthLimit: 10000 # bandwidth limit in bytes
   cpuPressure: {} # cpu load generator
+  memoryPressure: # memory load generator
+    targetPercent: "50%" # percentage of available memory to consume (e.g. "50%")
+    rampDuration: 10m # optional, duration over which to gradually reach targetPercent
   diskPressure: # disk pressure
     path: /mnt/data # mount point (in the pod) to apply throttle on
     throttling:

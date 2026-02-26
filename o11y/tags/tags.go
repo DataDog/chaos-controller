@@ -62,6 +62,8 @@ const (
 	TargetDisruptedByKindsKey = "target_disrupted_by_kinds"
 	TargetLevelKey            = "target_level"
 	TargetsKey                = "targets"
+	TargetBytesKey            = "target_bytes"
+	TargetPercentKey          = "target_percent"
 
 	// Target selection
 	EstimatedEligibleTargetsCountKey = "estimated_eligible_targets_count"
@@ -188,6 +190,19 @@ const (
 	SysrqPathKey        = "sysrq_path"
 	SysrqTriggerPathKey = "sysrq_trigger_path"
 	ThreadIDKey         = "thread_id"
+
+	// Memory pressure
+	AllocationsKey    = "allocations"
+	AllocSizeKey      = "alloc_size"
+	ChunkSizeKey      = "chunk_size"
+	CompletedStepsKey = "completed_steps"
+	CurrentUsageKey   = "current_usage"
+	MemoryLimitKey    = "memory_limit"
+	RampDurationKey   = "ramp_duration"
+	StepDelayKey      = "step_delay"
+	StepKey           = "step"
+	StepsKey          = "steps"
+	TotalStepsKey     = "total_steps"
 
 	// Network and connectivity
 	AddressKey             = "address"
