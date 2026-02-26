@@ -509,23 +509,24 @@ endif
 install-go:
 	BUILDGOVERSION=$(BUILDGOVERSION) ./scripts/install-go
 
-EXISTING_NAMESPACE = $(shell $(KUBECTL) get ns datadog-agent -oname || echo "")
+EXISTING_HELM_RELEASE = $(shell helm status -n datadog-agent my-datadog-operator --output json 2>/dev/null | grep -q '"status":"deployed"' && echo "true" || echo "")
 
 lima-install-datadog-agent:
 ifeq (true,$(INSTALL_DATADOG_AGENT))
-ifeq (,$(EXISTING_NAMESPACE))
-	$(KUBECTL) create ns datadog-agent
+ifeq (,$(EXISTING_HELM_RELEASE))
+	$(KUBECTL) create ns datadog-agent 2>/dev/null || true
 	helm repo add --force-update datadoghq https://helm.datadoghq.com
 	helm install -n datadog-agent my-datadog-operator datadoghq/datadog-operator
-	$(KUBECTL) create secret -n datadog-agent generic datadog-secret --from-literal api-key=${STAGING_DATADOG_API_KEY} --from-literal app-key=${STAGING_DATADOG_APP_KEY}
+	$(KUBECTL) create secret -n datadog-agent generic datadog-secret --from-literal api-key=${STAGING_DATADOG_API_KEY} --from-literal app-key=${STAGING_DATADOG_APP_KEY} 2>/dev/null || true
+	$(KUBECTL) wait --for=condition=Available -n datadog-agent deployment --all --timeout=120s
 endif
-	$(KUBECTL) apply -f - < examples/datadog-agent.yaml
+	LIMA_INSTANCE=$(LIMA_INSTANCE) envsubst < examples/datadog-agent.yaml | $(KUBECTL) apply -f -
 endif
 
 open-dd:
 ifeq (true,$(INSTALL_DATADOG_AGENT))
 ifdef STAGING_DD_SITE
-	open "${STAGING_DD_SITE}/infrastructure?host=lima-$(LIMA_INSTANCE)&tab=details"
+	open "https://${STAGING_DD_SITE}/infrastructure/hosts?hostType=all-hosts&scope=host%3Alima-$(LIMA_INSTANCE)"
 else
 	@echo "You need to define STAGING_DD_SITE in your .zshrc or similar to use this feature"
 endif
