@@ -182,7 +182,7 @@ func (m *memoryStressInjector) stress(targetBytes int64, ready chan<- struct{}) 
 }
 
 func (m *memoryStressInjector) Clean() error {
-	m.config.Log.Infow("cleaning memory stress", tags.AllocationsKey, len(m.allocations))
+	m.config.Log.Info("cleaning memory stress")
 
 	if m.exitCh != nil {
 		m.exitCh <- struct{}{}
@@ -195,6 +195,8 @@ func (m *memoryStressInjector) Clean() error {
 		close(m.exitCompleted)
 		m.exitCompleted = nil
 	}
+
+	m.config.Log.Infow("releasing memory allocations", tags.AllocationsKey, len(m.allocations))
 
 	for _, alloc := range m.allocations {
 		if err := munmapMemory(alloc); err != nil {
