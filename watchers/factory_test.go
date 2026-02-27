@@ -7,7 +7,7 @@ package watchers_test
 
 import (
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/mocks"
+	"github.com/DataDog/chaos-controller/cmd/mocks"
 	"github.com/DataDog/chaos-controller/o11y/metrics/noop"
 	"github.com/DataDog/chaos-controller/types"
 	chaostypes "github.com/DataDog/chaos-controller/types"

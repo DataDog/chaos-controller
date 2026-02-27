@@ -19,7 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	"github.com/DataDog/chaos-controller/mocks"
+	"github.com/DataDog/chaos-controller/cmd/mocks"
 	metricsnoop "github.com/DataDog/chaos-controller/o11y/metrics/noop"
 	tracernoop "github.com/DataDog/chaos-controller/o11y/tracer/noop"
 	chaostypes "github.com/DataDog/chaos-controller/types"

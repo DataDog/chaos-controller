@@ -90,7 +90,7 @@ See [targeting](./targeting.md)
 
 > :memo: This mode has some restrictions:
 >
-> - it requires a 1.15+ Kubernetes cluster
+> - it requires a 1.22+ Kubernetes cluster
 > - it requires the `--handler-enabled` flag on the controller container
 > - it only works for network disruptions
 > - it only works with the pod level

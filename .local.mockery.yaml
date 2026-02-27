@@ -25,7 +25,7 @@ packages:
   github.com/DataDog/chaos-controller/cloudservice/types: {}
   github.com/DataDog/chaos-controller/command: {}
   github.com/DataDog/chaos-controller/container: {}
-  github.com/DataDog/chaos-controller/controllers: {}
+  github.com/DataDog/chaos-controller/internal/controller: {}
   github.com/DataDog/chaos-controller/cpuset: {}
   github.com/DataDog/chaos-controller/disk: {}
   github.com/DataDog/chaos-controller/dogfood/chaosdogfood: {}
