@@ -11,7 +11,7 @@ import (
 	"net/http"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/mocks"
+	"github.com/DataDog/chaos-controller/cmd/mocks"
 	"github.com/DataDog/chaos-controller/webhook"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
