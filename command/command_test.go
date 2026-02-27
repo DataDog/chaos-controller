@@ -244,12 +244,18 @@ var _ = Describe("BackgroundCmd", func() {
 					sut.KeepAlive()
 					sut.KeepAlive() // we call it twice voluntarily to test the invariant that only a single goroutine is created
 
-					// Wait enough interval to have at least expected calls (times + 20%)
-					<-time.After(cmdKeepAliveTickDuration*time.Duration(times) + cmdBootstrapAllowedDuration/5)
-
 					underSut, ok := sut.(*backgroundCmd)
 					Expect(ok).To(BeTrue())
 					Expect(underSut).ToNot(BeNil())
+
+					// Ensure the keepAlive goroutine has fully exited before mock cleanup runs,
+					// preventing panics when mocks are called after the test finishes.
+					DeferCleanup(func() {
+						<-underSut.keepAliveDone
+					})
+
+					// Wait enough interval to have at least expected calls (times + 20%)
+					<-time.After(cmdKeepAliveTickDuration*time.Duration(times) + cmdBootstrapAllowedDuration/5)
 
 					// Stop timer ASAP to have realistic amount of calls
 					underSut.keepAliveQuit <- 0
@@ -268,12 +274,17 @@ var _ = Describe("BackgroundCmd", func() {
 					sut.KeepAlive()
 					sut.KeepAlive() // we call it twice voluntarily to test the invariant that only a single goroutine is created
 
-					// Wait enough interval to have at least expected calls (times + 20%)
-					<-time.After(cmdKeepAliveTickDuration*time.Duration(times) + cmdBootstrapAllowedDuration/5)
-
 					underSut, ok := sut.(*backgroundCmd)
 					Expect(ok).To(BeTrue())
 					Expect(underSut).ToNot(BeNil())
+
+					// Ensure the keepAlive goroutine has fully exited before mock cleanup runs.
+					DeferCleanup(func() {
+						<-underSut.keepAliveDone
+					})
+
+					// Wait enough interval to have at least expected calls (times + 20%)
+					<-time.After(cmdKeepAliveTickDuration*time.Duration(times) + cmdBootstrapAllowedDuration/5)
 				},
 				Entry("Find fails once", nil, errors.New("find fails"), nil, 1),
 				Entry("Signal fails once", &os.Process{}, nil, errors.New("signal fails"), 1),

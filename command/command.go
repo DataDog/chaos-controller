@@ -87,6 +87,7 @@ type backgroundCmd struct {
 	ticker         *time.Ticker    // Used to send regular SIGCONT signal to process
 	err            chan error      // Used to monitor the exit of the command
 	keepAliveQuit  chan int        // Used to kill the keepAlive goroutine
+	keepAliveDone  chan struct{}   // Closed when the keepAlive goroutine exits
 	pid            int             // PID of the process
 }
 
@@ -118,6 +119,7 @@ func NewBackgroundCmd(cmd Cmd, log *zap.SugaredLogger, processManager process.Ma
 		sync.Mutex{},
 		log,
 		processManager,
+		nil,
 		nil,
 		nil,
 		nil,
@@ -193,10 +195,13 @@ func (w *backgroundCmd) KeepAlive() {
 	w.ticker = time.NewTicker(cmdKeepAliveTickDuration)
 
 	w.keepAliveQuit = make(chan int, 1) // we need a buffered channel so the sender doesn't block
+	w.keepAliveDone = make(chan struct{})
 
 	w.log.Debug("monitoring sending SIGCONT signal to process every 1s")
 
 	go func() {
+		defer close(w.keepAliveDone)
+
 		for {
 			exit, err := w.sendSIGCONTSignal()
 			if err != nil {
