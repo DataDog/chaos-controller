@@ -136,6 +136,6 @@ CRDs are defined in `api/v1beta1/` with kubebuilder markers. After modifying typ
 
 ## Requirements
 
-- Kubernetes >= 1.16 (not 1.20.0-1.20.4)
+- Kubernetes >= 1.22
 - Go 1.25.6
 - Docker with buildx (multi-arch: amd64, arm64)
