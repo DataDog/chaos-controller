@@ -23,7 +23,7 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier"
 	notifTypes "github.com/DataDog/chaos-controller/eventnotifier/types"
-	"github.com/DataDog/chaos-controller/mocks"
+	"github.com/DataDog/chaos-controller/cmd/mocks"
 	chaostypes "github.com/DataDog/chaos-controller/types"
 
 	. "github.com/onsi/ginkgo/v2"

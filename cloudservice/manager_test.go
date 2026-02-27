@@ -17,7 +17,7 @@ import (
 	"github.com/DataDog/chaos-controller/cloudservice/gcp"
 	"github.com/DataDog/chaos-controller/cloudservice/types"
 	"github.com/DataDog/chaos-controller/log"
-	"github.com/DataDog/chaos-controller/mocks"
+	"github.com/DataDog/chaos-controller/cmd/mocks"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
