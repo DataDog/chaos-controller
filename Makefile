@@ -52,7 +52,7 @@ E2E_TEST_CLUSTER_NAME ?= lima-$(LIMA_INSTANCE)
 E2E_TEST_KUBECTL_CONTEXT ?= lima
 
 KUBECTL ?= limactl shell $(LIMA_INSTANCE) sudo kubectl
-PROTOC_VERSION = 29.6
+PROTOC_VERSION = 33.4
 PROTOC_OS ?= osx
 PROTOC_ZIP = protoc-${PROTOC_VERSION}-${PROTOC_OS}-x86_64.zip
 # you might also want to change ~/lima.yaml k3s version
