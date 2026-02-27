@@ -8,8 +8,8 @@ package ebpf_test
 import (
 	"fmt"
 
-	"github.com/DataDog/chaos-controller/ebpf"
 	"github.com/DataDog/chaos-controller/cmd/mocks"
+	"github.com/DataDog/chaos-controller/ebpf"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
