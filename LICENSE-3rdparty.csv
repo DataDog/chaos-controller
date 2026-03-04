@@ -521,14 +521,14 @@ github.com/slack-go/slack,github.com/slack-go/slack/internal/errorsx,BSD-2-Claus
 github.com/slack-go/slack,github.com/slack-go/slack/internal/timex,BSD-2-Clause
 github.com/slack-go/slack,github.com/slack-go/slack/slackutilsx,BSD-2-Clause
 github.com/sourcegraph/conc,github.com/sourcegraph/conc,MIT
-github.com/sourcegraph/conc,github.com/sourcegraph/conc/internal/multierror,MIT
-github.com/sourcegraph/conc,github.com/sourcegraph/conc/iter,MIT
 github.com/sourcegraph/conc,github.com/sourcegraph/conc/panics,MIT
+github.com/sourcegraph/conc,github.com/sourcegraph/conc/pool,MIT
 github.com/spaolacci/murmur3,github.com/spaolacci/murmur3,BSD-3-Clause
 github.com/spf13/afero,github.com/spf13/afero,Apache-2.0
 github.com/spf13/afero,github.com/spf13/afero/internal/common,Apache-2.0
 github.com/spf13/afero,github.com/spf13/afero/mem,Apache-2.0
 github.com/spf13/cast,github.com/spf13/cast,MIT
+github.com/spf13/cast,github.com/spf13/cast/internal,MIT
 github.com/spf13/cobra,github.com/spf13/cobra,Apache-2.0
 github.com/spf13/pflag,github.com/spf13/pflag,BSD-3-Clause
 github.com/spf13/viper,github.com/spf13/viper,MIT
