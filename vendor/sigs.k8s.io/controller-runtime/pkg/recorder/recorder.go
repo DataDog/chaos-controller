@@ -21,16 +21,11 @@ limitations under the License.
 package recorder
 
 import (
-	"k8s.io/client-go/tools/events"
 	"k8s.io/client-go/tools/record"
 )
 
 // Provider knows how to generate new event recorders with given name.
 type Provider interface {
-	// GetEventRecorderFor returns an EventRecorder for the old events API.
-	//
-	// Deprecated: this uses the old events API and will be removed in a future release. Please use GetEventRecorder instead.
+	// NewRecorder returns an EventRecorder with given name.
 	GetEventRecorderFor(name string) record.EventRecorder
-	// GetEventRecorder returns a EventRecorder with given name.
-	GetEventRecorder(name string) events.EventRecorder
 }

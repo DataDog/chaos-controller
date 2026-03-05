@@ -64,6 +64,9 @@ func RegisterFlags(fs *flag.FlagSet) {
 // The returned `*rest.Config` has client-side ratelimting disabled as we can rely on API priority and
 // fairness. Set its QPS to a value equal or bigger than 0 to re-enable it.
 //
+// It also applies saner defaults for QPS and burst based on the Kubernetes
+// controller manager defaults (20 QPS, 30 burst)
+//
 // Config precedence:
 //
 // * --kubeconfig flag pointing at a file
@@ -83,6 +86,9 @@ func GetConfig() (*rest.Config, error) {
 //
 // The returned `*rest.Config` has client-side ratelimting disabled as we can rely on API priority and
 // fairness. Set its QPS to a value equal or bigger than 0 to re-enable it.
+//
+// It also applies saner defaults for QPS and burst based on the Kubernetes
+// controller manager defaults (20 QPS, 30 burst)
 //
 // Config precedence:
 //

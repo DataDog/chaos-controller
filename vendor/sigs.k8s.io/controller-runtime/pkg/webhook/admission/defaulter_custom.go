@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"reflect"
 	"slices"
 
 	"gomodules.xyz/jsonpatch/v2"
@@ -32,15 +31,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-// Defaulter defines functions for setting defaults on resources.
-type Defaulter[T runtime.Object] interface {
-	Default(ctx context.Context, obj T) error
-}
-
 // CustomDefaulter defines functions for setting defaults on resources.
-//
-// Deprecated: CustomDefaulter is deprecated, use Defaulter instead
-type CustomDefaulter = Defaulter[runtime.Object]
+type CustomDefaulter interface {
+	Default(ctx context.Context, obj runtime.Object) error
+}
 
 type defaulterOptions struct {
 	removeUnknownOrOmitableFields bool
@@ -56,29 +50,6 @@ func DefaulterRemoveUnknownOrOmitableFields(o *defaulterOptions) {
 	o.removeUnknownOrOmitableFields = true
 }
 
-// WithDefaulter creates a new Webhook for a Defaulter interface.
-func WithDefaulter[T runtime.Object](scheme *runtime.Scheme, defaulter Defaulter[T], opts ...DefaulterOption) *Webhook {
-	options := &defaulterOptions{}
-	for _, o := range opts {
-		o(options)
-	}
-	return &Webhook{
-		Handler: &defaulterForType[T]{
-			defaulter:                     defaulter,
-			decoder:                       NewDecoder(scheme),
-			removeUnknownOrOmitableFields: options.removeUnknownOrOmitableFields,
-			new: func() T {
-				var zero T
-				typ := reflect.TypeOf(zero)
-				if typ.Kind() == reflect.Ptr {
-					return reflect.New(typ.Elem()).Interface().(T)
-				}
-				return zero
-			},
-		},
-	}
-}
-
 // WithCustomDefaulter creates a new Webhook for a CustomDefaulter interface.
 func WithCustomDefaulter(scheme *runtime.Scheme, obj runtime.Object, defaulter CustomDefaulter, opts ...DefaulterOption) *Webhook {
 	options := &defaulterOptions{}
@@ -86,29 +57,32 @@ func WithCustomDefaulter(scheme *runtime.Scheme, obj runtime.Object, defaulter C
 		o(options)
 	}
 	return &Webhook{
-		Handler: &defaulterForType[runtime.Object]{
+		Handler: &defaulterForType{
+			object:                        obj,
 			defaulter:                     defaulter,
 			decoder:                       NewDecoder(scheme),
 			removeUnknownOrOmitableFields: options.removeUnknownOrOmitableFields,
-			new:                           func() runtime.Object { return obj.DeepCopyObject() },
 		},
 	}
 }
 
-type defaulterForType[T runtime.Object] struct {
-	defaulter                     Defaulter[T]
+type defaulterForType struct {
+	defaulter                     CustomDefaulter
+	object                        runtime.Object
 	decoder                       Decoder
 	removeUnknownOrOmitableFields bool
-	new                           func() T
 }
 
 // Handle handles admission requests.
-func (h *defaulterForType[T]) Handle(ctx context.Context, req Request) Response {
+func (h *defaulterForType) Handle(ctx context.Context, req Request) Response {
 	if h.decoder == nil {
 		panic("decoder should never be nil")
 	}
 	if h.defaulter == nil {
 		panic("defaulter should never be nil")
+	}
+	if h.object == nil {
+		panic("object should never be nil")
 	}
 
 	// Always skip when a DELETE operation received in custom mutation handler.
@@ -124,15 +98,15 @@ func (h *defaulterForType[T]) Handle(ctx context.Context, req Request) Response 
 	ctx = NewContextWithRequest(ctx, req)
 
 	// Get the object in the request
-	obj := h.new()
+	obj := h.object.DeepCopyObject()
 	if err := h.decoder.Decode(req, obj); err != nil {
 		return Errored(http.StatusBadRequest, err)
 	}
 
 	// Keep a copy of the object if needed
-	var originalObj T
+	var originalObj runtime.Object
 	if !h.removeUnknownOrOmitableFields {
-		originalObj = obj.DeepCopyObject().(T)
+		originalObj = obj.DeepCopyObject()
 	}
 
 	// Default the object
@@ -157,7 +131,7 @@ func (h *defaulterForType[T]) Handle(ctx context.Context, req Request) Response 
 	return handlerResponse
 }
 
-func (h *defaulterForType[T]) dropSchemeRemovals(r Response, original T, raw []byte) Response {
+func (h *defaulterForType) dropSchemeRemovals(r Response, original runtime.Object, raw []byte) Response {
 	const opRemove = "remove"
 	if !r.Allowed || r.PatchType == nil {
 		return r

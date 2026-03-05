@@ -60,7 +60,7 @@ type EventHandler[object client.Object, request comparable] struct {
 }
 
 // OnAdd creates CreateEvent and calls Create on EventHandler.
-func (e *EventHandler[object, request]) OnAdd(obj any, isInInitialList bool) {
+func (e *EventHandler[object, request]) OnAdd(obj interface{}, isInInitialList bool) {
 	c := event.TypedCreateEvent[object]{
 		IsInInitialList: isInInitialList,
 	}
@@ -87,7 +87,7 @@ func (e *EventHandler[object, request]) OnAdd(obj any, isInInitialList bool) {
 }
 
 // OnUpdate creates UpdateEvent and calls Update on EventHandler.
-func (e *EventHandler[object, request]) OnUpdate(oldObj, newObj any) {
+func (e *EventHandler[object, request]) OnUpdate(oldObj, newObj interface{}) {
 	u := event.TypedUpdateEvent[object]{}
 
 	if o, ok := oldObj.(object); ok {
@@ -120,7 +120,7 @@ func (e *EventHandler[object, request]) OnUpdate(oldObj, newObj any) {
 }
 
 // OnDelete creates DeleteEvent and calls Delete on EventHandler.
-func (e *EventHandler[object, request]) OnDelete(obj any) {
+func (e *EventHandler[object, request]) OnDelete(obj interface{}) {
 	d := event.TypedDeleteEvent[object]{}
 
 	// Deal with tombstone events by pulling the object out.  Tombstone events wrap the object in a

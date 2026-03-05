@@ -30,7 +30,7 @@ type loggerPromise struct {
 	promisesLock  sync.Mutex
 
 	name *string
-	tags []any
+	tags []interface{}
 }
 
 func (p *loggerPromise) WithName(l *delegatingLogSink, name string) *loggerPromise {
@@ -47,7 +47,7 @@ func (p *loggerPromise) WithName(l *delegatingLogSink, name string) *loggerPromi
 }
 
 // WithValues provides a new Logger with the tags appended.
-func (p *loggerPromise) WithValues(l *delegatingLogSink, tags ...any) *loggerPromise {
+func (p *loggerPromise) WithValues(l *delegatingLogSink, tags ...interface{}) *loggerPromise {
 	res := &loggerPromise{
 		logger:       l,
 		tags:         tags,
@@ -120,7 +120,7 @@ func (l *delegatingLogSink) Enabled(level int) bool {
 // the log line.  The key/value pairs can then be used to add additional
 // variable information.  The key/value pairs should alternate string
 // keys and arbitrary values.
-func (l *delegatingLogSink) Info(level int, msg string, keysAndValues ...any) {
+func (l *delegatingLogSink) Info(level int, msg string, keysAndValues ...interface{}) {
 	eventuallyFulfillRoot()
 	l.lock.RLock()
 	defer l.lock.RUnlock()
@@ -135,7 +135,7 @@ func (l *delegatingLogSink) Info(level int, msg string, keysAndValues ...any) {
 // The msg field should be used to add context to any underlying error,
 // while the err field should be used to attach the actual error that
 // triggered this log line, if present.
-func (l *delegatingLogSink) Error(err error, msg string, keysAndValues ...any) {
+func (l *delegatingLogSink) Error(err error, msg string, keysAndValues ...interface{}) {
 	eventuallyFulfillRoot()
 	l.lock.RLock()
 	defer l.lock.RUnlock()
@@ -164,7 +164,7 @@ func (l *delegatingLogSink) WithName(name string) logr.LogSink {
 }
 
 // WithValues provides a new Logger with the tags appended.
-func (l *delegatingLogSink) WithValues(tags ...any) logr.LogSink {
+func (l *delegatingLogSink) WithValues(tags ...interface{}) logr.LogSink {
 	eventuallyFulfillRoot()
 	l.lock.RLock()
 	defer l.lock.RUnlock()

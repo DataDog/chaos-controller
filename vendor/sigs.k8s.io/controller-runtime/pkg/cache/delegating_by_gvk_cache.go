@@ -81,11 +81,13 @@ func (dbt *delegatingByGVKCache) Start(ctx context.Context) error {
 	errs := make(chan error)
 	for idx := range allCaches {
 		cache := allCaches[idx]
-		wg.Go(func() {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
 			if err := cache.Start(ctx); err != nil {
 				errs <- err
 			}
-		})
+		}()
 	}
 
 	select {
