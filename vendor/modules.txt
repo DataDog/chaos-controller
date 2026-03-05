@@ -794,8 +794,8 @@ github.com/shirou/gopsutil/v4/process
 # github.com/sirupsen/logrus v1.9.3
 ## explicit; go 1.13
 github.com/sirupsen/logrus
-# github.com/slack-go/slack v0.17.3
-## explicit; go 1.22
+# github.com/slack-go/slack v0.18.0
+## explicit; go 1.25
 github.com/slack-go/slack
 github.com/slack-go/slack/internal/backoff
 github.com/slack-go/slack/internal/errorsx
