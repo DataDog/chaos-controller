@@ -28,7 +28,10 @@ import (
 var (
 	// Apply uses server-side apply to patch the given object.
 	//
-	// Deprecated: Use client.Client.Apply() and client.Client.SubResource("subrsource").Apply() instead.
+	// This should now only be used to patch sub resources, e.g. with client.Client.Status().Patch().
+	// Use client.Client.Apply() instead of client.Client.Patch(..., client.Apply, ...)
+	// This will be deprecated once the Apply method has been added for sub resources.
+	// See the following issue for more details: https://github.com/kubernetes-sigs/controller-runtime/issues/3183
 	Apply Patch = applyPatch{}
 
 	// Merge uses the raw object as a merge patch, without modifications.
@@ -88,7 +91,7 @@ type MergeFromOptions struct {
 
 type mergeFromPatch struct {
 	patchType   types.PatchType
-	createPatch func(originalJSON, modifiedJSON []byte, dataStruct any) ([]byte, error)
+	createPatch func(originalJSON, modifiedJSON []byte, dataStruct interface{}) ([]byte, error)
 	from        Object
 	opts        MergeFromOptions
 }
@@ -134,11 +137,11 @@ func (s *mergeFromPatch) Data(obj Object) ([]byte, error) {
 	return data, nil
 }
 
-func createMergePatch(originalJSON, modifiedJSON []byte, _ any) ([]byte, error) {
+func createMergePatch(originalJSON, modifiedJSON []byte, _ interface{}) ([]byte, error) {
 	return jsonpatch.CreateMergePatch(originalJSON, modifiedJSON)
 }
 
-func createStrategicMergePatch(originalJSON, modifiedJSON []byte, dataStruct any) ([]byte, error) {
+func createStrategicMergePatch(originalJSON, modifiedJSON []byte, dataStruct interface{}) ([]byte, error) {
 	return strategicpatch.CreateTwoWayMergePatch(originalJSON, modifiedJSON, dataStruct)
 }
 

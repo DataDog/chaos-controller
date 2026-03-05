@@ -79,7 +79,7 @@ func (d *decoder) DecodeRaw(rawObj runtime.RawExtension, into runtime.Object) er
 	}
 	if unstructuredInto, isUnstructured := into.(runtime.Unstructured); isUnstructured {
 		// unmarshal into unstructured's underlying object to avoid calling the decoder
-		var object map[string]any
+		var object map[string]interface{}
 		if err := json.Unmarshal(rawObj.Raw, &object); err != nil {
 			return err
 		}

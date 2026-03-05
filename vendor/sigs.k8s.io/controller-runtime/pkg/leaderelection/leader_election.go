@@ -103,7 +103,10 @@ func NewResourceLock(config *rest.Config, recorderProvider recorder.Provider, op
 	// RenewDeadline to keep a single hung request from forcing a leader loss.
 	// Setting it to max(time.Second, RenewDeadline/2) as a reasonable heuristic.
 	if options.RenewDeadline != 0 {
-		timeout := max(options.RenewDeadline/2, time.Second)
+		timeout := options.RenewDeadline / 2
+		if timeout < time.Second {
+			timeout = time.Second
+		}
 		config.Timeout = timeout
 	}
 
@@ -124,10 +127,8 @@ func NewResourceLock(config *rest.Config, recorderProvider recorder.Provider, op
 		corev1Client,
 		coordinationClient,
 		resourcelock.ResourceLockConfig{
-			Identity: id,
-			// TODO(clebs): Replace with the new events API after leader election is updated upstream.
-			// REF: https://github.com/kubernetes/kubernetes/issues/82846
-			EventRecorder: recorderProvider.GetEventRecorderFor(id), //nolint:staticcheck
+			Identity:      id,
+			EventRecorder: recorderProvider.GetEventRecorderFor(id),
 		},
 		options.LeaderLabels,
 	)

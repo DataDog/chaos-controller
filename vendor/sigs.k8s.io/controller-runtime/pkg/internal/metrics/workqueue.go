@@ -18,11 +18,9 @@ package metrics
 
 import (
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 )
@@ -156,55 +154,17 @@ type DepthMetricWithPriority interface {
 var _ MetricsProviderWithPriority = WorkqueueMetricsProvider{}
 
 func (WorkqueueMetricsProvider) NewDepthMetricWithPriority(name string) DepthMetricWithPriority {
-	return &depthWithPriorityMetric{depth: depth, lvs: []string{name, name}, observedPriorities: sets.Set[int]{}}
+	return &depthWithPriorityMetric{lvs: []string{name, name}}
 }
-
-type prometheusGaugeVec interface {
-	WithLabelValues(lvs ...string) prometheus.Gauge
-}
-
-const (
-	priorityCardinalityExceededPlaceholder = "exceeded_cardinality_limit"
-	// maxRecommendedUniquePriorities is not scientifically chosen, we assume
-	// that the 99% use-case is to only use the two priorities that c-r itself
-	// uses and then leave a bit of leeway for other use-cases.
-	// We may decide to update this value in the future if we find that a
-	// a different value is more appropriate.
-	maxRecommendedUniquePriorities = 25
-)
 
 type depthWithPriorityMetric struct {
-	depth prometheusGaugeVec
-	lvs   []string
-
-	observedPrioritiesLock          sync.Mutex
-	priorityCardinalityLimitReached bool
-	observedPriorities              sets.Set[int]
-}
-
-func (g *depthWithPriorityMetric) priorityLabel(priority int) string {
-	g.observedPrioritiesLock.Lock()
-	defer g.observedPrioritiesLock.Unlock()
-
-	if g.priorityCardinalityLimitReached {
-		return priorityCardinalityExceededPlaceholder
-	}
-
-	g.observedPriorities.Insert(priority)
-
-	if g.observedPriorities.Len() > maxRecommendedUniquePriorities {
-		g.observedPriorities = nil
-		g.priorityCardinalityLimitReached = true
-		return priorityCardinalityExceededPlaceholder
-	}
-
-	return strconv.Itoa(priority)
+	lvs []string
 }
 
 func (g *depthWithPriorityMetric) Inc(priority int) {
-	g.depth.WithLabelValues(append(g.lvs, g.priorityLabel(priority))...).Inc()
+	depth.WithLabelValues(append(g.lvs, strconv.Itoa(priority))...).Inc()
 }
 
 func (g *depthWithPriorityMetric) Dec(priority int) {
-	g.depth.WithLabelValues(append(g.lvs, g.priorityLabel(priority))...).Dec()
+	depth.WithLabelValues(append(g.lvs, strconv.Itoa(priority))...).Dec()
 }

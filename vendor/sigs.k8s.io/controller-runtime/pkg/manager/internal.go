@@ -32,11 +32,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/events"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/webhook/conversion"
 
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -130,9 +128,6 @@ type controllerManager struct {
 	// webhookServerOnce will be called in GetWebhookServer() to optionally initialize
 	// webhookServer if unset, and Add() it to controllerManager.
 	webhookServerOnce sync.Once
-
-	// converterRegistry stores conversion.Converter for the conversion endpoint.
-	converterRegistry conversion.Registry
 
 	// leaderElectionID is the name of the resource that leader election
 	// will use for holding the leader lock.
@@ -261,11 +256,7 @@ func (cm *controllerManager) GetCache() cache.Cache {
 }
 
 func (cm *controllerManager) GetEventRecorderFor(name string) record.EventRecorder {
-	return cm.cluster.GetEventRecorderFor(name) //nolint:staticcheck
-}
-
-func (cm *controllerManager) GetEventRecorder(name string) events.EventRecorder {
-	return cm.cluster.GetEventRecorder(name)
+	return cm.cluster.GetEventRecorderFor(name)
 }
 
 func (cm *controllerManager) GetRESTMapper() meta.RESTMapper {
@@ -286,10 +277,6 @@ func (cm *controllerManager) GetWebhookServer() webhook.Server {
 		}
 	})
 	return cm.webhookServer
-}
-
-func (cm *controllerManager) GetConverterRegistry() conversion.Registry {
-	return cm.converterRegistry
 }
 
 func (cm *controllerManager) GetLogger() logr.Logger {
@@ -459,16 +446,13 @@ func (cm *controllerManager) Start(ctx context.Context) (err error) {
 
 	// Start the leader election and all required runnables.
 	{
-		// Create a context that inherits all keys from the parent context
-		// but can be cancelled independently for leader election management
-		baseCtx := context.WithoutCancel(ctx)
-		leaderCtx, cancel := context.WithCancel(baseCtx)
+		ctx, cancel := context.WithCancel(context.Background())
 		cm.leaderElectionCancel = cancel
 		if leaderElector != nil {
 			// Start the leader elector process
 			go func() {
-				leaderElector.Run(leaderCtx)
-				<-leaderCtx.Done()
+				leaderElector.Run(ctx)
+				<-ctx.Done()
 				close(cm.leaderElectionStopped)
 			}()
 		} else {
