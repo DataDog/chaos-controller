@@ -602,7 +602,7 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 		break
 	// those disruptions should not watch target to re-inject on container restart
 	case v1beta1.DisruptionIsNotReinjectable((chaostypes.DisruptionKindName)(cmd.Name())):
-	case disruptionArgs.Level == chaostypes.DisruptionLevelNode:
+	case parentPID == 0 && disruptionArgs.Level == chaostypes.DisruptionLevelNode:
 		if disruptionArgs.PulseActiveDuration > 0 && disruptionArgs.PulseDormantDuration > 0 {
 			var (
 				err error
