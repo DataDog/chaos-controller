@@ -189,6 +189,53 @@ func (_c *BackgroundCmdMock_Stop_Call) RunAndReturn(run func() error) *Backgroun
 	return _c
 }
 
+// Done provides a mock function with no fields
+func (_m *BackgroundCmdMock) Done() <-chan struct{} {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Done")
+	}
+
+	var r0 <-chan struct{}
+	if rf, ok := ret.Get(0).(func() <-chan struct{}); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(<-chan struct{})
+		}
+	}
+
+	return r0
+}
+
+// BackgroundCmdMock_Done_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Done'
+type BackgroundCmdMock_Done_Call struct {
+	*mock.Call
+}
+
+// Done is a helper method to define mock.On call
+func (_e *BackgroundCmdMock_Expecter) Done() *BackgroundCmdMock_Done_Call {
+	return &BackgroundCmdMock_Done_Call{Call: _e.mock.On("Done")}
+}
+
+func (_c *BackgroundCmdMock_Done_Call) Run(run func()) *BackgroundCmdMock_Done_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *BackgroundCmdMock_Done_Call) Return(_a0 <-chan struct{}) *BackgroundCmdMock_Done_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *BackgroundCmdMock_Done_Call) RunAndReturn(run func() <-chan struct{}) *BackgroundCmdMock_Done_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewBackgroundCmdMock creates a new instance of BackgroundCmdMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewBackgroundCmdMock(t interface {

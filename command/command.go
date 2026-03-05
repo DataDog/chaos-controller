@@ -51,6 +51,8 @@ type BackgroundCmd interface {
 	KeepAlive()
 	Stop() error
 	DryRun() bool
+	// Done returns a channel that is closed when the background process exits.
+	Done() <-chan struct{}
 }
 
 type cmd struct {
@@ -88,6 +90,7 @@ type backgroundCmd struct {
 	err            chan error      // Used to monitor the exit of the command
 	keepAliveQuit  chan int        // Used to kill the keepAlive goroutine
 	pid            int             // PID of the process
+	done           chan struct{}   // Closed when the process exits
 }
 
 type factory struct {
@@ -114,15 +117,17 @@ func (f factory) NewCmd(ctx context.Context, name string, args []string) Cmd {
 
 func NewBackgroundCmd(cmd Cmd, log *zap.SugaredLogger, processManager process.Manager) BackgroundCmd {
 	return &backgroundCmd{
-		cmd,
-		sync.Mutex{},
-		log,
-		processManager,
-		nil,
-		nil,
-		nil,
-		process.NotFoundProcessPID,
+		Cmd:            cmd,
+		log:            log,
+		processManager: processManager,
+		pid:            process.NotFoundProcessPID,
+		done:           make(chan struct{}),
 	}
+}
+
+// Done returns a channel that is closed when the background process exits.
+func (w *backgroundCmd) Done() <-chan struct{} {
+	return w.done
 }
 
 func (w *backgroundCmd) DryRun() bool {
@@ -131,6 +136,7 @@ func (w *backgroundCmd) DryRun() bool {
 
 func (w *backgroundCmd) Start() error {
 	if w.DryRun() {
+		close(w.done)
 		return nil
 	}
 
@@ -171,6 +177,8 @@ func (w *backgroundCmd) Start() error {
 		} else {
 			w.log.Info("background command exited successfully")
 		}
+
+		close(w.done)
 	}()
 
 	return nil
