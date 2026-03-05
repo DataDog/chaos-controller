@@ -107,5 +107,13 @@ func (i *memoryPressureInjector) Clean() error {
 		return fmt.Errorf("unable to stop background process: %w", err)
 	}
 
+	// Wait for the child process to fully exit so cgroup memory accounting is updated
+	// before a potential re-inject during pulse mode.
+	select {
+	case <-i.backgroundCmd.Done():
+	case <-time.After(5 * time.Second):
+		i.config.Log.Warnw("timed out waiting for background process to exit")
+	}
+
 	return nil
 }

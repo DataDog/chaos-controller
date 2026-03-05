@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/command"
@@ -121,6 +122,13 @@ func (i *cpuPressureInjector) Clean() error {
 
 	if err := i.backgroundCmd.Stop(); err != nil && !errors.Is(err, os.ErrProcessDone) {
 		return fmt.Errorf("unable to stop background process: %w", err)
+	}
+
+	// Wait for the child process to fully exit before a potential re-inject during pulse mode.
+	select {
+	case <-i.backgroundCmd.Done():
+	case <-time.After(5 * time.Second):
+		i.config.Log.Warnw("timed out waiting for background process to exit")
 	}
 
 	return nil
