@@ -15,13 +15,9 @@ import (
 
 	context "context"
 
-	conversion "sigs.k8s.io/controller-runtime/pkg/webhook/conversion"
-
 	healthz "sigs.k8s.io/controller-runtime/pkg/healthz"
 
 	http "net/http"
-
-	internal "k8s.io/client-go/tools/events"
 
 	logr "github.com/go-logr/logr"
 
@@ -516,101 +512,6 @@ func (_c *ManagerMock_GetControllerOptions_Call) Return(_a0 config.Controller) *
 }
 
 func (_c *ManagerMock_GetControllerOptions_Call) RunAndReturn(run func() config.Controller) *ManagerMock_GetControllerOptions_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// GetConverterRegistry provides a mock function with no fields
-func (_m *ManagerMock) GetConverterRegistry() conversion.Registry {
-	ret := _m.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetConverterRegistry")
-	}
-
-	var r0 conversion.Registry
-	if rf, ok := ret.Get(0).(func() conversion.Registry); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(conversion.Registry)
-		}
-	}
-
-	return r0
-}
-
-// ManagerMock_GetConverterRegistry_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetConverterRegistry'
-type ManagerMock_GetConverterRegistry_Call struct {
-	*mock.Call
-}
-
-// GetConverterRegistry is a helper method to define mock.On call
-func (_e *ManagerMock_Expecter) GetConverterRegistry() *ManagerMock_GetConverterRegistry_Call {
-	return &ManagerMock_GetConverterRegistry_Call{Call: _e.mock.On("GetConverterRegistry")}
-}
-
-func (_c *ManagerMock_GetConverterRegistry_Call) Run(run func()) *ManagerMock_GetConverterRegistry_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *ManagerMock_GetConverterRegistry_Call) Return(_a0 conversion.Registry) *ManagerMock_GetConverterRegistry_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *ManagerMock_GetConverterRegistry_Call) RunAndReturn(run func() conversion.Registry) *ManagerMock_GetConverterRegistry_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// GetEventRecorder provides a mock function with given fields: name
-func (_m *ManagerMock) GetEventRecorder(name string) internal.EventRecorder {
-	ret := _m.Called(name)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetEventRecorder")
-	}
-
-	var r0 internal.EventRecorder
-	if rf, ok := ret.Get(0).(func(string) internal.EventRecorder); ok {
-		r0 = rf(name)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(internal.EventRecorder)
-		}
-	}
-
-	return r0
-}
-
-// ManagerMock_GetEventRecorder_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetEventRecorder'
-type ManagerMock_GetEventRecorder_Call struct {
-	*mock.Call
-}
-
-// GetEventRecorder is a helper method to define mock.On call
-//   - name string
-func (_e *ManagerMock_Expecter) GetEventRecorder(name interface{}) *ManagerMock_GetEventRecorder_Call {
-	return &ManagerMock_GetEventRecorder_Call{Call: _e.mock.On("GetEventRecorder", name)}
-}
-
-func (_c *ManagerMock_GetEventRecorder_Call) Run(run func(name string)) *ManagerMock_GetEventRecorder_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
-	})
-	return _c
-}
-
-func (_c *ManagerMock_GetEventRecorder_Call) Return(_a0 internal.EventRecorder) *ManagerMock_GetEventRecorder_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *ManagerMock_GetEventRecorder_Call) RunAndReturn(run func(string) internal.EventRecorder) *ManagerMock_GetEventRecorder_Call {
 	_c.Call.Return(run)
 	return _c
 }
