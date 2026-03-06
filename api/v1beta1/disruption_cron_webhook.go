@@ -17,6 +17,7 @@ import (
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	validationutils "k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -63,7 +64,8 @@ func (d *DisruptionCron) SetupWebhookWithManager(setupWebhookConfig utils.SetupW
 	minimumCronFrequency = setupWebhookConfig.MinimumCronFrequency
 	defaultDuration = setupWebhookConfig.DefaultDurationFlag
 
-	return ctrl.NewWebhookManagedBy(setupWebhookConfig.Manager, d).
+	return ctrl.NewWebhookManagedBy(setupWebhookConfig.Manager).
+		For(d).
 		WithDefaulter(&DisruptionCron{}).
 		WithValidator(&DisruptionCron{}).
 		Complete()
@@ -71,24 +73,29 @@ func (d *DisruptionCron) SetupWebhookWithManager(setupWebhookConfig utils.SetupW
 
 //+kubebuilder:webhook:webhookVersions={v1},path=/mutate-chaos-datadoghq-com-v1beta1-disruptioncron,mutating=true,failurePolicy=fail,sideEffects=None,groups=chaos.datadoghq.com,resources=disruptioncrons,verbs=create;update,versions=v1beta1,name=mdisruptioncron.kb.io,admissionReviewVersions={v1,v1beta1}
 
-var _ admission.Defaulter[*DisruptionCron] = &DisruptionCron{}
+var _ admission.CustomDefaulter = &DisruptionCron{}
 
-// Default implements admission.Defaulter so a webhook will be registered for the type.
-func (d *DisruptionCron) Default(_ context.Context, obj *DisruptionCron) error {
+// Default implements admission.CustomDefaulter so a webhook will be registered for the type.
+func (d *DisruptionCron) Default(_ context.Context, obj k8sruntime.Object) error {
+	disruptionCronObj, ok := obj.(*DisruptionCron)
+	if !ok {
+		return fmt.Errorf("expected a *DisruptionCron object but got %T", obj)
+	}
+
 	log := disruptionCronWebhookLogger.With(
-		tagutil.DisruptionCronNameKey, obj.Name,
-		tagutil.DisruptionCronNamespaceKey, obj.Namespace,
+		tagutil.DisruptionCronNameKey, disruptionCronObj.Name,
+		tagutil.DisruptionCronNamespaceKey, disruptionCronObj.Namespace,
 	)
 
-	log.Infow("defaulting disruption cron", tagutil.SpecKey, obj.Spec)
+	log.Infow("defaulting disruption cron", tagutil.SpecKey, disruptionCronObj.Spec)
 
-	if obj.Spec.DelayedStartTolerance.Duration() == 0 {
+	if disruptionCronObj.Spec.DelayedStartTolerance.Duration() == 0 {
 		log.Infow(fmt.Sprintf("setting default delayedStartTolerance of %s in disruptionCron", defaultCronDelayedStartTolerance),
-			tagutil.DisruptionCronNameKey, obj.Name,
-			tagutil.DisruptionCronNamespaceKey, obj.Namespace,
+			tagutil.DisruptionCronNameKey, disruptionCronObj.Name,
+			tagutil.DisruptionCronNamespaceKey, disruptionCronObj.Namespace,
 		)
 
-		obj.Spec.DelayedStartTolerance = DisruptionDuration(defaultCronDelayedStartTolerance.String())
+		disruptionCronObj.Spec.DelayedStartTolerance = DisruptionDuration(defaultCronDelayedStartTolerance.String())
 	}
 
 	return nil
@@ -96,10 +103,14 @@ func (d *DisruptionCron) Default(_ context.Context, obj *DisruptionCron) error {
 
 //+kubebuilder:webhook:webhookVersions={v1},path=/validate-chaos-datadoghq-com-v1beta1-disruptioncron,mutating=false,failurePolicy=fail,sideEffects=None,groups=chaos.datadoghq.com,resources=disruptioncrons,verbs=create;update;delete,versions=v1beta1,name=vdisruptioncron.kb.io,admissionReviewVersions={v1,v1beta1}
 
-var _ admission.Validator[*DisruptionCron] = &DisruptionCron{}
+var _ admission.CustomValidator = &DisruptionCron{}
 
-// ValidateCreate implements admission.Validator so a webhook will be registered for the type.
-func (d *DisruptionCron) ValidateCreate(_ context.Context, disruptionCronObj *DisruptionCron) (warnings admission.Warnings, err error) {
+// ValidateCreate implements admission.CustomValidator so a webhook will be registered for the type.
+func (d *DisruptionCron) ValidateCreate(_ context.Context, obj k8sruntime.Object) (warnings admission.Warnings, err error) {
+	disruptionCronObj, ok := obj.(*DisruptionCron)
+	if !ok {
+		return nil, fmt.Errorf("expected a *DisruptionCron object but got %T", obj)
+	}
 	log := disruptionCronWebhookLogger.With(
 		tagutil.DisruptionCronNameKey, disruptionCronObj.Name,
 		tagutil.DisruptionCronNamespaceKey, disruptionCronObj.Namespace,
@@ -148,7 +159,17 @@ func (d *DisruptionCron) ValidateCreate(_ context.Context, disruptionCronObj *Di
 	return nil, nil
 }
 
-func (d *DisruptionCron) ValidateUpdate(_ context.Context, oldDisruptionCronObj, newDisruptionCronObj *DisruptionCron) (warnings admission.Warnings, err error) {
+func (d *DisruptionCron) ValidateUpdate(_ context.Context, oldObj, newObj k8sruntime.Object) (warnings admission.Warnings, err error) {
+	oldDisruptionCronObj, ok := oldObj.(*DisruptionCron)
+	if !ok {
+		return nil, fmt.Errorf("expected a *DisruptionCron object but got %T", oldObj)
+	}
+
+	newDisruptionCronObj, ok := newObj.(*DisruptionCron)
+	if !ok {
+		return nil, fmt.Errorf("expected a *DisruptionCron object but got %T", newObj)
+	}
+
 	log := disruptionCronWebhookLogger.With(
 		tagutil.DisruptionCronNameKey, newDisruptionCronObj.Name,
 		tagutil.DisruptionCronNamespaceKey, newDisruptionCronObj.Namespace,
@@ -197,7 +218,12 @@ func (d *DisruptionCron) ValidateUpdate(_ context.Context, oldDisruptionCronObj,
 	return nil, nil
 }
 
-func (d *DisruptionCron) ValidateDelete(_ context.Context, disruptionCronObj *DisruptionCron) (warnings admission.Warnings, err error) {
+func (d *DisruptionCron) ValidateDelete(_ context.Context, obj k8sruntime.Object) (warnings admission.Warnings, err error) {
+	disruptionCronObj, ok := obj.(*DisruptionCron)
+	if !ok {
+		return nil, fmt.Errorf("expected a *DisruptionCron object but got %T", obj)
+	}
+
 	log := disruptionCronWebhookLogger.With(
 		tagutil.DisruptionCronNameKey, disruptionCronObj.Name,
 		tagutil.DisruptionCronNamespaceKey, disruptionCronObj.Namespace,
