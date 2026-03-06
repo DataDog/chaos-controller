@@ -52,6 +52,8 @@ packages:
       Manager:
         config:
           mockname: ManagerMock
+          replace-type:
+            - k8s.io/client-go/tools/internal/events=k8s.io/client-go/tools/events
   k8s.io/client-go/tools/record:
     interfaces:
       EventRecorder:

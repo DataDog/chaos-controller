@@ -10,7 +10,7 @@ import (
 	"net/http"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/mocks"
+	"github.com/DataDog/chaos-controller/cmd/mocks"
 	"github.com/DataDog/chaos-controller/watchers"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"

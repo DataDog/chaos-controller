@@ -10,7 +10,7 @@ import (
 	"os"
 
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/mocks"
+	"github.com/DataDog/chaos-controller/cmd/mocks"
 	"github.com/DataDog/chaos-controller/targetselector"
 	"github.com/DataDog/chaos-controller/types"
 	"github.com/stretchr/testify/mock"

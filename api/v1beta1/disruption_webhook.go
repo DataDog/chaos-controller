@@ -21,12 +21,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
+	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"github.com/DataDog/chaos-controller/cloudservice"
@@ -96,40 +95,38 @@ func (d *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebho
 	permittedUserGroupWarningString = strings.Join(setupWebhookConfig.PermittedUserGroups, ",")
 
 	return ctrl.NewWebhookManagedBy(setupWebhookConfig.Manager).
+		For(d).
 		WithDefaulter(&Disruption{}).
 		WithValidator(&Disruption{}).
-		For(d).
 		Complete()
 }
 
 //+kubebuilder:webhook:webhookVersions={v1},path=/mutate-chaos-datadoghq-com-v1beta1-disruption,mutating=true,failurePolicy=fail,sideEffects=None,groups=chaos.datadoghq.com,resources=disruptions,verbs=create;update,versions=v1beta1,name=mdisruption.kb.io,admissionReviewVersions={v1,v1beta1}
 
-var _ webhook.CustomDefaulter = &Disruption{}
+var _ admission.CustomDefaulter = &Disruption{}
 
-// Default implements webhook.CustomDefaulter so a webhook will be registered for the type
-func (d *Disruption) Default(_ context.Context, obj runtime.Object) error {
-	disruptionObj, ok := obj.(*Disruption)
+// Default implements admission.CustomDefaulter so a webhook will be registered for the type.
+func (d *Disruption) Default(_ context.Context, obj k8sruntime.Object) error {
+	disruption, ok := obj.(*Disruption)
 	if !ok {
-		return fmt.Errorf("expected *Disruption, got %T", obj)
+		return fmt.Errorf("expected a *Disruption object but got %T", obj)
 	}
 
-	disruptionObj.Spec.SetDefaults()
+	disruption.Spec.SetDefaults()
 
 	return nil
 }
 
 //+kubebuilder:webhook:webhookVersions={v1},path=/validate-chaos-datadoghq-com-v1beta1-disruption,mutating=false,failurePolicy=fail,sideEffects=None,groups=chaos.datadoghq.com,resources=disruptions,verbs=create;update;delete,versions=v1beta1,name=vdisruption.kb.io,admissionReviewVersions={v1,v1beta1}
 
-var _ webhook.CustomValidator = &Disruption{}
+var _ admission.CustomValidator = &Disruption{}
 
-// ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type
-func (d *Disruption) ValidateCreate(ctx context.Context, obj runtime.Object) (_ admission.Warnings, err error) {
+// ValidateCreate implements admission.CustomValidator so a webhook will be registered for the type.
+func (d *Disruption) ValidateCreate(ctx context.Context, obj k8sruntime.Object) (_ admission.Warnings, err error) {
 	disruptionObj, ok := obj.(*Disruption)
 	if !ok {
-		return nil, fmt.Errorf("expected *Disruption, got %T", obj)
+		return nil, fmt.Errorf("expected a *Disruption object but got %T", obj)
 	}
-
-	// Use the object from parameter instead of r
 	log := logger.With(
 		tagutil.DisruptionNameKey, disruptionObj.Name,
 		tagutil.DisruptionNamespaceKey, disruptionObj.Namespace,
@@ -301,16 +298,16 @@ func (d *Disruption) ValidateCreate(ctx context.Context, obj runtime.Object) (_ 
 	return nil, nil
 }
 
-// ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type
-func (d *Disruption) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (_ admission.Warnings, err error) {
-	newDisruptionObj, ok := newObj.(*Disruption)
-	if !ok {
-		return nil, fmt.Errorf("expected *Disruption, got %T", newObj)
-	}
-
+// ValidateUpdate implements admission.CustomValidator so a webhook will be registered for the type.
+func (d *Disruption) ValidateUpdate(_ context.Context, oldObj, newObj k8sruntime.Object) (_ admission.Warnings, err error) {
 	oldDisruption, ok := oldObj.(*Disruption)
 	if !ok {
-		return nil, fmt.Errorf("expected *Disruption, got %T", oldObj)
+		return nil, fmt.Errorf("expected a *Disruption object but got %T", oldObj)
+	}
+
+	newDisruptionObj, ok := newObj.(*Disruption)
+	if !ok {
+		return nil, fmt.Errorf("expected a *Disruption object but got %T", newObj)
 	}
 
 	log := logger.With(
@@ -413,14 +410,13 @@ You first need to remove those chaos pods (and potentially their finalizers) to 
 	return nil, nil
 }
 
-// ValidateDelete implements webhook.CustomValidator so a webhook will be registered for the type
-func (d *Disruption) ValidateDelete(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
+// ValidateDelete implements admission.CustomValidator so a webhook will be registered for the type.
+func (d *Disruption) ValidateDelete(_ context.Context, obj k8sruntime.Object) (admission.Warnings, error) {
 	disruptionObj, ok := obj.(*Disruption)
 	if !ok {
-		return nil, fmt.Errorf("expected *Disruption, got %T", obj)
+		return nil, fmt.Errorf("expected a *Disruption object but got %T", obj)
 	}
 
-	// Use the object from parameter
 	if mErr := metricsSink.MetricValidationDeleted(disruptionObj.getMetricsTags()); mErr != nil {
 		logger.Errorw("error sending a metric", tagutil.ErrorKey, mErr)
 	}

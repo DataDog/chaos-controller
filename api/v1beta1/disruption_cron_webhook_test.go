@@ -9,7 +9,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/DataDog/chaos-controller/mocks"
+	"github.com/DataDog/chaos-controller/cmd/mocks"
 	metricsnoop "github.com/DataDog/chaos-controller/o11y/metrics/noop"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap/zaptest"

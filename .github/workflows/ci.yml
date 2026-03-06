@@ -16,8 +16,8 @@ jobs:
   lint-and-format:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: go.mod
           cache: true
@@ -38,8 +38,8 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: go.mod
           cache: true
@@ -61,7 +61,7 @@ jobs:
           DATADOG_API_KEY: ${{ steps.dd-sts.outputs.api_key }}
       - name: Upload test report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: report-test.xml
           path: report-test.xml
@@ -73,11 +73,11 @@ jobs:
       matrix:
         target: [injector, manager, handler]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - name: Build ${{ matrix.target }}
         run: make docker-build-${{ matrix.target }} SKIP_GENERATE=true
       - name: Upload tarball
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: docker-${{ matrix.target }}
           path: bin/${{ matrix.target }}/${{ matrix.target }}.tar.gz
@@ -91,8 +91,8 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: go.mod
           cache: true
@@ -104,7 +104,7 @@ jobs:
       - name: Install tools
         run: make -j6 install-controller-gen install-yamlfmt install-helm install-kubebuilder install-datadog-ci
       - name: Download docker tarballs
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           pattern: docker-*
           merge-multiple: false
@@ -140,13 +140,13 @@ jobs:
           minikube kubectl -- -n chaos-engineering logs -lapp=chaos-controller -c manager --tail=-1 > /tmp/logs/e2e.txt 2>&1 || true
       - name: Upload controller logs
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: e2e-controller-logs
           path: /tmp/logs
       - name: Upload e2e test report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: report-e2e-test.xml
           path: report-e2e-test.xml
@@ -154,8 +154,8 @@ jobs:
   validate-codegen:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: go.mod
           cache: true
@@ -185,7 +185,7 @@ jobs:
   python-checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - name: Install Python dependencies
         run: pip install -r tasks/requirements.txt
       - name: Check third-party licenses
@@ -200,7 +200,7 @@ jobs:
   doc-spellcheck:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - name: Install markdown-spellcheck
         run: npm install -g markdown-spellcheck
       - name: Spellcheck
