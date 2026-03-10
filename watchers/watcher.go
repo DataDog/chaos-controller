@@ -188,7 +188,7 @@ func (w *watcher) Start() error {
 	}
 
 	// create context and cancel function for the watcher
-	cacheCtx, cacheCancelFunc := context.WithCancel(context.Background())
+	cacheCtx, cacheCancelFunc := context.WithCancel(context.Background()) //nolint:gosec // G118 - cancel func is stored in ctxTuple and called on watcher cleanup
 	w.ctxTuple = CtxTuple{cacheCancelFunc, cacheCtx, w.config.NamespacedName}
 
 	// start the cache in a goroutine

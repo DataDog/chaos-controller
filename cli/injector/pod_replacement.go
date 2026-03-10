@@ -36,6 +36,7 @@ var podReplacementCmd = &cobra.Command{
 			if err != nil {
 				log.Fatalw("invalid grace-period-seconds value", tags.ValueKey, gracePeriodSecondsStr, tags.ErrorKey, err)
 			}
+
 			spec.GracePeriodSeconds = &gracePeriodSeconds
 		}
 
