@@ -314,7 +314,7 @@ func (s *DNSDisruptionSpec) Explain() []string {
 	explanation.WriteString("spec.dns will manipulate DNS responses for the following records:\n\n")
 
 	for _, record := range s.Records {
-		explanation.WriteString(fmt.Sprintf("• %s (%s record):\n", record.Hostname, strings.ToUpper(record.Record.Type)))
+		fmt.Fprintf(&explanation, "• %s (%s record):\n", record.Hostname, strings.ToUpper(record.Record.Type))
 
 		upperValue := strings.ToUpper(strings.TrimSpace(record.Record.Value))
 
@@ -332,9 +332,9 @@ func (s *DNSDisruptionSpec) Explain() []string {
 			case "A":
 				ips := strings.Split(record.Record.Value, ",")
 				if len(ips) > 1 {
-					explanation.WriteString(fmt.Sprintf("  Returns IPv4 addresses in round-robin: %s\n", record.Record.Value))
+					fmt.Fprintf(&explanation, "  Returns IPv4 addresses in round-robin: %s\n", record.Record.Value)
 				} else {
-					explanation.WriteString(fmt.Sprintf("  Returns IPv4 address: %s\n", record.Record.Value))
+					fmt.Fprintf(&explanation, "  Returns IPv4 address: %s\n", record.Record.Value)
 				}
 			case "AAAA":
 				ips := strings.Split(record.Record.Value, ",")

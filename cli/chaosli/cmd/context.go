@@ -409,6 +409,7 @@ var contextCmd = &cobra.Command{
 		kubeconfig, _ = cmd.Flags().GetString("kubeconfig")
 		verbose, _ = cmd.Flags().GetBool("verbose")
 		maxtargetshow, _ = cmd.Flags().GetInt("maxtargetshow")
+
 		contextualize(path)
 	},
 }
