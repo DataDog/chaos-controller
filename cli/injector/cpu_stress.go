@@ -28,6 +28,7 @@ var cpuPressureStressCmd = &cobra.Command{
 		if len(configs) != 1 {
 			return fmt.Errorf("%s expect a single target configuration, found %d", cpuStressCommandName, len(configs))
 		}
+
 		config := configs[0]
 
 		percentage, _ := cmd.Flags().GetInt(percentageFlagName)
