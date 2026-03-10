@@ -339,23 +339,23 @@ func (s *DNSDisruptionSpec) Explain() []string {
 			case "AAAA":
 				ips := strings.Split(record.Record.Value, ",")
 				if len(ips) > 1 {
-					explanation.WriteString(fmt.Sprintf("  Returns IPv6 addresses in round-robin: %s\n", record.Record.Value))
+					fmt.Fprintf(&explanation, "  Returns IPv6 addresses in round-robin: %s\n", record.Record.Value)
 				} else {
-					explanation.WriteString(fmt.Sprintf("  Returns IPv6 address: %s\n", record.Record.Value))
+					fmt.Fprintf(&explanation, "  Returns IPv6 address: %s\n", record.Record.Value)
 				}
 			case "CNAME":
-				explanation.WriteString(fmt.Sprintf("  Returns CNAME pointing to: %s\n", record.Record.Value))
+				fmt.Fprintf(&explanation, "  Returns CNAME pointing to: %s\n", record.Record.Value)
 			case "MX":
-				explanation.WriteString(fmt.Sprintf("  Returns MX records: %s\n", record.Record.Value))
+				fmt.Fprintf(&explanation, "  Returns MX records: %s\n", record.Record.Value)
 			case "TXT":
-				explanation.WriteString(fmt.Sprintf("  Returns TXT record: %s\n", record.Record.Value))
+				fmt.Fprintf(&explanation, "  Returns TXT record: %s\n", record.Record.Value)
 			case "SRV":
-				explanation.WriteString(fmt.Sprintf("  Returns SRV records: %s\n", record.Record.Value))
+				fmt.Fprintf(&explanation, "  Returns SRV records: %s\n", record.Record.Value)
 			}
 		}
 
 		if record.Record.TTL > 0 {
-			explanation.WriteString(fmt.Sprintf("  TTL: %d seconds\n", record.Record.TTL))
+			fmt.Fprintf(&explanation, "  TTL: %d seconds\n", record.Record.TTL)
 		}
 
 		explanation.WriteString("\n")
@@ -364,8 +364,8 @@ func (s *DNSDisruptionSpec) Explain() []string {
 	port := s.GetPortWithDefault()
 	protocol := s.GetProtocolWithDefault()
 
-	explanation.WriteString(fmt.Sprintf("The disruption will intercept DNS traffic on port %d using %s protocol(s).",
-		port, protocol))
+	fmt.Fprintf(&explanation, "The disruption will intercept DNS traffic on port %d using %s protocol(s).",
+		port, protocol)
 
 	return []string{"", explanation.String()}
 }
