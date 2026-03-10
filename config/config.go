@@ -606,12 +606,15 @@ func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osAr
 
 			if backOffErr := backoff.Retry(func() error {
 				var err error
+
 				ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 				defer cancel()
+
 				configMap, err = client.Get(ctx, configMapOverrides, metav1.GetOptions{})
 				if err != nil {
 					logger.Debugw(fmt.Sprintf("failed to get %s configMap", configMapOverrides), tags.ErrorKey, err)
 				}
+
 				return err
 			},
 				backoff.NewConstantBackOff(time.Second*5)); backOffErr != nil {

@@ -30,6 +30,7 @@ var (
 		Run: func(cmd *cobra.Command, args []string) {
 			// wait for SIGUSR1 signal
 			logger.Infow("waiting for SIGUSR1", tags.TimeoutKey, timeout.String())
+
 			sigs := make(chan os.Signal, 1)
 			signal.Notify(sigs, syscall.SIGUSR1)
 
@@ -43,6 +44,7 @@ var (
 				os.Exit(0)
 			case <-timer.C:
 				logger.Info("timed out, SIGUSR1 was never received, exiting")
+
 				if succeedOnTimeout {
 					os.Exit(0)
 				} else {

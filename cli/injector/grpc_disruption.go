@@ -46,6 +46,7 @@ var grpcDisruptionCmd = &cobra.Command{
 				log.Fatalw("could not parse --endpoint-alterations argument to grpc-disruption", tags.QueryPercentParsingKey, split[3])
 				continue
 			}
+
 			switch split[1] {
 			case v1beta1.ERROR:
 				endpointAlteration = v1beta1.EndpointAlteration{
