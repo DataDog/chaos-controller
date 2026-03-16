@@ -181,6 +181,29 @@ var _ = Describe("Memory Pressure", func() {
 			By("Ensuring disruption stays healthy throughout pulse cycle")
 			ExpectDisruptionStatusUntilExpired(ctx, memoryStress, chaostypes.DisruptionInjectionStatusInjected)
 		})
+
+		When("initial delay is configured", func() {
+			BeforeEach(func() {
+				memoryStress.Spec.Pulse.InitialDelay = chaosv1beta1.DisruptionDuration("5s")
+			})
+
+			It("should inject with initial delay argument and remain healthy", func(ctx SpecContext) {
+				ExpectDisruptionStatus(ctx, memoryStress, chaostypes.DisruptionInjectionStatusInjected)
+
+				By("Verifying chaos pod has initial delay argument")
+				Eventually(func(g Gomega, ctx SpecContext) {
+					chaosPods, err := listChaosPods(ctx, memoryStress)
+					g.Expect(err).ToNot(HaveOccurred())
+					g.Expect(chaosPods.Items).To(HaveLen(1))
+
+					args := strings.Join(chaosPods.Items[0].Spec.Containers[0].Args, " ")
+					g.Expect(args).To(ContainSubstring("--pulse-initial-delay"))
+				}).WithContext(ctx).Within(calcDisruptionGoneTimeout(memoryStress)).ProbeEvery(disruptionPotentialChangesEvery).Should(Succeed())
+
+				By("Ensuring disruption stays healthy throughout pulse cycle with initial delay")
+				ExpectDisruptionStatusUntilExpired(ctx, memoryStress, chaostypes.DisruptionInjectionStatusInjected)
+			})
+		})
 	})
 
 	DescribeTable("targeted container is stopped", func(ctx SpecContext, forced bool) {
