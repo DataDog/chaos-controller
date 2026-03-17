@@ -2,6 +2,8 @@ module github.com/DataDog/chaos-controller
 
 go 1.25.6
 
+toolchain go1.26.1
+
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/DataDog/datadog-go v4.8.3+incompatible

@@ -19,6 +19,7 @@ var versionCmd = &cobra.Command{
 		if Version == "v0" {
 			Version = "version unspecified"
 		}
+
 		fmt.Println("chaosli", Version)
 	},
 }

@@ -314,7 +314,7 @@ func (s *DNSDisruptionSpec) Explain() []string {
 	explanation.WriteString("spec.dns will manipulate DNS responses for the following records:\n\n")
 
 	for _, record := range s.Records {
-		explanation.WriteString(fmt.Sprintf("• %s (%s record):\n", record.Hostname, strings.ToUpper(record.Record.Type)))
+		fmt.Fprintf(&explanation, "• %s (%s record):\n", record.Hostname, strings.ToUpper(record.Record.Type))
 
 		upperValue := strings.ToUpper(strings.TrimSpace(record.Record.Value))
 
@@ -332,30 +332,30 @@ func (s *DNSDisruptionSpec) Explain() []string {
 			case "A":
 				ips := strings.Split(record.Record.Value, ",")
 				if len(ips) > 1 {
-					explanation.WriteString(fmt.Sprintf("  Returns IPv4 addresses in round-robin: %s\n", record.Record.Value))
+					fmt.Fprintf(&explanation, "  Returns IPv4 addresses in round-robin: %s\n", record.Record.Value)
 				} else {
-					explanation.WriteString(fmt.Sprintf("  Returns IPv4 address: %s\n", record.Record.Value))
+					fmt.Fprintf(&explanation, "  Returns IPv4 address: %s\n", record.Record.Value)
 				}
 			case "AAAA":
 				ips := strings.Split(record.Record.Value, ",")
 				if len(ips) > 1 {
-					explanation.WriteString(fmt.Sprintf("  Returns IPv6 addresses in round-robin: %s\n", record.Record.Value))
+					fmt.Fprintf(&explanation, "  Returns IPv6 addresses in round-robin: %s\n", record.Record.Value)
 				} else {
-					explanation.WriteString(fmt.Sprintf("  Returns IPv6 address: %s\n", record.Record.Value))
+					fmt.Fprintf(&explanation, "  Returns IPv6 address: %s\n", record.Record.Value)
 				}
 			case "CNAME":
-				explanation.WriteString(fmt.Sprintf("  Returns CNAME pointing to: %s\n", record.Record.Value))
+				fmt.Fprintf(&explanation, "  Returns CNAME pointing to: %s\n", record.Record.Value)
 			case "MX":
-				explanation.WriteString(fmt.Sprintf("  Returns MX records: %s\n", record.Record.Value))
+				fmt.Fprintf(&explanation, "  Returns MX records: %s\n", record.Record.Value)
 			case "TXT":
-				explanation.WriteString(fmt.Sprintf("  Returns TXT record: %s\n", record.Record.Value))
+				fmt.Fprintf(&explanation, "  Returns TXT record: %s\n", record.Record.Value)
 			case "SRV":
-				explanation.WriteString(fmt.Sprintf("  Returns SRV records: %s\n", record.Record.Value))
+				fmt.Fprintf(&explanation, "  Returns SRV records: %s\n", record.Record.Value)
 			}
 		}
 
 		if record.Record.TTL > 0 {
-			explanation.WriteString(fmt.Sprintf("  TTL: %d seconds\n", record.Record.TTL))
+			fmt.Fprintf(&explanation, "  TTL: %d seconds\n", record.Record.TTL)
 		}
 
 		explanation.WriteString("\n")
@@ -364,8 +364,8 @@ func (s *DNSDisruptionSpec) Explain() []string {
 	port := s.GetPortWithDefault()
 	protocol := s.GetProtocolWithDefault()
 
-	explanation.WriteString(fmt.Sprintf("The disruption will intercept DNS traffic on port %d using %s protocol(s).",
-		port, protocol))
+	fmt.Fprintf(&explanation, "The disruption will intercept DNS traffic on port %d using %s protocol(s).",
+		port, protocol)
 
 	return []string{"", explanation.String()}
 }
