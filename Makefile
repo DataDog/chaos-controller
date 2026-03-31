@@ -8,7 +8,7 @@ GOARCH = $(shell go env GOARCH)
 
 # change also github actions go build version "GO_VERSION:" if you change the version below
 # https://github.com/DataDog/chaos-controller/blob/main/.github/workflows/ci.yml#L13
-BUILDGOVERSION = 1.25.6
+BUILDGOVERSION = 1.26.1
 
 # GOBIN can be provided (gitlab), defined (custom user setup), or empty/guessed (default go setup)
 GOBIN ?= $(shell go env GOBIN)
@@ -65,7 +65,7 @@ HELM_VERSION = v3.19.0
 HELM_INSTALLED_VERSION = $(shell (helm version --template="{{ .Version }}" || echo "") | awk '{ print $$1 }')
 
 # TODO: reenable depguard in .golangci.yml after upgrading golangci-lint again
-GOLANGCI_LINT_VERSION = 2.8.0
+GOLANGCI_LINT_VERSION = 2.11.3
 GOLANGCI_LINT_INSTALLED_VERSION = $(shell (golangci-lint --version || echo "") | sed -E 's/.*version ([^ ]+).*/\1/')
 
 CONTROLLER_GEN_VERSION = v0.19.0
