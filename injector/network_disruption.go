@@ -834,6 +834,7 @@ func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.E
 	allServiceFilters := make([]tcServiceFilter, 0, len(watcher.tcFiltersFromPodEndpoints)+len(watcher.tcFiltersFromNamespaceServices))
 	allServiceFilters = append(allServiceFilters, watcher.tcFiltersFromPodEndpoints...)
 	allServiceFilters = append(allServiceFilters, watcher.tcFiltersFromNamespaceServices...)
+
 	if err := i.updateServiceRules(serviceEndpointsToRules(allServiceFilters)); err != nil {
 		i.config.Log.Warnw("error updating BPF rules for service changes", tags.ErrorKey, err)
 	}
@@ -919,6 +920,7 @@ func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Even
 		allServiceFilters := make([]tcServiceFilter, 0, len(watcher.tcFiltersFromPodEndpoints)+len(watcher.tcFiltersFromNamespaceServices))
 		allServiceFilters = append(allServiceFilters, watcher.tcFiltersFromPodEndpoints...)
 		allServiceFilters = append(allServiceFilters, watcher.tcFiltersFromNamespaceServices...)
+
 		if err := i.updateServiceRules(serviceEndpointsToRules(allServiceFilters)); err != nil {
 			i.config.Log.Warnw("error updating BPF rules for pod changes", tags.ErrorKey, err)
 		}
