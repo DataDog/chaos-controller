@@ -86,8 +86,7 @@ network:
 ```
 
 
-The controller will take care of applying `tc` rules in a way that targets any port that may be used to talk to that service. There are no changes to how you should configure this field in a `node` level disruption
-vs. a `pod` level disruption.
+The controller will resolve service endpoints and create BPF disruption rules targeting the appropriate IPs and ports. Service endpoints are dynamically updated as pods are added or removed. There are no changes to how you should configure this field in a `node` level disruption vs. a `pod` level disruption.
 
 ```
 network:
@@ -192,7 +191,7 @@ A pod typically has a single interface with which it interacts with the outside 
 
 If no `hosts` field is specified, all packets aside from those explicitly whitelisted in the **Assumptions** will be disrupted, in this case dropping 50% of traffic leaving (`egress`) or entering (`ingress`) the interface.
 
-Note: `ingress` traffic disruption is only guaranteed for `TCP`, not `UDP`. See [this documentation](../../docs/network_disruption/flow.md) for more details. For the remainder of this documentation, we will only discuss the default flow configuration (`egress`).
+Both `egress` and `ingress` flows support all protocols (TCP, UDP, ICMP). See [this documentation](../../docs/network_disruption/flow.md) for more details on how ingress and egress disruption works. For the remainder of this documentation, we will only discuss the default flow configuration (`egress`).
 
 ### Case 2: IP address specified
 
