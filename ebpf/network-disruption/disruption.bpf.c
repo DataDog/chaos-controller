@@ -101,7 +101,7 @@ static __always_inline bool match_l4(struct __sk_buff *skb, __u16 eth_proto,
 // Returns 0 (no match) to let the packet flow to the default prio band.
 // This follows the same pattern as classifier_methods in injection.bpf.c.
 SEC("tc_egress_disruption")
-int tc_egress_disruption(struct __sk_buff *skb) {
+int cls_egress_disruption(struct __sk_buff *skb) {
     void *data = (void *)(long)skb->data;
     void *data_end = (void *)(long)skb->data_end;
 
@@ -157,7 +157,7 @@ int tc_egress_disruption(struct __sk_buff *skb) {
 // This is the true ingress filter - matches the real originating IP, not cluster VIPs.
 // Returns TC_ACT_SHOT to drop, bpf_redirect() for IFB shaping, or TC_ACT_OK to pass.
 SEC("tc_ingress_disruption")
-int tc_ingress_disruption(struct __sk_buff *skb) {
+int cls_ingress_disruption(struct __sk_buff *skb) {
     void *data = (void *)(long)skb->data;
     void *data_end = (void *)(long)skb->data_end;
 
