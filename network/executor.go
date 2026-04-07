@@ -42,7 +42,7 @@ func (e GenericExecutor) Run(args []string) (int, string, error) {
 
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
-	cmd := exec.Command(args[0], args[1:]...)
+	cmd := exec.Command(args[0], args[1:]...) //nolint:gosec // args are constructed internally by the BPF disruption engine, not from user input
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 

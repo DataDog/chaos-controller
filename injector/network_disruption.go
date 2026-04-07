@@ -631,7 +631,7 @@ func (i *networkDisruptionInjector) applyOperations() error {
 
 	// Start service watchers (services are resolved to BPF rules via engine.UpdateRules)
 	if len(i.spec.Services) > 0 {
-		if err := i.handleFiltersForServices(interfaces, "1:4"); err != nil {
+		if err := i.handleFiltersForServices(); err != nil {
 			return fmt.Errorf("error adding filters for given services: %w", err)
 		}
 	}
@@ -763,8 +763,8 @@ func (i *networkDisruptionInjector) selectServiceFiltersByPercentage(filters []t
 	return result
 }
 
-// handleKubernetesServiceChanges for every changes happening in the kubernetes service destination, we update the tc service filters
-func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.Event, watcher *serviceWatcher, interfaces []string, flowid string) error {
+// handleKubernetesServiceChanges for every changes happening in the kubernetes service destination, we update the BPF disruption rules
+func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.Event, watcher *serviceWatcher) error {
 	var err error
 
 	if event.Type == watch.Error {
@@ -831,7 +831,9 @@ func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.E
 	}
 
 	// Convert all service endpoints to BPF rules and update the engine
-	allServiceFilters := append(watcher.tcFiltersFromPodEndpoints, watcher.tcFiltersFromNamespaceServices...)
+	allServiceFilters := make([]tcServiceFilter, 0, len(watcher.tcFiltersFromPodEndpoints)+len(watcher.tcFiltersFromNamespaceServices))
+	allServiceFilters = append(allServiceFilters, watcher.tcFiltersFromPodEndpoints...)
+	allServiceFilters = append(allServiceFilters, watcher.tcFiltersFromNamespaceServices...)
 	if err := i.updateServiceRules(serviceEndpointsToRules(allServiceFilters)); err != nil {
 		i.config.Log.Warnw("error updating BPF rules for service changes", tags.ErrorKey, err)
 	}
@@ -843,8 +845,8 @@ func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.E
 	return nil
 }
 
-// handleKubernetesPodsChanges for every changes happening in the pods related to the kubernetes service destination, we update the tc service filters
-func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Event, watcher *serviceWatcher, interfaces []string, flowid string) error {
+// handleKubernetesPodsChanges for every changes happening in the pods related to the kubernetes service destination, we update the BPF disruption rules
+func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Event, watcher *serviceWatcher) error {
 	var err error
 
 	if event.Type == watch.Error {
@@ -914,7 +916,9 @@ func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Even
 	}
 
 	if needsUpdate {
-		allServiceFilters := append(watcher.tcFiltersFromPodEndpoints, watcher.tcFiltersFromNamespaceServices...)
+		allServiceFilters := make([]tcServiceFilter, 0, len(watcher.tcFiltersFromPodEndpoints)+len(watcher.tcFiltersFromNamespaceServices))
+		allServiceFilters = append(allServiceFilters, watcher.tcFiltersFromPodEndpoints...)
+		allServiceFilters = append(allServiceFilters, watcher.tcFiltersFromNamespaceServices...)
 		if err := i.updateServiceRules(serviceEndpointsToRules(allServiceFilters)); err != nil {
 			i.config.Log.Warnw("error updating BPF rules for pod changes", tags.ErrorKey, err)
 		}
@@ -928,7 +932,7 @@ func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Even
 }
 
 // watchServiceChanges for every changes happening in the kubernetes service destination or in the pods related to the kubernetes service destination, we update the tc service filters
-func (i *networkDisruptionInjector) watchServiceChanges(ctx context.Context, watcher serviceWatcher, interfaces []string, flowid string) {
+func (i *networkDisruptionInjector) watchServiceChanges(ctx context.Context, watcher serviceWatcher) {
 	log := i.config.Log.With(tags.ServiceNamespaceKey, watcher.watchedServiceSpec.Namespace, tags.ServiceNameKey, watcher.watchedServiceSpec.Name)
 
 	for {
@@ -980,7 +984,7 @@ func (i *networkDisruptionInjector) watchServiceChanges(ctx context.Context, wat
 				watcherLog := log.With(tags.WatcherNameKey, "kubernetesServiceWatcher")
 				watcherLog.Debugw("changes in service", tags.EventTypeKey, event.Type)
 
-				if err := i.handleKubernetesServiceChanges(event, &watcher, interfaces, flowid); err != nil {
+				if err := i.handleKubernetesServiceChanges(event, &watcher); err != nil {
 					watcherLog.Errorw("couldn't apply service changes: Rebuilding watcher", tags.ErrorKey, err)
 
 					watcher.kubernetesServiceWatcher = nil // restart the watcher in case of error
@@ -994,7 +998,7 @@ func (i *networkDisruptionInjector) watchServiceChanges(ctx context.Context, wat
 				watcherLog := log.With(tags.WatcherNameKey, "kubernetesPodEndpointsWatcher")
 				watcherLog.Debugw(fmt.Sprintf("changes in pods of service %s/%s", watcher.watchedServiceSpec.Name, watcher.watchedServiceSpec.Namespace), tags.EventTypeKey, event.Type)
 
-				if err := i.handleKubernetesPodsChanges(event, &watcher, interfaces, flowid); err != nil {
+				if err := i.handleKubernetesPodsChanges(event, &watcher); err != nil {
 					watcherLog.Errorw("couldn't apply pod changes: Rebuilding watcher", tags.ErrorKey, err)
 
 					watcher.kubernetesPodEndpointsWatcher = nil // restart the watcher in case of error
@@ -1005,8 +1009,9 @@ func (i *networkDisruptionInjector) watchServiceChanges(ctx context.Context, wat
 	}
 }
 
-// handleFiltersForServices creates tc filters on given interfaces for services in disruption spec classifying matching packets in the given flowid
-func (i *networkDisruptionInjector) handleFiltersForServices(interfaces []string, flowid string) error {
+// handleFiltersForServices sets up Kubernetes service watchers that resolve service endpoints
+// to BPF disruption rules and update the engine when endpoints change.
+func (i *networkDisruptionInjector) handleFiltersForServices() error {
 	// build the watchers to handle changes in services and pod endpoints
 	serviceWatchers := []serviceWatcher{}
 
@@ -1047,7 +1052,7 @@ func (i *networkDisruptionInjector) handleFiltersForServices(interfaces []string
 	i.serviceWatcherCancel = cancelFunc
 
 	for _, serviceWatcher := range serviceWatchers {
-		go i.watchServiceChanges(ctx, serviceWatcher, interfaces, flowid)
+		go i.watchServiceChanges(ctx, serviceWatcher)
 	}
 
 	return nil
