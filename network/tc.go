@@ -66,6 +66,15 @@ type TrafficController interface {
 	ConfigBPFFilter(cmd executor, args ...string) error
 	AddOutputLimit(ifaces []string, parent string, handle string, bytesPerSec uint) error
 	ClearQdisc(ifaces []string) error
+	// AddClsact attaches a clsact qdisc to the given interfaces.
+	// Required before adding ingress BPF filters. Idempotent.
+	AddClsact(ifaces []string) error
+	// AddIngressBPFFilter attaches a BPF program with DirectAction on the ingress
+	// direction of the given interfaces via the clsact qdisc.
+	AddIngressBPFFilter(ifaces []string, obj string, section string) error
+	// ClearIngressQdisc removes the clsact qdisc (and all attached ingress/egress filters)
+	// from the given interfaces. Returns nil if the qdisc does not exist.
+	ClearIngressQdisc(ifaces []string) error
 }
 
 type tc struct {
@@ -276,6 +285,42 @@ func (t *tc) getNewPriority() (uint32, error) {
 	}
 
 	return priority, nil
+}
+
+func (t *tc) AddClsact(ifaces []string) error {
+	for _, iface := range ifaces {
+		cmd := strings.Split(fmt.Sprintf("qdisc add dev %s clsact", iface), " ")
+		if exitCode, _, err := t.executer.Run(cmd); err != nil {
+			// Exit code 2 means "File exists" — clsact already attached, which is fine
+			if exitCode != 2 {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (t *tc) AddIngressBPFFilter(ifaces []string, obj string, section string) error {
+	for _, iface := range ifaces {
+		cmd := strings.Split(fmt.Sprintf("filter add dev %s ingress bpf da obj %s sec %s", iface, obj, section), " ")
+		if _, _, err := t.executer.Run(cmd); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (t *tc) ClearIngressQdisc(ifaces []string) error {
+	for _, iface := range ifaces {
+		// tc exits with code 2 when the qdisc does not exist
+		if exitCode, _, err := t.executer.Run(strings.Split(fmt.Sprintf("qdisc del dev %s clsact", iface), " ")); err != nil && exitCode != 2 {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func buildCmd(module string, iface string, parent string, protocol string, priority uint32, handle string, kind string, parameters string) []string {

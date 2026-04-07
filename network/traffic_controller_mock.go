@@ -78,6 +78,52 @@ func (_c *TrafficControllerMock_AddBPFFilter_Call) RunAndReturn(run func([]strin
 	return _c
 }
 
+// AddClsact provides a mock function with given fields: ifaces
+func (_m *TrafficControllerMock) AddClsact(ifaces []string) error {
+	ret := _m.Called(ifaces)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddClsact")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func([]string) error); ok {
+		r0 = rf(ifaces)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// TrafficControllerMock_AddClsact_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddClsact'
+type TrafficControllerMock_AddClsact_Call struct {
+	*mock.Call
+}
+
+// AddClsact is a helper method to define mock.On call
+//   - ifaces []string
+func (_e *TrafficControllerMock_Expecter) AddClsact(ifaces interface{}) *TrafficControllerMock_AddClsact_Call {
+	return &TrafficControllerMock_AddClsact_Call{Call: _e.mock.On("AddClsact", ifaces)}
+}
+
+func (_c *TrafficControllerMock_AddClsact_Call) Run(run func(ifaces []string)) *TrafficControllerMock_AddClsact_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]string))
+	})
+	return _c
+}
+
+func (_c *TrafficControllerMock_AddClsact_Call) Return(_a0 error) *TrafficControllerMock_AddClsact_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *TrafficControllerMock_AddClsact_Call) RunAndReturn(run func([]string) error) *TrafficControllerMock_AddClsact_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // AddFilter provides a mock function with given fields: ifaces, parent, handle, srcIP, dstIP, srcPort, dstPort, prot, state, flowid
 func (_m *TrafficControllerMock) AddFilter(ifaces []string, parent string, handle string, srcIP *net.IPNet, dstIP *net.IPNet, srcPort int, dstPort int, prot protocol, state connState, flowid string) (uint32, error) {
 	ret := _m.Called(ifaces, parent, handle, srcIP, dstIP, srcPort, dstPort, prot, state, flowid)
@@ -188,6 +234,54 @@ func (_c *TrafficControllerMock_AddFlowerFilter_Call) Return(_a0 error) *Traffic
 }
 
 func (_c *TrafficControllerMock_AddFlowerFilter_Call) RunAndReturn(run func([]string, string, string, string) error) *TrafficControllerMock_AddFlowerFilter_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// AddIngressBPFFilter provides a mock function with given fields: ifaces, obj, section
+func (_m *TrafficControllerMock) AddIngressBPFFilter(ifaces []string, obj string, section string) error {
+	ret := _m.Called(ifaces, obj, section)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddIngressBPFFilter")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func([]string, string, string) error); ok {
+		r0 = rf(ifaces, obj, section)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// TrafficControllerMock_AddIngressBPFFilter_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddIngressBPFFilter'
+type TrafficControllerMock_AddIngressBPFFilter_Call struct {
+	*mock.Call
+}
+
+// AddIngressBPFFilter is a helper method to define mock.On call
+//   - ifaces []string
+//   - obj string
+//   - section string
+func (_e *TrafficControllerMock_Expecter) AddIngressBPFFilter(ifaces interface{}, obj interface{}, section interface{}) *TrafficControllerMock_AddIngressBPFFilter_Call {
+	return &TrafficControllerMock_AddIngressBPFFilter_Call{Call: _e.mock.On("AddIngressBPFFilter", ifaces, obj, section)}
+}
+
+func (_c *TrafficControllerMock_AddIngressBPFFilter_Call) Run(run func(ifaces []string, obj string, section string)) *TrafficControllerMock_AddIngressBPFFilter_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]string), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *TrafficControllerMock_AddIngressBPFFilter_Call) Return(_a0 error) *TrafficControllerMock_AddIngressBPFFilter_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *TrafficControllerMock_AddIngressBPFFilter_Call) RunAndReturn(run func([]string, string, string) error) *TrafficControllerMock_AddIngressBPFFilter_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -340,6 +434,52 @@ func (_c *TrafficControllerMock_AddPrio_Call) Return(_a0 error) *TrafficControll
 }
 
 func (_c *TrafficControllerMock_AddPrio_Call) RunAndReturn(run func([]string, string, string, uint32, [16]uint32) error) *TrafficControllerMock_AddPrio_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ClearIngressQdisc provides a mock function with given fields: ifaces
+func (_m *TrafficControllerMock) ClearIngressQdisc(ifaces []string) error {
+	ret := _m.Called(ifaces)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ClearIngressQdisc")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func([]string) error); ok {
+		r0 = rf(ifaces)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// TrafficControllerMock_ClearIngressQdisc_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ClearIngressQdisc'
+type TrafficControllerMock_ClearIngressQdisc_Call struct {
+	*mock.Call
+}
+
+// ClearIngressQdisc is a helper method to define mock.On call
+//   - ifaces []string
+func (_e *TrafficControllerMock_Expecter) ClearIngressQdisc(ifaces interface{}) *TrafficControllerMock_ClearIngressQdisc_Call {
+	return &TrafficControllerMock_ClearIngressQdisc_Call{Call: _e.mock.On("ClearIngressQdisc", ifaces)}
+}
+
+func (_c *TrafficControllerMock_ClearIngressQdisc_Call) Run(run func(ifaces []string)) *TrafficControllerMock_ClearIngressQdisc_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]string))
+	})
+	return _c
+}
+
+func (_c *TrafficControllerMock_ClearIngressQdisc_Call) Return(_a0 error) *TrafficControllerMock_ClearIngressQdisc_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *TrafficControllerMock_ClearIngressQdisc_Call) RunAndReturn(run func([]string) error) *TrafficControllerMock_ClearIngressQdisc_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -24,6 +24,7 @@ import (
 
 	"github.com/DataDog/chaos-controller/api"
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/bpfdisrupt"
 	"github.com/DataDog/chaos-controller/cgroup"
 	"github.com/DataDog/chaos-controller/container"
 	"github.com/DataDog/chaos-controller/ebpf"
@@ -36,6 +37,18 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
+
+// bpfCmdRunnerMock implements bpfdisrupt.CmdRunner for testing
+type bpfCmdRunnerMock struct {
+	mock.Mock
+}
+
+func (m *bpfCmdRunnerMock) Run(args []string) (int, string, error) {
+	ret := m.Called(args)
+	return ret.Int(0), ret.String(1), ret.Error(2)
+}
+
+var _ bpfdisrupt.CmdRunner = (*bpfCmdRunnerMock)(nil)
 
 const (
 	secondGatewayIP, targetPodHostIP, clusterIP, podIP = "192.168.0.1", "10.0.0.2", "172.16.0.1", "10.1.0.4"
@@ -59,19 +72,17 @@ var _ = Describe("Failure", func() {
 		nllink1TxQlenCall, nllink2TxQlenCall, nllink3TxQlenCall *network.NetlinkLinkMock_TxQLen_Call
 		nlroute1, nlroute2, nlroute3                            *network.NetlinkRouteMock
 		dns                                                     *network.DNSClientMock
+		bpfCmdRunner                                            *bpfCmdRunnerMock
 		netnsManager                                            *netns.ManagerMock
 		k8sClient                                               *kubernetes.Clientset
 		fakeService                                             *corev1.Service
 		fakeService2                                            *corev1.Service
 		fakeEndpoint                                            *corev1.Pod
 		fakeEndpoint2                                           *corev1.Pod
-		zeroIPNet, nilIPNet                                     *net.IPNet
 		BPFConfigInformerMock                                   *ebpf.ConfigInformerMock
 	)
 
 	BeforeEach(func() {
-		nilIPNet = nil
-		_, zeroIPNet, _ = net.ParseCIDR("0.0.0.0/0")
 		// cgroup
 		cgroupManager = cgroup.NewManagerMock(GinkgoT())
 		cgroupManager.EXPECT().RelativePath(mock.Anything).Return("/kubepod.slice/foo").Maybe()
@@ -98,6 +109,11 @@ var _ = Describe("Failure", func() {
 		tc.EXPECT().AddOutputLimit(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 		tc.EXPECT().DeleteFilter(mock.Anything, mock.Anything).Return(nil).Maybe()
 		tc.EXPECT().ClearQdisc(mock.Anything).Return(nil).Maybe()
+		tc.EXPECT().AddClsact(mock.Anything).Return(nil).Maybe()
+		tc.EXPECT().AddIngressBPFFilter(mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+		tc.EXPECT().ClearIngressQdisc(mock.Anything).Return(nil).Maybe()
+		// BPF engine attaches egress classifier at parent 1:0 with the disruption BPF object
+		tc.EXPECT().AddBPFFilter(mock.Anything, "1:0", "/usr/local/bin/bpf-network-disruption.bpf.o", "1:4", "tc_egress_disruption").Return(nil).Maybe()
 
 		// iptables
 		iptables = network.NewIPTablesMock(GinkgoT())
@@ -109,16 +125,19 @@ var _ = Describe("Failure", func() {
 		// netlink
 		nllink1 = network.NewNetlinkLinkMock(GinkgoT())
 		nllink1.EXPECT().Name().Return("lo").Maybe()
+		nllink1.EXPECT().Index().Return(1).Maybe()
 		nllink1.EXPECT().SetTxQLen(mock.Anything).Return(nil).Maybe()
 		nllink1TxQlenCall = nllink1.EXPECT().TxQLen().Return(0)
 		nllink1TxQlenCall.Maybe()
 		nllink2 = network.NewNetlinkLinkMock(GinkgoT())
 		nllink2.EXPECT().Name().Return("eth0").Maybe()
+		nllink2.EXPECT().Index().Return(2).Maybe()
 		nllink2.EXPECT().SetTxQLen(mock.Anything).Return(nil).Maybe()
 		nllink2TxQlenCall = nllink2.EXPECT().TxQLen().Return(0)
 		nllink2TxQlenCall.Maybe()
 		nllink3 = network.NewNetlinkLinkMock(GinkgoT())
 		nllink3.EXPECT().Name().Return("eth1").Maybe()
+		nllink3.EXPECT().Index().Return(3).Maybe()
 		nllink3.EXPECT().SetTxQLen(mock.Anything).Return(nil).Maybe()
 		nllink3TxQlenCall = nllink3.EXPECT().TxQLen().Return(0)
 		nllink3TxQlenCall.Maybe()
@@ -142,6 +161,12 @@ var _ = Describe("Failure", func() {
 		nl.EXPECT().LinkByName("eth0").Return(nllink2, nil).Maybe()
 		nl.EXPECT().LinkByName("eth1").Return(nllink3, nil).Maybe()
 		nl.EXPECT().DefaultRoutes().Return([]network.NetlinkRoute{nlroute2}, nil).Maybe()
+		nl.EXPECT().AddIFBDevice(mock.Anything).Return(nllink1, nil).Maybe()
+		nl.EXPECT().DeleteIFBDevice(mock.Anything).Return(nil).Maybe()
+
+		// bpf cmd runner (for BPF disruption engine)
+		bpfCmdRunner = &bpfCmdRunnerMock{}
+		bpfCmdRunner.On("Run", mock.Anything).Return(0, "", nil)
 
 		// dns
 		dns = network.NewDNSClientMock(GinkgoT())
@@ -251,6 +276,7 @@ var _ = Describe("Failure", func() {
 			DNSClient:           dns,
 			HostResolveInterval: time.Millisecond * 500,
 			BPFConfigInformer:   BPFConfigInformerMock,
+			BPFDisruptCmdRunner: bpfCmdRunner,
 		}
 
 		spec = v1beta1.NetworkDisruptionSpec{
@@ -290,29 +316,29 @@ var _ = Describe("Failure", func() {
 			netnsManager.AssertCalled(GinkgoT(), "Exit")
 		})
 
-		It("should create 2 prio qdiscs on main interfaces", func() {
+		It("should create only the root prio qdisc on main interfaces (no nested prio without HTTP filters)", func() {
 			tc.AssertCalled(GinkgoT(), "AddPrio", []string{"lo", "eth0", "eth1"}, "root", "1:", uint32(4), mock.Anything)
-			tc.AssertCalled(GinkgoT(), "AddPrio", []string{"lo", "eth0", "eth1"}, "1:4", "2:", uint32(2), mock.Anything)
+			tc.AssertNumberOfCalls(GinkgoT(), "AddPrio", 1)
 		})
 
-		It("should add an fw filter to classify packets according to their classid set by iptables mark", func() {
-			tc.AssertCalled(GinkgoT(), "AddFlowerFilter", []string{"lo", "eth0", "eth1"}, "2:0", "0x00020002", "2:2")
+		It("should not add a flower filter without HTTP filters (BPF engine handles classification)", func() {
+			tc.AssertNotCalled(GinkgoT(), "AddFlowerFilter", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 		})
 
-		It("should apply disruptions to main interfaces 2nd band", func() {
-			tc.AssertCalled(GinkgoT(), "AddNetem", []string{"lo", "eth0", "eth1"}, "2:2", mock.Anything, time.Second, time.Second, spec.Drop, spec.Corrupt, spec.Duplicate)
+		It("should apply disruptions directly at band 1:4 (no nested prio without HTTP filters)", func() {
+			tc.AssertCalled(GinkgoT(), "AddNetem", []string{"lo", "eth0", "eth1"}, "1:4", mock.Anything, time.Second, time.Second, spec.Drop, spec.Corrupt, spec.Duplicate)
 			tc.AssertNumberOfCalls(GinkgoT(), "AddNetem", 1)
-			tc.AssertCalled(GinkgoT(), "AddOutputLimit", []string{"lo", "eth0", "eth1"}, "3:", mock.Anything, uint(spec.BandwidthLimit))
+			tc.AssertCalled(GinkgoT(), "AddOutputLimit", []string{"lo", "eth0", "eth1"}, "2:", mock.Anything, uint(spec.BandwidthLimit))
 		})
 
-		Context("packet marking with cgroups v1", func() {
-			It("should mark packets going out from the identified (container or host) cgroup for the tc fw filter", func() {
-				cgroupManager.AssertCalled(GinkgoT(), "Write", "net_cls", "net_cls.classid", chaostypes.InjectorCgroupClassID)
-				iptables.AssertCalled(GinkgoT(), "MarkClassID", chaostypes.InjectorCgroupClassID, chaostypes.InjectorCgroupClassID)
+		Context("packet marking with cgroups v1 (no HTTP filters)", func() {
+			It("should not mark packets when no HTTP filters are active (BPF engine handles classification)", func() {
+				cgroupManager.AssertNotCalled(GinkgoT(), "Write", "net_cls", "net_cls.classid", chaostypes.InjectorCgroupClassID)
+				iptables.AssertNotCalled(GinkgoT(), "MarkClassID", chaostypes.InjectorCgroupClassID, chaostypes.InjectorCgroupClassID)
 			})
 		})
 
-		Context("packet marking with cgroups v2", func() {
+		Context("packet marking with cgroups v2 (no HTTP filters)", func() {
 			BeforeEach(func() {
 				isCgroupV2Call.Return(true)
 			})
@@ -321,8 +347,8 @@ var _ = Describe("Failure", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 			})
 
-			It("should mark packets going out from the identified (container or host) cgroup for the tc fw filter", func() {
-				iptables.AssertCalled(GinkgoT(), "MarkCgroupPath", "/kubepod.slice/foo", chaostypes.InjectorCgroupClassID)
+			It("should not mark packets when no HTTP filters are active (BPF engine handles classification)", func() {
+				iptables.AssertNotCalled(GinkgoT(), "MarkCgroupPath", "/kubepod.slice/foo", chaostypes.InjectorCgroupClassID)
 			})
 		})
 
@@ -358,8 +384,8 @@ var _ = Describe("Failure", func() {
 
 		// hosts and services filtering cases
 		Context("with no hosts specified", func() {
-			It("should add a filter to redirect all traffic on main interfaces on the disrupted band", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, zeroIPNet, 0, 0, network.TCP, network.ConnStateUndefined, "1:4")
+			It("should not add tc filters for match-all (BPF engine handles match-all via LPM trie)", func() {
+				tc.AssertNotCalled(GinkgoT(), "AddFilter", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 			})
 		})
 
@@ -385,9 +411,8 @@ var _ = Describe("Failure", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 			})
 
-			It("should add a filter to redirect targeted traffic on all interfaces on the disrupted band filter on given hosts as destination IP", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(testHostIP), 0, 80, network.TCP, network.ConnStateNew, "1:4")
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse("2.2.2.2"), 0, 443, network.TCP, network.ConnStateEstablished, "1:4")
+			It("should not add tc filters for hosts (BPF engine handles host-based rules via LPM trie)", func() {
+				tc.AssertNotCalled(GinkgoT(), "AddFilter", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 			})
 		})
 
@@ -407,47 +432,38 @@ var _ = Describe("Failure", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 			})
 
-			It("should update the filters when the IP changes", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNet(testHostIP), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNet(testHostIPTwo), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
+			It("should not use tc filters for hosts (BPF engine handles host rules)", func() {
+				tc.AssertNotCalled(GinkgoT(), "AddFilter", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+			})
 
+			It("should update BPF rules when the IP changes", func() {
 				dns.EXPECT().ResolveWithStrategy("testhost", "").Return([]net.IP{net.ParseIP(testHostIPTwo), net.ParseIP(testHostIPThree)}, nil).Maybe()
 				time.Sleep(time.Second) // Wait for changed IPs to be caught by the hostWatcher
 
-				tc.AssertCalled(GinkgoT(), "DeleteFilter", "lo", uint32(0))
-				tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth0", uint32(0))
-				tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth1", uint32(0))
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNet(testHostIPThree), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
+				// BPF host watcher calls engine.UpdateRules which invokes bpfCmdRunner.Run
+				// No tc AddFilter/DeleteFilter calls should happen for hosts
+				tc.AssertNotCalled(GinkgoT(), "DeleteFilter", mock.Anything, mock.Anything)
 			})
 
-			It("should update the filters when new IPs are added", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNet(testHostIP), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNet(testHostIPTwo), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
-
+			It("should update BPF rules when new IPs are added", func() {
 				dns.EXPECT().ResolveWithStrategy("testhost", "").Return([]net.IP{net.ParseIP(testHostIP), net.ParseIP(testHostIPTwo), net.ParseIP(testHostIPThree)}, nil).Maybe()
 				time.Sleep(time.Second) // Wait for changed IPs to be caught by the hostWatcher
 
-				tc.AssertNotCalled(GinkgoT(), "DeleteFilter")
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNet(testHostIPThree), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
+				// No tc filter operations for hosts - BPF engine handles updates
+				tc.AssertNotCalled(GinkgoT(), "DeleteFilter", mock.Anything, mock.Anything)
 			})
 
-			It("should update the filters when IPs are removed", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNet(testHostIP), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNet(testHostIPTwo), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
-
+			It("should update BPF rules when IPs are removed", func() {
 				dns.EXPECT().ResolveWithStrategy("testhost", "").Return([]net.IP{net.ParseIP(testHostIP)}, nil).Maybe()
 				time.Sleep(time.Second) // Wait for changed IPs to be caught by the hostWatcher
 
-				tc.AssertCalled(GinkgoT(), "DeleteFilter", "lo", uint32(0))
-				tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth0", uint32(0))
-				tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth1", uint32(0))
+				// No tc filter operations for hosts - BPF engine handles updates
+				tc.AssertNotCalled(GinkgoT(), "DeleteFilter", mock.Anything, mock.Anything)
 			})
 
-			It("should not update the filters when IPs do not change", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNet(testHostIP), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNet(testHostIPTwo), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
-
-				tc.AssertNotCalled(GinkgoT(), "DeleteFilter")
+			It("should not update when IPs do not change", func() {
+				// No tc filter operations expected
+				tc.AssertNotCalled(GinkgoT(), "DeleteFilter", mock.Anything, mock.Anything)
 			})
 
 			AfterEach(func() {
@@ -499,23 +515,12 @@ var _ = Describe("Failure", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 			})
 
-			It("should add a filter for every service and pods filtered on, modify the filter and then delete a filter", func() {
+			It("should not use tc filters for services (BPF engine handles service rules via LPM trie)", func() {
 				WatchersAreEmpty(servicesWatcher, podsWatcher)
 
-				priority := uint32(0)
-
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(clusterIP), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(podIP), 0, 8080, network.TCP, network.ConnStateUndefined, "1:4")
-
-				tc.AssertCalled(GinkgoT(), "DeleteFilter", "lo", priority)
-				tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth0", priority)
-				tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth1", priority)
-
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(clusterIP), 0, 81, network.TCP, network.ConnStateUndefined, "1:4") // priority 1005
-
-				tc.AssertCalled(GinkgoT(), "DeleteFilter", "lo", priority)
-				tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth0", priority)
-				tc.AssertCalled(GinkgoT(), "DeleteFilter", "eth1", priority)
+				// Services are now BPF rules, not tc flower filters
+				tc.AssertNotCalled(GinkgoT(), "AddFilter", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+				tc.AssertNotCalled(GinkgoT(), "DeleteFilter", mock.Anything, mock.Anything)
 			})
 
 			AfterEach(func() {
@@ -557,12 +562,11 @@ var _ = Describe("Failure", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 			})
 
-			It("should add a filter on allowed port, not on not specified port", func() {
+			It("should not use tc filters for services (BPF engine handles service rules via LPM trie)", func() {
 				WatchersAreEmpty(servicesWatcher, podsWatcher)
 
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(clusterIP), 0, 8180, network.TCP, network.ConnStateUndefined, "1:4")
-				tc.AssertNotCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(clusterIP), 0, 8181, network.TCP, network.ConnStateUndefined, "1:4")
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(podIP), 0, 8080, network.TCP, network.ConnStateUndefined, "1:4")
+				// Services are now BPF rules, not tc flower filters
+				tc.AssertNotCalled(GinkgoT(), "AddFilter", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 			})
 
 			AfterEach(func() {
@@ -572,12 +576,8 @@ var _ = Describe("Failure", func() {
 
 		// safeguards
 		Context("pod level safeguards", func() {
-			It("should add a filter to redirect default gateway IP traffic on a non-disrupted band", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"eth0"}, "1:0", "", nilIPNet, buildSingleIPNet(secondGatewayIP), 0, 0, network.TCP, network.ConnStateUndefined, "1:1")
-			})
-
-			It("should add a filter to redirect node IP traffic on a non-disrupted band", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNet(targetPodHostIP), 0, 0, network.TCP, network.ConnStateUndefined, "1:1")
+			It("should not add tc filters for safeguards (BPF engine handles safeguards via ALLOW rules in LPM trie)", func() {
+				tc.AssertNotCalled(GinkgoT(), "AddFilter", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 			})
 		})
 
@@ -590,16 +590,8 @@ var _ = Describe("Failure", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 			})
 
-			It("should add a filter to redirect SSH traffic on a non-disrupted band", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, nilIPNet, 22, 0, network.TCP, network.ConnStateUndefined, "1:1")
-			})
-
-			It("should add a filter to redirect ARP traffic on a non-disrupted band", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, nilIPNet, 0, 0, network.ARP, network.ConnStateUndefined, "1:1")
-			})
-
-			It("should add a filter to redirect metadata service traffic on a non-disrupted band", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNet("169.254.169.254"), 0, 0, network.TCP, network.ConnStateUndefined, "1:1")
+			It("should not add tc filters for safeguards (BPF engine handles safeguards via ALLOW rules in LPM trie)", func() {
+				tc.AssertNotCalled(GinkgoT(), "AddFilter", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 			})
 		})
 
@@ -617,8 +609,8 @@ var _ = Describe("Failure", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 			})
 
-			It("should add a filter to redirect all traffic on main interfaces on the disrupted band with specified port as source port", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", zeroIPNet, nilIPNet, 80, 0, network.TCP, network.ConnStateUndefined, "1:4")
+			It("should not add tc filters for ingress hosts (BPF engine handles direction natively)", func() {
+				tc.AssertNotCalled(GinkgoT(), "AddFilter", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 			})
 		})
 
@@ -635,8 +627,8 @@ var _ = Describe("Failure", func() {
 				tc.AssertNotCalled(GinkgoT(), "AddPrio", []string{"lo", "eth0", "eth1"}, "1:4", "2:", uint32(2), mock.Anything)
 			})
 
-			It("should apply tc filters to block traffic", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, zeroIPNet, 0, 0, network.TCP, network.ConnStateUndefined, "1:4")
+			It("should not add tc filters for match-all (BPF engine handles classification)", func() {
+				tc.AssertNotCalled(GinkgoT(), "AddFilter", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 			})
 		})
 
@@ -654,8 +646,8 @@ var _ = Describe("Failure", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 			})
 
-			It("should add a filter to redirect traffic going to 8.8.8.8/32 on port 53 on the not disrupted band", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse("8.8.8.8"), 0, 53, network.TCP, network.ConnStateUndefined, "1:1")
+			It("should not add tc filters for allowed hosts (BPF engine handles allowed hosts via ALLOW rules in LPM trie)", func() {
+				tc.AssertNotCalled(GinkgoT(), "AddFilter", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 			})
 		})
 
@@ -672,8 +664,8 @@ var _ = Describe("Failure", func() {
 			})
 
 			It("should not stack up AddNetem operations", func() {
-				tc.AssertCalled(GinkgoT(), "AddNetem", []string{"lo", "eth0", "eth1"}, "2:2", mock.Anything, time.Second, time.Second, spec.Drop, spec.Corrupt, spec.Duplicate)
-				// The first call come from the first injection and the second is form the last injection. So the sum of calls si two.
+				tc.AssertCalled(GinkgoT(), "AddNetem", []string{"lo", "eth0", "eth1"}, "1:4", mock.Anything, time.Second, time.Second, spec.Drop, spec.Corrupt, spec.Duplicate)
+				// The first call come from the first injection and the second is form the last injection. So the sum of calls is two.
 				tc.AssertNumberOfCalls(GinkgoT(), "AddNetem", 2)
 			})
 		})
