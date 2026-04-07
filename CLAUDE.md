@@ -15,7 +15,8 @@ make docker-build-handler      # Build handler Docker image
 make docker-build-manager      # Build manager Docker image
 make docker-build-only-all     # Build all images without saving tars
 make manifests                 # Generate CRDs and RBAC manifests
-make generate                  # Generate Go code (deepcopy, etc.)
+make generate                  # Generate all artifacts (code, manifests, mocks, protobufs)
+make generate-controller       # Generate Go code (deepcopy, etc.)
 make generate-mocks            # Regenerate mocks (mockery v2.53.5)
 make clean-mocks               # Remove all generated mocks
 make generate-disruptionlistener-protobuf  # Generate disruptionlistener protobuf
