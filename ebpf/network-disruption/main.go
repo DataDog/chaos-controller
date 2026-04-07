@@ -11,6 +11,13 @@ package main
 /*
 #cgo LDFLAGS: -lelf -lz
 #include <bpf/bpf.h>
+#include <stdlib.h>
+
+// bpf_map_get_next_key_wrap wraps the bpf syscall for Go.
+// Returns 0 on success, -1 on error (no more keys).
+static int bpf_map_get_next_key_wrap(int fd, const void *key, void *next_key) {
+    return bpf_map_get_next_key(fd, key, next_key);
+}
 */
 import "C"
 
@@ -237,19 +244,21 @@ func clearMap() error {
 		}
 
 		// For LPM trie maps, drain by always fetching the first key and deleting it.
-		// This avoids iterator invalidation issues when deleting during traversal.
-		keySize := uint32(20) // sizeof(lpm_key): 4 (prefix_len) + 16 (ip)
-		zeroKey := make([]byte, keySize)
-		key := make([]byte, keySize)
+		// libbpfgo's GetNextKey is not implemented, so we use the C bpf syscall directly.
+		fd := bpfMap.FileDescriptor()
+		keySize := 20 // sizeof(lpm_key): 4 (prefix_len) + 16 (ip)
+		key := C.malloc(C.ulong(keySize))
+
+		defer C.free(key)
 
 		for {
-			// Always pass zeroed key as prev to get the first remaining entry
-			err := bpfMap.GetNextKey(unsafe.Pointer(&zeroKey[0]), unsafe.Pointer(&key[0]))
-			if err != nil {
+			// Pass NULL as prev key to get the first remaining entry
+			ret := C.bpf_map_get_next_key_wrap(C.int(fd), nil, key)
+			if ret != 0 {
 				break // No more entries
 			}
 
-			if err := bpfMap.DeleteKey(unsafe.Pointer(&key[0])); err != nil {
+			if err := bpfMap.DeleteKey(key); err != nil {
 				logger.Warnf("could not delete map entry: %v", err)
 
 				break // Avoid infinite loop if delete fails
