@@ -71,7 +71,7 @@ var _ = Describe("BPF Network Disruption E2E", func() {
 
 		It("should create chaos pods for egress drop with BPF classification", func(ctx SpecContext) {
 			By("Ensuring that the chaos pods have been created")
-			ExpectChaosPods(ctx, disruption, 3)
+			ExpectChaosPods(ctx, disruption, 1)
 		})
 	})
 
@@ -93,7 +93,7 @@ var _ = Describe("BPF Network Disruption E2E", func() {
 
 		It("should create chaos pods for egress delay+bandwidth with BPF classification", func(ctx SpecContext) {
 			By("Ensuring that the chaos pods have been created")
-			ExpectChaosPods(ctx, disruption, 3)
+			ExpectChaosPods(ctx, disruption, 1)
 		})
 	})
 
@@ -114,7 +114,7 @@ var _ = Describe("BPF Network Disruption E2E", func() {
 
 		It("should create chaos pods for UDP egress drop (previously unreliable with net_cls)", func(ctx SpecContext) {
 			By("Ensuring that the chaos pods have been created")
-			ExpectChaosPods(ctx, disruption, 3)
+			ExpectChaosPods(ctx, disruption, 1)
 		})
 	})
 
@@ -135,7 +135,7 @@ var _ = Describe("BPF Network Disruption E2E", func() {
 
 		It("should create chaos pods for ingress drop with BPF DirectAction", func(ctx SpecContext) {
 			By("Ensuring that the chaos pods have been created")
-			ExpectChaosPods(ctx, disruption, 3)
+			ExpectChaosPods(ctx, disruption, 1)
 		})
 	})
 
@@ -155,7 +155,7 @@ var _ = Describe("BPF Network Disruption E2E", func() {
 
 		It("should create chaos pods for ingress shaping via IFB device", func(ctx SpecContext) {
 			By("Ensuring that the chaos pods have been created")
-			ExpectChaosPods(ctx, disruption, 3)
+			ExpectChaosPods(ctx, disruption, 1)
 		})
 	})
 
@@ -176,7 +176,7 @@ var _ = Describe("BPF Network Disruption E2E", func() {
 
 		It("should create chaos pods for UDP ingress drop with BPF", func(ctx SpecContext) {
 			By("Ensuring that the chaos pods have been created")
-			ExpectChaosPods(ctx, disruption, 3)
+			ExpectChaosPods(ctx, disruption, 1)
 		})
 	})
 
@@ -204,7 +204,7 @@ var _ = Describe("BPF Network Disruption E2E", func() {
 
 		It("should create chaos pods for multi-host ingress targeting via BPF LPM trie", func(ctx SpecContext) {
 			By("Ensuring that the chaos pods have been created")
-			ExpectChaosPods(ctx, disruption, 3)
+			ExpectChaosPods(ctx, disruption, 1)
 		})
 	})
 
@@ -232,7 +232,7 @@ var _ = Describe("BPF Network Disruption E2E", func() {
 
 		It("should create chaos pods for mixed direction disruption", func(ctx SpecContext) {
 			By("Ensuring that the chaos pods have been created")
-			ExpectChaosPods(ctx, disruption, 3)
+			ExpectChaosPods(ctx, disruption, 1)
 		})
 	})
 
@@ -247,7 +247,7 @@ var _ = Describe("BPF Network Disruption E2E", func() {
 
 		It("should create chaos pods for match-all egress via BPF 0.0.0.0/0 rule", func(ctx SpecContext) {
 			By("Ensuring that the chaos pods have been created")
-			ExpectChaosPods(ctx, disruption, 3)
+			ExpectChaosPods(ctx, disruption, 1)
 		})
 	})
 
@@ -269,7 +269,7 @@ var _ = Describe("BPF Network Disruption E2E", func() {
 
 		It("should create chaos pods with allowed hosts as BPF ALLOW rules", func(ctx SpecContext) {
 			By("Ensuring that the chaos pods have been created")
-			ExpectChaosPods(ctx, disruption, 3)
+			ExpectChaosPods(ctx, disruption, 1)
 		})
 	})
 
@@ -293,7 +293,7 @@ var _ = Describe("BPF Network Disruption E2E", func() {
 
 		It("should create chaos pods even with connState (BPF ignores it with a warning)", func(ctx SpecContext) {
 			By("Ensuring that the chaos pods have been created despite connState being unsupported in BPF")
-			ExpectChaosPods(ctx, disruption, 3)
+			ExpectChaosPods(ctx, disruption, 1)
 		})
 	})
 
@@ -314,7 +314,7 @@ var _ = Describe("BPF Network Disruption E2E", func() {
 
 		It("should create chaos pods for ingress corruption via IFB shaping", func(ctx SpecContext) {
 			By("Ensuring that the chaos pods have been created")
-			ExpectChaosPods(ctx, disruption, 3)
+			ExpectChaosPods(ctx, disruption, 1)
 		})
 	})
 
@@ -333,7 +333,7 @@ var _ = Describe("BPF Network Disruption E2E", func() {
 
 		It("should create chaos pods for ingress bandwidth limiting via IFB shaping", func(ctx SpecContext) {
 			By("Ensuring that the chaos pods have been created")
-			ExpectChaosPods(ctx, disruption, 3)
+			ExpectChaosPods(ctx, disruption, 1)
 		})
 	})
 
