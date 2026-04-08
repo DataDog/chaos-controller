@@ -7,6 +7,8 @@ bin/injector/ebpf
 bin/manager/manager*
 bin/handler/handler*
 bin/chaosli/chaosli*
+bin/tools/
+bin/protoc-include/
 chart/install.yaml
 dogfood/bin
 out
