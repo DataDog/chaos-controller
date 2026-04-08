@@ -6,8 +6,10 @@
 package injector_test
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"syscall"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -98,27 +100,19 @@ var _ = Describe("DiskFull", func() {
 			Expect(inj).ToNot(BeNil())
 		})
 
-		Context("with capacity percentage", func() {
+		Context("with a small allocation that fits in available space", func() {
 			BeforeEach(func() {
-				spec.Capacity = "95%"
-				spec.Remaining = ""
-			})
-
-			It("should create a ballast file", func() {
-				err := inj.Inject()
+				// Compute a remaining value that will only allocate 1Mi.
+				// remaining = available - 1Mi, so bytesToFill = available - remaining = 1Mi.
+				var stat syscall.Statfs_t
+				err := syscall.Statfs(tmpDir, &stat)
 				Expect(err).ToNot(HaveOccurred())
 
-				ballastPath := filepath.Join(tmpDir, ".chaos-diskfull-test-disruption")
-				info, statErr := os.Stat(ballastPath)
-				Expect(statErr).ToNot(HaveOccurred())
-				Expect(info.Size()).To(BeNumerically(">", 0))
-			})
-		})
-
-		Context("with remaining quantity", func() {
-			BeforeEach(func() {
+				availableBytes := stat.Bavail * uint64(stat.Bsize)
+				// Leave (available - 2Mi) as remaining, so we allocate ~2Mi minus safety floor = ~1Mi
+				targetRemaining := availableBytes - 2*1024*1024
 				spec.Capacity = ""
-				spec.Remaining = "50Mi"
+				spec.Remaining = formatBytes(targetRemaining)
 			})
 
 			It("should create a ballast file", func() {
@@ -129,21 +123,6 @@ var _ = Describe("DiskFull", func() {
 				info, statErr := os.Stat(ballastPath)
 				Expect(statErr).ToNot(HaveOccurred())
 				Expect(info.Size()).To(BeNumerically(">", 0))
-			})
-		})
-
-		Context("with dry-run mode", func() {
-			BeforeEach(func() {
-				config.Disruption.DryRun = true
-			})
-
-			It("should not create a ballast file", func() {
-				err := inj.Inject()
-				Expect(err).ToNot(HaveOccurred())
-
-				ballastPath := filepath.Join(tmpDir, ".chaos-diskfull-test-disruption")
-				_, statErr := os.Stat(ballastPath)
-				Expect(os.IsNotExist(statErr)).To(BeTrue())
 			})
 		})
 
@@ -162,12 +141,34 @@ var _ = Describe("DiskFull", func() {
 				Expect(os.IsNotExist(statErr)).To(BeTrue())
 			})
 		})
+
+		Context("with dry-run mode", func() {
+			BeforeEach(func() {
+				config.Disruption.DryRun = true
+			})
+
+			It("should not create a ballast file", func() {
+				err := inj.Inject()
+				Expect(err).ToNot(HaveOccurred())
+
+				ballastPath := filepath.Join(tmpDir, ".chaos-diskfull-test-disruption")
+				_, statErr := os.Stat(ballastPath)
+				Expect(os.IsNotExist(statErr)).To(BeTrue())
+			})
+		})
 	})
 
 	Describe("Inject and Clean round trip", func() {
 		It("should create and then remove the ballast file", func() {
+			// Compute a remaining value that allocates only ~1Mi
+			var stat syscall.Statfs_t
+			err := syscall.Statfs(tmpDir, &stat)
+			Expect(err).ToNot(HaveOccurred())
+
+			availableBytes := stat.Bavail * uint64(stat.Bsize)
+			targetRemaining := availableBytes - 2*1024*1024
 			spec.Capacity = ""
-			spec.Remaining = "0"
+			spec.Remaining = formatBytes(targetRemaining)
 
 			inj, err := NewDiskFullInjector(spec, config)
 			Expect(err).ToNot(HaveOccurred())
@@ -220,3 +221,16 @@ var _ = Describe("DiskFull", func() {
 		})
 	})
 })
+
+// formatBytes formats a byte count as a string suitable for resource.ParseQuantity
+func formatBytes(bytes uint64) string {
+	if bytes >= 1024*1024*1024 {
+		return fmt.Sprintf("%dGi", bytes/(1024*1024*1024))
+	}
+
+	if bytes >= 1024*1024 {
+		return fmt.Sprintf("%dMi", bytes/(1024*1024))
+	}
+
+	return fmt.Sprintf("%d", bytes)
+}
