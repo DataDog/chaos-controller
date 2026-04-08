@@ -69,6 +69,7 @@ func (e *Engine) IFBName() string {
 func (e *Engine) Attached() bool {
 	e.mu.Lock()
 	defer e.mu.Unlock()
+
 	return e.attached
 }
 
