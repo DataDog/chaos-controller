@@ -392,7 +392,7 @@ lima-install-demo:
 ## Install CRDs and controller into a lima k3s cluster
 ## In order to use already built images inside the containerd runtime
 ## we override images for all of our components to the expected namespace
-lima-install: manifests
+lima-install: manifests install-helm
 	$(HELM) template \
 		--set=controller.version=$(CONTAINER_VERSION) \
 		--set=controller.metricsSink=$(LIMA_INSTALL_SINK) \
@@ -405,7 +405,7 @@ ifneq (local.yaml,$(HELM_VALUES)) # we can only wait for a controller if it exis
 endif
 
 ## Uninstall CRDs and controller from a lima k3s cluster
-lima-uninstall:
+lima-uninstall: install-helm
 	$(HELM) template --set=skipNamespace=true --values ./chart/values/$(HELM_VALUES) ./chart | $(KUBECTL) delete -f -
 
 ## Restart the chaos-controller pod
@@ -637,7 +637,7 @@ install-tools: install-golangci-lint install-controller-gen install-mockery inst
 
 EXISTING_HELM_RELEASE = $(shell $(HELM) status -n datadog-agent my-datadog-operator --output json 2>/dev/null | grep -q '"status":"deployed"' && echo "true" || echo "")
 
-lima-install-datadog-agent:
+lima-install-datadog-agent: install-helm
 ifeq (true,$(INSTALL_DATADOG_AGENT))
 ifeq (,$(EXISTING_HELM_RELEASE))
 	$(KUBECTL) create ns datadog-agent 2>/dev/null || true
