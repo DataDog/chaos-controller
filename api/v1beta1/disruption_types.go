@@ -80,6 +80,8 @@ type DisruptionSpec struct {
 	// +nullable
 	DiskPressure *DiskPressureSpec `json:"diskPressure,omitempty"`
 	// +nullable
+	DiskFull *DiskFullSpec `json:"diskFull,omitempty"`
+	// +nullable
 	DiskFailure *DiskFailureSpec `json:"diskFailure,omitempty"`
 	// +nullable
 	GRPC *GRPCDisruptionSpec `json:"grpc,omitempty"`
@@ -805,6 +807,10 @@ func (s DisruptionSpec) validateGlobalDisruptionScope(requireSelectors bool) (re
 		retErr = multierror.Append(retErr, errors.New("DNS disruptions can only be applied at the pod level"))
 	}
 
+	if s.DiskFull != nil && s.Level == chaostypes.DisruptionLevelNode {
+		retErr = multierror.Append(retErr, errors.New("disk full disruptions can only be applied at the pod level"))
+	}
+
 	// Rule: count must be valid
 	if err := ValidateCount(s.Count); err != nil {
 		retErr = multierror.Append(retErr, err)
@@ -842,6 +848,8 @@ func (s DisruptionSpec) DisruptionKindPicker(kind chaostypes.DisruptionKindName)
 		disruptionKind = s.DNS
 	case chaostypes.DisruptionKindPodReplacement:
 		disruptionKind = s.PodReplacement
+	case chaostypes.DisruptionKindDiskFull:
+		disruptionKind = s.DiskFull
 	case chaostypes.DisruptionKindDiskFailure:
 		disruptionKind = s.DiskFailure
 	}

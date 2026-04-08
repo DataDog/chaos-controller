@@ -75,6 +75,8 @@ const (
 	DisruptionKindCPUStress = "cpu-pressure-stress"
 	// DisruptionKindDiskFailure is a disk failure disruption
 	DisruptionKindDiskFailure = "disk-failure"
+	// DisruptionKindDiskFull is a disk full (ENOSPC) disruption
+	DisruptionKindDiskFull = "disk-full"
 	// DisruptionKindDiskPressure is a disk pressure disruption
 	DisruptionKindDiskPressure = "disk-pressure"
 	// DisruptionKindGRPCDisruption is a grpc disruption
@@ -161,6 +163,7 @@ var DisruptionKindNames = []DisruptionKindName{
 	DisruptionKindCPUPressure,
 	DisruptionKindMemoryPressure,
 	DisruptionKindDiskPressure,
+	DisruptionKindDiskFull,
 	DisruptionKindDiskFailure,
 	DisruptionKindGRPCDisruption,
 	DisruptionKindDNSDisruption,

@@ -17,6 +17,7 @@ type UnsafemodeSpec struct {
 	DisableNeitherHostNorPort  bool    `json:"disableNeitherHostNorPort,omitempty"`
 	DisableSpecificContainDisk bool    `json:"disableSpecificContainDisk,omitempty"`
 	AllowRootDiskFailure       bool    `json:"allowRootDiskFailure,omitempty"`
+	AllowDiskFullNoFloor       bool    `json:"allowDiskFullNoFloor,omitempty"`
 	Config                     *Config `json:"config,omitempty"`
 }
 
