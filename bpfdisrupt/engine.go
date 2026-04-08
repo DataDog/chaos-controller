@@ -43,9 +43,9 @@ type Engine struct {
 	nl         network.NetlinkAdapter
 	cmdRunner  CmdRunner
 	log        *zap.SugaredLogger
-	ifbName    string   // "" if no IFB device created
-	ifbIndex   int      // IFB device ifindex (for bpf_redirect)
-	interfaces []string // target interfaces
+	ifbName    string     // "" if no IFB device created
+	ifbIndex   int        // IFB device ifindex (for bpf_redirect)
+	interfaces []string   // target interfaces
 	mu         sync.Mutex // protects attached, ifbName, ifbIndex
 	attached   bool
 }
