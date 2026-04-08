@@ -8,6 +8,7 @@ package bpfdisrupt
 import (
 	"fmt"
 	"strconv"
+	"sync"
 
 	"github.com/DataDog/chaos-controller/network"
 	"go.uber.org/zap"
@@ -45,6 +46,7 @@ type Engine struct {
 	ifbName    string   // "" if no IFB device created
 	ifbIndex   int      // IFB device ifindex (for bpf_redirect)
 	interfaces []string // target interfaces
+	mu         sync.Mutex // protects attached, ifbName, ifbIndex
 	attached   bool
 }
 
@@ -65,6 +67,8 @@ func (e *Engine) IFBName() string {
 
 // Attached returns whether the engine is currently attached.
 func (e *Engine) Attached() bool {
+	e.mu.Lock()
+	defer e.mu.Unlock()
 	return e.attached
 }
 
@@ -72,6 +76,9 @@ func (e *Engine) Attached() bool {
 // It creates a clsact qdisc, attaches egress and ingress BPF programs,
 // optionally creates an IFB device for ingress shaping, and populates the LPM trie.
 func (e *Engine) Attach(interfaces []string, rules []Rule, disruptionUID string, needsIngressShaping bool) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
 	e.interfaces = interfaces
 
 	// Create IFB device if ingress shaping (delay/jitter/bandwidth) is needed
@@ -123,6 +130,9 @@ func (e *Engine) Attach(interfaces []string, rules []Rule, disruptionUID string,
 // and deletes the IFB device if one was created.
 // The egress BPF filter on the root prio is removed when ClearQdisc removes the root prio.
 func (e *Engine) Detach() error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
 	if !e.attached {
 		return nil
 	}
@@ -150,6 +160,9 @@ func (e *Engine) Detach() error {
 // UpdateRules atomically replaces all rules in the BPF LPM trie map.
 // Called by DNS/service watchers when resolved IPs change.
 func (e *Engine) UpdateRules(rules []Rule) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
 	if !e.attached {
 		return fmt.Errorf("engine not attached")
 	}
