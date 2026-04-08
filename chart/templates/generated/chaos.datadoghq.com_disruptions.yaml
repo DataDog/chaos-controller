@@ -153,6 +153,50 @@ spec:
                   required:
                     - paths
                   type: object
+                diskFull:
+                  description: DiskFullSpec represents a disk full (ENOSPC) disruption that fills a target volume
+                  nullable: true
+                  properties:
+                    capacity:
+                      description: |-
+                        Capacity is the target fill percentage of total volume capacity (e.g., "95%").
+                        Mutually exclusive with Remaining.
+                      pattern: ^\d{1,3}%$
+                      type: string
+                    path:
+                      description: Path is the mount path inside the target pod to fill (e.g., "/data", "/var/log")
+                      minLength: 1
+                      type: string
+                    remaining:
+                      description: |-
+                        Remaining is the amount of free space to leave on the volume (e.g., "50Mi", "1Gi").
+                        Mutually exclusive with Capacity.
+                      type: string
+                    writeSyscall:
+                      description: |-
+                        WriteSyscall optionally enables eBPF-based write syscall interception to return errors
+                        with configurable probability. This runs in addition to the volume fill.
+                      nullable: true
+                      properties:
+                        exitCode:
+                          default: ENOSPC
+                          description: ExitCode is the errno to return on intercepted write syscalls.
+                          enum:
+                            - ENOSPC
+                            - EDQUOT
+                            - EIO
+                            - EROFS
+                            - EFBIG
+                            - EPERM
+                            - EACCES
+                          type: string
+                        probability:
+                          description: 'Probability is the percentage of write syscalls to fail (e.g., "50%"). Default: "100%".'
+                          type: string
+                      type: object
+                  required:
+                    - path
+                  type: object
                 diskPressure:
                   description: DiskPressureSpec represents a disk pressure disruption
                   nullable: true
@@ -680,6 +724,8 @@ spec:
                     UnsafemodeSpec represents a spec with parameters to turn off specific safety nets designed to catch common traps or issues running a disruption
                     All of these are turned off by default, so disabling safety nets requires manually changing these booleans to true
                   properties:
+                    allowDiskFullNoFloor:
+                      type: boolean
                     allowRootDiskFailure:
                       type: boolean
                     config:
