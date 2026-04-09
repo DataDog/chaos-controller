@@ -15,20 +15,8 @@ When the disruption is cleaned up, the ballast file is removed and space is free
 | `path`      | string | Yes      | Mount path inside the target pod to fill (e.g., `/data`, `/var/log`) |
 | `capacity`  | string | One of   | Fill to this percentage of total volume capacity (e.g., `"95%"`) |
 | `remaining` | string | One of   | Leave only this much free space on the volume (e.g., `"50Mi"`, `"1Gi"`) |
-| `writeSyscall` | object | No    | Optional eBPF-based write syscall interception (see below) |
 
 `capacity` and `remaining` are **mutually exclusive** — exactly one must be set.
-
-### writeSyscall (optional)
-
-When set, an eBPF program is launched alongside the volume fill to intercept `write` syscalls and return errors with configurable probability. This is useful for testing partial write failures or for environments where the volume fill alone isn't sufficient.
-
-| Field         | Type   | Default   | Description |
-|---------------|--------|-----------|-------------|
-| `exitCode`    | string | `ENOSPC`  | errno to return: `ENOSPC`, `EDQUOT`, `EIO`, `EROFS`, `EFBIG`, `EPERM`, `EACCES` |
-| `probability` | string | `"100%"`  | Percentage of write syscalls to fail (1-100%) |
-
-**Requirements:** The kernel must support eBPF with `CONFIG_BPF_KPROBE_OVERRIDE` enabled.
 
 ## Examples
 
@@ -68,28 +56,6 @@ spec:
   diskFull:
     path: "/var/log"
     remaining: "10Mi"
-```
-
-### Volume fill + eBPF write interception
-
-```yaml
-apiVersion: chaos.datadoghq.com/v1beta1
-kind: Disruption
-metadata:
-  name: disk-full-with-ebpf
-  namespace: my-app
-spec:
-  level: pod
-  selector:
-    app: my-service
-  count: 1
-  duration: 10m
-  diskFull:
-    path: "/data"
-    capacity: "90%"
-    writeSyscall:
-      exitCode: ENOSPC
-      probability: "50%"
 ```
 
 ### Fill to 100% (requires unsafeMode)
