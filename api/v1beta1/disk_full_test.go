@@ -53,33 +53,6 @@ var _ = Describe("DiskFullSpec", func() {
 					Remaining: "0",
 				},
 			),
-			Entry("with writeSyscall defaults",
-				DiskFullSpec{
-					Path:         "/data",
-					Capacity:     "95%",
-					WriteSyscall: &WriteSyscallSpec{},
-				},
-			),
-			Entry("with writeSyscall explicit values",
-				DiskFullSpec{
-					Path:     "/data",
-					Capacity: "95%",
-					WriteSyscall: &WriteSyscallSpec{
-						ExitCode:    "ENOSPC",
-						Probability: "50%",
-					},
-				},
-			),
-			Entry("with writeSyscall EDQUOT exit code",
-				DiskFullSpec{
-					Path:     "/data",
-					Capacity: "80%",
-					WriteSyscall: &WriteSyscallSpec{
-						ExitCode:    "EDQUOT",
-						Probability: "100%",
-					},
-				},
-			),
 		)
 
 		DescribeTable("error cases",
@@ -169,46 +142,6 @@ var _ = Describe("DiskFullSpec", func() {
 					"one of capacity or remaining must be set",
 				},
 			),
-			Entry("with writeSyscall invalid probability (no suffix)",
-				DiskFullSpec{
-					Path:     "/data",
-					Capacity: "95%",
-					WriteSyscall: &WriteSyscallSpec{
-						Probability: "50",
-					},
-				},
-				[]string{"writeSyscall probability must be a percentage suffixed with %"},
-			),
-			Entry("with writeSyscall probability 0%",
-				DiskFullSpec{
-					Path:     "/data",
-					Capacity: "95%",
-					WriteSyscall: &WriteSyscallSpec{
-						Probability: "0%",
-					},
-				},
-				[]string{"writeSyscall probability must be between 1 and 100"},
-			),
-			Entry("with writeSyscall probability 101%",
-				DiskFullSpec{
-					Path:     "/data",
-					Capacity: "95%",
-					WriteSyscall: &WriteSyscallSpec{
-						Probability: "101%",
-					},
-				},
-				[]string{"writeSyscall probability must be between 1 and 100"},
-			),
-			Entry("with writeSyscall non-numeric probability",
-				DiskFullSpec{
-					Path:     "/data",
-					Capacity: "95%",
-					WriteSyscall: &WriteSyscallSpec{
-						Probability: "abc%",
-					},
-				},
-				[]string{"writeSyscall probability must be an integer"},
-			),
 		)
 	})
 
@@ -232,25 +165,6 @@ var _ = Describe("DiskFullSpec", func() {
 					Remaining: "50Mi",
 				},
 				[]string{"--path", "/data", "--remaining", "50Mi"},
-			),
-			Entry("with writeSyscall defaults",
-				DiskFullSpec{
-					Path:         "/data",
-					Capacity:     "95%",
-					WriteSyscall: &WriteSyscallSpec{},
-				},
-				[]string{"--path", "/data", "--capacity", "95%", "--write-exit-code", "ENOSPC", "--write-probability", "100%"},
-			),
-			Entry("with writeSyscall explicit values",
-				DiskFullSpec{
-					Path:     "/data",
-					Capacity: "90%",
-					WriteSyscall: &WriteSyscallSpec{
-						ExitCode:    "EDQUOT",
-						Probability: "50%",
-					},
-				},
-				[]string{"--path", "/data", "--capacity", "90%", "--write-exit-code", "EDQUOT", "--write-probability", "50%"},
 			),
 		)
 	})
@@ -280,37 +194,5 @@ var _ = Describe("DiskFullSpec", func() {
 			Expect(explanation[1]).To(ContainSubstring("ENOSPC"))
 		})
 
-		It("explains writeSyscall mode", func() {
-			spec := DiskFullSpec{
-				Path:     "/data",
-				Capacity: "95%",
-				WriteSyscall: &WriteSyscallSpec{
-					ExitCode:    "ENOSPC",
-					Probability: "50%",
-				},
-			}
-			explanation := spec.Explain()
-			Expect(explanation).To(HaveLen(2))
-			Expect(explanation[1]).To(ContainSubstring("eBPF"))
-			Expect(explanation[1]).To(ContainSubstring("ENOSPC"))
-			Expect(explanation[1]).To(ContainSubstring("50%"))
-		})
-	})
-
-	Describe("WriteSyscallSpec", func() {
-		DescribeTable("GetExitCodeInt",
-			func(exitCode string, expected int) {
-				spec := WriteSyscallSpec{ExitCode: exitCode}
-				Expect(spec.GetExitCodeInt()).To(Equal(expected))
-			},
-			Entry("ENOSPC", "ENOSPC", 28),
-			Entry("EDQUOT", "EDQUOT", 122),
-			Entry("EIO", "EIO", 5),
-			Entry("EROFS", "EROFS", 30),
-			Entry("EFBIG", "EFBIG", 27),
-			Entry("EPERM", "EPERM", 1),
-			Entry("EACCES", "EACCES", 13),
-			Entry("empty defaults to ENOSPC", "", 28),
-		)
 	})
 })

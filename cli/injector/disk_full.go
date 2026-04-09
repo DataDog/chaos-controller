@@ -25,20 +25,11 @@ var diskFullCmd = &cobra.Command{
 		path, _ := cmd.Flags().GetString("path")
 		capacity, _ := cmd.Flags().GetString("capacity")
 		remaining, _ := cmd.Flags().GetString("remaining")
-		writeExitCode, _ := cmd.Flags().GetString("write-exit-code")
-		writeProbability, _ := cmd.Flags().GetString("write-probability")
 
 		spec := v1beta1.DiskFullSpec{
 			Path:      path,
 			Capacity:  capacity,
 			Remaining: remaining,
-		}
-
-		if writeExitCode != "" || writeProbability != "" {
-			spec.WriteSyscall = &v1beta1.WriteSyscallSpec{
-				ExitCode:    writeExitCode,
-				Probability: writeProbability,
-			}
 		}
 
 		for _, config := range configs {
@@ -67,8 +58,6 @@ func init() {
 	diskFullCmd.Flags().String("path", "", "Path to apply disk full disruption to")
 	diskFullCmd.Flags().String("capacity", "", "Target fill percentage of total volume capacity (e.g., 95%)")
 	diskFullCmd.Flags().String("remaining", "", "Amount of free space to leave on the volume (e.g., 50Mi)")
-	diskFullCmd.Flags().String("write-exit-code", "", "Error code to return on intercepted write syscalls (e.g., ENOSPC)")
-	diskFullCmd.Flags().String("write-probability", "", "Percentage of write syscalls to fail (e.g., 50%)")
 
 	_ = cobra.MarkFlagRequired(diskFullCmd.PersistentFlags(), "path")
 }

@@ -6,7 +6,6 @@
 package injector
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -16,11 +15,8 @@ import (
 	"syscall"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
-	"github.com/DataDog/chaos-controller/command"
-	"github.com/DataDog/chaos-controller/ebpf"
 	"github.com/DataDog/chaos-controller/env"
 	"github.com/DataDog/chaos-controller/fallocate"
-	"github.com/DataDog/chaos-controller/process"
 	"github.com/DataDog/chaos-controller/types"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
@@ -30,8 +26,6 @@ const (
 	minFreeSpaceBytes = 1024 * 1024
 	// ballastFilePrefix is the prefix for ballast files created by the disk full injector
 	ballastFilePrefix = ".chaos-diskfull-"
-	// EBPFDiskFullWriteCmd is the name of the eBPF binary for write syscall interception
-	EBPFDiskFullWriteCmd = "bpf-disk-full-write"
 )
 
 type diskFullInjector struct {
@@ -44,12 +38,6 @@ type diskFullInjector struct {
 // DiskFullInjectorConfig is the disk full injector config
 type DiskFullInjectorConfig struct {
 	Config
-	// CmdFactory is required when WriteSyscall is configured (for launching the eBPF binary)
-	CmdFactory command.Factory
-	// ProcessManager is required when WriteSyscall is configured
-	ProcessManager process.Manager
-	// BPFConfigInformer is required when WriteSyscall is configured
-	BPFConfigInformer ebpf.ConfigInformer
 }
 
 // NewDiskFullInjector creates a disk full injector with the given config
@@ -84,26 +72,6 @@ func NewDiskFullInjector(spec v1beta1.DiskFullSpec, config DiskFullInjectorConfi
 		return nil, fmt.Errorf("target path %s does not exist: %w", hostPath, err)
 	}
 
-	// initialize eBPF dependencies when writeSyscall is configured
-	if spec.WriteSyscall != nil {
-		if config.CmdFactory == nil {
-			config.CmdFactory = command.NewFactory(config.Disruption.DryRun)
-		}
-
-		if config.ProcessManager == nil {
-			config.ProcessManager = process.NewManager(config.Disruption.DryRun)
-		}
-
-		if config.BPFConfigInformer == nil {
-			var err error
-
-			config.BPFConfigInformer, err = ebpf.NewConfigInformer(config.Log, config.Disruption.DryRun, nil, nil, nil)
-			if err != nil {
-				return nil, fmt.Errorf("could not create an instance of eBPF config informer for the disk full disruption: %w", err)
-			}
-		}
-	}
-
 	ballastPath := filepath.Join(hostPath, ballastFilePrefix+config.Disruption.DisruptionName)
 
 	return &diskFullInjector{
@@ -123,19 +91,7 @@ func (i *diskFullInjector) GetDisruptionKind() types.DisruptionKindName {
 }
 
 func (i *diskFullInjector) Inject() error {
-	// Phase 1: Volume fill
-	if err := i.injectVolumeFill(); err != nil {
-		return err
-	}
-
-	// Phase 2: Optional eBPF write syscall interception
-	if i.spec.WriteSyscall != nil {
-		if err := i.injectWriteSyscall(); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return i.injectVolumeFill()
 }
 
 func (i *diskFullInjector) injectVolumeFill() error {
@@ -221,49 +177,6 @@ func (i *diskFullInjector) injectVolumeFill() error {
 		"ballastPath", i.ballastPath,
 		"bytesToFill", bytesToFill,
 	)
-
-	return nil
-}
-
-func (i *diskFullInjector) injectWriteSyscall() error {
-	if err := i.config.BPFConfigInformer.ValidateRequiredSystemConfig(); err != nil {
-		return fmt.Errorf("the disk full write syscall interception needs a kernel supporting eBPF programs: %w", err)
-	}
-
-	if !i.config.BPFConfigInformer.GetMapTypes().HavePerfEventArrayMapType {
-		return fmt.Errorf("the disk full write syscall interception needs the perf event array map type, but the current kernel does not support this type of map")
-	}
-
-	pid := 0
-	if i.config.Disruption.Level == types.DisruptionLevelPod {
-		pid = int(i.config.TargetContainer.PID())
-	}
-
-	exitCode := i.spec.WriteSyscall.GetExitCodeInt()
-
-	probability := "100"
-	if i.spec.WriteSyscall.Probability != "" {
-		probability = strings.TrimSuffix(i.spec.WriteSyscall.Probability, "%")
-	}
-
-	args := []string{
-		"-process", strconv.Itoa(pid),
-		"-exit-code", strconv.Itoa(exitCode),
-		"-probability", probability,
-	}
-
-	i.config.Log.Infow("starting eBPF write syscall interception",
-		"pid", pid,
-		"exitCode", i.spec.WriteSyscall.ExitCode,
-		"probability", probability,
-	)
-
-	cmd := i.config.CmdFactory.NewCmd(context.Background(), EBPFDiskFullWriteCmd, args)
-
-	bgCmd := command.NewBackgroundCmd(cmd, i.config.Log, i.config.ProcessManager)
-	if err := bgCmd.Start(); err != nil {
-		return fmt.Errorf("unable to run the eBPF disk full write interception: %w", err)
-	}
 
 	return nil
 }
