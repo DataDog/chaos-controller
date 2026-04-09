@@ -181,28 +181,6 @@ spec:
                             Remaining is the amount of free space to leave on the volume (e.g., "50Mi", "1Gi").
                             Mutually exclusive with Capacity.
                           type: string
-                        writeSyscall:
-                          description: |-
-                            WriteSyscall optionally enables eBPF-based write syscall interception to return errors
-                            with configurable probability. This runs in addition to the volume fill.
-                          nullable: true
-                          properties:
-                            exitCode:
-                              default: ENOSPC
-                              description: ExitCode is the errno to return on intercepted write syscalls.
-                              enum:
-                                - ENOSPC
-                                - EDQUOT
-                                - EIO
-                                - EROFS
-                                - EFBIG
-                                - EPERM
-                                - EACCES
-                              type: string
-                            probability:
-                              description: 'Probability is the percentage of write syscalls to fail (e.g., "50%"). Default: "100%".'
-                              type: string
-                          type: object
                       required:
                         - path
                       type: object

@@ -27,43 +27,6 @@ type DiskFullSpec struct {
 	// Remaining is the amount of free space to leave on the volume (e.g., "50Mi", "1Gi").
 	// Mutually exclusive with Capacity.
 	Remaining string `json:"remaining,omitempty"`
-	// WriteSyscall optionally enables eBPF-based write syscall interception to return errors
-	// with configurable probability. This runs in addition to the volume fill.
-	// +nullable
-	WriteSyscall *WriteSyscallSpec `json:"writeSyscall,omitempty"`
-}
-
-// WriteSyscallSpec configures eBPF-based interception of write syscalls (write, pwrite64)
-// to return a configurable error code with a given probability.
-type WriteSyscallSpec struct {
-	// ExitCode is the errno to return on intercepted write syscalls.
-	// +kubebuilder:validation:Enum=ENOSPC;EDQUOT;EIO;EROFS;EFBIG;EPERM;EACCES
-	// +kubebuilder:default=ENOSPC
-	ExitCode string `json:"exitCode,omitempty" chaos_validate:"omitempty,oneofci=ENOSPC EDQUOT EIO EROFS EFBIG EPERM EACCES"`
-	// Probability is the percentage of write syscalls to fail (e.g., "50%"). Default: "100%".
-	Probability string `json:"probability,omitempty"`
-}
-
-// GetExitCodeInt returns the integer value of the configured errno.
-func (s *WriteSyscallSpec) GetExitCodeInt() int {
-	switch s.ExitCode {
-	case "ENOSPC":
-		return 28
-	case "EDQUOT":
-		return 122
-	case "EIO":
-		return 5
-	case "EROFS":
-		return 30
-	case "EFBIG":
-		return 27
-	case "EPERM":
-		return 1
-	case "EACCES":
-		return 13
-	default:
-		return 28 // ENOSPC
-	}
 }
 
 // Validate validates args for the given disruption
@@ -91,12 +54,6 @@ func (s *DiskFullSpec) Validate() (retErr error) {
 
 	if hasRemaining {
 		if err := validateRemaining(s.Remaining); err != nil {
-			retErr = multierror.Append(retErr, err)
-		}
-	}
-
-	if s.WriteSyscall != nil {
-		if err := validateWriteSyscallProbability(s.WriteSyscall.Probability); err != nil {
 			retErr = multierror.Append(retErr, err)
 		}
 	}
@@ -136,29 +93,6 @@ func validateRemaining(remaining string) error {
 	return nil
 }
 
-func validateWriteSyscallProbability(probability string) error {
-	if probability == "" {
-		return nil
-	}
-
-	if !strings.HasSuffix(probability, "%") {
-		return fmt.Errorf("writeSyscall probability must be a percentage suffixed with %%, got %q", probability)
-	}
-
-	valueStr := strings.TrimSuffix(probability, "%")
-
-	value, err := strconv.Atoi(valueStr)
-	if err != nil {
-		return fmt.Errorf("writeSyscall probability must be an integer, got %q: %w", valueStr, err)
-	}
-
-	if value < 1 || value > 100 {
-		return fmt.Errorf("writeSyscall probability must be between 1 and 100, got %d", value)
-	}
-
-	return nil
-}
-
 // GenerateArgs generates injection or cleanup pod arguments for the given spec
 func (s *DiskFullSpec) GenerateArgs() []string {
 	args := []string{
@@ -173,22 +107,6 @@ func (s *DiskFullSpec) GenerateArgs() []string {
 
 	if s.Remaining != "" {
 		args = append(args, "--remaining", s.Remaining)
-	}
-
-	if s.WriteSyscall != nil {
-		exitCode := s.WriteSyscall.ExitCode
-		if exitCode == "" {
-			exitCode = "ENOSPC"
-		}
-
-		args = append(args, "--write-exit-code", exitCode)
-
-		probability := s.WriteSyscall.Probability
-		if probability == "" {
-			probability = "100%"
-		}
-
-		args = append(args, "--write-probability", probability)
 	}
 
 	return args
@@ -207,20 +125,6 @@ func (s *DiskFullSpec) Explain() []string {
 	}
 
 	explanation += ", causing ENOSPC errors on subsequent write operations."
-
-	if s.WriteSyscall != nil {
-		exitCode := s.WriteSyscall.ExitCode
-		if exitCode == "" {
-			exitCode = "ENOSPC"
-		}
-
-		probability := s.WriteSyscall.Probability
-		if probability == "" {
-			probability = "100%"
-		}
-
-		explanation += fmt.Sprintf(" Additionally, write syscalls will be intercepted via eBPF and return %s %s of the time.", exitCode, probability)
-	}
 
 	return []string{"", explanation}
 }
