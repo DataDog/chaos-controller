@@ -7,6 +7,7 @@ package watchers
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -39,6 +40,8 @@ type Watchers map[string]Watcher
 
 // manager is a struct that implement the Manager interface.
 type manager struct {
+	mu sync.RWMutex
+
 	// controller is used to take event of a source send them to a watcher
 	controller controller.Controller
 
@@ -59,13 +62,19 @@ func NewManager(r client.Reader, c controller.Controller) Manager {
 }
 
 // GetWatcher returns the Watcher instance with the given name
-func (m manager) GetWatcher(name string) Watcher {
+func (m *manager) GetWatcher(name string) Watcher {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	return m.watchers[name]
 }
 
 // AddWatcher adds a new Watcher instance to the Manager
-func (m manager) AddWatcher(w Watcher) error {
+func (m *manager) AddWatcher(w Watcher) error {
 	watcherName := w.GetName()
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
 	// Check if the Watcher instance already exists in the Manager
 	if ok := m.watchers[watcherName]; ok != nil {
@@ -91,8 +100,11 @@ func (m manager) AddWatcher(w Watcher) error {
 }
 
 // RemoveWatcher removes a Watcher instance from the Manager
-func (m manager) RemoveWatcher(w Watcher) error {
+func (m *manager) RemoveWatcher(w Watcher) error {
 	watcherName := w.GetName()
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
 	// Check if the Watcher instance exists in the Manager
 	if ok := m.watchers[watcherName]; ok == nil {
@@ -107,39 +119,77 @@ func (m manager) RemoveWatcher(w Watcher) error {
 }
 
 // RemoveExpiredWatchers removes any expired Watcher instances from the Manager
-func (m manager) RemoveExpiredWatchers() {
+func (m *manager) RemoveExpiredWatchers() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	for name, w := range m.watchers {
 		if w.IsExpired() {
 			w.Clean()
 			delete(m.watchers, name)
-
-			continue
 		}
 	}
 }
 
 // RemoveOrphanWatchers removes any Watcher instances without linked Disruption
-func (m manager) RemoveOrphanWatchers() {
+func (m *manager) RemoveOrphanWatchers() {
+	// Step 1: snapshot current watchers under read lock to avoid holding the lock during K8s API calls.
+	m.mu.RLock()
+
+	type entry struct {
+		name    string
+		watcher Watcher
+	}
+
+	entries := make([]entry, 0, len(m.watchers))
+
 	for name, w := range m.watchers {
-		ctxTuple, _ := w.GetContextTuple()
+		entries = append(entries, entry{name, w})
+	}
+
+	m.mu.RUnlock()
+
+	// Step 2: check which watchers are orphaned — no lock held during network I/O.
+	var toRemove []entry
+
+	for _, e := range entries {
+		ctxTuple, _ := e.watcher.GetContextTuple()
 
 		if err := m.reader.Get(ctxTuple.Ctx, ctxTuple.NamespacedName, &v1beta1.Disruption{}); err != nil {
 			if err = client.IgnoreNotFound(err); err != nil {
 				continue
 			}
 
-			w.Clean()
-
-			delete(m.watchers, name)
+			toRemove = append(toRemove, e)
 		}
+	}
+
+	// Step 3: remove orphaned watchers under write lock.
+	if len(toRemove) == 0 {
+		return
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for _, e := range toRemove {
+		if m.watchers[e.name] == nil {
+			// Removed concurrently between Step 2 and Step 3.
+			continue
+		}
+
+		e.watcher.Clean()
+		delete(m.watchers, e.name)
 	}
 }
 
 // RemoveAllWatchers remove all Watchers instances from the Manager
-func (m manager) RemoveAllWatchers() {
+func (m *manager) RemoveAllWatchers() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	for name, w := range m.watchers {
 		w.Clean()
-
 		delete(m.watchers, name)
 	}
 }
