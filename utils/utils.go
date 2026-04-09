@@ -26,6 +26,7 @@ import (
 	"go.uber.org/zap"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Contains returns true when the given string is present in the given slice
@@ -61,4 +62,5 @@ type SetupWebhookWithManagerConfig struct {
 	CloudServicesProvidersManager    cloudservice.CloudServicesProvidersManager
 	Environment                      string
 	PermittedUserGroups              []string
+	APIReader                        client.Reader
 }

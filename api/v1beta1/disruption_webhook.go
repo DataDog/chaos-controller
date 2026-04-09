@@ -42,6 +42,7 @@ import (
 var (
 	logger                          *zap.SugaredLogger
 	k8sClient                       client.Client
+	apiReader                       client.Reader
 	metricsSink                     metrics.Sink
 	tracerSink                      tracer.Sink
 	recorder                        record.EventRecorder
@@ -71,6 +72,7 @@ func (d *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebho
 		tagutil.AdmissionControllerKey, "disruption-webhook",
 	)
 	k8sClient = setupWebhookConfig.Manager.GetClient()
+	apiReader = setupWebhookConfig.APIReader
 	metricsSink = setupWebhookConfig.MetricsSink
 	tracerSink = setupWebhookConfig.TracerSink
 	recorder = setupWebhookConfig.Recorder
@@ -563,52 +565,86 @@ func safetyNetCountNotTooLarge(ctx context.Context, r *Disruption) (bool, string
 		return false, "", nil
 	}
 
-	// The webhook uses the controller-runtime cached client, which serves List calls
-	// from an in-memory informer store. Pagination (Limit/Continue) is not supported
-	// by the cache and is unnecessary since all objects are already in memory.
-	// We only need counts, so UnsafeDisableDeepCopy avoids copying every object.
-	noDeepCopy := client.UnsafeDisableDeepCopyOption(true)
+	// Use the API reader (direct API server client) instead of the cached client
+	// for paginated listing. The controller-runtime cache does not support pagination
+	// (Limit/Continue) and may return incomplete results (see controller-runtime#3044).
+	const listPageSize = int64(1000)
 
 	if r.Spec.Level == chaostypes.DisruptionLevelPod {
 		pods := &corev1.PodList{}
+		listOptions := &client.ListOptions{
+			Namespace: r.Namespace,
+			Limit:     listPageSize,
+		}
 
 		// we grab the number of pods in the specified namespace
-		err := k8sClient.List(ctx, pods, &client.ListOptions{
-			Namespace: r.Namespace,
-		}, noDeepCopy)
-		if err != nil {
+		if err := apiReader.List(ctx, pods, listOptions); err != nil {
 			return false, "", fmt.Errorf("error listing namespace pods: %w", err)
 		}
 
-		namespaceCount = len(pods.Items)
+		for pods.Continue != "" {
+			namespaceCount += len(pods.Items)
+			listOptions.Continue = pods.Continue
 
-		// we grab the number of targets in the specified namespace
-		err = k8sClient.List(ctx, pods, &client.ListOptions{
+			if err := apiReader.List(ctx, pods, listOptions); err != nil {
+				return false, "", fmt.Errorf("error listing namespace pods: %w", err)
+			}
+		}
+
+		namespaceCount += len(pods.Items)
+
+		listOptions = &client.ListOptions{
 			Namespace:     r.Namespace,
 			LabelSelector: labels.SelectorFromValidatedSet(r.Spec.Selector),
-		}, noDeepCopy)
-		if err != nil {
+			Limit:         listPageSize,
+		}
+
+		// we grab the number of targets in the specified namespace
+		if err := apiReader.List(ctx, pods, listOptions); err != nil {
 			return false, "", fmt.Errorf("error listing target pods: %w", err)
 		}
 
-		targetCount = len(pods.Items)
+		for pods.Continue != "" {
+			targetCount += len(pods.Items)
+			listOptions.Continue = pods.Continue
+
+			if err := apiReader.List(ctx, pods, listOptions); err != nil {
+				return false, "", fmt.Errorf("error listing target pods: %w", err)
+			}
+		}
+
+		targetCount += len(pods.Items)
 
 		// we grab the number of pods in the entire cluster
-		err = k8sClient.List(ctx, pods, noDeepCopy)
-		if err != nil {
+		if err := apiReader.List(ctx, pods, client.Limit(listPageSize)); err != nil {
 			return false, "", fmt.Errorf("error listing cluster pods: %w", err)
 		}
 
-		totalCount = len(pods.Items)
+		for pods.Continue != "" {
+			totalCount += len(pods.Items)
+
+			if err := apiReader.List(ctx, pods, client.Limit(listPageSize), client.Continue(pods.Continue)); err != nil {
+				return false, "", fmt.Errorf("error listing cluster pods: %w", err)
+			}
+		}
+
+		totalCount += len(pods.Items)
 	} else {
 		nodes := &corev1.NodeList{}
 
-		err := k8sClient.List(ctx, nodes, noDeepCopy)
-		if err != nil {
+		if err := apiReader.List(ctx, nodes, client.Limit(listPageSize)); err != nil {
 			return false, "", fmt.Errorf("error listing nodes: %w", err)
 		}
 
-		totalCount = len(nodes.Items)
+		for nodes.Continue != "" {
+			totalCount += len(nodes.Items)
+
+			if err := apiReader.List(ctx, nodes, client.Limit(listPageSize), client.Continue(nodes.Continue)); err != nil {
+				return false, "", fmt.Errorf("error listing nodes: %w", err)
+			}
+		}
+
+		totalCount += len(nodes.Items)
 	}
 
 	userCountVal := 0.0

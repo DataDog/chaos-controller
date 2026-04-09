@@ -305,6 +305,7 @@ var _ = Describe("Disruption Webhook", func() {
 		Describe("general errors expectations", func() {
 			BeforeEach(func() {
 				k8sClient = makek8sClientWithDisruptionPod()
+				apiReader = k8sClient
 				tracerSink = tracernoop.New(logger)
 				deleteOnly = false
 			})
@@ -316,6 +317,7 @@ var _ = Describe("Disruption Webhook", func() {
 
 			AfterEach(func() {
 				k8sClient = nil
+				apiReader = nil
 				newDisruption = nil
 				permittedUserGroups = map[string]struct{}{}
 				disabledDisruptions = []string{}
@@ -577,6 +579,7 @@ var _ = Describe("Disruption Webhook", func() {
 		Describe("expectations with node disruptions", func() {
 			BeforeEach(func() {
 				k8sClient = makek8sClientWithDisruptionPod()
+				apiReader = k8sClient
 				metricsSink = metricsnoop.New(logger)
 				tracerSink = tracernoop.New(logger)
 				deleteOnly = false
@@ -591,6 +594,7 @@ var _ = Describe("Disruption Webhook", func() {
 
 			AfterEach(func() {
 				k8sClient = nil
+				apiReader = nil
 				newDisruption = nil
 			})
 
@@ -694,6 +698,7 @@ var _ = Describe("Disruption Webhook", func() {
 		Describe("safemode expectations with a disk failure disruption", func() {
 			BeforeEach(func() {
 				k8sClient = makek8sClientWithDisruptionPod()
+				apiReader = k8sClient
 				metricsSink = metricsnoop.New(logger)
 				tracerSink = tracernoop.New(logger)
 				deleteOnly = false
@@ -706,6 +711,7 @@ var _ = Describe("Disruption Webhook", func() {
 
 			AfterEach(func() {
 				k8sClient = nil
+				apiReader = nil
 				newDisruption = nil
 			})
 
@@ -843,6 +849,7 @@ var _ = Describe("Disruption Webhook", func() {
 		Describe("safemode expectations with a network failure disruption", func() {
 			BeforeEach(func() {
 				k8sClient = makek8sClientWithDisruptionPod()
+				apiReader = k8sClient
 				metricsSink = metricsnoop.New(logger)
 				tracerSink = tracernoop.New(logger)
 				deleteOnly = false
@@ -855,6 +862,7 @@ var _ = Describe("Disruption Webhook", func() {
 
 			AfterEach(func() {
 				k8sClient = nil
+				apiReader = nil
 				newDisruption = nil
 			})
 
@@ -957,7 +965,7 @@ var _ = Describe("Disruption Webhook", func() {
 		})
 
 		AfterEach(func() {
-			k8sClient = nil
+			apiReader = nil
 		})
 
 		When("targeting a small fraction of pods in the namespace", func() {
@@ -994,7 +1002,7 @@ var _ = Describe("Disruption Webhook", func() {
 					pods = append(pods, pod)
 				}
 
-				k8sClient = fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(pods...).Build()
+				apiReader = fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(pods...).Build()
 
 				// Act
 				caught, _, err := safetyNetCountNotTooLarge(context.Background(), disruption)
@@ -1036,7 +1044,7 @@ var _ = Describe("Disruption Webhook", func() {
 					})
 				}
 
-				k8sClient = fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(pods...).Build()
+				apiReader = fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(pods...).Build()
 
 				// Act
 				caught, response, err := safetyNetCountNotTooLarge(context.Background(), disruption)
@@ -1082,7 +1090,7 @@ var _ = Describe("Disruption Webhook", func() {
 					pods = append(pods, pod)
 				}
 
-				k8sClient = fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(pods...).Build()
+				apiReader = fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(pods...).Build()
 
 				// Act
 				caught, response, err := safetyNetCountNotTooLarge(context.Background(), disruption)
@@ -1114,7 +1122,7 @@ var _ = Describe("Disruption Webhook", func() {
 					},
 				}
 
-				// Act (no k8sClient needed — returns early)
+				// Act (no apiReader needed — returns early)
 				caught, _, err := safetyNetCountNotTooLarge(context.Background(), disruption)
 
 				// Assert
@@ -1149,7 +1157,7 @@ var _ = Describe("Disruption Webhook", func() {
 					})
 				}
 
-				k8sClient = fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(nodes...).Build()
+				apiReader = fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(nodes...).Build()
 
 				// Act
 				_, _, err := safetyNetCountNotTooLarge(context.Background(), disruption)
@@ -1189,7 +1197,7 @@ var _ = Describe("Disruption Webhook", func() {
 					},
 				}
 
-				k8sClient = fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(pods...).Build()
+				apiReader = fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(pods...).Build()
 
 				// Act
 				caught, _, err := safetyNetCountNotTooLarge(context.Background(), disruption)
