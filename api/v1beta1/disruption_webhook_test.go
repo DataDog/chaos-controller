@@ -6,7 +6,9 @@
 package v1beta1
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	authv1 "k8s.io/api/authentication/v1"
@@ -943,6 +945,259 @@ var _ = Describe("Disruption Webhook", func() {
 				})
 			})
 
+		})
+	})
+
+	Describe("safetyNetCountNotTooLarge", func() {
+		var disruption *Disruption
+
+		BeforeEach(func() {
+			defaultNamespaceThreshold = 0.80
+			defaultClusterThreshold = 0.66
+		})
+
+		AfterEach(func() {
+			k8sClient = nil
+		})
+
+		When("targeting a small fraction of pods in the namespace", func() {
+			It("should not trigger the safety net", func() {
+				// Arrange: 10 pods in namespace, 2 matching the selector, count=1
+				disruption = &Disruption{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      testDisruptionName,
+						Namespace: chaosNamespace,
+					},
+					Spec: DisruptionSpec{
+						Level: chaostypes.DisruptionLevelPod,
+						Count: &intstr.IntOrString{IntVal: 1},
+						Selector: labels.Set{
+							"app": "target",
+						},
+					},
+				}
+
+				pods := []client.Object{}
+				for i := range 10 {
+					pod := &v1.Pod{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      fmt.Sprintf("pod-%d", i),
+							Namespace: chaosNamespace,
+						},
+						Spec: v1.PodSpec{
+							Containers: []v1.Container{{Image: "pause", Name: "ctn"}},
+						},
+					}
+					if i < 2 {
+						pod.Labels = map[string]string{"app": "target"}
+					}
+					pods = append(pods, pod)
+				}
+
+				k8sClient = fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(pods...).Build()
+
+				// Act
+				caught, _, err := safetyNetCountNotTooLarge(context.Background(), disruption)
+
+				// Assert
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(caught).To(BeFalse())
+			})
+		})
+
+		When("targeting more than 80% of pods in the namespace", func() {
+			It("should trigger the safety net", func() {
+				// Arrange: 5 pods in namespace, all 5 matching selector, count=5
+				disruption = &Disruption{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      testDisruptionName,
+						Namespace: chaosNamespace,
+					},
+					Spec: DisruptionSpec{
+						Level: chaostypes.DisruptionLevelPod,
+						Count: &intstr.IntOrString{IntVal: 5},
+						Selector: labels.Set{
+							"app": "target",
+						},
+					},
+				}
+
+				pods := []client.Object{}
+				for i := range 5 {
+					pods = append(pods, &v1.Pod{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      fmt.Sprintf("pod-%d", i),
+							Namespace: chaosNamespace,
+							Labels:    map[string]string{"app": "target"},
+						},
+						Spec: v1.PodSpec{
+							Containers: []v1.Container{{Image: "pause", Name: "ctn"}},
+						},
+					})
+				}
+
+				k8sClient = fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(pods...).Build()
+
+				// Act
+				caught, response, err := safetyNetCountNotTooLarge(context.Background(), disruption)
+
+				// Assert
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(caught).To(BeTrue())
+				Expect(response).To(ContainSubstring("namespace"))
+			})
+		})
+
+		When("targeting more than 66% of all pods in the cluster", func() {
+			It("should trigger the safety net", func() {
+				// Arrange: 3 pods total in cluster, 2 matching selector, count=2
+				disruption = &Disruption{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      testDisruptionName,
+						Namespace: chaosNamespace,
+					},
+					Spec: DisruptionSpec{
+						Level: chaostypes.DisruptionLevelPod,
+						Count: &intstr.IntOrString{IntVal: 2},
+						Selector: labels.Set{
+							"app": "target",
+						},
+					},
+				}
+
+				pods := []client.Object{}
+				for i := range 3 {
+					pod := &v1.Pod{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      fmt.Sprintf("pod-%d", i),
+							Namespace: chaosNamespace,
+						},
+						Spec: v1.PodSpec{
+							Containers: []v1.Container{{Image: "pause", Name: "ctn"}},
+						},
+					}
+					if i < 2 {
+						pod.Labels = map[string]string{"app": "target"}
+					}
+					pods = append(pods, pod)
+				}
+
+				k8sClient = fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(pods...).Build()
+
+				// Act
+				caught, response, err := safetyNetCountNotTooLarge(context.Background(), disruption)
+
+				// Assert
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(caught).To(BeTrue())
+				Expect(response).To(ContainSubstring("cluster"))
+			})
+		})
+
+		When("disableCountTooLarge is set", func() {
+			It("should not trigger the safety net", func() {
+				// Arrange
+				disruption = &Disruption{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      testDisruptionName,
+						Namespace: chaosNamespace,
+					},
+					Spec: DisruptionSpec{
+						Level: chaostypes.DisruptionLevelPod,
+						Count: &intstr.IntOrString{IntVal: 100},
+						Selector: labels.Set{
+							"app": "target",
+						},
+						Unsafemode: &UnsafemodeSpec{
+							DisableCountTooLarge: true,
+						},
+					},
+				}
+
+				// Act (no k8sClient needed — returns early)
+				caught, _, err := safetyNetCountNotTooLarge(context.Background(), disruption)
+
+				// Assert
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(caught).To(BeFalse())
+			})
+		})
+
+		When("targeting nodes at level node", func() {
+			It("should list nodes without error", func() {
+				// Arrange: 3 nodes — verifies node listing works via the cache client
+				disruption = &Disruption{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      testDisruptionName,
+						Namespace: chaosNamespace,
+					},
+					Spec: DisruptionSpec{
+						Level: chaostypes.DisruptionLevelNode,
+						Count: &intstr.IntOrString{IntVal: 2},
+						Selector: labels.Set{
+							"role": "worker",
+						},
+					},
+				}
+
+				nodes := []client.Object{}
+				for i := range 3 {
+					nodes = append(nodes, &v1.Node{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: fmt.Sprintf("node-%d", i),
+						},
+					})
+				}
+
+				k8sClient = fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(nodes...).Build()
+
+				// Act
+				_, _, err := safetyNetCountNotTooLarge(context.Background(), disruption)
+
+				// Assert — no error from the List call (previously failed with "continue list option is not supported")
+				Expect(err).ShouldNot(HaveOccurred())
+			})
+		})
+
+		When("no targets match the selector", func() {
+			It("should return false with no error", func() {
+				// Arrange: pods exist but none match the selector
+				disruption = &Disruption{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      testDisruptionName,
+						Namespace: chaosNamespace,
+					},
+					Spec: DisruptionSpec{
+						Level: chaostypes.DisruptionLevelPod,
+						Count: &intstr.IntOrString{IntVal: 1},
+						Selector: labels.Set{
+							"app": "nonexistent",
+						},
+					},
+				}
+
+				pods := []client.Object{
+					&v1.Pod{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "pod-0",
+							Namespace: chaosNamespace,
+							Labels:    map[string]string{"app": "other"},
+						},
+						Spec: v1.PodSpec{
+							Containers: []v1.Container{{Image: "pause", Name: "ctn"}},
+						},
+					},
+				}
+
+				k8sClient = fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(pods...).Build()
+
+				// Act
+				caught, _, err := safetyNetCountNotTooLarge(context.Background(), disruption)
+
+				// Assert
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(caught).To(BeFalse())
+			})
 		})
 	})
 })
