@@ -924,12 +924,25 @@ func (r *DisruptionReconciler) getSelectorMatchingTargets(instance *chaosv1beta1
 	// return an error if the selector returned no targets
 	if len(healthyMatchingTargets) == 0 {
 		r.log.Infow("the given label selector did not return any targets, skipping", tagutil.SelectorKey, instance.Spec.Selector)
-		r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionNoTargetsFound, "", "")
+		if shouldRecordNoTargetsFoundEvent(instance.Status.InjectionStatus) {
+			r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionNoTargetsFound, "", "")
+		}
 
 		return nil, 0, nil
 	}
 
 	return healthyMatchingTargets, totalAvailableTargetsCount, nil
+}
+
+func shouldRecordNoTargetsFoundEvent(injectionStatus chaostypes.DisruptionInjectionStatus) bool {
+	switch injectionStatus {
+	case chaostypes.DisruptionInjectionStatusNotInjected,
+		chaostypes.DisruptionInjectionStatusPausedInjected,
+		chaostypes.DisruptionInjectionStatusPausedPartiallyInjected:
+		return false
+	default:
+		return true
+	}
 }
 
 // deleteChaosPods deletes a chaos pod using the client
