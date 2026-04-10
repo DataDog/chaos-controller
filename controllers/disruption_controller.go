@@ -186,16 +186,24 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		if controllerutil.ContainsFinalizer(instance, chaostypes.DisruptionFinalizer) {
 			// Check if the deletion time has expired for the 'instance' and it's not stuck on removal.
 			if instance.IsDeletionExpired(r.DisruptionsDeletionTimeout) && !instance.Status.IsStuckOnRemoval {
-				instance.Status.IsStuckOnRemoval = true
-
-				r.log.Infow("instance seems stuck on removal, the deletion time expired, please check manually")
-
-				// Update the status of the 'instance' to reflect that it's stuck on removal.
-				if err := r.Client.Status().Update(ctx, instance); err != nil {
-					return ctrl.Result{}, fmt.Errorf("error marking the disruption stuck on removal: %w", err)
+				// Only mark as stuck if chaos pods exist — a disruption with no pods can be cleaned immediately.
+				chaosPods, err := r.ChaosPodService.GetChaosPodsOfDisruption(ctx, instance, nil)
+				if err != nil {
+					return ctrl.Result{}, fmt.Errorf("error getting chaos pods to check if disruption is stuck on removal: %w", err)
 				}
 
-				r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionStuckOnRemoval, "", "")
+				if len(chaosPods) > 0 {
+					instance.Status.IsStuckOnRemoval = true
+
+					r.log.Infow("instance seems stuck on removal, the deletion time expired, please check manually")
+
+					// Update the status of the 'instance' to reflect that it's stuck on removal.
+					if err := r.Client.Status().Update(ctx, instance); err != nil {
+						return ctrl.Result{}, fmt.Errorf("error marking the disruption stuck on removal: %w", err)
+					}
+
+					r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionStuckOnRemoval, "", "")
+				}
 			}
 
 			if instance.IsReadyToRemoveFinalizer(r.FinalizerDeletionDelay) {
