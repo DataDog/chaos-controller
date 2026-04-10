@@ -96,6 +96,8 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	// inject contextual logger into context for propagation to dependencies
 	ctx = cLog.WithLogger(ctx, r.log)
 
+	r.log.Debug("reconciling disruption", tagutil.DisruptionNameKey, req.Name, tagutil.DisruptionNamespaceKey, req.Namespace)
+
 	// reconcile metrics
 	r.handleMetricSinkError(r.MetricsSink.MetricReconcile())
 
