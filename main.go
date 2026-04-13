@@ -272,6 +272,10 @@ func main() {
 				logger.Debugw("Check if we need to remove any expired watchers...")
 				disruptionReconciler.DisruptionsWatchersManager.RemoveAllExpiredWatchers(ctx)
 
+				if err := disruptionReconciler.DisruptionsWatchersManager.RemoveAllOrphanWatchers(ctx); err != nil {
+					logger.Errorw("error during the deletion of orphan watchers", tags.ErrorKey, err)
+				}
+
 			case <-ctx.Done():
 				// Context canceled, terminate the goroutine
 				return

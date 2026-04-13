@@ -6,6 +6,7 @@
 package watchers_test
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -340,8 +342,12 @@ var _ = Describe("Disruptions watchers manager", func() {
 		Context("with two non orphan disruptions", func() {
 			BeforeEach(func() {
 				// Arrange / Assert
-				By("check if disruptions exist")
-				readerMock.EXPECT().Get(mock.Anything, mock.Anything, mock.Anything).Return(nil).Twice()
+				By("list all existing disruptions")
+				readerMock.EXPECT().List(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, list client.ObjectList, _ ...client.ListOption) error {
+					dl := list.(*chaosv1beta1.DisruptionList)
+					dl.Items = []chaosv1beta1.Disruption{*twoDisruptions[0], *twoDisruptions[1]}
+					return nil
+				}).Once()
 			})
 
 			It("should do nothing", func(ctx SpecContext) {
@@ -352,21 +358,14 @@ var _ = Describe("Disruptions watchers manager", func() {
 		Context("with two not found disruptions", func() {
 			BeforeEach(func() {
 				// Arrange / Assert
-				var errorStatus = errors.StatusError{
-					ErrStatus: metav1.Status{
-						Message: "Not found",
-						Reason:  metav1.StatusReasonNotFound,
-						Code:    http.StatusNotFound,
-					},
-				}
-				By("check if the disruptions exists")
-				readerMock.EXPECT().Get(mock.Anything, mock.Anything, mock.Anything).Return(&errorStatus).Twice()
+				By("list all existing disruptions (returns empty list — both are orphans)")
+				readerMock.EXPECT().List(mock.Anything, mock.Anything).Return(nil).Once()
 
 				By("call the RemoveAllWatchers method of the watcher instance")
 				watchersManagerMock.EXPECT().RemoveAllWatchers().Twice()
 			})
 
-			It("should do nothing", func(ctx SpecContext) {
+			It("should remove all orphan watchers", func(ctx SpecContext) {
 				Expect(disruptionsWatchersManager.RemoveAllOrphanWatchers(ctx)).Should(Succeed())
 			})
 
@@ -379,12 +378,12 @@ var _ = Describe("Disruptions watchers manager", func() {
 					watchersManagerMock.ExpectedCalls = nil
 					watchersManagerMock.Calls = nil
 
-					// Action
+					// Action — managers map is now empty, early return kicks in
 					Expect(disruptionsWatchersManager.RemoveAllOrphanWatchers(ctx)).To(Succeed())
 
 					// Assert
-					By("not call any Get  method of the reader")
-					readerMock.AssertNumberOfCalls(GinkgoT(), "Get", 0)
+					By("not call any List method of the reader (early return when managers map is empty)")
+					readerMock.AssertNumberOfCalls(GinkgoT(), "List", 0)
 
 					By("not call any RemoveAllWatcher method of the watchersManager")
 					watchersManagerMock.AssertNumberOfCalls(GinkgoT(), "RemoveAllWatchers", 0)
@@ -392,7 +391,7 @@ var _ = Describe("Disruptions watchers manager", func() {
 			})
 		})
 
-		When("the Get method of the reader return a server error", func() {
+		When("the List method of the reader returns a server error", func() {
 			BeforeEach(func() {
 				var errorStatus = errors.StatusError{
 					ErrStatus: metav1.Status{
@@ -401,13 +400,13 @@ var _ = Describe("Disruptions watchers manager", func() {
 						Code:    http.StatusInternalServerError,
 					},
 				}
-				By("check if the disruptions exists")
-				readerMock.EXPECT().Get(mock.Anything, mock.Anything, mock.Anything).Return(&errorStatus).Twice()
+				By("list all existing disruptions (returns server error)")
+				readerMock.EXPECT().List(mock.Anything, mock.Anything).Return(&errorStatus).Once()
 			})
 
-			It("should do nothing", func(ctx SpecContext) {
+			It("should return the error and not remove any watchers", func(ctx SpecContext) {
 				// Act
-				Expect(disruptionsWatchersManager.RemoveAllOrphanWatchers(ctx)).To(Succeed())
+				Expect(disruptionsWatchersManager.RemoveAllOrphanWatchers(ctx)).NotTo(Succeed())
 
 				// Assert
 				By("not call the RemoveAllWatchers method of the watchersManager")
