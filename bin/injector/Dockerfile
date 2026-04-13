@@ -1,11 +1,11 @@
 # Global build arguments for FROM statements
-ARG BUILDGOVERSION=1.25.6
+ARG BUILDGOVERSION=1.26.2
 
 # Stage for building EBPF programs
 FROM ubuntu:24.04 AS ebpf-builder
 
 ARG TARGETARCH
-ARG BUILDGOVERSION=1.25.6
+ARG BUILDGOVERSION=1.26.2
 
 # Install build dependencies
 RUN apt-get update && \
