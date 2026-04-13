@@ -571,7 +571,9 @@ func safetyNetCountNotTooLarge(ctx context.Context, r *Disruption) (bool, string
 	const listPageSize = int64(1000)
 
 	if r.Spec.Level == chaostypes.DisruptionLevelPod {
-		pods := &corev1.PodList{}
+		pods := &metav1.PartialObjectMetadataList{}
+		pods.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("PodList"))
+
 		listOptions := &client.ListOptions{
 			Namespace: r.Namespace,
 			Limit:     listPageSize,
@@ -592,6 +594,9 @@ func safetyNetCountNotTooLarge(ctx context.Context, r *Disruption) (bool, string
 		}
 
 		namespaceCount += len(pods.Items)
+
+		pods = &metav1.PartialObjectMetadataList{}
+		pods.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("PodList"))
 
 		listOptions = &client.ListOptions{
 			Namespace:     r.Namespace,
@@ -615,6 +620,9 @@ func safetyNetCountNotTooLarge(ctx context.Context, r *Disruption) (bool, string
 
 		targetCount += len(pods.Items)
 
+		pods = &metav1.PartialObjectMetadataList{}
+		pods.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("PodList"))
+
 		// we grab the number of pods in the entire cluster
 		if err := apiReader.List(ctx, pods, client.Limit(listPageSize)); err != nil {
 			return false, "", fmt.Errorf("error listing cluster pods: %w", err)
@@ -630,7 +638,8 @@ func safetyNetCountNotTooLarge(ctx context.Context, r *Disruption) (bool, string
 
 		totalCount += len(pods.Items)
 	} else {
-		nodes := &corev1.NodeList{}
+		nodes := &metav1.PartialObjectMetadataList{}
+		nodes.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("NodeList"))
 
 		if err := apiReader.List(ctx, nodes, client.Limit(listPageSize)); err != nil {
 			return false, "", fmt.Errorf("error listing nodes: %w", err)
