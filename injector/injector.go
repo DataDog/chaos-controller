@@ -7,10 +7,14 @@ package injector
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"os"
 	"time"
 
 	chaosapi "github.com/DataDog/chaos-controller/api"
 	"github.com/DataDog/chaos-controller/cgroup"
+	"github.com/DataDog/chaos-controller/command"
 	"github.com/DataDog/chaos-controller/container"
 	"github.com/DataDog/chaos-controller/netns"
 	"github.com/DataDog/chaos-controller/o11y/metrics"
@@ -64,4 +68,26 @@ func (c Config) TargetName() string {
 	}
 
 	return UnknownTargetName
+}
+
+// stopAndWaitForBackgroundCmd stops a background command and waits for the process to fully exit
+// before returning. This prevents cgroup race conditions during pulse mode re-injection.
+func stopAndWaitForBackgroundCmd(log *zap.SugaredLogger, backgroundCmd command.BackgroundCmd, cancel context.CancelFunc) error {
+	if backgroundCmd == nil {
+		return nil
+	}
+
+	defer cancel()
+
+	if err := backgroundCmd.Stop(); err != nil && !errors.Is(err, os.ErrProcessDone) {
+		return fmt.Errorf("unable to stop background process: %w", err)
+	}
+
+	select {
+	case <-backgroundCmd.Done():
+	case <-time.After(5 * time.Second):
+		log.Warnw("timed out waiting for background process to exit")
+	}
+
+	return nil
 }
