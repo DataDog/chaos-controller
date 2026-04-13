@@ -25,6 +25,9 @@ func New() Sink {
 	provider := ddotel.NewTracerProvider(
 		ddtracer.WithProfilerCodeHotspots(true),
 		ddtracer.WithLogStartup(false),
+		// Reports Go runtime metrics (e.g. heap, goroutines) to the Agent via DogStatsD (~10s interval).
+		// Ensure the Agent is reachable for metrics (DD_AGENT_HOST / DD_DOGSTATSD_PORT or UDS), same as for traces.
+		ddtracer.WithRuntimeMetrics(),
 	)
 
 	return Sink{provider: provider}
