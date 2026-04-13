@@ -210,7 +210,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		attribute.Bool("chaos.disruption.deleting", !instance.DeletionTimestamp.IsZero()),
 		attribute.Bool("chaos.disruption.has_parent_trace", hasParentTrace),
 	}
-
+	
 	ctx, reconcileSpan = otel.Tracer(tracer.InstrumentationScopeDisruption).Start(ctx, "Disruption.Reconcile",
 		trace.WithSpanKind(trace.SpanKindInternal),
 		trace.WithLinks(trace.LinkFromContext(ctx)),
@@ -223,20 +223,35 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	// update context with enhanced logger (now including trace context)
 	ctx = cLog.WithLogger(ctx, r.log)
 
-	ctx, syncWatchersSpan := otel.Tracer(tracer.InstrumentationScopeDisruption).Start(ctx, "disruption.sync_watchers",
-		trace.WithSpanKind(trace.SpanKindInternal))
+	ctx, removeOrphanWatchersSpan := otel.Tracer(tracer.InstrumentationScopeDisruption).Start(ctx, "disruption.watchers.remove_orphans",
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(
+			attribute.String("disruption.name", instance.Name),
+			attribute.String("disruption.namespace", instance.Namespace),
+		))
 
-	var orphanWatcherErr, createWatcherErr error
+	var orphanWatcherErr error
 
 	if orphanWatcherErr = r.DisruptionsWatchersManager.RemoveAllOrphanWatchers(ctx); orphanWatcherErr != nil {
 		r.log.Errorw("error during the deletion of orphan watchers", tagutil.ErrorKey, orphanWatcherErr)
 	}
 
+	endSpan(removeOrphanWatchersSpan, orphanWatcherErr)
+
+	ctx, createWatchersSpan := otel.Tracer(tracer.InstrumentationScopeDisruption).Start(ctx, "disruption.watchers.create_for_disruption",
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(
+			attribute.String("disruption.name", instance.Name),
+			attribute.String("disruption.namespace", instance.Namespace),
+		))
+
+	var createWatcherErr error
+
 	if createWatcherErr = r.DisruptionsWatchersManager.CreateAllWatchers(ctx, instance, nil, nil); createWatcherErr != nil {
 		r.log.Errorw("error during the creation of watchers", tagutil.ErrorKey, createWatcherErr)
 	}
 
-	endSpan(syncWatchersSpan, errors.Join(orphanWatcherErr, createWatcherErr))
+	endSpan(createWatchersSpan, createWatcherErr)
 
 	// handle any chaos pods being deleted (either by the disruption deletion or by an external event)
 	if err := r.handleChaosPodsTermination(ctx, instance); err != nil {

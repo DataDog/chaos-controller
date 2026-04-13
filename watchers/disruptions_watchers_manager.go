@@ -9,7 +9,12 @@ import (
 	"context"
 	"fmt"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/DataDog/chaos-controller/o11y/tags"
+	"github.com/DataDog/chaos-controller/o11y/tracer"
 	"k8s.io/apimachinery/pkg/types"
 	k8scontrollercache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -95,9 +100,18 @@ func (d disruptionsWatchersManager) CreateAllWatchers(ctx context.Context, disru
 			continue
 		}
 
-		// Otherwise add the new watcher for the disruption
-		if err := d.addWatcher(disruption, watcherName, watcherNameHash, cacheMock, watcherManager); err != nil {
-			return err
+		ctx, addWatcherSpan := otel.Tracer(tracer.InstrumentationScopeDisruption).Start(ctx, "disruption.watchers.add_watcher",
+			trace.WithSpanKind(trace.SpanKindInternal),
+			trace.WithAttributes(
+				attribute.String("disruption.name", disruption.Name),
+				attribute.String("disruption.namespace", disruption.Namespace),
+				attribute.String("chaos.watchers.kind", string(watcherName)),
+			))
+
+		addErr := d.addWatcher(disruption, watcherName, watcherNameHash, cacheMock, watcherManager)
+		endWatcherSpan(addWatcherSpan, addErr)
+		if addErr != nil {
+			return addErr
 		}
 
 		cLog.FromContext(ctx).Debugw("Watcher created", tags.WatcherNameKey, watcherName)
@@ -108,6 +122,14 @@ func (d disruptionsWatchersManager) CreateAllWatchers(ctx context.Context, disru
 
 // RemoveAllWatchers removes all the Watchers associated with the given Disruption.
 func (d disruptionsWatchersManager) RemoveAllWatchers(ctx context.Context, disruption *v1beta1.Disruption) {
+	ctx, span := otel.Tracer(tracer.InstrumentationScopeDisruption).Start(ctx, "disruption.watchers.remove_all_for_disruption",
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(
+			attribute.String("disruption.name", disruption.Name),
+			attribute.String("disruption.namespace", disruption.Namespace),
+		))
+	defer endWatcherSpan(span, nil)
+
 	logger := cLog.FromContext(ctx)
 	namespacedName := getDisruptionNamespacedName(disruption)
 
@@ -116,9 +138,13 @@ func (d disruptionsWatchersManager) RemoveAllWatchers(ctx context.Context, disru
 
 	// If the Watcher Manager does not exist just do nothing.
 	if watcherManager == nil {
+		span.SetAttributes(attribute.Bool("chaos.watchers.manager_found", false))
 		logger.Debugw("could not remove all watchers")
+
 		return
 	}
+
+	span.SetAttributes(attribute.Bool("chaos.watchers.manager_found", true))
 
 	watcherManager.RemoveAllWatchers()
 
@@ -130,6 +156,17 @@ func (d disruptionsWatchersManager) RemoveAllWatchers(ctx context.Context, disru
 
 // RemoveAllOrphanWatchers removes all Watchers associated with a none existing Disruption.
 func (d disruptionsWatchersManager) RemoveAllOrphanWatchers(ctx context.Context) error {
+	ctx, span := otel.Tracer(tracer.InstrumentationScopeDisruption).Start(ctx, "disruption.watchers.scan_orphan_managers",
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(attribute.Int("chaos.watchers.stored_managers", len(d.watchersManagers))))
+	defer endWatcherSpan(span, nil)
+
+	var orphansRemoved int
+
+	defer func() {
+		span.SetAttributes(attribute.Int("chaos.watchers.orphans_removed", orphansRemoved))
+	}()
+
 	// For each stored watcher manager
 	for namespacedName, watchersManager := range d.watchersManagers {
 		// Check if the disruption still exists
@@ -139,11 +176,22 @@ func (d disruptionsWatchersManager) RemoveAllOrphanWatchers(ctx context.Context)
 				continue
 			}
 
+			ctx, dropSpan := otel.Tracer(tracer.InstrumentationScopeDisruption).Start(ctx, "disruption.watchers.drop_orphan_manager",
+				trace.WithSpanKind(trace.SpanKindInternal),
+				trace.WithAttributes(
+					attribute.String("disruption.name", namespacedName.Name),
+					attribute.String("disruption.namespace", namespacedName.Namespace),
+				))
+
 			// If the disruption is missing, remove all watchers for this watcher manager
 			watchersManager.RemoveAllWatchers()
 
 			// Remove the watcher manager from the stored managers
 			delete(d.watchersManagers, namespacedName)
+
+			orphansRemoved++
+
+			endWatcherSpan(dropSpan, nil)
 
 			cLog.FromContext(ctx).Infow("all watchers have been removed",
 				tags.WatcherNameKey, namespacedName.Name,
