@@ -8,7 +8,7 @@ GOARCH = $(shell go env GOARCH)
 
 # change also github actions go build version "GO_VERSION:" if you change the version below
 # https://github.com/DataDog/chaos-controller/blob/main/.github/workflows/ci.yml#L13
-BUILDGOVERSION = 1.26.1
+BUILDGOVERSION = 1.26.2
 
 # GOBIN can be provided (gitlab), defined (custom user setup), or empty/guessed (default go setup)
 GOBIN ?= $(shell go env GOBIN)
