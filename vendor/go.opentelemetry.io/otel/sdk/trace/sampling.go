@@ -69,17 +69,17 @@ type traceIDRatioSampler struct {
 }
 
 func (ts traceIDRatioSampler) ShouldSample(p SamplingParameters) SamplingResult {
-	state := trace.SpanContextFromContext(p.ParentContext).TraceState()
+	psc := trace.SpanContextFromContext(p.ParentContext)
 	x := binary.BigEndian.Uint64(p.TraceID[8:16]) >> 1
 	if x < ts.traceIDUpperBound {
 		return SamplingResult{
 			Decision:   RecordAndSample,
-			Tracestate: state,
+			Tracestate: psc.TraceState(),
 		}
 	}
 	return SamplingResult{
 		Decision:   Drop,
-		Tracestate: state,
+		Tracestate: psc.TraceState(),
 	}
 }
 
@@ -94,20 +94,12 @@ func (ts traceIDRatioSampler) Description() string {
 //
 //nolint:revive // revive complains about stutter of `trace.TraceIDRatioBased`
 func TraceIDRatioBased(fraction float64) Sampler {
-	// Cannot use AlwaysSample() and NeverSample(), must return spec-compliant descriptions.
-	// See https://opentelemetry.io/docs/specs/otel/trace/sdk/#traceidratiobased.
 	if fraction >= 1 {
-		return predeterminedSampler{
-			description: "TraceIDRatioBased{1}",
-			decision:    RecordAndSample,
-		}
+		return AlwaysSample()
 	}
 
 	if fraction <= 0 {
-		return predeterminedSampler{
-			description: "TraceIDRatioBased{0}",
-			decision:    Drop,
-		}
+		fraction = 0
 	}
 
 	return &traceIDRatioSampler{
@@ -126,7 +118,6 @@ func (alwaysOnSampler) ShouldSample(p SamplingParameters) SamplingResult {
 }
 
 func (alwaysOnSampler) Description() string {
-	// https://opentelemetry.io/docs/specs/otel/trace/sdk/#alwayson
 	return "AlwaysOnSampler"
 }
 
@@ -148,29 +139,12 @@ func (alwaysOffSampler) ShouldSample(p SamplingParameters) SamplingResult {
 }
 
 func (alwaysOffSampler) Description() string {
-	// https://opentelemetry.io/docs/specs/otel/trace/sdk/#alwaysoff
 	return "AlwaysOffSampler"
 }
 
 // NeverSample returns a Sampler that samples no traces.
 func NeverSample() Sampler {
 	return alwaysOffSampler{}
-}
-
-type predeterminedSampler struct {
-	description string
-	decision    SamplingDecision
-}
-
-func (s predeterminedSampler) ShouldSample(p SamplingParameters) SamplingResult {
-	return SamplingResult{
-		Decision:   s.decision,
-		Tracestate: trace.SpanContextFromContext(p.ParentContext).TraceState(),
-	}
-}
-
-func (s predeterminedSampler) Description() string {
-	return s.description
 }
 
 // ParentBased returns a sampler decorator which behaves differently,
