@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -232,6 +233,90 @@ var _ = Describe("Disruptions watchers manager", func() {
 		})
 	})
 
+	When("CreateAllWatchers is called with a disruption UID change", func() {
+		var (
+			oldManagerMock *watchers.ManagerMock
+			newManagerMock *watchers.ManagerMock
+		)
+
+		BeforeEach(func() {
+			disruption = &chaosv1beta1.Disruption{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "disruption-name",
+					Namespace: "namespace",
+					UID:       types.UID("uid-v1"),
+				},
+			}
+			watcherFactoryMock = watchers.NewFactoryMock(GinkgoT())
+			oldManagerMock = watchers.NewManagerMock(GinkgoT())
+			newManagerMock = watchers.NewManagerMock(GinkgoT())
+		})
+
+		When("the cached manager has a different disruption UID (recreated disruption)", func() {
+			It("should evict the stale manager and create fresh watchers", func(ctx SpecContext) {
+				disSpecHash, err := disruption.Spec.HashNoCount()
+				Expect(err).ShouldNot(HaveOccurred())
+				expectedDTWatcher := disSpecHash + string(watchers.DisruptionTargetWatcherName)
+				expectedCPWatcher := disSpecHash + string(watchers.ChaosPodWatcherName)
+
+				By("seeding the cache via first CreateAllWatchers call with uid-v1")
+				oldManagerMock.EXPECT().GetWatcher(mock.Anything).Return(nil).Twice()
+				oldManagerMock.EXPECT().AddWatcher(mock.Anything).Return(nil).Twice()
+				watcherFactoryMock.EXPECT().NewDisruptionTargetWatcher(expectedDTWatcher, true, disruption, cacheMock).Return(watchers.NewWatcherMock(GinkgoT()), nil).Once()
+				watcherFactoryMock.EXPECT().NewChaosPodWatcher(expectedCPWatcher, disruption, cacheMock).Return(watchers.NewWatcherMock(GinkgoT()), nil).Once()
+				Expect(disruptionsWatchersManager.CreateAllWatchers(ctx, disruption, oldManagerMock, cacheMock)).To(Succeed())
+
+				By("building a recreated disruption with the same namespace/name but a new UID")
+				recreatedDisruption := &chaosv1beta1.Disruption{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      disruption.Name,
+						Namespace: disruption.Namespace,
+						UID:       types.UID("uid-v2"),
+					},
+				}
+
+				By("expecting the stale manager to be evicted (RemoveAllWatchers called)")
+				oldManagerMock.EXPECT().RemoveAllWatchers().Once()
+
+				By("expecting fresh watchers to be created for the new disruption")
+				newManagerMock.EXPECT().GetWatcher(mock.Anything).Return(nil).Twice()
+				newManagerMock.EXPECT().AddWatcher(mock.Anything).Return(nil).Twice()
+				watcherFactoryMock.EXPECT().NewDisruptionTargetWatcher(expectedDTWatcher, true, recreatedDisruption, cacheMock).Return(watchers.NewWatcherMock(GinkgoT()), nil).Once()
+				watcherFactoryMock.EXPECT().NewChaosPodWatcher(expectedCPWatcher, recreatedDisruption, cacheMock).Return(watchers.NewWatcherMock(GinkgoT()), nil).Once()
+
+				Expect(disruptionsWatchersManager.CreateAllWatchers(ctx, recreatedDisruption, newManagerMock, cacheMock)).To(Succeed())
+			})
+		})
+
+		When("the cached manager has the same disruption UID", func() {
+			It("should reuse the cached manager without eviction", func(ctx SpecContext) {
+				disSpecHash, err := disruption.Spec.HashNoCount()
+				Expect(err).ShouldNot(HaveOccurred())
+				expectedDTWatcher := disSpecHash + string(watchers.DisruptionTargetWatcherName)
+				expectedCPWatcher := disSpecHash + string(watchers.ChaosPodWatcherName)
+
+				By("seeding the cache via first CreateAllWatchers call with uid-v1")
+				oldManagerMock.EXPECT().GetWatcher(mock.Anything).Return(nil).Twice()
+				oldManagerMock.EXPECT().AddWatcher(mock.Anything).Return(nil).Twice()
+				watcherFactoryMock.EXPECT().NewDisruptionTargetWatcher(expectedDTWatcher, true, disruption, cacheMock).Return(watchers.NewWatcherMock(GinkgoT()), nil).Once()
+				watcherFactoryMock.EXPECT().NewChaosPodWatcher(expectedCPWatcher, disruption, cacheMock).Return(watchers.NewWatcherMock(GinkgoT()), nil).Once()
+				Expect(disruptionsWatchersManager.CreateAllWatchers(ctx, disruption, oldManagerMock, cacheMock)).To(Succeed())
+
+				By("calling CreateAllWatchers again with the same UID — existing watchers already present")
+				oldManagerMock.EXPECT().GetWatcher(expectedDTWatcher).Return(watchers.NewWatcherMock(GinkgoT())).Once()
+				oldManagerMock.EXPECT().GetWatcher(expectedCPWatcher).Return(watchers.NewWatcherMock(GinkgoT())).Once()
+				Expect(disruptionsWatchersManager.CreateAllWatchers(ctx, disruption, oldManagerMock, cacheMock)).To(Succeed())
+
+				By("not calling RemoveAllWatchers on the cached manager")
+				oldManagerMock.AssertNumberOfCalls(GinkgoT(), "RemoveAllWatchers", 0)
+
+				By("not calling factory methods on the second pass")
+				watcherFactoryMock.AssertNumberOfCalls(GinkgoT(), "NewDisruptionTargetWatcher", 1)
+				watcherFactoryMock.AssertNumberOfCalls(GinkgoT(), "NewChaosPodWatcher", 1)
+			})
+		})
+	})
+
 	When("RemoveAllWatchers method is called", func() {
 		Context("with an existing disruption", func() {
 			BeforeEach(func() {
@@ -410,6 +495,69 @@ var _ = Describe("Disruptions watchers manager", func() {
 
 				// Assert
 				By("not call the RemoveAllWatchers method of the watchersManager")
+				watchersManagerMock.AssertNumberOfCalls(GinkgoT(), "RemoveAllWatchers", 0)
+			})
+		})
+	})
+
+	When("RemoveWatchersForDisruption method is called", func() {
+		BeforeEach(func() {
+			// Arrange / Assert
+			watcherFactoryMock = watchers.NewFactoryMock(GinkgoT())
+
+			for _, disruption := range twoDisruptions {
+				disSpecHash, err := disruption.Spec.HashNoCount()
+				Expect(err).ShouldNot(HaveOccurred())
+
+				expectedDisruptionTargetWatcherName = disSpecHash + string(watchers.DisruptionTargetWatcherName)
+				expectedChaosPodWatcherName = disSpecHash + string(watchers.ChaosPodWatcherName)
+
+				watchersManagerMock.EXPECT().AddWatcher(mock.Anything).Return(nil)
+				watchersManagerMock.EXPECT().GetWatcher(mock.Anything).Return(nil)
+				watcherFactoryMock.EXPECT().NewChaosPodWatcher(expectedChaosPodWatcherName, disruption, cacheMock).Return(watchers.NewWatcherMock(GinkgoT()), nil)
+				watcherFactoryMock.EXPECT().NewDisruptionTargetWatcher(expectedDisruptionTargetWatcherName, mock.Anything, disruption, cacheMock).Return(watchers.NewWatcherMock(GinkgoT()), nil)
+			}
+		})
+
+		JustBeforeEach(func(ctx SpecContext) {
+			for _, disruption := range twoDisruptions {
+				Expect(disruptionsWatchersManager.CreateAllWatchers(ctx, disruption, watchersManagerMock, cacheMock)).To(Succeed())
+			}
+		})
+
+		Context("with an existing disruption", func() {
+			BeforeEach(func() {
+				By("call RemoveAllWatchers only for the targeted disruption")
+				watchersManagerMock.EXPECT().RemoveAllWatchers().Once()
+			})
+
+			It("should remove watchers for that disruption only, leaving the other untouched", func(ctx SpecContext) {
+				namespacedName := types.NamespacedName{
+					Name:      twoDisruptions[0].Name,
+					Namespace: twoDisruptions[0].Namespace,
+				}
+
+				disruptionsWatchersManager.RemoveWatchersForDisruption(ctx, namespacedName)
+
+				By("not calling RemoveAllWatchers again when invoked a second time (entry already removed)")
+				disruptionsWatchersManager.RemoveWatchersForDisruption(ctx, namespacedName)
+
+				By("not affecting the second disruption's manager")
+				watchersManagerMock.EXPECT().RemoveExpiredWatchers().Once()
+				disruptionsWatchersManager.RemoveAllExpiredWatchers(ctx)
+			})
+		})
+
+		Context("with a non-existing disruption", func() {
+			It("should do nothing", func(ctx SpecContext) {
+				namespacedName := types.NamespacedName{
+					Name:      "does-not-exist",
+					Namespace: "nowhere",
+				}
+
+				disruptionsWatchersManager.RemoveWatchersForDisruption(ctx, namespacedName)
+
+				By("not calling RemoveAllWatchers on any manager")
 				watchersManagerMock.AssertNumberOfCalls(GinkgoT(), "RemoveAllWatchers", 0)
 			})
 		})

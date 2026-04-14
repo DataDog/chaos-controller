@@ -14,6 +14,8 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 
+	types "k8s.io/apimachinery/pkg/types"
+
 	v1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 )
 
@@ -188,6 +190,40 @@ func (_c *DisruptionsWatchersManagerMock_RemoveAllWatchers_Call) Return() *Disru
 }
 
 func (_c *DisruptionsWatchersManagerMock_RemoveAllWatchers_Call) RunAndReturn(run func(context.Context, *v1beta1.Disruption)) *DisruptionsWatchersManagerMock_RemoveAllWatchers_Call {
+	_c.Run(run)
+	return _c
+}
+
+// RemoveWatchersForDisruption provides a mock function with given fields: ctx, namespacedName
+func (_m *DisruptionsWatchersManagerMock) RemoveWatchersForDisruption(ctx context.Context, namespacedName types.NamespacedName) {
+	_m.Called(ctx, namespacedName)
+}
+
+// DisruptionsWatchersManagerMock_RemoveWatchersForDisruption_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RemoveWatchersForDisruption'
+type DisruptionsWatchersManagerMock_RemoveWatchersForDisruption_Call struct {
+	*mock.Call
+}
+
+// RemoveWatchersForDisruption is a helper method to define mock.On call
+//   - ctx context.Context
+//   - namespacedName types.NamespacedName
+func (_e *DisruptionsWatchersManagerMock_Expecter) RemoveWatchersForDisruption(ctx interface{}, namespacedName interface{}) *DisruptionsWatchersManagerMock_RemoveWatchersForDisruption_Call {
+	return &DisruptionsWatchersManagerMock_RemoveWatchersForDisruption_Call{Call: _e.mock.On("RemoveWatchersForDisruption", ctx, namespacedName)}
+}
+
+func (_c *DisruptionsWatchersManagerMock_RemoveWatchersForDisruption_Call) Run(run func(ctx context.Context, namespacedName types.NamespacedName)) *DisruptionsWatchersManagerMock_RemoveWatchersForDisruption_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(types.NamespacedName))
+	})
+	return _c
+}
+
+func (_c *DisruptionsWatchersManagerMock_RemoveWatchersForDisruption_Call) Return() *DisruptionsWatchersManagerMock_RemoveWatchersForDisruption_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *DisruptionsWatchersManagerMock_RemoveWatchersForDisruption_Call) RunAndReturn(run func(context.Context, types.NamespacedName)) *DisruptionsWatchersManagerMock_RemoveWatchersForDisruption_Call {
 	_c.Run(run)
 	return _c
 }
