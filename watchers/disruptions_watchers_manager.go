@@ -124,6 +124,7 @@ func (d disruptionsWatchersManager) CreateAllWatchers(ctx context.Context, disru
 
 		addErr := d.addWatcher(disruption, watcherName, watcherNameHash, cacheMock, watcherManager)
 		endWatcherSpan(addWatcherSpan, addErr)
+
 		if addErr != nil {
 			return addErr
 		}

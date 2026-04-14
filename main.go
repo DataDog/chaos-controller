@@ -228,6 +228,7 @@ func main() {
 	// create disruption reconciler
 	disruptionReconciler := &controllers.DisruptionReconciler{
 		Client:                     mgr.GetClient(),
+		APIReader:                  mgr.GetAPIReader(),
 		BaseLog:                    logger,
 		Scheme:                     mgr.GetScheme(),
 		Recorder:                   broadcaster.NewRecorder(mgr.GetScheme(), corev1.EventSource{Component: chaosv1beta1.SourceDisruptionComponent}),
