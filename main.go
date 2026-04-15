@@ -379,6 +379,7 @@ func main() {
 		CloudServicesProvidersManager: cloudProviderManager,
 		Environment:                   cfg.Controller.SafeMode.Environment,
 		PermittedUserGroups:           cfg.Controller.SafeMode.PermittedUserGroups,
+		APIReader:                     mgr.GetAPIReader(),
 	}
 
 	logger.Debug("setup webhook for disruption")

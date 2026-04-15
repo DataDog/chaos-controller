@@ -42,6 +42,7 @@ import (
 var (
 	logger                          *zap.SugaredLogger
 	k8sClient                       client.Client
+	apiReader                       client.Reader
 	metricsSink                     metrics.Sink
 	tracerSink                      tracer.Sink
 	recorder                        record.EventRecorder
@@ -71,6 +72,7 @@ func (d *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebho
 		tagutil.AdmissionControllerKey, "disruption-webhook",
 	)
 	k8sClient = setupWebhookConfig.Manager.GetClient()
+	apiReader = setupWebhookConfig.APIReader
 	metricsSink = setupWebhookConfig.MetricsSink
 	tracerSink = setupWebhookConfig.TracerSink
 	recorder = setupWebhookConfig.Recorder
@@ -269,7 +271,7 @@ func (d *Disruption) ValidateCreate(ctx context.Context, obj runtime.Object) (_ 
 
 	// handle initial safety nets
 	if enableSafemode {
-		if responses, err := disruptionObj.initialSafetyNets(); err != nil {
+		if responses, err := disruptionObj.initialSafetyNets(ctx); err != nil {
 			return nil, err
 		} else if len(responses) > 0 {
 			retErr := errors.New("at least one of the initial safety nets caught an issue")
@@ -478,11 +480,15 @@ func (d *Disruption) getMetricsTags() []string {
 
 // initialSafetyNets runs the initial safety nets for any new disruption
 // returns a list of responses related to safety net catches if any safety net were caught and returns any errors when attempting to run the safety nets
-func (d *Disruption) initialSafetyNets() ([]string, error) {
+func (d *Disruption) initialSafetyNets(ctx context.Context) ([]string, error) {
+	if d == nil {
+		return nil, errors.New("disruption is nil")
+	}
+
 	responses := []string{}
 	// handle initial safety nets if safemode is enabled
 	if d.Spec.Unsafemode == nil || !d.Spec.Unsafemode.DisableAll {
-		if caught, response, err := safetyNetCountNotTooLarge(d); err != nil {
+		if caught, response, err := safetyNetCountNotTooLarge(ctx, d); err != nil {
 			return nil, fmt.Errorf("error checking for countNotTooLarge safetynet: %w", err)
 		} else if caught {
 			logger.Debugw("the specified count represents a large percentage of targets in either the namespace or the kubernetes cluster", tagutil.SafetyNetCatchKey, "Generic")
@@ -491,7 +497,7 @@ func (d *Disruption) initialSafetyNets() ([]string, error) {
 		}
 
 		if d.Spec.Network != nil {
-			if caught := safetyNetMissingNetworkFilters(*d); caught {
+			if caught := safetyNetMissingNetworkFilters(d); caught {
 				logger.Debugw("the specified disruption either contains no Host or Service filters. This will result in all network traffic being affected.", tagutil.SafetyNetCatchKey, "Network")
 
 				responses = append(responses, "the specified disruption either contains no Host or Service filters. This will result in all network traffic being affected.")
@@ -530,7 +536,7 @@ func (d *Disruption) initialSafetyNets() ([]string, error) {
 // > 66% of the k8s system being targeted warrants a safety check if we assume each of our targets are replicated
 // at least twice. > 80% in a namespace also warrants a safety check as namespaces may be shared between services.
 // returning true indicates the safety net caught something
-func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
+func safetyNetCountNotTooLarge(ctx context.Context, r *Disruption) (bool, string, error) {
 	if r.Spec.Unsafemode != nil && r.Spec.Unsafemode.DisableCountTooLarge {
 		return false, "", nil
 	}
@@ -559,16 +565,22 @@ func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 		return false, "", nil
 	}
 
+	// Use the API reader (direct API server client) instead of the cached client
+	// for paginated listing. The controller-runtime cache does not support pagination
+	// (Limit/Continue) and may return incomplete results (see controller-runtime#3044).
+	const listPageSize = int64(1000)
+
 	if r.Spec.Level == chaostypes.DisruptionLevelPod {
-		pods := &corev1.PodList{}
+		pods := &metav1.PartialObjectMetadataList{}
+		pods.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("PodList"))
+
 		listOptions := &client.ListOptions{
 			Namespace: r.Namespace,
-			// In an effort not to fill up memory on huge list calls, limiting to 1000 objects per call
-			Limit: 1000,
+			Limit:     listPageSize,
 		}
+
 		// we grab the number of pods in the specified namespace
-		err := k8sClient.List(context.Background(), pods, listOptions)
-		if err != nil {
+		if err := apiReader.List(ctx, pods, listOptions); err != nil {
 			return false, "", fmt.Errorf("error listing namespace pods: %w", err)
 		}
 
@@ -576,21 +588,24 @@ func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 			namespaceCount += len(pods.Items)
 			listOptions.Continue = pods.Continue
 
-			err = k8sClient.List(context.Background(), pods, listOptions)
-			if err != nil {
-				return false, "", fmt.Errorf("error listing target pods: %w", err)
+			if err := apiReader.List(ctx, pods, listOptions); err != nil {
+				return false, "", fmt.Errorf("error listing namespace pods: %w", err)
 			}
 		}
 
 		namespaceCount += len(pods.Items)
 
+		pods = &metav1.PartialObjectMetadataList{}
+		pods.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("PodList"))
+
 		listOptions = &client.ListOptions{
 			Namespace:     r.Namespace,
 			LabelSelector: labels.SelectorFromValidatedSet(r.Spec.Selector),
+			Limit:         listPageSize,
 		}
+
 		// we grab the number of targets in the specified namespace
-		err = k8sClient.List(context.Background(), pods, listOptions)
-		if err != nil {
+		if err := apiReader.List(ctx, pods, listOptions); err != nil {
 			return false, "", fmt.Errorf("error listing target pods: %w", err)
 		}
 
@@ -598,46 +613,43 @@ func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 			targetCount += len(pods.Items)
 			listOptions.Continue = pods.Continue
 
-			err = k8sClient.List(context.Background(), pods, listOptions)
-			if err != nil {
+			if err := apiReader.List(ctx, pods, listOptions); err != nil {
 				return false, "", fmt.Errorf("error listing target pods: %w", err)
 			}
 		}
 
 		targetCount += len(pods.Items)
 
+		pods = &metav1.PartialObjectMetadataList{}
+		pods.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("PodList"))
+
 		// we grab the number of pods in the entire cluster
-		err = k8sClient.List(context.Background(), pods,
-			client.Limit(1000))
-		if err != nil {
+		if err := apiReader.List(ctx, pods, client.Limit(listPageSize)); err != nil {
 			return false, "", fmt.Errorf("error listing cluster pods: %w", err)
 		}
 
 		for pods.Continue != "" {
 			totalCount += len(pods.Items)
 
-			err = k8sClient.List(context.Background(), pods, client.Limit(1000), client.Continue(pods.Continue))
-			if err != nil {
-				return false, "", fmt.Errorf("error listing target pods: %w", err)
+			if err := apiReader.List(ctx, pods, client.Limit(listPageSize), client.Continue(pods.Continue)); err != nil {
+				return false, "", fmt.Errorf("error listing cluster pods: %w", err)
 			}
 		}
 
 		totalCount += len(pods.Items)
 	} else {
-		nodes := &corev1.NodeList{}
+		nodes := &metav1.PartialObjectMetadataList{}
+		nodes.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("NodeList"))
 
-		err := k8sClient.List(context.Background(), nodes,
-			client.Limit(1000))
-		if err != nil {
-			return false, "", fmt.Errorf("error listing target pods: %w", err)
+		if err := apiReader.List(ctx, nodes, client.Limit(listPageSize)); err != nil {
+			return false, "", fmt.Errorf("error listing nodes: %w", err)
 		}
 
 		for nodes.Continue != "" {
 			totalCount += len(nodes.Items)
 
-			err = k8sClient.List(context.Background(), nodes, client.Limit(1000), client.Continue(nodes.Continue))
-			if err != nil {
-				return false, "", fmt.Errorf("error listing target pods: %w", err)
+			if err := apiReader.List(ctx, nodes, client.Limit(listPageSize), client.Continue(nodes.Continue)); err != nil {
+				return false, "", fmt.Errorf("error listing nodes: %w", err)
 			}
 		}
 
@@ -692,7 +704,11 @@ func safetyNetCountNotTooLarge(r *Disruption) (bool, string, error) {
 
 // safetyNetMissingNetworkFilters is the safety net regarding missing host, service, or port filters.
 // it will check if any filters have been placed to limit which network traffic is disrupted
-func safetyNetMissingNetworkFilters(r Disruption) bool {
+func safetyNetMissingNetworkFilters(r *Disruption) bool {
+	if r == nil {
+		return false
+	}
+
 	if r.Spec.Unsafemode != nil && r.Spec.Unsafemode.DisableNeitherHostNorPort {
 		return false
 	}
