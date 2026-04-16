@@ -13,6 +13,7 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/o11y/tags"
 	chaostracer "github.com/DataDog/chaos-controller/o11y/tracer"
+	"github.com/DataDog/chaos-controller/o11y/tracer/attributes"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -50,9 +51,9 @@ func (m *SpanContextMutator) Handle(ctx context.Context, req admission.Request) 
 		trace.WithNewRoot(),
 		trace.WithSpanKind(trace.SpanKindServer),
 		trace.WithAttributes(
-			attribute.String("disruption.name", dis.Name),
-			attribute.String("disruption.namespace", dis.Namespace),
-			attribute.String("disruption.user", req.UserInfo.Username),
+			attribute.String(attributes.DisruptionName, dis.Name),
+			attribute.String(attributes.DisruptionNamespace, dis.Namespace),
+			attribute.String(attributes.DisruptionUser, req.UserInfo.Username),
 		))
 	defer disruptionSpan.End()
 

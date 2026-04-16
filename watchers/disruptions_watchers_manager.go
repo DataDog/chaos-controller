@@ -15,6 +15,7 @@ import (
 
 	"github.com/DataDog/chaos-controller/o11y/tags"
 	"github.com/DataDog/chaos-controller/o11y/tracer"
+	"github.com/DataDog/chaos-controller/o11y/tracer/attributes"
 	"k8s.io/apimachinery/pkg/types"
 	k8scontrollercache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -117,9 +118,9 @@ func (d disruptionsWatchersManager) CreateAllWatchers(ctx context.Context, disru
 		ctx, addWatcherSpan := otel.Tracer(tracer.InstrumentationScopeDisruption).Start(ctx, "disruption.watchers.add_watcher",
 			trace.WithSpanKind(trace.SpanKindInternal),
 			trace.WithAttributes(
-				attribute.String("disruption.name", disruption.Name),
-				attribute.String("disruption.namespace", disruption.Namespace),
-				attribute.String("chaos.watchers.kind", string(watcherName)),
+				attribute.String(attributes.DisruptionName, disruption.Name),
+				attribute.String(attributes.DisruptionNamespace, disruption.Namespace),
+				attribute.String(attributes.WatchersKind, string(watcherName)),
 			))
 
 		addErr := d.addWatcher(disruption, watcherName, watcherNameHash, cacheMock, watcherManager)
@@ -140,8 +141,8 @@ func (d disruptionsWatchersManager) RemoveAllWatchers(ctx context.Context, disru
 	ctx, span := otel.Tracer(tracer.InstrumentationScopeDisruption).Start(ctx, "disruption.watchers.remove_all_for_disruption",
 		trace.WithSpanKind(trace.SpanKindInternal),
 		trace.WithAttributes(
-			attribute.String("disruption.name", disruption.Name),
-			attribute.String("disruption.namespace", disruption.Namespace),
+			attribute.String(attributes.DisruptionName, disruption.Name),
+			attribute.String(attributes.DisruptionNamespace, disruption.Namespace),
 		))
 	defer endWatcherSpan(span, nil)
 
@@ -153,13 +154,13 @@ func (d disruptionsWatchersManager) RemoveAllWatchers(ctx context.Context, disru
 
 	// If the Watcher Manager does not exist just do nothing.
 	if watcherManager == nil {
-		span.SetAttributes(attribute.Bool("chaos.watchers.manager_found", false))
+		span.SetAttributes(attribute.Bool(attributes.WatchersManagerFound, false))
 		logger.Debugw("could not remove all watchers")
 
 		return
 	}
 
-	span.SetAttributes(attribute.Bool("chaos.watchers.manager_found", true))
+	span.SetAttributes(attribute.Bool(attributes.WatchersManagerFound, true))
 
 	watcherManager.RemoveAllWatchers()
 
@@ -178,13 +179,13 @@ func (d disruptionsWatchersManager) RemoveAllOrphanWatchers(ctx context.Context)
 
 	ctx, span := otel.Tracer(tracer.InstrumentationScopeDisruption).Start(ctx, "disruption.watchers.scan_orphan_managers",
 		trace.WithSpanKind(trace.SpanKindInternal),
-		trace.WithAttributes(attribute.Int("chaos.watchers.stored_managers", len(d.watchersManagers))))
+		trace.WithAttributes(attribute.Int(attributes.WatchersStoredManagers, len(d.watchersManagers))))
 	defer endWatcherSpan(span, nil)
 
 	var orphansRemoved int
 
 	defer func() {
-		span.SetAttributes(attribute.Int("chaos.watchers.orphans_removed", orphansRemoved))
+		span.SetAttributes(attribute.Int(attributes.WatchersOrphansRemoved, orphansRemoved))
 	}()
 
 	// Single List call to fetch all existing disruptions (O(1) API calls instead of O(n))
@@ -211,8 +212,8 @@ func (d disruptionsWatchersManager) RemoveAllOrphanWatchers(ctx context.Context)
 		dropCtx, dropSpan := otel.Tracer(tracer.InstrumentationScopeDisruption).Start(ctx, "disruption.watchers.drop_orphan_manager",
 			trace.WithSpanKind(trace.SpanKindInternal),
 			trace.WithAttributes(
-				attribute.String("disruption.name", namespacedName.Name),
-				attribute.String("disruption.namespace", namespacedName.Namespace),
+				attribute.String(attributes.DisruptionName, namespacedName.Name),
+				attribute.String(attributes.DisruptionNamespace, namespacedName.Namespace),
 			))
 
 		watchersManager.RemoveAllWatchers()
@@ -244,8 +245,8 @@ func (d disruptionsWatchersManager) RemoveWatchersForDisruption(ctx context.Cont
 	ctx, span := otel.Tracer(tracer.InstrumentationScopeDisruption).Start(ctx, "disruption.watchers.remove_for_disruption",
 		trace.WithSpanKind(trace.SpanKindInternal),
 		trace.WithAttributes(
-			attribute.String("disruption.name", namespacedName.Name),
-			attribute.String("disruption.namespace", namespacedName.Namespace),
+			attribute.String(attributes.DisruptionName, namespacedName.Name),
+			attribute.String(attributes.DisruptionNamespace, namespacedName.Namespace),
 		))
 	defer endWatcherSpan(span, nil)
 
