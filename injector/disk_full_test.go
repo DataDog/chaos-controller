@@ -126,6 +126,24 @@ var _ = Describe("DiskFull", func() {
 			})
 		})
 
+		Context("with capacity mode", func() {
+			BeforeEach(func() {
+				// Use capacity mode: fill to 95% — allocate a tiny amount relative to the disk
+				spec.Capacity = "95%"
+				spec.Remaining = ""
+			})
+
+			It("should create a ballast file when disk is below target capacity", func() {
+				err := inj.Inject()
+				Expect(err).ToNot(HaveOccurred())
+
+				ballastPath := filepath.Join(tmpDir, ".chaos-diskfull-test-disruption")
+				info, statErr := os.Stat(ballastPath)
+				Expect(statErr).ToNot(HaveOccurred())
+				Expect(info.Size()).To(BeNumerically(">", 0))
+			})
+		})
+
 		Context("with remaining larger than available space", func() {
 			BeforeEach(func() {
 				spec.Capacity = ""
