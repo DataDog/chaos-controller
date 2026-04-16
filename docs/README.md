@@ -22,6 +22,7 @@ This folder contains the detailed documentation of most parts of the project.
   - [CPU Pressure](cpu_pressure.md)
   - [Memory Pressure](memory_disruption.md)
   - [Disk Failure](disk_failure.md)
+  - [Disk Full](disk_full.md)
   - [Disk Pressure](disk_pressure.md)
   - [DNS Disruption](dns_disruption.md)
   - [GRPC Disruption](grpc_disruption.md)

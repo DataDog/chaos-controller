@@ -8,6 +8,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"time"
@@ -322,6 +323,11 @@ func (m *chaosPodService) GenerateChaosPodOfDisruption(disruption *chaosv1beta1.
 	args = append(args,
 		"--deadline", time.Now().Add(chaostypes.InjectorPadDuration).Add(disruption.RemainingDuration()).Format(time.RFC3339))
 
+	var diskFullPath string
+	if kind == chaostypes.DisruptionKindDiskFull && disruption.Spec.DiskFull != nil {
+		diskFullPath = disruption.Spec.DiskFull.Path
+	}
+
 	chaosPod = corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("chaos-%s-", disruption.Name),      // generate the pod name automatically with a prefix
@@ -329,7 +335,7 @@ func (m *chaosPodService) GenerateChaosPodOfDisruption(disruption *chaosv1beta1.
 			Annotations:  m.config.Injector.Annotations,                  // add extra annotations passed to the controller
 			Labels:       m.generateLabels(disruption, targetName, kind), // add default and extra podLabels passed to the controller
 		},
-		Spec: m.generateChaosPodSpec(targetNodeName, terminationGracePeriod, activeDeadlineSeconds, args, hostPathDirectory, hostPathFile),
+		Spec: m.generateChaosPodSpec(targetNodeName, terminationGracePeriod, activeDeadlineSeconds, args, hostPathDirectory, hostPathFile, diskFullPath),
 	}
 
 	// add finalizer to the pod, so it is not deleted before we can control its exit status
@@ -463,7 +469,7 @@ func (m *chaosPodService) generateLabels(disruption *chaosv1beta1.Disruption, ta
 	return podLabels
 }
 
-func (m *chaosPodService) generateChaosPodSpec(targetNodeName string, terminationGracePeriod int64, activeDeadlineSeconds int64, args []string, hostPathDirectory corev1.HostPathType, hostPathFile corev1.HostPathType) corev1.PodSpec {
+func (m *chaosPodService) generateChaosPodSpec(targetNodeName string, terminationGracePeriod int64, activeDeadlineSeconds int64, args []string, hostPathDirectory corev1.HostPathType, hostPathFile corev1.HostPathType, diskFullPath string) corev1.PodSpec {
 	podSpec := corev1.PodSpec{
 		HostPID:                       true,                             // enable host pid
 		RestartPolicy:                 corev1.RestartPolicyNever,        // do not restart the pod on fail or completion
@@ -653,6 +659,25 @@ func (m *chaosPodService) generateChaosPodSpec(targetNodeName string, terminatio
 				Name: m.config.ImagePullSecrets,
 			},
 		}
+	}
+
+	// For disk-full disruptions, add a writable shadow mount for only the target path.
+	// The host root at /mnt/host stays read-only; this mounts the specific target directory
+	// as writable at /mnt/host/<path>, so the injector's path resolution works unchanged.
+	if diskFullPath != "" {
+		podSpec.Volumes = append(podSpec.Volumes, corev1.Volume{
+			Name: "disk-full-target",
+			VolumeSource: corev1.VolumeSource{
+				HostPath: &corev1.HostPathVolumeSource{
+					Path: diskFullPath,
+					Type: &hostPathDirectory,
+				},
+			},
+		})
+		podSpec.Containers[0].VolumeMounts = append(podSpec.Containers[0].VolumeMounts, corev1.VolumeMount{
+			Name:      "disk-full-target",
+			MountPath: filepath.Join("/mnt/host", diskFullPath),
+		})
 	}
 
 	return podSpec

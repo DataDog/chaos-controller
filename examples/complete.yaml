@@ -111,6 +111,10 @@ spec:
     throttling:
       readBytesPerSec: 1024 # optional, read throttling in bytes per sec
       writeBytesPerSec: 2048 # optional, write throttling in bytes per sec
+  diskFull: # disk full (ENOSPC) disruption
+    path: /mnt/data # mount path inside the target pod to fill (e.g., "/data", "/var/log")
+    capacity: "95%" # optional (mutually exclusive with remaining), target fill percentage of total volume capacity
+    # remaining: "50Mi" # optional (mutually exclusive with capacity), amount of free space to leave on the volume (e.g., "50Mi", "1Gi")
   grpc: # disrupt gRPC responses by faking results
     port: 50051 # port that target grpc server is listening on
     endpoints:
