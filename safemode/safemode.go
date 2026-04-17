@@ -40,6 +40,12 @@ func AddAllSafemodeObjects(disruption v1beta1.Disruption, k8sClient client.Clien
 		safemodeList = append(safemodeList, &safemodeDiskPressure)
 	}
 
+	if disruption.Spec.DiskFull != nil {
+		safemodeDiskFull := DiskFull{}
+		safemodeDiskFull.Init(disruption, k8sClient)
+		safemodeList = append(safemodeList, &safemodeDiskFull)
+	}
+
 	if disruption.Spec.DiskFailure != nil {
 		safemodeDiskFailure := DiskFailure{}
 		safemodeDiskFailure.Init(disruption, k8sClient)

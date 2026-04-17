@@ -15,14 +15,15 @@
 | [CPU Pressure](#4-cpu-pressure)            | Consume CPU cycles in target cgroup                | Pod, Node | Yes        | Yes            |
 | [Memory Pressure](#5-memory-pressure)      | Gradually consume memory in target cgroup          | Pod, Node | Yes        | Yes            |
 | [Disk Pressure](#6-disk-pressure)          | Throttle read/write I/O throughput                 | Pod, Node | Yes        | Yes            |
-| [Disk Failure](#7-disk-failure)            | Fail file open syscalls via eBPF                   | Pod, Node | Yes*       | Yes            |
-| [Container Failure](#8-container-failure)  | Kill container processes (SIGTERM/SIGKILL)         | Pod       | No         | No (exclusive) |
-| [Node Failure](#9-node-failure)            | Kernel panic or power-off a node                   | Node      | No         | No (exclusive) |
-| [Pod Replacement](#10-pod-replacement)     | Cordon node, delete pod and optionally PVCs        | Pod       | No         | No (exclusive) |
+| [Disk Full](#7-disk-full)                  | Fill volume to trigger real ENOSPC                 | Pod       | Yes        | Yes            |
+| [Disk Failure](#8-disk-failure)            | Fail file open syscalls via eBPF                   | Pod, Node | Yes*       | Yes            |
+| [Container Failure](#9-container-failure)  | Kill container processes (SIGTERM/SIGKILL)         | Pod       | No         | No (exclusive) |
+| [Node Failure](#10-node-failure)            | Kernel panic or power-off a node                   | Node      | No         | No (exclusive) |
+| [Pod Replacement](#11-pod-replacement)     | Cordon node, delete pod and optionally PVCs        | Pod       | No         | No (exclusive) |
 
 \* Disk Failure injection is removed when the injector process exits.
 
-**Combination rule:** Network, DNS, gRPC, CPU Pressure, Memory Pressure, Disk Pressure, and Disk Failure can all be applied together in a single Disruption resource. Container Failure, Node Failure, and Pod Replacement are mutually exclusive with every other disruption type.
+**Combination rule:** Network, DNS, gRPC, CPU Pressure, Memory Pressure, Disk Pressure, Disk Full, and Disk Failure can all be applied together in a single Disruption resource. Container Failure, Node Failure, and Pod Replacement are mutually exclusive with every other disruption type.
 
 ---
 
@@ -738,7 +739,53 @@ spec:
 
 ---
 
-## 7. Disk Failure
+## 7. Disk Full
+
+Fills a target pod volume using the `fallocate(2)` syscall, causing real ENOSPC errors on all subsequent write operations. Unlike Disk Pressure (throttles I/O) or Disk Failure (intercepts `openat`), this disruption makes the filesystem genuinely run out of space — visible to `df`, `statfs()`, Kubernetes eviction, and monitoring.
+
+### Configuration
+
+| Field       | Type   | Default    | Description                                                   |
+| ----------- | ------ | ---------- | ------------------------------------------------------------- |
+| `path`      | string | (required) | Mount path inside the target pod to fill                      |
+| `capacity`  | string | —          | Fill to this percentage of total capacity (e.g., `"95%"`)     |
+| `remaining` | string | —          | Leave only this much free space (e.g., `"50Mi"`, `"1Gi"`)    |
+
+`capacity` and `remaining` are mutually exclusive — exactly one must be set.
+
+### Constraints and Limitations
+
+| Constraint | Detail |
+| --- | --- |
+| Level | Pod only |
+| Safety floor | 1Mi minimum free space enforced by default. Override with `unsafeMode.allowDiskFullNoFloor: true` |
+| Ephemeral storage | Filling a volume may trigger kubelet eviction if the pod has `ephemeral-storage` limits |
+| Filesystem support | `fallocate(2)` is instant on ext4/xfs. Falls back to writing zeros on NFS/FUSE |
+
+### Example
+
+```yaml
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: disk-full-test
+  namespace: my-app
+spec:
+  level: pod
+  selector:
+    app: my-service
+  count: 1
+  duration: 10m
+  diskFull:
+    path: "/data"
+    capacity: "95%"
+```
+
+See [docs/disk_full.md](disk_full.md) for full documentation including manual cleanup instructions.
+
+---
+
+## 8. Disk Failure
 
 Uses eBPF to intercept `openat` syscalls and return error codes, simulating file system failures.
 
@@ -791,7 +838,7 @@ spec:
 
 ---
 
-## 8. Container Failure
+## 9. Container Failure
 
 Sends a termination signal to container processes.
 
@@ -832,7 +879,7 @@ spec:
 
 ---
 
-## 9. Node Failure
+## 10. Node Failure
 
 Triggers a kernel panic or power-off by writing to `/proc/sysrq-trigger`. This is **irreversible** — the node becomes unavailable.
 
@@ -892,7 +939,7 @@ spec:
 
 ---
 
-## 10. Pod Replacement
+## 11. Pod Replacement
 
 Simulates complete pod rescheduling: cordons the node, optionally deletes PVCs, deletes the pod, then uncordons.
 
