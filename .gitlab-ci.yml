@@ -35,7 +35,7 @@ stages:
 
 check-lockfile:
   stage: check
-  image: registry.ddbuild.io/images/mirror/ubuntu:22.04
+  image: registry.ddbuild.io/images/mirror/ubuntu:24.04
   tags: ["arch:amd64"]
   script:
     - apt-get update && apt-get install -y --no-install-recommends python3 python3-pip git ca-certificates

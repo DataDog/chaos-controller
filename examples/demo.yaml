@@ -120,7 +120,7 @@ spec:
               memory: 32Mi
               cpu: 10m
         - name: read-file
-          image: ubuntu:focal-20240918
+          image: ubuntu:noble
           command: ["/bin/bash"]
           args:
             - -c
@@ -136,7 +136,7 @@ spec:
               memory: 32Mi
               cpu: 100m
         - name: write-file
-          image: ubuntu:focal-20240918
+          image: ubuntu:noble
           command: ["/bin/bash"]
           args:
             - -c
