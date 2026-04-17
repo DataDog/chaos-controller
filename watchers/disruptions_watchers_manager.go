@@ -9,7 +9,13 @@ import (
 	"context"
 	"fmt"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/DataDog/chaos-controller/o11y/tags"
+	"github.com/DataDog/chaos-controller/o11y/tracer"
+	"github.com/DataDog/chaos-controller/o11y/tracer/attributes"
 	"k8s.io/apimachinery/pkg/types"
 	k8scontrollercache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -32,6 +38,10 @@ type DisruptionsWatchersManager interface {
 
 	// RemoveAllExpiredWatchers removes all expired Watchers
 	RemoveAllExpiredWatchers(ctx context.Context)
+
+	// RemoveWatchersForDisruption removes all watchers for a single disruption identified by its NamespacedName.
+	// This is a targeted O(1) cleanup used when reconcile determines the disruption no longer exists.
+	RemoveWatchersForDisruption(ctx context.Context, namespacedName types.NamespacedName)
 }
 
 // WatcherManagers represents a map of Manager instances
@@ -43,6 +53,7 @@ type disruptionsWatchersManager struct {
 	factory          Factory
 	reader           client.Reader
 	watchersManagers WatcherManagers
+	managerUIDs      map[types.NamespacedName]types.UID
 }
 
 type WatcherName string
@@ -67,6 +78,14 @@ func (d disruptionsWatchersManager) CreateAllWatchers(ctx context.Context, disru
 	// Get the namespaced name of the disruption
 	disruptionNamespacedName := getDisruptionNamespacedName(disruption)
 
+	// Evict the cached manager if the disruption was recreated under the same namespace/name.
+	// A UID mismatch means the Kubernetes object is new; the old cached manager must not be reused.
+	if cachedUID, ok := d.managerUIDs[disruptionNamespacedName]; ok && cachedUID != disruption.UID {
+		d.watchersManagers[disruptionNamespacedName].RemoveAllWatchers()
+		delete(d.watchersManagers, disruptionNamespacedName)
+		delete(d.managerUIDs, disruptionNamespacedName)
+	}
+
 	var watcherManager Manager
 
 	// If a mock watcher manager was passed in, use it
@@ -78,6 +97,7 @@ func (d disruptionsWatchersManager) CreateAllWatchers(ctx context.Context, disru
 
 	// Save the watcher manager for later use
 	d.watchersManagers[disruptionNamespacedName] = watcherManager
+	d.managerUIDs[disruptionNamespacedName] = disruption.UID
 
 	// Calculate a hash of the disruption spec (excluding the count field)
 	disSpecHash, err := disruption.Spec.HashNoCount()
@@ -95,9 +115,19 @@ func (d disruptionsWatchersManager) CreateAllWatchers(ctx context.Context, disru
 			continue
 		}
 
-		// Otherwise add the new watcher for the disruption
-		if err := d.addWatcher(disruption, watcherName, watcherNameHash, cacheMock, watcherManager); err != nil {
-			return err
+		ctx, addWatcherSpan := otel.Tracer(tracer.InstrumentationScopeDisruption).Start(ctx, "disruption.watchers.add_watcher",
+			trace.WithSpanKind(trace.SpanKindInternal),
+			trace.WithAttributes(
+				attribute.String(attributes.DisruptionName, disruption.Name),
+				attribute.String(attributes.DisruptionNamespace, disruption.Namespace),
+				attribute.String(attributes.WatchersKind, string(watcherName)),
+			))
+
+		addErr := d.addWatcher(disruption, watcherName, watcherNameHash, cacheMock, watcherManager)
+		endWatcherSpan(addWatcherSpan, addErr)
+
+		if addErr != nil {
+			return addErr
 		}
 
 		cLog.FromContext(ctx).Debugw("Watcher created", tags.WatcherNameKey, watcherName)
@@ -108,6 +138,14 @@ func (d disruptionsWatchersManager) CreateAllWatchers(ctx context.Context, disru
 
 // RemoveAllWatchers removes all the Watchers associated with the given Disruption.
 func (d disruptionsWatchersManager) RemoveAllWatchers(ctx context.Context, disruption *v1beta1.Disruption) {
+	ctx, span := otel.Tracer(tracer.InstrumentationScopeDisruption).Start(ctx, "disruption.watchers.remove_all_for_disruption",
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(
+			attribute.String(attributes.DisruptionName, disruption.Name),
+			attribute.String(attributes.DisruptionNamespace, disruption.Namespace),
+		))
+	defer endWatcherSpan(span, nil)
+
 	logger := cLog.FromContext(ctx)
 	namespacedName := getDisruptionNamespacedName(disruption)
 
@@ -116,43 +154,110 @@ func (d disruptionsWatchersManager) RemoveAllWatchers(ctx context.Context, disru
 
 	// If the Watcher Manager does not exist just do nothing.
 	if watcherManager == nil {
+		span.SetAttributes(attribute.Bool(attributes.WatchersManagerFound, false))
 		logger.Debugw("could not remove all watchers")
+
 		return
 	}
+
+	span.SetAttributes(attribute.Bool(attributes.WatchersManagerFound, true))
 
 	watcherManager.RemoveAllWatchers()
 
 	// Remove the Watcher Manager from the map.
 	delete(d.watchersManagers, namespacedName)
+	delete(d.managerUIDs, namespacedName)
 
 	logger.Infow("all watchers have been removed")
 }
 
 // RemoveAllOrphanWatchers removes all Watchers associated with a none existing Disruption.
 func (d disruptionsWatchersManager) RemoveAllOrphanWatchers(ctx context.Context) error {
-	// For each stored watcher manager
+	if len(d.watchersManagers) == 0 {
+		return nil
+	}
+
+	ctx, span := otel.Tracer(tracer.InstrumentationScopeDisruption).Start(ctx, "disruption.watchers.scan_orphan_managers",
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(attribute.Int(attributes.WatchersStoredManagers, len(d.watchersManagers))))
+	defer endWatcherSpan(span, nil)
+
+	var orphansRemoved int
+
+	defer func() {
+		span.SetAttributes(attribute.Int(attributes.WatchersOrphansRemoved, orphansRemoved))
+	}()
+
+	// Single List call to fetch all existing disruptions (O(1) API calls instead of O(n))
+	disruptionList := &v1beta1.DisruptionList{}
+	if err := d.reader.List(ctx, disruptionList); err != nil {
+		return err
+	}
+
+	// Build a set of existing disruptions for O(1) membership lookups
+	existing := make(map[types.NamespacedName]struct{}, len(disruptionList.Items))
+	for i := range disruptionList.Items {
+		existing[types.NamespacedName{
+			Namespace: disruptionList.Items[i].Namespace,
+			Name:      disruptionList.Items[i].Name,
+		}] = struct{}{}
+	}
+
+	// For each stored watcher manager, remove it if its disruption no longer exists
 	for namespacedName, watchersManager := range d.watchersManagers {
-		// Check if the disruption still exists
-		if err := d.reader.Get(ctx, namespacedName, &v1beta1.Disruption{}); err != nil {
-			// If the error is not related to the disruption being missing, skip to the next watcher manager
-			if err = client.IgnoreNotFound(err); err != nil {
-				continue
-			}
-
-			// If the disruption is missing, remove all watchers for this watcher manager
-			watchersManager.RemoveAllWatchers()
-
-			// Remove the watcher manager from the stored managers
-			delete(d.watchersManagers, namespacedName)
-
-			cLog.FromContext(ctx).Infow("all watchers have been removed",
-				tags.WatcherNameKey, namespacedName.Name,
-				tags.WatcherNamespaceKey, namespacedName.Namespace,
-			)
+		if _, found := existing[namespacedName]; found {
+			continue
 		}
+
+		dropCtx, dropSpan := otel.Tracer(tracer.InstrumentationScopeDisruption).Start(ctx, "disruption.watchers.drop_orphan_manager",
+			trace.WithSpanKind(trace.SpanKindInternal),
+			trace.WithAttributes(
+				attribute.String(attributes.DisruptionName, namespacedName.Name),
+				attribute.String(attributes.DisruptionNamespace, namespacedName.Namespace),
+			))
+
+		watchersManager.RemoveAllWatchers()
+		delete(d.watchersManagers, namespacedName)
+		delete(d.managerUIDs, namespacedName)
+
+		orphansRemoved++
+
+		endWatcherSpan(dropSpan, nil)
+
+		cLog.FromContext(dropCtx).Infow("all watchers have been removed",
+			tags.WatcherNameKey, namespacedName.Name,
+			tags.WatcherNamespaceKey, namespacedName.Namespace,
+		)
 	}
 
 	return nil
+}
+
+// RemoveWatchersForDisruption removes all watchers for the given disruption without scanning the full cache.
+// It is called from the reconcile NotFound path so cleanup happens immediately, rather than waiting for
+// the 5-minute orphan sweep that runs in the background.
+func (d disruptionsWatchersManager) RemoveWatchersForDisruption(ctx context.Context, namespacedName types.NamespacedName) {
+	watcherManager, ok := d.watchersManagers[namespacedName]
+	if !ok {
+		return
+	}
+
+	ctx, span := otel.Tracer(tracer.InstrumentationScopeDisruption).Start(ctx, "disruption.watchers.remove_for_disruption",
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(
+			attribute.String(attributes.DisruptionName, namespacedName.Name),
+			attribute.String(attributes.DisruptionNamespace, namespacedName.Namespace),
+		))
+	defer endWatcherSpan(span, nil)
+
+	watcherManager.RemoveAllWatchers()
+	delete(d.watchersManagers, namespacedName)
+	delete(d.managerUIDs, namespacedName)
+
+	cLog.FromContext(ctx).Infow("targeted watcher cleanup completed",
+		tags.WatcherNameKey, namespacedName.Name,
+		tags.WatcherNamespaceKey, namespacedName.Namespace,
+	)
 }
 
 // RemoveAllExpiredWatchers loops through all the watcher managers in the disruptionsWatchersManager
@@ -167,6 +272,7 @@ func (d disruptionsWatchersManager) RemoveAllExpiredWatchers(ctx context.Context
 func NewDisruptionsWatchersManager(controller controller.Controller, factory Factory, reader client.Reader) DisruptionsWatchersManager {
 	return disruptionsWatchersManager{
 		watchersManagers: WatcherManagers{},
+		managerUIDs:      map[types.NamespacedName]types.UID{},
 		controller:       controller,
 		factory:          factory,
 		reader:           reader,

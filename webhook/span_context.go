@@ -12,8 +12,11 @@ import (
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/o11y/tags"
+	chaostracer "github.com/DataDog/chaos-controller/o11y/tracer"
+	"github.com/DataDog/chaos-controller/o11y/tracer/attributes"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -44,11 +47,14 @@ func (m *SpanContextMutator) Handle(ctx context.Context, req admission.Request) 
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
-	ctx, disruptionSpan := otel.Tracer("").Start(ctx, "disruption", trace.WithNewRoot(), trace.WithAttributes(
-		attribute.String("disruption.name", dis.Name),
-		attribute.String("disruption.namespace", dis.Namespace),
-		attribute.String("disruption.user", req.UserInfo.Username),
-	))
+	ctx, disruptionSpan := otel.Tracer(chaostracer.InstrumentationScopeDisruption).Start(ctx, "Disruption.SpanContextWebhook",
+		trace.WithNewRoot(),
+		trace.WithSpanKind(trace.SpanKindServer),
+		trace.WithAttributes(
+			attribute.String(attributes.DisruptionName, dis.Name),
+			attribute.String(attributes.DisruptionNamespace, dis.Namespace),
+			attribute.String(attributes.DisruptionUser, req.UserInfo.Username),
+		))
 	defer disruptionSpan.End()
 
 	// retrieve span context
@@ -65,11 +71,15 @@ func (m *SpanContextMutator) Handle(ctx context.Context, req admission.Request) 
 	// writes the traceID and spanID in the annotations of the disruption
 	err := dis.SetSpanContext(ctx)
 	if err != nil {
+		disruptionSpan.RecordError(err)
+		disruptionSpan.SetStatus(codes.Error, err.Error())
 		m.Log.Errorw("error defining SpanContext", tags.ErrorKey, err, tags.DisruptionNameKey, dis.Name, tags.DisruptionNamespaceKey, dis.Namespace)
 	}
 
 	marshaled, err := json.Marshal(dis)
 	if err != nil {
+		disruptionSpan.RecordError(err)
+		disruptionSpan.SetStatus(codes.Error, err.Error())
 		m.Log.Errorw("error encoding modified annotations", tags.ErrorKey, err, tags.DisruptionNameKey, dis.Name, tags.DisruptionNamespaceKey, dis.Namespace)
 
 		return admission.Errored(http.StatusInternalServerError, err)

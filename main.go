@@ -228,6 +228,7 @@ func main() {
 	// create disruption reconciler
 	disruptionReconciler := &controllers.DisruptionReconciler{
 		Client:                     mgr.GetClient(),
+		APIReader:                  mgr.GetAPIReader(),
 		BaseLog:                    logger,
 		Scheme:                     mgr.GetScheme(),
 		Recorder:                   broadcaster.NewRecorder(mgr.GetScheme(), corev1.EventSource{Component: chaosv1beta1.SourceDisruptionComponent}),
@@ -271,6 +272,10 @@ func main() {
 			case <-ticker.C:
 				logger.Debugw("Check if we need to remove any expired watchers...")
 				disruptionReconciler.DisruptionsWatchersManager.RemoveAllExpiredWatchers(ctx)
+
+				if err := disruptionReconciler.DisruptionsWatchersManager.RemoveAllOrphanWatchers(ctx); err != nil {
+					logger.Errorw("error during the deletion of orphan watchers", tags.ErrorKey, err)
+				}
 
 			case <-ctx.Done():
 				// Context canceled, terminate the goroutine

@@ -17,6 +17,7 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"math/rand"
@@ -26,6 +27,7 @@ import (
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -52,6 +54,7 @@ import (
 	"github.com/DataDog/chaos-controller/o11y/metrics"
 	tagutil "github.com/DataDog/chaos-controller/o11y/tags"
 	"github.com/DataDog/chaos-controller/o11y/tracer"
+	"github.com/DataDog/chaos-controller/o11y/tracer/attributes"
 	"github.com/DataDog/chaos-controller/safemode"
 	"github.com/DataDog/chaos-controller/services"
 	"github.com/DataDog/chaos-controller/targetselector"
@@ -62,6 +65,7 @@ import (
 // DisruptionReconciler reconciles a Disruption object
 type DisruptionReconciler struct {
 	Client                     client.Client
+	APIReader                  client.Reader
 	BaseLog                    *zap.SugaredLogger
 	Scheme                     *runtime.Scheme
 	Recorder                   record.EventRecorder
@@ -131,45 +135,106 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		if client.IgnoreNotFound(err) == nil {
 			// If we're reconciling but without an instance, then we must have been triggered by the pod informer
 			// We should check for and delete any orphaned chaos pods
-			err = r.ChaosPodService.HandleOrphanedChaosPods(ctx, req)
+			ctx, orphanSpan := otel.Tracer(tracer.InstrumentationScopeDisruption).Start(ctx, "disruption.handle_orphaned_chaos_pods",
+				trace.WithSpanKind(trace.SpanKindInternal),
+				trace.WithAttributes(
+					attribute.String(attributes.DisruptionName, req.Name),
+					attribute.String(attributes.DisruptionNamespace, req.Namespace),
+				))
+			orphanErr := r.ChaosPodService.HandleOrphanedChaosPods(ctx, req)
+			endSpan(orphanSpan, orphanErr)
+			err = orphanErr
+
+			// Confirm deletion via uncached reader before tearing down watchers.
+			// The cached client can transiently return NotFound during cache lag or startup;
+			// removing live watcher state in that case leaves the disruption unmonitored
+			// until the next reconcile event.
+			uncachedErr := r.APIReader.Get(ctx, req.NamespacedName, &chaosv1beta1.Disruption{})
+			if apierrors.IsNotFound(uncachedErr) {
+				r.DisruptionsWatchersManager.RemoveWatchersForDisruption(ctx, req.NamespacedName)
+			}
 		}
 
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	if err := r.DisruptionsWatchersManager.RemoveAllOrphanWatchers(ctx); err != nil {
-		r.log.Errorw("error during the deletion of orphan watchers", tagutil.ErrorKey, err)
+	var reconcileSpan trace.Span
+
+	defer func() {
+		if reconcileSpan == nil {
+			return
+		}
+
+		endSpan(reconcileSpan, err)
+	}()
+
+	hasParentTrace := false
+
+	ctx, spanCtxErr := instance.SpanContext(ctx)
+	if spanCtxErr != nil {
+		if errors.Is(spanCtxErr, chaosv1beta1.ErrNoSpanContext) {
+			r.log.Debugw("no span context on disruption (expected if SpanContext annotation is missing)",
+				tagutil.DisruptionNameKey, instance.Name, tagutil.DisruptionNamespaceKey, instance.Namespace)
+		} else {
+			r.log.Errorw("invalid span context on disruption", tagutil.ErrorKey, spanCtxErr,
+				tagutil.DisruptionNameKey, instance.Name, tagutil.DisruptionNamespaceKey, instance.Namespace)
+		}
+	} else {
+		hasParentTrace = true
 	}
 
-	if err := r.DisruptionsWatchersManager.CreateAllWatchers(ctx, instance, nil, nil); err != nil {
-		r.log.Errorw("error during the creation of watchers", tagutil.ErrorKey, err)
-	}
-
-	ctx, err = instance.SpanContext(ctx)
-	if err != nil {
-		r.log.Errorw("did not find span context", tagutil.ErrorKey, err)
-	}
-
-	userInfo, err := instance.UserInfo()
-	if err != nil {
-		r.log.Errorw("error getting user info", tagutil.ErrorKey, err)
+	userInfo, userErr := instance.UserInfo()
+	if userErr != nil {
+		r.log.Errorw("error getting user info", tagutil.ErrorKey, userErr)
 
 		userInfo.Username = "did-not-find-user-info@email.com"
 	}
 
-	ctx, reconcileSpan := otel.Tracer("").Start(ctx, "reconcile", trace.WithLinks(trace.LinkFromContext(ctx)),
-		trace.WithAttributes(
-			attribute.String("disruption.name", instance.Name),
-			attribute.String("disruption.namespace", instance.Namespace),
-			attribute.String("disruption.user", userInfo.Username),
-		))
-	defer reconcileSpan.End()
+	kindNames := instance.Spec.KindNames()
+
+	kindStrs := make([]string, 0, len(kindNames))
+	for _, k := range kindNames {
+		kindStrs = append(kindStrs, string(k))
+	}
+
+	reconcileAttrs := []attribute.KeyValue{
+		attribute.String(attributes.DisruptionName, instance.Name),
+		attribute.String(attributes.DisruptionNamespace, instance.Namespace),
+		attribute.String(attributes.DisruptionResourceVersion, instance.ResourceVersion),
+		attribute.String(attributes.DisruptionUser, userInfo.Username),
+		attribute.String(attributes.DisruptionLevel, string(instance.Spec.Level)),
+		attribute.String(attributes.DisruptionKinds, strings.Join(kindStrs, ",")),
+		attribute.String(attributes.DisruptionInjectionStatus, string(instance.Status.InjectionStatus)),
+		attribute.Bool(attributes.DisruptionDeleting, !instance.DeletionTimestamp.IsZero()),
+		attribute.Bool(attributes.DisruptionHasParentTrace, hasParentTrace),
+	}
+
+	ctx, reconcileSpan = otel.Tracer(tracer.InstrumentationScopeDisruption).Start(ctx, "Disruption.Reconcile",
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithLinks(trace.LinkFromContext(ctx)),
+		trace.WithAttributes(reconcileAttrs...),
+	)
 
 	// allows to sync logs with traces
 	r.log = r.log.With(r.TracerSink.GetLoggableTraceContext(reconcileSpan)...)
 
 	// update context with enhanced logger (now including trace context)
 	ctx = cLog.WithLogger(ctx, r.log)
+
+	watchersCtx, createWatchersSpan := otel.Tracer(tracer.InstrumentationScopeDisruption).Start(ctx, "disruption.watchers.create_for_disruption",
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(
+			attribute.String(attributes.DisruptionName, instance.Name),
+			attribute.String(attributes.DisruptionNamespace, instance.Namespace),
+		))
+
+	var createWatcherErr error
+
+	if createWatcherErr = r.DisruptionsWatchersManager.CreateAllWatchers(watchersCtx, instance, nil, nil); createWatcherErr != nil {
+		r.log.Errorw("error during the creation of watchers", tagutil.ErrorKey, createWatcherErr)
+	}
+
+	endSpan(createWatchersSpan, createWatcherErr)
 
 	// handle any chaos pods being deleted (either by the disruption deletion or by an external event)
 	if err := r.handleChaosPodsTermination(ctx, instance); err != nil {
@@ -186,19 +251,43 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		if controllerutil.ContainsFinalizer(instance, chaostypes.DisruptionFinalizer) {
 			// Check if the deletion time has expired for the 'instance' and it's not stuck on removal.
 			if instance.IsDeletionExpired(r.DisruptionsDeletionTimeout) && !instance.Status.IsStuckOnRemoval {
-				instance.Status.IsStuckOnRemoval = true
+				ctx, stuckSpan := otel.Tracer(tracer.InstrumentationScopeDisruption).Start(ctx, "disruption.check_stuck_on_removal",
+					trace.WithSpanKind(trace.SpanKindInternal))
 
-				r.log.Infow("instance seems stuck on removal, the deletion time expired, please check manually")
+				chaosPods, stuckErr := r.ChaosPodService.GetChaosPodsOfDisruption(ctx, instance, nil)
+				if stuckErr != nil {
+					endSpan(stuckSpan, stuckErr)
 
-				// Update the status of the 'instance' to reflect that it's stuck on removal.
-				if err := r.Client.Status().Update(ctx, instance); err != nil {
-					return ctrl.Result{}, fmt.Errorf("error marking the disruption stuck on removal: %w", err)
+					return ctrl.Result{}, fmt.Errorf("error getting chaos pods to check if disruption is stuck on removal: %w", stuckErr)
 				}
 
-				r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionStuckOnRemoval, "", "")
+				stuckSpan.SetAttributes(attribute.Int(attributes.DisruptionChaosPodCount, len(chaosPods)))
+				endSpan(stuckSpan, nil)
+
+				// Only mark as stuck if chaos pods exist — a disruption with no pods can be cleaned immediately.
+				if len(chaosPods) > 0 {
+					instance.Status.IsStuckOnRemoval = true
+
+					r.log.Infow("instance seems stuck on removal, the deletion time expired, please check manually")
+
+					// Update the status of the 'instance' to reflect that it's stuck on removal.
+					if err := r.Client.Status().Update(ctx, instance); err != nil {
+						return ctrl.Result{}, fmt.Errorf("error marking the disruption stuck on removal: %w", err)
+					}
+
+					r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionStuckOnRemoval, "", "")
+				}
 			}
 
 			if instance.IsReadyToRemoveFinalizer(r.FinalizerDeletionDelay) {
+				ctx, finalizeSpan := otel.Tracer(tracer.InstrumentationScopeDisruption).Start(ctx, "disruption.finalize_deletion",
+					trace.WithSpanKind(trace.SpanKindInternal),
+					trace.WithAttributes(
+						attribute.String(attributes.DisruptionName, instance.Name),
+						attribute.String(attributes.DisruptionNamespace, instance.Namespace),
+						attribute.String(attributes.DisruptionUser, userInfo.Username),
+					))
+
 				// we reach this code when all the cleanup pods have succeeded and we waited for finalizerDeletionDelay
 				// we can remove the finalizer and let the resource being garbage collected
 				r.log.Infow("all chaos pods are cleaned up; removing disruption finalizer")
@@ -208,6 +297,8 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				controllerutil.RemoveFinalizer(instance, chaostypes.DisruptionFinalizer)
 
 				if err := r.Client.Update(ctx, instance); err != nil {
+					endSpan(finalizeSpan, err)
+
 					return ctrl.Result{}, fmt.Errorf("error removing disruption finalizer: %w", err)
 				}
 
@@ -220,16 +311,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				r.handleMetricSinkError(r.MetricsSink.MetricDisruptionCompletedDuration(time.Since(instance.CreationTimestamp.Time), tags))
 				r.emitKindCountMetrics(instance)
 
-				// close the ongoing disruption tracing Span
-				defer func() {
-					_, disruptionStopSpan := otel.Tracer("").Start(ctx, "disruption deletion", trace.WithAttributes(
-						attribute.String("disruption.name", instance.Name),
-						attribute.String("disruption.namespace", instance.Namespace),
-						attribute.String("disruption.user", userInfo.Username),
-					))
-
-					disruptionStopSpan.End()
-				}()
+				endSpan(finalizeSpan, nil)
 
 				return ctrl.Result{}, nil
 			} else if instance.Status.CleanedAt == nil {
@@ -402,19 +484,32 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 // - an instance with no ready chaos pods is considered as "not injected"
 // - an instance expired will have previously defined status prefixed with "previously"
 func (r *DisruptionReconciler) updateInjectionStatus(ctx context.Context, instance *chaosv1beta1.Disruption) (err error) {
-	r.log.Debugw("checking if injection status needs to be updated", tagutil.InjectionStatusKey, instance.Status.InjectionStatus)
+	ctx, span := otel.Tracer(tracer.InstrumentationScopeDisruption).Start(ctx, "disruption.update_injection_status",
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(
+			attribute.String(attributes.DisruptionName, instance.Name),
+			attribute.String(attributes.DisruptionNamespace, instance.Namespace),
+			attribute.String(attributes.DisruptionInjStatusBefore, string(instance.Status.InjectionStatus)),
+		))
 
 	defer func() {
+		endSpan(span, err)
 		r.log.Debugw("injection status updated to", tagutil.InjectionStatusKey, instance.Status.InjectionStatus, tagutil.ErrorKey, err)
 	}()
+
+	r.log.Debugw("checking if injection status needs to be updated", tagutil.InjectionStatusKey, instance.Status.InjectionStatus)
 
 	readyPodsCount := 0
 
 	// get chaos pods
-	chaosPods, err := r.ChaosPodService.GetChaosPodsOfDisruption(ctx, instance, nil)
+	var chaosPods []corev1.Pod
+
+	chaosPods, err = r.ChaosPodService.GetChaosPodsOfDisruption(ctx, instance, nil)
 	if err != nil {
 		return fmt.Errorf("error getting instance chaos pods: %w", err)
 	}
+
+	span.SetAttributes(attribute.Int(attributes.DisruptionChaosPodCount, len(chaosPods)))
 
 	status := instance.Status.InjectionStatus
 	if status == chaostypes.DisruptionInjectionStatusInitial {
@@ -507,15 +602,29 @@ func (r *DisruptionReconciler) updateInjectionStatus(ctx context.Context, instan
 		return fmt.Errorf("unable to update disruption injection status: %w", err)
 	}
 
+	span.SetAttributes(attribute.String(attributes.DisruptionInjStatusAfter, string(instance.Status.InjectionStatus)))
+
 	return nil
 }
 
 // startInjection creates non-existing chaos pod for the given disruption
-func (r *DisruptionReconciler) startInjection(ctx context.Context, instance *chaosv1beta1.Disruption) error {
+func (r *DisruptionReconciler) startInjection(ctx context.Context, instance *chaosv1beta1.Disruption) (err error) {
+	ctx, span := otel.Tracer(tracer.InstrumentationScopeDisruption).Start(ctx, "disruption.start_injection",
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(
+			attribute.String(attributes.DisruptionName, instance.Name),
+			attribute.String(attributes.DisruptionNamespace, instance.Namespace),
+			attribute.Int(attributes.DisruptionTargetCount, len(instance.Status.TargetInjections)),
+		))
+
+	defer func() { endSpan(span, err) }()
+
 	// chaosPodsMap is used to check if a target's chaos pods already exist or not
 	chaosPodsMap := make(map[string]map[string]bool, len(instance.Status.TargetInjections))
 
-	chaosPods, err := r.ChaosPodService.GetChaosPodsOfDisruption(ctx, instance, nil)
+	var chaosPods []corev1.Pod
+
+	chaosPods, err = r.ChaosPodService.GetChaosPodsOfDisruption(ctx, instance, nil)
 	if err != nil {
 		return fmt.Errorf("error getting chaos pods: %w", err)
 	}
@@ -541,7 +650,7 @@ func (r *DisruptionReconciler) startInjection(ctx context.Context, instance *cha
 	subspec := instance.Spec.DisruptionKindPicker(chaostypes.DisruptionKindNetworkDisruption)
 	if reflect.ValueOf(subspec).IsValid() && !reflect.ValueOf(subspec).IsNil() {
 		if err = instance.Spec.Network.UpdateHostsOnCloudDisruption(ctx, r.CloudService); err != nil {
-			return err
+			return fmt.Errorf("update hosts on cloud disruption: %w", err)
 		}
 	}
 
@@ -583,8 +692,17 @@ func (r *DisruptionReconciler) startInjection(ctx context.Context, instance *cha
 }
 
 // createChaosPods attempts to create all the chaos pods for a given target. If a given chaos pod already exists, it is not recreated.
-func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *chaosv1beta1.Disruption, target string) error {
-	var err error
+func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *chaosv1beta1.Disruption, target string) (err error) {
+	ctx, span := otel.Tracer(tracer.InstrumentationScopeDisruption).Start(ctx, "disruption.create_chaos_pods",
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(
+			attribute.String(attributes.DisruptionName, instance.Name),
+			attribute.String(attributes.DisruptionNamespace, instance.Namespace),
+			attribute.String(attributes.DisruptionTarget, target),
+			attribute.String(attributes.DisruptionLevel, string(instance.Spec.Level)),
+		))
+
+	defer func() { endSpan(span, err) }()
 
 	targetNodeName := ""
 	targetContainers := map[string]string{}
@@ -595,7 +713,7 @@ func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *ch
 	case chaostypes.DisruptionLevelPod:
 		pod := corev1.Pod{}
 
-		if err := r.Client.Get(ctx, types.NamespacedName{Namespace: instance.Namespace, Name: target}, &pod); err != nil {
+		if err = r.Client.Get(ctx, types.NamespacedName{Namespace: instance.Namespace, Name: target}, &pod); err != nil {
 			return fmt.Errorf("error getting target to inject: %w", err)
 		}
 
@@ -618,10 +736,14 @@ func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *ch
 	}
 
 	// generate injection pods specs
-	targetChaosPods, err := r.ChaosPodService.GenerateChaosPodsOfDisruption(instance, target, targetNodeName, targetContainers, targetPodIP)
+	var targetChaosPods []corev1.Pod
+
+	targetChaosPods, err = r.ChaosPodService.GenerateChaosPodsOfDisruption(instance, target, targetNodeName, targetContainers, targetPodIP)
 	if err != nil {
 		return fmt.Errorf("error generating chaos pods: %w", err)
 	}
+
+	span.SetAttributes(attribute.Int(attributes.DisruptionInjectorPodsToCreate, len(targetChaosPods)))
 
 	if len(targetChaosPods) == 0 {
 		r.recordEventOnDisruption(instance, chaosv1beta1.EventEmptyDisruption, instance.Name, "")
@@ -647,7 +769,9 @@ func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *ch
 
 	for _, targetChaosPod := range targetChaosPods {
 		// check if an injection pod already exists for the given (instance, namespace, disruption kind) tuple
-		found, err := r.ChaosPodService.GetChaosPodsOfDisruption(ctx, instance, targetChaosPod.Labels)
+		var found []corev1.Pod
+
+		found, err = r.ChaosPodService.GetChaosPodsOfDisruption(ctx, instance, targetChaosPod.Labels)
 		if err != nil {
 			return fmt.Errorf("error getting existing chaos pods: %w", err)
 		}
@@ -667,8 +791,8 @@ func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *ch
 			}
 
 			// wait for the pod to be existing
-			if err := r.ChaosPodService.WaitForPodCreation(ctx, targetChaosPod); err != nil {
-				r.log.Errorw("error waiting for chaos pod to be created", tagutil.ErrorKey, err, tagutil.ChaosPodNameKey, targetChaosPod.Name, tagutil.TargetNameKey, target)
+			if waitErr := r.ChaosPodService.WaitForPodCreation(ctx, targetChaosPod); waitErr != nil {
+				r.log.Errorw("error waiting for chaos pod to be created", tagutil.ErrorKey, waitErr, tagutil.ChaosPodNameKey, targetChaosPod.Name, tagutil.TargetNameKey, target)
 
 				continue
 			}
@@ -704,7 +828,7 @@ func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *ch
 		// Update the status in the cluster using a deep copy to preserve in-memory spec changes
 		// (such as cloud disruption hosts populated by UpdateHostsOnCloudDisruption)
 		statusCopy := instance.DeepCopy()
-		if err := r.Client.Status().Update(ctx, statusCopy); err != nil {
+		if err = r.Client.Status().Update(ctx, statusCopy); err != nil {
 			return fmt.Errorf("error updating disruption status with run count: %w", err)
 		}
 	}
@@ -716,11 +840,22 @@ func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *ch
 // for each existing chaos pod for the given instance, the function will delete the chaos pod to trigger its cleanup phase
 // the function returns true when no more chaos pods are existing (meaning that it keeps returning false if some pods
 // are deleted but still present)
-func (r *DisruptionReconciler) cleanDisruption(ctx context.Context, instance *chaosv1beta1.Disruption) (bool, error) {
-	cleaned := true
+func (r *DisruptionReconciler) cleanDisruption(ctx context.Context, instance *chaosv1beta1.Disruption) (cleaned bool, err error) {
+	ctx, span := otel.Tracer(tracer.InstrumentationScopeDisruption).Start(ctx, "disruption.clean",
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(
+			attribute.String(attributes.DisruptionName, instance.Name),
+			attribute.String(attributes.DisruptionNamespace, instance.Namespace),
+		))
+
+	defer func() { endSpan(span, err) }()
+
+	cleaned = true
 
 	// get already existing chaos pods for the given disruption
-	chaosPods, err := r.ChaosPodService.GetChaosPodsOfDisruption(ctx, instance, nil)
+	var chaosPods []corev1.Pod
+
+	chaosPods, err = r.ChaosPodService.GetChaosPodsOfDisruption(ctx, instance, nil)
 	if err != nil {
 		return false, err
 	}
@@ -730,6 +865,11 @@ func (r *DisruptionReconciler) cleanDisruption(ctx context.Context, instance *ch
 	if len(chaosPods) > 0 {
 		cleaned = false
 	}
+
+	span.SetAttributes(
+		attribute.Int(attributes.DisruptionChaosPodCount, len(chaosPods)),
+		attribute.Bool(attributes.DisruptionCleaned, cleaned),
+	)
 
 	// terminate running chaos pods to trigger cleanup
 	for _, chaosPod := range chaosPods {
@@ -749,12 +889,25 @@ func (r *DisruptionReconciler) cleanDisruption(ctx context.Context, instance *ch
 // if a finalizer can't be removed because none of the conditions above are fulfilled, the instance is flagged
 // as stuck on removal and the pod finalizer won't be removed unless someone does it manually
 // the pod target will be moved to ignored targets, so it is not picked up by the next reconcile loop
-func (r *DisruptionReconciler) handleChaosPodsTermination(ctx context.Context, instance *chaosv1beta1.Disruption) error {
+func (r *DisruptionReconciler) handleChaosPodsTermination(ctx context.Context, instance *chaosv1beta1.Disruption) (err error) {
+	ctx, span := otel.Tracer(tracer.InstrumentationScopeDisruption).Start(ctx, "disruption.handle_chaos_pods_termination",
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(
+			attribute.String(attributes.DisruptionName, instance.Name),
+			attribute.String(attributes.DisruptionNamespace, instance.Namespace),
+		))
+
+	defer func() { endSpan(span, err) }()
+
 	// get already existing chaos pods for the given disruption
-	chaosPods, err := r.ChaosPodService.GetChaosPodsOfDisruption(ctx, instance, nil)
+	var chaosPods []corev1.Pod
+
+	chaosPods, err = r.ChaosPodService.GetChaosPodsOfDisruption(ctx, instance, nil)
 	if err != nil {
 		return err
 	}
+
+	span.SetAttributes(attribute.Int(attributes.DisruptionChaosPodCount, len(chaosPods)))
 
 	if len(chaosPods) == 0 {
 		return nil
@@ -764,7 +917,9 @@ func (r *DisruptionReconciler) handleChaosPodsTermination(ctx context.Context, i
 		r.handleChaosPodTermination(ctx, instance, chaosPod)
 	}
 
-	return r.Client.Status().Update(ctx, instance)
+	err = r.Client.Status().Update(ctx, instance)
+
+	return err
 }
 
 func (r *DisruptionReconciler) handleChaosPodTermination(ctx context.Context, instance *chaosv1beta1.Disruption, chaosPod corev1.Pod) {
@@ -821,7 +976,18 @@ func (r *DisruptionReconciler) updateTargetInjectionStatus(instance *chaosv1beta
 // targets will only be selected once per instance
 // the chosen targets names will be reflected in the instance status
 // subsequent calls to this function will always return the same targets as the first call
-func (r *DisruptionReconciler) selectTargets(ctx context.Context, instance *chaosv1beta1.Disruption) error {
+func (r *DisruptionReconciler) selectTargets(ctx context.Context, instance *chaosv1beta1.Disruption) (err error) {
+	ctx, span := otel.Tracer(tracer.InstrumentationScopeDisruption).Start(ctx, "disruption.select_targets",
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(
+			attribute.String(attributes.DisruptionName, instance.Name),
+			attribute.String(attributes.DisruptionNamespace, instance.Namespace),
+			attribute.String(attributes.DisruptionLevel, string(instance.Spec.Level)),
+			attribute.Bool(attributes.DisruptionStaticTargeting, instance.Spec.StaticTargeting),
+		))
+
+	defer func() { endSpan(span, err) }()
+
 	if len(instance.Status.TargetInjections) != 0 && instance.Spec.StaticTargeting {
 		return nil
 	}
@@ -830,28 +996,47 @@ func (r *DisruptionReconciler) selectTargets(ctx context.Context, instance *chao
 
 	// validate the given label selector to avoid any formatting issues due to special chars
 	if instance.Spec.Selector != nil {
-		if err := targetselector.ValidateLabelSelector(instance.Spec.Selector.AsSelector()); err != nil {
+		if err = targetselector.ValidateLabelSelector(instance.Spec.Selector.AsSelector()); err != nil {
 			r.recordEventOnDisruption(instance, chaosv1beta1.EventInvalidDisruptionLabelSelector, err.Error(), "")
 
 			return err
 		}
 	}
 
-	matchingTargets, totalAvailableTargetsCount, err := r.getSelectorMatchingTargets(instance)
-	if err != nil {
-		r.log.Errorw("error getting matching targets", tagutil.ErrorKey, err)
+	ctx, matchSpan := otel.Tracer(tracer.InstrumentationScopeDisruption).Start(ctx, "disruption.match_selector_targets",
+		trace.WithSpanKind(trace.SpanKindInternal))
+
+	var matchingTargets []string
+
+	var totalAvailableTargetsCount int
+
+	var matchErr error
+
+	matchingTargets, totalAvailableTargetsCount, matchErr = r.getSelectorMatchingTargets(instance)
+	if matchErr != nil {
+		r.log.Errorw("error getting matching targets", tagutil.ErrorKey, matchErr)
 	}
+
+	matchSpan.SetAttributes(
+		attribute.Int(attributes.DisruptionMatchingTargets, len(matchingTargets)),
+		attribute.Int(attributes.DisruptionTotalAvailTargets, totalAvailableTargetsCount),
+	)
+	endSpan(matchSpan, matchErr)
 
 	instance.Status.RemoveDeadTargets(matchingTargets)
 
 	// instance.Spec.Count is a string that either represents a percentage or a value, we do the translation here
-	targetsCount, err := instance.GetTargetsCountAsInt(len(matchingTargets), true)
-	if err != nil {
+	var targetsCount int
+
+	targetsCount, countErr := instance.GetTargetsCountAsInt(len(matchingTargets), true)
+	if countErr != nil {
 		targetsCount = instance.Spec.Count.IntValue()
 	}
 
 	// filter matching targets to only get eligible ones
-	eligibleTargets, err := r.getEligibleTargets(ctx, instance, matchingTargets)
+	var eligibleTargets chaosv1beta1.TargetInjections
+
+	eligibleTargets, err = r.getEligibleTargets(ctx, instance, matchingTargets)
 	if err != nil {
 		return fmt.Errorf("error getting eligible targets: %w", err)
 	}
@@ -887,7 +1072,14 @@ func (r *DisruptionReconciler) selectTargets(ctx context.Context, instance *chao
 	instance.Status.SelectedTargetsCount = len(instance.Status.TargetInjections)
 	instance.Status.IgnoredTargetsCount = totalAvailableTargetsCount - targetsCount
 
-	return r.Client.Status().Update(ctx, instance)
+	span.SetAttributes(
+		attribute.Int(attributes.DisruptionDesiredTargets, instance.Status.DesiredTargetsCount),
+		attribute.Int(attributes.DisruptionSelectedTargets, instance.Status.SelectedTargetsCount),
+	)
+
+	err = r.Client.Status().Update(ctx, instance)
+
+	return err
 }
 
 // getMatchingTargets fetches all existing target fitting the disruption's selector
@@ -1163,7 +1355,18 @@ func (r *DisruptionReconciler) ReportMetrics(ctx context.Context) {
 // getEligibleTargets returns targets which can be targeted by the given instance from the given targets pool
 // it skips ignored targets and targets being already targeted by another disruption
 func (r *DisruptionReconciler) getEligibleTargets(ctx context.Context, instance *chaosv1beta1.Disruption, potentialTargets []string) (eligibleTargets chaosv1beta1.TargetInjections, err error) {
+	ctx, eligSpan := otel.Tracer(tracer.InstrumentationScopeDisruption).Start(ctx, "disruption.get_eligible_targets",
+		trace.WithSpanKind(trace.SpanKindInternal),
+		trace.WithAttributes(
+			attribute.String(attributes.DisruptionName, instance.Name),
+			attribute.String(attributes.DisruptionNamespace, instance.Namespace),
+			attribute.Int(attributes.DisruptionPotentialTargets, len(potentialTargets)),
+		))
+
 	defer func() {
+		eligSpan.SetAttributes(attribute.Int(attributes.DisruptionEligibleTargets, len(eligibleTargets)))
+		endSpan(eligSpan, err)
+
 		var args []interface{}
 
 		potentialTargetsCount := len(potentialTargets)
@@ -1275,4 +1478,19 @@ NB: you can specify "spec.allowDisruptedTargets: true" to allow a new disruption
 	}
 
 	return eligibleTargets, nil
+}
+
+func endSpan(s trace.Span, err error) {
+	if s == nil {
+		return
+	}
+
+	if err != nil {
+		s.RecordError(err)
+		s.SetStatus(codes.Error, err.Error())
+	} else {
+		s.SetStatus(codes.Ok, "")
+	}
+
+	s.End()
 }
