@@ -4,9 +4,7 @@
 
 The `flow` field allows you to either disrupt outgoing traffic (`egress`) or incoming traffic (`ingress`).
 
-Note the following when using `ingress` (learn more in the next section):
-* TCP is the only protocol guaranteed to work
-* `ingress` flow should only specify `port` and `protocol` fields, not `hosts`
+Both directions support all disruption types (drop, delay, jitter, bandwidth limit, corruption, duplication) and all protocols (TCP, UDP, ICMP).
 
 If you are still not sure which one you should use, consider the following example. Say you have 3 pods:
 * `server`: an `nginx` pod listening on 80
@@ -27,12 +25,36 @@ In this case, you want to target the `client1` pod only and use the `egress` flo
 
 In this case, you want to target the `server` pod and use the `ingress` flow so you target all incoming packets from both `client1` and `client2` pods.
 
-## Q: Why are there limitations on `ingress`?
+You can also use the `hosts` field with `ingress` to target traffic from specific source IPs.
 
-<p align="center"><kbd>
-    <img src="../../docs/img/network_flow/ingress.png" height=80 width=300 />
-</kbd></p>
+## Q: How does ingress disruption work?
 
-The current implementation of the `ingress` flow is not a real filter on incoming packets but rather a filter on responses to these packets (ie. outgoing packets). During a TCP communication, when the client sends a packet to the server, the server answers with an acknowledgement packet to confirm that it received the client's packet. By disrupting this acknowledgement packet, it simulates an ingress disruption. As such, the `ingress` flow implementation will not work for UDP unless the server depends on the response packets.
+Ingress disruption uses a BPF TC classifier attached to the `clsact` qdisc on the target pod's network interface. The BPF program inspects the **source IP** of incoming packets and matches them against an LPM trie map containing disruption rules.
 
-Additionally, the `hosts` field cannot be used reliably with `ingress` flow. For instance, if the `nginx` service is in a cluster of pods using the host network, the `hosts` field contains the cluster IP, but the `source IP` field of the packet would have the address of the specific pod from which the request originated. For now, we do not have a solution for resolving cluster IPs to specific pod IPs.
+- **Drop**: The BPF program returns `TC_ACT_SHOT` to drop matched packets (with optional probability via `bpf_get_prandom_u32`).
+- **Shaping** (delay, jitter, bandwidth, corruption, duplication): Matched packets are redirected to an IFB (Intermediate Functional Block) virtual device via `bpf_redirect`. The IFB device has a prio/netem/tbf qdisc chain that applies the shaping effects.
+
+This approach:
+- Works for **all protocols** (TCP, UDP, ICMP) since it operates at the packet level
+- Matches the **real originating pod IP** (not cluster VIPs) since it inspects the packet's source address directly
+- Supports **per-host filtering** via the `hosts` field on ingress
+- Supports **per-port/protocol filtering** — the `port` and `protocol` fields on hosts are matched in the BPF program after the IP lookup
+
+## Q: How does egress disruption work?
+
+Egress disruption uses the same BPF LPM trie to classify outgoing packets by their **destination IP**. Matched packets are routed to a disruption band in the prio qdisc where netem/tbf apply the disruption effects.
+
+The BPF classifier replaces per-IP tc flower filters, providing:
+- **Protocol-agnostic** classification (works for TCP, UDP, and any IP protocol)
+- **L4 port/protocol matching** — the `port` and `protocol` fields are checked in the BPF program after the IP lookup
+- **Atomic rule updates** when DNS-resolved IPs or service endpoints change (single LPM trie map update instead of per-filter add/delete)
+- **CIDR matching** via LPM trie prefix semantics
+- **Service endpoint filtering** — Kubernetes service endpoints (both ClusterIP and headless) are resolved to BPF rules and dynamically updated as pods are added/removed
+
+## Q: What about `connState`?
+
+The `connState` field (`new`/`est`) is **not currently supported** with the BPF disruption engine. If specified, a warning is logged and the field is ignored. This may be supported in a future release via `bpf_ct_lookup`.
+
+## Architecture reference
+
+See [ADR-001: Unified BPF Disruption Engine](../decisions/ADR-001-unified-bpf-disruption-engine.md) for the full architectural decision record, alternatives considered, and trade-offs.

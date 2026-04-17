@@ -23,6 +23,11 @@ type NetlinkAdapter interface {
 	LinkByIndex(index int) (NetlinkLink, error)
 	LinkByName(name string) (NetlinkLink, error)
 	DefaultRoutes() ([]NetlinkRoute, error)
+	// AddIFBDevice creates an IFB (Intermediate Functional Block) virtual device
+	// with the given name inside the current network namespace and brings it up.
+	AddIFBDevice(name string) (NetlinkLink, error)
+	// DeleteIFBDevice removes the named IFB device. Returns nil if the device does not exist.
+	DeleteIFBDevice(name string) error
 }
 
 type netlinkAdapter struct{}
@@ -156,20 +161,60 @@ func (a netlinkAdapter) DefaultRoutes() ([]NetlinkRoute, error) {
 	return defaultRoutes, nil
 }
 
+func (a netlinkAdapter) AddIFBDevice(name string) (NetlinkLink, error) {
+	link := &netlink.Ifb{LinkAttrs: netlink.LinkAttrs{Name: name}}
+	if err := netlink.LinkAdd(link); err != nil {
+		return nil, fmt.Errorf("error creating IFB device %s: %w", name, err)
+	}
+
+	if err := netlink.LinkSetUp(link); err != nil {
+		// Clean up the device if we fail to bring it up
+		_ = netlink.LinkDel(link)
+
+		return nil, fmt.Errorf("error bringing up IFB device %s: %w", name, err)
+	}
+
+	return newNetlinkLink(link), nil
+}
+
+func (a netlinkAdapter) DeleteIFBDevice(name string) error {
+	link, err := netlink.LinkByName(name)
+	if err != nil {
+		// Device not found is not an error (idempotent cleanup)
+		if strings.Contains(err.Error(), "not found") {
+			return nil
+		}
+
+		return fmt.Errorf("error finding IFB device %s: %w", name, err)
+	}
+
+	if err := netlink.LinkDel(link); err != nil {
+		return fmt.Errorf("error deleting IFB device %s: %w", name, err)
+	}
+
+	return nil
+}
+
 // NetlinkLink is a host interface
 type NetlinkLink interface {
 	Name() string
+	Index() int
 	SetTxQLen(qlen int) error
 	TxQLen() int
 }
 
 type netlinkLink struct {
 	name   string
+	index  int
 	txQLen int
 }
 
 func (l netlinkLink) Name() string {
 	return l.name
+}
+
+func (l netlinkLink) Index() int {
+	return l.index
 }
 
 func (l *netlinkLink) SetTxQLen(qlen int) error {
@@ -190,6 +235,7 @@ func (l netlinkLink) TxQLen() int {
 func newNetlinkLink(link netlink.Link) *netlinkLink {
 	return &netlinkLink{
 		name:   link.Attrs().Name,
+		index:  link.Attrs().Index,
 		txQLen: link.Attrs().TxQLen,
 	}
 }

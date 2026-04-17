@@ -38,6 +38,10 @@ type ConfigInformer interface {
 
 	// IsKernelConfigAvailable checks if the kernel configuration is available
 	IsKernelConfigAvailable() bool
+
+	// ValidateNetworkDisruptionConfig validates kernel parameters required for
+	// the BPF-based network disruption engine (ingress filtering, IFB redirect).
+	ValidateNetworkDisruptionConfig() error
 }
 
 type configInformer struct {
@@ -92,6 +96,8 @@ type SystemConfig struct {
 	ConfigNetClsBpf              KernelParam `json:"CONFIG_NET_CLS_BPF"`
 	ConfigNetClsAct              KernelParam `json:"CONFIG_NET_CLS_ACT"`
 	ConfigNetSchIngress          KernelParam `json:"CONFIG_NET_SCH_INGRESS"`
+	ConfigIfb                    KernelParam `json:"CONFIG_IFB"`
+	ConfigNetActMirred           KernelParam `json:"CONFIG_NET_ACT_MIRRED"`
 	ConfigXfrm                   KernelParam `json:"CONFIG_XFRM"`
 	ConfigIPRouteClassID         KernelParam `json:"CONFIG_IP_ROUTE_CLASSID"`
 	ConfigIPv6Seg6Bpf            KernelParam `json:"CONFIG_IPV6_SEG6_BPF"`
@@ -278,6 +284,43 @@ func (v configInformer) GetRequiredSystemConfig() KernelParams {
 			Enabled:     config.ConfigNetClsAct.Enabled(),
 		},
 	}
+}
+
+// ValidateNetworkDisruptionConfig checks kernel parameters required for the BPF-based
+// network disruption engine: CONFIG_NET_SCH_INGRESS (clsact qdisc), CONFIG_IFB (IFB device),
+// and CONFIG_NET_ACT_MIRRED (mirred redirect action).
+func (v configInformer) ValidateNetworkDisruptionConfig() error {
+	var multiErr error
+
+	if !v.IsKernelConfigAvailable() {
+		return fmt.Errorf("kernel config file not found")
+	}
+
+	config := v.features.SystemConfig
+	networkDisruptionDescription := "BPF network disruption engine"
+
+	requiredParams := KernelParams{
+		"CONFIG_NET_SCH_INGRESS": KernelOption{
+			Description: networkDisruptionDescription,
+			Enabled:     config.ConfigNetSchIngress.Enabled(),
+		},
+		"CONFIG_IFB": KernelOption{
+			Description: networkDisruptionDescription,
+			Enabled:     config.ConfigIfb.Enabled(),
+		},
+		"CONFIG_NET_ACT_MIRRED": KernelOption{
+			Description: networkDisruptionDescription,
+			Enabled:     config.ConfigNetActMirred.Enabled(),
+		},
+	}
+
+	for param, kernelOption := range requiredParams {
+		if !kernelOption.Enabled {
+			multiErr = multierror.Append(multiErr, fmt.Errorf("%s kernel parameter is required (needed for: %s)", param, kernelOption.Description))
+		}
+	}
+
+	return multiErr
 }
 
 // GetMapTypes retrieves information about available map types from the system configuration features.

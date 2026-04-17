@@ -1,5 +1,5 @@
-# Format - lines beginning # are comments
 # a markdown-spellcheck spelling configuration file
+# Format - lines beginning # are comments
 # global dictionary is at the start, file overrides afterwards
 # one word per line, to define a file override use ' - filename'
 # where filename is relative to this configuration file
@@ -7,35 +7,14 @@
 15m30s
 45s
 4h30m
-AllowRootDiskFailure
-AtLeastOneOf
-ClusterIP
-ClusterRole
-DaemonSet
-DisableCountTooLarge
-DisableNeitherHostNorPort
-DynamicTargeting
-ExclusiveFields
-IPs
-IgnoreName
-LICENSE-3rdparty
-LinkedFields
-LinkedFieldsValue
-LinkedFieldsValueWithTrigger
-Meowmix
-OnInit
-PIDs
-QoS
-README.md
-SIGKILL
-SIGTERM
-StaticTargeting
 actioned
+AllowRootDiskFailure
 api
 apis
 apiserver
 apiservers
 arg
+AtLeastOneOf
 authentify
 base64
 benchmarked
@@ -46,6 +25,8 @@ cgroup
 cgroups
 chaosli
 cleanup
+ClusterIP
+ClusterRole
 config
 configmap
 configmaps
@@ -54,6 +35,7 @@ containerd
 contributing.md
 cpu
 csv
+DaemonSet
 datadog
 ddmark
 ddmarkers
@@ -61,9 +43,12 @@ demo.yaml
 dequeued
 dequeuing
 dev
+DisableCountTooLarge
+DisableNeitherHostNorPort
 disruptionlistener
 dns
 dogfood
+DynamicTargeting
 e.g.
 eBPF
 ebpf-builder
@@ -75,28 +60,31 @@ enum
 envtest
 eth0
 events.go
+ExclusiveFields
 faq.md
 filepath
 finalizer
 finalizers
-gRPC
 golang's
 golangci-lint
 goog.json
 goroutine
 goroutines
 gpg
-grpc.yaml
+gRPC
 grpc_error.yaml
 grpc_override.yaml
+grpc.yaml
 healthchecks
 hostname
 hostnames
 ie
 iff
+IgnoreName
 information_source
 ip
 ips
+IPs
 iptables
 istio
 json
@@ -107,10 +95,15 @@ kubebuilder
 kubectl
 kubernetes
 libbpf
+LICENSE-3rdparty
 lifecycle
 lima
+LinkedFields
+LinkedFieldsValue
+LinkedFieldsValueWithTrigger
 linux
 liveness
+Meowmix
 metadata
 microservice
 microservices
@@ -120,9 +113,11 @@ nat
 netem
 nginx
 no_entry
+OnInit
 open_book
 openat
 pid
+PIDs
 pre-controller
 pre-run
 prio
@@ -132,14 +127,19 @@ protobuf
 protoc
 qdisc
 qdiscs
+QoS
 re-enqueued
+README.md
 reinjected
 reinjection
 renices
 rollouts
 runtime
 safemode
+SIGKILL
+SIGTERM
 specificities
+StaticTargeting
 storageClasses
 struct
 structs
