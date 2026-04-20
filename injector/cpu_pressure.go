@@ -7,10 +7,8 @@ package injector
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math"
-	"os"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/command"
@@ -113,15 +111,5 @@ func (i *cpuPressureInjector) UpdateConfig(config Config) {
 }
 
 func (i *cpuPressureInjector) Clean() error {
-	if i.backgroundCmd == nil {
-		return nil
-	}
-
-	defer i.cancel()
-
-	if err := i.backgroundCmd.Stop(); err != nil && !errors.Is(err, os.ErrProcessDone) {
-		return fmt.Errorf("unable to stop background process: %w", err)
-	}
-
-	return nil
+	return stopAndWaitForBackgroundCmd(i.config.Log, i.backgroundCmd, i.cancel)
 }
