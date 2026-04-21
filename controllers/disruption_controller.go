@@ -1212,10 +1212,24 @@ func (r *DisruptionReconciler) recordEventOnTarget(ctx context.Context, instance
 
 // SetupWithManager setups the current reconciler with the given manager
 func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager, kubeInformerFactory kubeinformers.SharedInformerFactory) (controller.Controller, error) {
-	podToDisruption := func(ctx context.Context, d *corev1.Pod) []reconcile.Request {
+	if kubeInformerFactory == nil {
+		return nil, fmt.Errorf("kubernetes informer factory cannot be nil")
+	}
+
+	podToDisruption := func(ctx context.Context, o client.Object) []reconcile.Request {
+		d, ok := o.(*corev1.Pod)
+		if !ok {
+			return nil
+		}
+
 		// podtoDisruption is a function that maps pods to disruptions. it is meant to be used as an event handler on a pod informer
 		// this function should safely return an empty list of requests to reconcile if the object we receive is not actually a chaos pod
 		// which we determine by checking the object labels for the name and namespace labels that we add to all injector pods
+		requests := mapPodToDisruptionRequests(d)
+		if len(requests) == 0 {
+			return nil
+		}
+
 		if r.BaseLog != nil {
 			r.BaseLog.Debugw("watching event from pod", tagutil.ChaosPodNameKey, d.GetName(), tagutil.ChaosPodNamespaceKey, d.GetNamespace())
 		}
@@ -1225,19 +1239,38 @@ func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager, kubeInformerFa
 			tagutil.FormatTag(tagutil.PodNamespaceKey, d.GetNamespace()),
 		}))
 
-		podLabels := d.GetLabels()
-		name := podLabels[chaostypes.DisruptionNameLabel]
-		namespace := podLabels[chaostypes.DisruptionNamespaceLabel]
+		return requests
+	}
 
-		return []reconcile.Request{{NamespacedName: types.NamespacedName{Name: name, Namespace: namespace}}}
+	podInformerSource := &source.Informer{
+		Informer: kubeInformerFactory.Core().V1().Pods().Informer(),
+		Handler:  handler.EnqueueRequestsFromMapFunc(podToDisruption),
+		Predicates: []predicate.Predicate{
+			chaosEventsPredicate(),
+		},
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&chaosv1beta1.Disruption{}).
 		WithOptions(controller.Options{RateLimiter: workqueue.NewTypedItemExponentialFailureRateLimiter[reconcile.Request](time.Second, time.Hour)}).
-		WatchesRawSource(source.Kind(mgr.GetCache(), &corev1.Pod{}, handler.TypedEnqueueRequestsFromMapFunc(podToDisruption))).
-		WithEventFilter(chaosEventsPredicate()).
+		WatchesRawSource(podInformerSource).
 		Build(r)
+}
+
+func mapPodToDisruptionRequests(pod *corev1.Pod) []reconcile.Request {
+	if pod == nil {
+		return nil
+	}
+
+	podLabels := pod.GetLabels()
+	name := podLabels[chaostypes.DisruptionNameLabel]
+	namespace := podLabels[chaostypes.DisruptionNamespaceLabel]
+
+	if name == "" || namespace == "" {
+		return nil
+	}
+
+	return []reconcile.Request{{NamespacedName: types.NamespacedName{Name: name, Namespace: namespace}}}
 }
 
 // chaosEventsPredicate determines if given event is a chaos related one or not
