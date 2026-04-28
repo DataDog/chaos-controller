@@ -19,7 +19,7 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
     go build -o manager .
 
 # Final stage
-FROM gcr.io/distroless/base-debian12:nonroot
+FROM gcr.io/distroless/base-debian13:nonroot
 
 COPY --chmod=100 --from=builder /go/src/github.com/chaos-controller/manager /usr/local/bin/manager
 
@@ -27,7 +27,7 @@ ENTRYPOINT ["/usr/local/bin/manager"]
 
 LABEL baseimage.os="debian"
 LABEL baseimage.isgbi="custom"
-LABEL baseimage.name="gcr.io/distroless/base-debian12:nonroot"
+LABEL baseimage.name="gcr.io/distroless/base-debian13:nonroot"
 
 ARG BUILDSTAMP
 LABEL baseimage.buildstamp="${BUILDSTAMP}"
