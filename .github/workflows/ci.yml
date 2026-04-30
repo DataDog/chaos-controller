@@ -6,8 +6,11 @@ on:
     branches: [main]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.repository }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
+
+permissions:
+  contents: read
 
 env:
   GOPATH: /home/runner/go
@@ -45,6 +48,7 @@ jobs:
           cache: true
       - name: Get Datadog credentials
         id: dd-sts
+        if: github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'push'
         uses: DataDog/dd-sts-action@2e8187910199bd93129520183c093e19aa585c75 # v1.0.0
         with:
           policy: chaos-controller
@@ -53,9 +57,9 @@ jobs:
       - name: Run unit tests
         run: make test GINKGO_PROCS=2
         env:
-          DATADOG_API_KEY: ${{ steps.dd-sts.outputs.api_key }}
+          DATADOG_API_KEY: ${{ steps.dd-sts.outputs.api_key || '' }}
       - name: Upload code coverage
-        if: success()
+        if: success() && (github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'push')
         run: ./bin/tools/datadog-ci coverage upload --format go-coverprofile --flags "type:unit-tests" cover.profile
         env:
           DATADOG_API_KEY: ${{ steps.dd-sts.outputs.api_key }}
@@ -98,6 +102,7 @@ jobs:
           cache: true
       - name: Get Datadog credentials
         id: dd-sts
+        if: github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'push'
         uses: DataDog/dd-sts-action@2e8187910199bd93129520183c093e19aa585c75 # v1.0.0
         with:
           policy: chaos-controller
@@ -122,7 +127,7 @@ jobs:
         run: make minikube-load-all
       - name: Run e2e tests
         env:
-          DATADOG_API_KEY: ${{ steps.dd-sts.outputs.api_key }}
+          DATADOG_API_KEY: ${{ steps.dd-sts.outputs.api_key || '' }}
         run: |
           for attempt in 1 2 3; do
             echo "=== Attempt ${attempt}/3 ==="
