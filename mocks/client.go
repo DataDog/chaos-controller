@@ -36,6 +36,68 @@ func (_m *K8SClientMock) EXPECT() *K8SClientMock_Expecter {
 	return &K8SClientMock_Expecter{mock: &_m.Mock}
 }
 
+// Apply provides a mock function with given fields: ctx, obj, opts
+func (_m *K8SClientMock) Apply(ctx context.Context, obj runtime.ApplyConfiguration, opts ...client.ApplyOption) error {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, obj)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Apply")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, runtime.ApplyConfiguration, ...client.ApplyOption) error); ok {
+		r0 = rf(ctx, obj, opts...)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// K8SClientMock_Apply_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Apply'
+type K8SClientMock_Apply_Call struct {
+	*mock.Call
+}
+
+// Apply is a helper method to define mock.On call
+//   - ctx context.Context
+//   - obj runtime.ApplyConfiguration
+//   - opts ...client.ApplyOption
+func (_e *K8SClientMock_Expecter) Apply(ctx interface{}, obj interface{}, opts ...interface{}) *K8SClientMock_Apply_Call {
+	return &K8SClientMock_Apply_Call{Call: _e.mock.On("Apply",
+		append([]interface{}{ctx, obj}, opts...)...)}
+}
+
+func (_c *K8SClientMock_Apply_Call) Run(run func(ctx context.Context, obj runtime.ApplyConfiguration, opts ...client.ApplyOption)) *K8SClientMock_Apply_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]client.ApplyOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(client.ApplyOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(runtime.ApplyConfiguration), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *K8SClientMock_Apply_Call) Return(_a0 error) *K8SClientMock_Apply_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *K8SClientMock_Apply_Call) RunAndReturn(run func(context.Context, runtime.ApplyConfiguration, ...client.ApplyOption) error) *K8SClientMock_Apply_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Create provides a mock function with given fields: ctx, obj, opts
 func (_m *K8SClientMock) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
 	_va := make([]interface{}, len(opts))
