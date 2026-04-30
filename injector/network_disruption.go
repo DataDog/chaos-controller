@@ -11,8 +11,8 @@ import (
 	"math"
 	"net"
 	"os"
-	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
@@ -21,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/bpfdisrupt"
 	"github.com/DataDog/chaos-controller/ebpf"
 	"github.com/DataDog/chaos-controller/env"
 	"github.com/DataDog/chaos-controller/network"
@@ -54,6 +55,13 @@ type networkDisruptionInjector struct {
 	operations           []linkOperation
 	serviceWatcherCancel context.CancelFunc
 	hostWatcherCancel    context.CancelFunc
+	engine               *bpfdisrupt.Engine
+
+	// Stored state for BPF rule rebuilds (used by both host and service watchers)
+	safeguardIPs   []*net.IPNet
+	sshSafeguard   []bpfdisrupt.Rule // SSH safeguard for node-level disruptions
+	serviceRulesMu sync.Mutex
+	serviceRules   []bpfdisrupt.Rule // current service-derived rules
 }
 
 // NetworkDisruptionInjectorConfig contains all needed drivers to create a network disruption using `tc`
@@ -67,38 +75,12 @@ type NetworkDisruptionInjectorConfig struct {
 	BPFConfigInformer   ebpf.ConfigInformer
 	DNSPodResolvConf    string
 	DNSNodeResolvConf   string
+	BPFDisruptCmdRunner bpfdisrupt.CmdRunner // optional, for BPF disruption engine
 }
 
-// tcServiceFilter describes a tc filter, representing the service filtered and its priority
+// tcServiceFilter describes a service endpoint used for BPF rule generation.
 type tcServiceFilter struct {
-	service  networkDisruptionService
-	priority uint32 // one priority per tc filters applied, the priority is the same for all interfaces
-}
-
-// tcFilter describes a tc filter
-type tcFilter struct {
-	ip       *net.IPNet
-	priority uint32 // one priority per tc filters applied, the priority is the same for all interfaces
-}
-
-func (t tcFilter) String() string {
-	ip := ""
-	if t.ip != nil {
-		ip = t.ip.String()
-	}
-
-	return fmt.Sprintf("ip=%s; priority=%s", ip, strconv.FormatUint(uint64(t.priority), 10))
-}
-
-type tcFilters []tcFilter
-
-func (t tcFilters) String() string {
-	filterStrings := []string{}
-	for _, filter := range t {
-		filterStrings = append(filterStrings, filter.String())
-	}
-
-	return strings.Join(filterStrings, ";")
+	service networkDisruptionService
 }
 
 // serviceWatcher
@@ -118,11 +100,6 @@ type serviceWatcher struct {
 	kubernetesServiceWatcher       <-chan watch.Event
 	tcFiltersFromNamespaceServices []tcServiceFilter
 	servicesResourceVersion        string
-}
-
-type hostsWatcher struct {
-	// The only identifying info we need are the ip and filter priority
-	hostFilterMap map[v1beta1.NetworkDisruptionHostSpec]tcFilters
 }
 
 // NewNetworkDisruptionInjector creates a NetworkDisruptionInjector object with the given config,
@@ -162,10 +139,21 @@ func NewNetworkDisruptionInjector(spec v1beta1.NetworkDisruptionSpec, config Net
 		}
 	}
 
+	// Create BPF disruption engine
+	var engine *bpfdisrupt.Engine
+	if config.BPFDisruptCmdRunner != nil {
+		engine = bpfdisrupt.NewEngine(config.TrafficController, config.NetlinkAdapter, config.BPFDisruptCmdRunner, config.Log)
+	} else {
+		// Use the default generic executor for running the BPF config binary
+		cmdRunner := &network.GenericExecutor{Log: config.Log, DryRun: config.Disruption.DryRun}
+		engine = bpfdisrupt.NewEngine(config.TrafficController, config.NetlinkAdapter, cmdRunner, config.Log)
+	}
+
 	return &networkDisruptionInjector{
 		spec:       spec,
 		config:     config,
 		operations: []linkOperation{},
+		engine:     engine,
 	}, nil
 }
 
@@ -244,7 +232,10 @@ func (i *networkDisruptionInjector) Inject() error {
 	}
 
 	// mark all packets created by the targeted container with the classifying mark
-	if i.config.Disruption.Level == types.DisruptionLevelPod && !i.config.Disruption.OnInit {
+	// With the BPF disruption engine, cgroup marking is only needed when HTTP filters are active
+	// (the nested mark filter in the prio sub-tree still requires it).
+	// Without HTTP filters, the BPF classifier handles all IP-based classification.
+	if i.config.Disruption.Level == types.DisruptionLevelPod && !i.config.Disruption.OnInit && i.spec.HasHTTPFilters() {
 		if i.config.Cgroup.IsCgroupV2() { // cgroup v2 can rely on the single cgroup hierarchy relative path to mark packets
 			if err := i.config.IPTables.MarkCgroupPath(i.config.Cgroup.RelativePath(""), types.InjectorCgroupClassID); err != nil {
 				return fmt.Errorf("error injecting packet marking iptables rule: %w", err)
@@ -464,77 +455,61 @@ func (i *networkDisruptionInjector) applyOperations() error {
 	parent := "1:4"
 	handle := uint32(2)
 
-	// if the disruption is at pod level and there's no handler to notify,
-	// create a second qdisc to filter packets coming from this specific pod processes only
-	// if the disruption is applied on init, we consider that some more containers may be created within
-	// the pod so we can't scope the disruption to a specific set of containers
-	if i.config.Disruption.Level == types.DisruptionLevelPod && !i.config.Disruption.OnInit {
-		if i.spec.HasHTTPFilters() {
-			// create second prio with only 2 bands to filter traffic based on http method
-			if err := i.config.TrafficController.AddPrio(interfaces, "1:4", "2:", 2, [16]uint32{}); err != nil {
-				return fmt.Errorf("can't create a new qdisc: %w", err)
-			}
-
-			// create a third prio with only 2 bands to filter traffic based on http path
-			if err := i.config.TrafficController.AddPrio(interfaces, "2:2", "3:", 2, [16]uint32{}); err != nil {
-				return fmt.Errorf("can't create a new qdisc: %w", err)
-			}
-
-			// create a fourth prio with only 2 bands to filter traffic with a specific mark
-			if err := i.config.TrafficController.AddPrio(interfaces, "3:2", "4:", 2, [16]uint32{}); err != nil {
-				return fmt.Errorf("can't create a new qdisc: %w", err)
-			}
-
-			// create fw eBPF filters to classify packets based on http method
-			if err := i.config.TrafficController.AddBPFFilter(interfaces, "2:0", "/usr/local/bin/bpf-network-tc-filter.bpf.o", "2:2", "classifier_methods"); err != nil {
-				return fmt.Errorf("can't create the eBPF fw filter: %w", err)
-			}
-
-			// create fw eBPF filters to classify packets based on http path
-			if err := i.config.TrafficController.AddBPFFilter(interfaces, "3:0", "/usr/local/bin/bpf-network-tc-filter.bpf.o", "3:2", "classifier_paths"); err != nil {
-				return fmt.Errorf("can't create the eBPF fw filter: %w", err)
-			}
-
-			// run the program responsible to configure the maps of the eBPF tc filters
-			bpfConfigExecutor := network.NewBPFTCFilterConfigExecutor(i.config.Log, i.config.Disruption.DryRun)
-			configBPFFilterArgs := []string{}
-
-			for _, path := range i.spec.HTTP.Paths {
-				configBPFFilterArgs = append(configBPFFilterArgs, "--path", string(path))
-			}
-
-			for _, method := range i.spec.HTTP.Methods {
-				configBPFFilterArgs = append(configBPFFilterArgs, "--method", strings.ToUpper(method))
-			}
-
-			if err = i.config.TrafficController.ConfigBPFFilter(bpfConfigExecutor, configBPFFilterArgs...); err != nil {
-				return fmt.Errorf("could not update the configuration of the bpf-network-tc-filter filter: %w", err)
-			}
-
-			// create flower filter to classify packets based on their mark
-			if err := i.config.TrafficController.AddFlowerFilter(interfaces, "4:0", types.InjectorCgroupClassID, "4:2"); err != nil {
-				return fmt.Errorf("can't create the fw filter: %w", err)
-			}
-
-			// parent 4:2 refers to the 3nd band of the 4th prio qdisc
-			// handle starts from 5 because 1, 2 and 3 are used by the 4 prio qdiscs
-			parent = "4:2"
-			handle = uint32(5)
-		} else {
-			// create second prio with only 2 bands to filter traffic with a specific mark
-			if err := i.config.TrafficController.AddPrio(interfaces, "1:4", "2:", 2, [16]uint32{}); err != nil {
-				return fmt.Errorf("can't create a new qdisc: %w", err)
-			}
-
-			// create flower filter to classify packets based on their mark
-			if err := i.config.TrafficController.AddFlowerFilter(interfaces, "2:0", types.InjectorCgroupClassID, "2:2"); err != nil {
-				return fmt.Errorf("can't create the fw filter: %w", err)
-			}
-			// parent 2:2 refers to the 2nd band of the 2nd prio qdisc
-			// handle starts from 3 because 1 and 2 are used by the 2 prio qdiscs
-			parent = "2:2"
-			handle = uint32(3)
+	// When HTTP filters are active, create the nested prio/mark/eBPF chain for L7 classification.
+	// The cgroup mark is needed here to identify target pod traffic before HTTP inspection.
+	// Without HTTP filters, the BPF disruption engine at parent 1:0 handles all L3/L4 classification
+	// directly via LPM trie lookup — no nested prio/mark needed.
+	if i.config.Disruption.Level == types.DisruptionLevelPod && !i.config.Disruption.OnInit && i.spec.HasHTTPFilters() {
+		// create second prio with only 2 bands to filter traffic based on http method
+		if err := i.config.TrafficController.AddPrio(interfaces, "1:4", "2:", 2, [16]uint32{}); err != nil {
+			return fmt.Errorf("can't create a new qdisc: %w", err)
 		}
+
+		// create a third prio with only 2 bands to filter traffic based on http path
+		if err := i.config.TrafficController.AddPrio(interfaces, "2:2", "3:", 2, [16]uint32{}); err != nil {
+			return fmt.Errorf("can't create a new qdisc: %w", err)
+		}
+
+		// create a fourth prio with only 2 bands to filter traffic with a specific mark
+		if err := i.config.TrafficController.AddPrio(interfaces, "3:2", "4:", 2, [16]uint32{}); err != nil {
+			return fmt.Errorf("can't create a new qdisc: %w", err)
+		}
+
+		// create fw eBPF filters to classify packets based on http method
+		if err := i.config.TrafficController.AddBPFFilter(interfaces, "2:0", "/usr/local/bin/bpf-network-tc-filter.bpf.o", "2:2", "classifier_methods"); err != nil {
+			return fmt.Errorf("can't create the eBPF fw filter: %w", err)
+		}
+
+		// create fw eBPF filters to classify packets based on http path
+		if err := i.config.TrafficController.AddBPFFilter(interfaces, "3:0", "/usr/local/bin/bpf-network-tc-filter.bpf.o", "3:2", "classifier_paths"); err != nil {
+			return fmt.Errorf("can't create the eBPF fw filter: %w", err)
+		}
+
+		// run the program responsible to configure the maps of the eBPF tc filters
+		bpfConfigExecutor := network.NewBPFTCFilterConfigExecutor(i.config.Log, i.config.Disruption.DryRun)
+		configBPFFilterArgs := []string{}
+
+		for _, path := range i.spec.HTTP.Paths {
+			configBPFFilterArgs = append(configBPFFilterArgs, "--path", string(path))
+		}
+
+		for _, method := range i.spec.HTTP.Methods {
+			configBPFFilterArgs = append(configBPFFilterArgs, "--method", strings.ToUpper(method))
+		}
+
+		if err = i.config.TrafficController.ConfigBPFFilter(bpfConfigExecutor, configBPFFilterArgs...); err != nil {
+			return fmt.Errorf("could not update the configuration of the bpf-network-tc-filter filter: %w", err)
+		}
+
+		// create flower filter to classify packets based on their mark
+		if err := i.config.TrafficController.AddFlowerFilter(interfaces, "4:0", types.InjectorCgroupClassID, "4:2"); err != nil {
+			return fmt.Errorf("can't create the fw filter: %w", err)
+		}
+
+		// parent 4:2 refers to the 3nd band of the 4th prio qdisc
+		// handle starts from 5 because 1, 2 and 3 are used by the 4 prio qdiscs
+		parent = "4:2"
+		handle = uint32(5)
 	}
 
 	// add operations
@@ -550,139 +525,118 @@ func (i *networkDisruptionInjector) applyOperations() error {
 		handle++
 	}
 
-	// the following lines are used to exclude some critical packets from any disruption such as health check probes
-	// depending on the network configuration, only one of those filters can be useful but we must add all of them
-	// those filters are only added if the related interface has been impacted by a disruption so far
-	// NOTE: those filters must be added after every other filters applied to the interface so they are used first
+	// Build safeguard IPs for BPF ALLOW rules (prevent disruption of critical traffic)
+	safeguardIPs := []*net.IPNet{}
+
 	switch i.config.Disruption.Level {
 	case types.DisruptionLevelPod:
-		// this filter allows the pod to communicate with the default route gateway IP
 		for _, defaultRoute := range defaultRoutes {
-			gatewayIP := &net.IPNet{
+			safeguardIPs = append(safeguardIPs, &net.IPNet{
 				IP:   defaultRoute.Gateway(),
 				Mask: net.CIDRMask(32, 32),
-			}
-
-			if _, err := i.config.TrafficController.AddFilter([]string{defaultRoute.Link().Name()}, "1:0", "", nil, gatewayIP, 0, 0, network.TCP, network.ConnStateUndefined, "1:1"); err != nil {
-				return fmt.Errorf("can't add the default route gateway IP filter: %w", err)
-			}
+			})
 		}
 
-		// this filter allows the pod to communicate with the node IP
-		if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", "", nil, nodeIPNet, 0, 0, network.TCP, network.ConnStateUndefined, "1:1"); err != nil {
-			return fmt.Errorf("can't add the target pod node IP filter: %w", err)
-		}
+		safeguardIPs = append(safeguardIPs, nodeIPNet)
 	case types.DisruptionLevelNode:
-		// GENERIC SAFEGUARDS
-		// allow SSH connections on all interfaces (port 22/tcp)
-		if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", "", nil, nil, 22, 0, network.TCP, network.ConnStateUndefined, "1:1"); err != nil {
-			return fmt.Errorf("error adding filter allowing SSH connections: %w", err)
+		safeguardIPs = append(safeguardIPs, metadataIPNet)
+		// ARP is non-IP traffic that BPF naturally passes through (no safeguard needed).
+	}
+
+	// Resolve all hosts and allowed hosts to IPs
+	resolvedIPs := map[string][]*net.IPNet{}
+
+	allHosts := make([]v1beta1.NetworkDisruptionHostSpec, 0, len(i.spec.Hosts)+len(i.spec.AllowedHosts))
+	allHosts = append(allHosts, i.spec.Hosts...)
+	allHosts = append(allHosts, i.spec.AllowedHosts...)
+
+	for _, host := range allHosts {
+		if host.Host == "" {
+			continue
 		}
 
-		// CLOUD PROVIDER SPECIFIC SAFEGUARDS
-		// allow cloud provider health checks on all interfaces(arp)
-		if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", "", nil, nil, 0, 0, network.ARP, network.ConnStateUndefined, "1:1"); err != nil {
-			return fmt.Errorf("error adding filter allowing cloud providers health checks (ARP packets): %w", err)
+		ips, err := resolveHost(i.config.DNSClient, host.Host, host.DNSResolver)
+		if err != nil {
+			i.config.Log.Warnw("error resolving host for BPF rules", tags.HostKey, host.Host, tags.ErrorKey, err)
+
+			continue
 		}
 
-		// allow cloud provider metadata service communication
-		if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", "", nil, metadataIPNet, 0, 0, network.TCP, network.ConnStateUndefined, "1:1"); err != nil {
-			return fmt.Errorf("error adding filter allowing cloud providers metadata service requests: %w", err)
+		if host.Percentage != nil && *host.Percentage < 100 {
+			seed := fmt.Sprintf("%s-%s", host.Host, i.config.Disruption.DisruptionUID)
+			ips = network.SelectIPsByPercentage(ips, *host.Percentage, seed)
+		}
+
+		resolvedIPs[host.Host] = ips
+	}
+
+	// Warn about connState not being supported in BPF mode
+	for _, host := range i.spec.Hosts {
+		if host.ConnState != "" {
+			i.config.Log.Warnw("connState is not supported in BPF disruption mode and will be ignored",
+				tags.HostKey, host.Host, "connState", host.ConnState)
 		}
 	}
 
-	// add filters for allowed hosts
-	if _, err := i.addFiltersForHosts(interfaces, i.spec.AllowedHosts, "1:1"); err != nil {
-		return fmt.Errorf("error adding filter for allowed hosts: %w", err)
+	// Store safeguard state for use by watchers during rule rebuilds
+	i.safeguardIPs = safeguardIPs
+
+	// Build BPF rules from spec and attach the disruption engine
+	rules := specToRules(i.spec, i.spec.Hosts, resolvedIPs, safeguardIPs)
+
+	// Add SSH safeguard for node-level disruptions (port 22/TCP ALLOW on all IPs)
+	if i.config.Disruption.Level == types.DisruptionLevelNode {
+		sshRule := bpfdisrupt.Rule{
+			Direction: bpfdisrupt.DirEgress,
+			CIDR:      "0.0.0.0/0",
+			Action:    bpfdisrupt.ActionAllow,
+			Port:      22,
+			Protocol:  "tcp",
+		}
+		i.sshSafeguard = []bpfdisrupt.Rule{sshRule}
+		rules = append(rules, sshRule)
 	}
 
-	// create tc filters depending on the given hosts to match
-	// redirect all packets of all interfaces if no host is given
-	if len(i.spec.Hosts) == 0 && len(i.spec.Services) == 0 {
-		_, nullIP, _ := net.ParseCIDR("0.0.0.0/0")
+	needsShaping := hasIngressShaping(i.spec)
 
-		for _, protocol := range network.AllProtocols(network.ALL) {
-			if _, err := i.config.TrafficController.AddFilter(interfaces, "1:0", "", nil, nullIP, 0, 0, protocol, network.ConnStateUndefined, "1:4"); err != nil {
-				return fmt.Errorf("can't add a filter: %w", err)
+	if err := i.engine.Attach(interfaces, rules, i.config.Disruption.DisruptionUID, needsShaping); err != nil {
+		return fmt.Errorf("error attaching BPF disruption engine: %w", err)
+	}
+
+	// If ingress shaping is needed, build netem/tbf chain on IFB device
+	if needsShaping {
+		ifbIfaces := []string{i.engine.IFBName()}
+
+		if err := i.config.TrafficController.AddPrio(ifbIfaces, "root", "1:", 4, priomap); err != nil {
+			return fmt.Errorf("can't create IFB prio qdisc: %w", err)
+		}
+
+		ifbParent := "1:4"
+		ifbHandle := uint32(2)
+
+		for _, operation := range i.operations {
+			if err := operation(ifbIfaces, ifbParent, fmt.Sprintf("%d:", ifbHandle)); err != nil {
+				return fmt.Errorf("could not apply operation on IFB device: %w", err)
 			}
-		}
-	} else {
-		// apply filters for given hosts, re-resolving on a given interval and adding/deleting filters as needed
-		if err := i.handleFiltersForHosts(interfaces, "1:4"); err != nil {
-			return fmt.Errorf("error adding filters for given hosts: %w", err)
-		}
 
-		// add or delete filters for given services depending on changes on the destination kubernetes services and associated pods
-		if err := i.handleFiltersForServices(interfaces, "1:4"); err != nil {
+			ifbParent = fmt.Sprintf("%d:", ifbHandle)
+			ifbHandle++
+		}
+	}
+
+	// Start BPF host watcher for DNS re-resolution (replaces flower filter host watcher)
+	if len(i.spec.Hosts) > 0 {
+		i.startBPFHostWatcher(safeguardIPs)
+	}
+
+	// Start service watchers (services are resolved to BPF rules via engine.UpdateRules)
+	if len(i.spec.Services) > 0 {
+		if err := i.handleFiltersForServices(); err != nil {
 			return fmt.Errorf("error adding filters for given services: %w", err)
 		}
 	}
 
 	return nil
-}
-
-// addServiceFilters adds a list of service tc filters on a list of interfaces
-func (i *networkDisruptionInjector) addServiceFilters(serviceName string, filters []tcServiceFilter, interfaces []string, flowid string) ([]tcServiceFilter, error) {
-	var err error
-
-	builtServices := []tcServiceFilter{}
-
-	for _, filter := range filters {
-		i.config.Log.Infow("found service endpoint",
-			tags.ResolvedEndpointKey, filter.service.String(),
-			tags.ResolvedServiceKey, serviceName,
-		)
-
-		for _, protocol := range network.AllProtocols(filter.service.protocol) {
-			filter.priority, err = i.config.TrafficController.AddFilter(interfaces, "1:0", "", nil, filter.service.ip, 0, filter.service.port, protocol, network.ConnStateUndefined, flowid)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		i.config.Log.Infow(fmt.Sprintf("added a tc filter for service %s-%s with priority %d", serviceName, filter.service, filter.priority), tags.InterfacesKey, interfaces)
-
-		builtServices = append(builtServices, filter)
-	}
-
-	return builtServices, nil
-}
-
-// removeServiceFilter delete tc filters for a k8s service
-func (i *networkDisruptionInjector) removeServiceFilter(interfaces []string, tcFilter tcServiceFilter) error {
-	if err := i.removeTcFilter(interfaces, tcFilter.priority); err != nil {
-		return err
-	}
-
-	i.config.Log.Infow("tc filter deleted for all interfaces", tags.TcServiceFilterKey, tcFilter, tags.InterfacesKey, interfaces)
-
-	return nil
-}
-
-// delete tc filters using only its priority
-func (i *networkDisruptionInjector) removeTcFilter(interfaces []string, priority uint32) error {
-	for _, iface := range interfaces {
-		if err := i.config.TrafficController.DeleteFilter(iface, priority); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// removeServiceFiltersInList delete a list of tc filters inside of another list of tc filters
-func (i *networkDisruptionInjector) removeServiceFiltersInList(interfaces []string, tcFilters []tcServiceFilter, tcFiltersToRemove []tcServiceFilter) ([]tcServiceFilter, error) {
-	for _, serviceToRemove := range tcFiltersToRemove {
-		if deletedIdx := i.findServiceFilter(tcFilters, serviceToRemove); deletedIdx >= 0 {
-			if err := i.removeServiceFilter(interfaces, tcFilters[deletedIdx]); err != nil {
-				return nil, err
-			}
-
-			tcFilters = append(tcFilters[:deletedIdx], tcFilters[deletedIdx+1:]...)
-		}
-	}
-
-	return tcFilters, nil
 }
 
 // buildServiceFiltersFromPod builds a list of tc filters per pod endpoint using the service ports
@@ -809,43 +763,8 @@ func (i *networkDisruptionInjector) selectServiceFiltersByPercentage(filters []t
 	return result
 }
 
-// handlePodEndpointsOnServicePortsChange on service changes, delete old filters with the wrong service ports and create new filters
-func (i *networkDisruptionInjector) handlePodEndpointsServiceFiltersOnKubernetesServiceChanges(serviceSpec v1beta1.NetworkDisruptionServiceSpec, oldFilters []tcServiceFilter, pods []v1.Pod, servicePorts []v1.ServicePort, interfaces []string, flowid string) ([]tcServiceFilter, error) {
-	tcFiltersToCreate, finalTcFilters := []tcServiceFilter{}, []tcServiceFilter{}
-
-	for _, pod := range pods {
-		if pod.Status.PodIP != "" { // pods without ip are newly created and will be picked up in the other watcher
-			tcFiltersToCreate = append(tcFiltersToCreate, i.buildServiceFiltersFromPod(pod, servicePorts)...) // we build the updated list of tc filters
-		}
-	}
-
-	// apply percentage-based selection if specified
-	if serviceSpec.Percentage != nil && *serviceSpec.Percentage < 100 && *serviceSpec.Percentage > 0 {
-		tcFiltersToCreate = i.selectServiceFiltersByPercentage(tcFiltersToCreate, *serviceSpec.Percentage, serviceSpec.Name, serviceSpec.Namespace)
-	}
-
-	// update the list of tc filters by deleting old ones not in the new list of tc filters and creating new tc filters
-	for _, oldFilter := range oldFilters {
-		if idx := i.findServiceFilter(tcFiltersToCreate, oldFilter); idx >= 0 {
-			finalTcFilters = append(finalTcFilters, oldFilter)
-			tcFiltersToCreate = append(tcFiltersToCreate[:idx], tcFiltersToCreate[idx+1:]...)
-		} else { // delete tc filters which are not in the updated list of tc filters
-			if err := i.removeServiceFilter(interfaces, oldFilter); err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	createdTcFilters, err := i.addServiceFilters(serviceSpec.Name, tcFiltersToCreate, interfaces, flowid)
-	if err != nil {
-		return nil, err
-	}
-
-	return append(finalTcFilters, createdTcFilters...), nil
-}
-
-// handleKubernetesPodsChanges for every changes happening in the kubernetes service destination, we update the tc service filters
-func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.Event, watcher *serviceWatcher, interfaces []string, flowid string) error {
+// handleKubernetesServiceChanges for every changes happening in the kubernetes service destination, we update the BPF disruption rules
+func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.Event, watcher *serviceWatcher) error {
 	var err error
 
 	if event.Type == watch.Error {
@@ -888,35 +807,36 @@ func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.E
 		watcher.servicePorts, _ = watcher.watchedServiceSpec.ExtractAffectedPortsInServicePorts(service)
 	}
 
-	watcher.tcFiltersFromPodEndpoints, err = i.handlePodEndpointsServiceFiltersOnKubernetesServiceChanges(watcher.watchedServiceSpec, watcher.tcFiltersFromPodEndpoints, podList.Items, watcher.servicePorts, interfaces, flowid)
-	if err != nil {
-		return err
+	// Rebuild pod endpoint list from current pods
+	watcher.tcFiltersFromPodEndpoints = []tcServiceFilter{}
+
+	for _, pod := range podList.Items {
+		if pod.Status.PodIP != "" {
+			watcher.tcFiltersFromPodEndpoints = append(watcher.tcFiltersFromPodEndpoints, i.buildServiceFiltersFromPod(pod, watcher.servicePorts)...)
+		}
+	}
+
+	// Apply percentage-based selection if specified
+	if watcher.watchedServiceSpec.Percentage != nil && *watcher.watchedServiceSpec.Percentage < 100 && *watcher.watchedServiceSpec.Percentage > 0 {
+		watcher.tcFiltersFromPodEndpoints = i.selectServiceFiltersByPercentage(watcher.tcFiltersFromPodEndpoints, *watcher.watchedServiceSpec.Percentage, watcher.watchedServiceSpec.Name, watcher.watchedServiceSpec.Namespace)
 	}
 
 	nsServicesTcFilters := i.buildServiceFiltersFromService(*service, watcher.servicePorts)
 
 	switch event.Type {
-	case watch.Added:
-		createdTcFilters, err := i.addServiceFilters(watcher.watchedServiceSpec.Name, nsServicesTcFilters, interfaces, flowid)
-		if err != nil {
-			return err
-		}
-
-		watcher.tcFiltersFromNamespaceServices = append(watcher.tcFiltersFromNamespaceServices, createdTcFilters...)
-	case watch.Modified:
-		if _, err := i.removeServiceFiltersInList(interfaces, watcher.tcFiltersFromNamespaceServices, watcher.tcFiltersFromNamespaceServices); err != nil {
-			return err
-		}
-
-		watcher.tcFiltersFromNamespaceServices, err = i.addServiceFilters(watcher.watchedServiceSpec.Name, nsServicesTcFilters, interfaces, flowid)
-		if err != nil {
-			return err
-		}
+	case watch.Added, watch.Modified:
+		watcher.tcFiltersFromNamespaceServices = nsServicesTcFilters
 	case watch.Deleted:
-		watcher.tcFiltersFromNamespaceServices, err = i.removeServiceFiltersInList(interfaces, watcher.tcFiltersFromNamespaceServices, nsServicesTcFilters)
-		if err != nil {
-			return err
-		}
+		watcher.tcFiltersFromNamespaceServices = []tcServiceFilter{}
+	}
+
+	// Convert all service endpoints to BPF rules and update the engine
+	allServiceFilters := make([]tcServiceFilter, 0, len(watcher.tcFiltersFromPodEndpoints)+len(watcher.tcFiltersFromNamespaceServices))
+	allServiceFilters = append(allServiceFilters, watcher.tcFiltersFromPodEndpoints...)
+	allServiceFilters = append(allServiceFilters, watcher.tcFiltersFromNamespaceServices...)
+
+	if err := i.updateServiceRules(serviceEndpointsToRules(allServiceFilters)); err != nil {
+		i.config.Log.Warnw("error updating BPF rules for service changes", tags.ErrorKey, err)
 	}
 
 	if err := i.config.Netns.Exit(); err != nil {
@@ -926,8 +846,8 @@ func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.E
 	return nil
 }
 
-// handleKubernetesPodsChanges for every changes happening in the pods related to the kubernetes service destination, we update the tc service filters
-func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Event, watcher *serviceWatcher, interfaces []string, flowid string) error {
+// handleKubernetesPodsChanges for every changes happening in the pods related to the kubernetes service destination, we update the BPF disruption rules
+func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Event, watcher *serviceWatcher) error {
 	var err error
 
 	if event.Type == watch.Error {
@@ -956,27 +876,22 @@ func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Even
 		return fmt.Errorf("unable to find service %s/%s endpoints to filter", watcher.watchedServiceSpec.Name, watcher.watchedServiceSpec.Namespace)
 	}
 
+	needsUpdate := false
+
 	switch event.Type {
 	case watch.Added:
-		// if the filter already exists, we do nothing
 		if i.findServiceFilter(watcher.tcFiltersFromPodEndpoints, tcFiltersFromPod[0]) >= 0 {
-			break
+			break // filter already exists
 		}
 
 		if pod.Status.PodIP != "" {
-			createdTcFilters, err := i.addServiceFilters(watcher.watchedServiceSpec.Name, tcFiltersFromPod, interfaces, flowid)
-			if err != nil {
-				return err
-			}
-
-			watcher.tcFiltersFromPodEndpoints = append(watcher.tcFiltersFromPodEndpoints, createdTcFilters...)
+			watcher.tcFiltersFromPodEndpoints = append(watcher.tcFiltersFromPodEndpoints, tcFiltersFromPod...)
+			needsUpdate = true
 		} else {
 			i.config.Log.Infow("newly created destination port has no IP yet, adding to the watch list of pods", tags.DestinationPodNameKey, pod.Name)
-
 			watcher.podsWithoutIPs = append(watcher.podsWithoutIPs, pod.Name)
 		}
 	case watch.Modified:
-		// From the list of pods without IPs that has been added, we create the one that got the IP assigned
 		podToCreateIdx := -1
 
 		for idx, podName := range watcher.podsWithoutIPs {
@@ -988,18 +903,26 @@ func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Even
 		}
 
 		if podToCreateIdx > -1 {
-			tcFilters, err := i.addServiceFilters(watcher.watchedServiceSpec.Name, tcFiltersFromPod, interfaces, flowid)
-			if err != nil {
-				return err
-			}
-
-			watcher.tcFiltersFromPodEndpoints = append(watcher.tcFiltersFromPodEndpoints, tcFilters...)
+			watcher.tcFiltersFromPodEndpoints = append(watcher.tcFiltersFromPodEndpoints, tcFiltersFromPod...)
 			watcher.podsWithoutIPs = append(watcher.podsWithoutIPs[:podToCreateIdx], watcher.podsWithoutIPs[podToCreateIdx+1:]...)
+			needsUpdate = true
 		}
 	case watch.Deleted:
-		watcher.tcFiltersFromPodEndpoints, err = i.removeServiceFiltersInList(interfaces, watcher.tcFiltersFromPodEndpoints, tcFiltersFromPod)
-		if err != nil {
-			return err
+		for _, toRemove := range tcFiltersFromPod {
+			if idx := i.findServiceFilter(watcher.tcFiltersFromPodEndpoints, toRemove); idx >= 0 {
+				watcher.tcFiltersFromPodEndpoints = append(watcher.tcFiltersFromPodEndpoints[:idx], watcher.tcFiltersFromPodEndpoints[idx+1:]...)
+				needsUpdate = true
+			}
+		}
+	}
+
+	if needsUpdate {
+		allServiceFilters := make([]tcServiceFilter, 0, len(watcher.tcFiltersFromPodEndpoints)+len(watcher.tcFiltersFromNamespaceServices))
+		allServiceFilters = append(allServiceFilters, watcher.tcFiltersFromPodEndpoints...)
+		allServiceFilters = append(allServiceFilters, watcher.tcFiltersFromNamespaceServices...)
+
+		if err := i.updateServiceRules(serviceEndpointsToRules(allServiceFilters)); err != nil {
+			i.config.Log.Warnw("error updating BPF rules for pod changes", tags.ErrorKey, err)
 		}
 	}
 
@@ -1011,7 +934,7 @@ func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Even
 }
 
 // watchServiceChanges for every changes happening in the kubernetes service destination or in the pods related to the kubernetes service destination, we update the tc service filters
-func (i *networkDisruptionInjector) watchServiceChanges(ctx context.Context, watcher serviceWatcher, interfaces []string, flowid string) {
+func (i *networkDisruptionInjector) watchServiceChanges(ctx context.Context, watcher serviceWatcher) {
 	log := i.config.Log.With(tags.ServiceNamespaceKey, watcher.watchedServiceSpec.Namespace, tags.ServiceNameKey, watcher.watchedServiceSpec.Name)
 
 	for {
@@ -1063,12 +986,8 @@ func (i *networkDisruptionInjector) watchServiceChanges(ctx context.Context, wat
 				watcherLog := log.With(tags.WatcherNameKey, "kubernetesServiceWatcher")
 				watcherLog.Debugw("changes in service", tags.EventTypeKey, event.Type)
 
-				if err := i.handleKubernetesServiceChanges(event, &watcher, interfaces, flowid); err != nil {
-					watcherLog.Errorw("couldn't apply changes to tc filters: Rebuilding watcher", tags.ErrorKey, err)
-
-					if _, err = i.removeServiceFiltersInList(interfaces, watcher.tcFiltersFromNamespaceServices, watcher.tcFiltersFromNamespaceServices); err != nil {
-						watcherLog.Errorw("couldn't clean list of tc filters", tags.ErrorKey, err)
-					}
+				if err := i.handleKubernetesServiceChanges(event, &watcher); err != nil {
+					watcherLog.Errorw("couldn't apply service changes: Rebuilding watcher", tags.ErrorKey, err)
 
 					watcher.kubernetesServiceWatcher = nil // restart the watcher in case of error
 					watcher.tcFiltersFromNamespaceServices = []tcServiceFilter{}
@@ -1081,12 +1000,8 @@ func (i *networkDisruptionInjector) watchServiceChanges(ctx context.Context, wat
 				watcherLog := log.With(tags.WatcherNameKey, "kubernetesPodEndpointsWatcher")
 				watcherLog.Debugw(fmt.Sprintf("changes in pods of service %s/%s", watcher.watchedServiceSpec.Name, watcher.watchedServiceSpec.Namespace), tags.EventTypeKey, event.Type)
 
-				if err := i.handleKubernetesPodsChanges(event, &watcher, interfaces, flowid); err != nil {
-					watcherLog.Errorw("couldn't apply changes to tc filters: Rebuilding watcher", tags.ErrorKey, err)
-
-					if _, err = i.removeServiceFiltersInList(interfaces, watcher.tcFiltersFromPodEndpoints, watcher.tcFiltersFromPodEndpoints); err != nil {
-						watcherLog.Errorw("couldn't clean list of tc filters", tags.ErrorKey, err)
-					}
+				if err := i.handleKubernetesPodsChanges(event, &watcher); err != nil {
+					watcherLog.Errorw("couldn't apply pod changes: Rebuilding watcher", tags.ErrorKey, err)
 
 					watcher.kubernetesPodEndpointsWatcher = nil // restart the watcher in case of error
 					watcher.tcFiltersFromPodEndpoints = []tcServiceFilter{}
@@ -1096,8 +1011,9 @@ func (i *networkDisruptionInjector) watchServiceChanges(ctx context.Context, wat
 	}
 }
 
-// handleFiltersForServices creates tc filters on given interfaces for services in disruption spec classifying matching packets in the given flowid
-func (i *networkDisruptionInjector) handleFiltersForServices(interfaces []string, flowid string) error {
+// handleFiltersForServices sets up Kubernetes service watchers that resolve service endpoints
+// to BPF disruption rules and update the engine when endpoints change.
+func (i *networkDisruptionInjector) handleFiltersForServices() error {
 	// build the watchers to handle changes in services and pod endpoints
 	serviceWatchers := []serviceWatcher{}
 
@@ -1138,206 +1054,10 @@ func (i *networkDisruptionInjector) handleFiltersForServices(interfaces []string
 	i.serviceWatcherCancel = cancelFunc
 
 	for _, serviceWatcher := range serviceWatchers {
-		go i.watchServiceChanges(ctx, serviceWatcher, interfaces, flowid)
+		go i.watchServiceChanges(ctx, serviceWatcher)
 	}
 
 	return nil
-}
-
-// handleFiltersForServices creates tc filters on given interfaces for hosts in disruption spec classifying matching packets in the given flowid
-func (i *networkDisruptionInjector) handleFiltersForHosts(interfaces []string, flowid string) error {
-	hosts := hostsWatcher{}
-
-	hostFilterMap, err := i.addFiltersForHosts(interfaces, i.spec.Hosts, flowid)
-	if err != nil {
-		return err
-	}
-
-	hosts.hostFilterMap = hostFilterMap
-
-	var ctx context.Context
-
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	i.hostWatcherCancel = cancelFunc
-
-	go i.watchHostChanges(ctx, interfaces, hosts, flowid)
-
-	return nil
-}
-
-// watchHostChanges watches for changes to the resolved IP for hosts
-func (i *networkDisruptionInjector) watchHostChanges(ctx context.Context, interfaces []string, hosts hostsWatcher, flowid string) {
-	hostWatcherLog := i.config.Log.With(tags.RetryIntervalKey, i.config.HostResolveInterval.String())
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-time.After(i.config.HostResolveInterval):
-			changedHosts := []v1beta1.NetworkDisruptionHostSpec{}
-
-			if err := i.config.Netns.Enter(); err != nil {
-				hostWatcherLog.Errorw("unable to enter the given container network namespace, retrying on next watch occurrence", tags.ErrorKey, err)
-				continue
-			}
-
-		perHost:
-			for host, currentTcFilters := range hosts.hostFilterMap {
-				newIps, err := resolveHost(i.config.DNSClient, host.Host, host.DNSResolver)
-				if err != nil {
-					hostWatcherLog.Errorw("error resolving Host", tags.ErrorKey, err, tags.HostKey, host.Host)
-
-					// If we can't get a new set of IPs for this host, just move on to the next one
-					continue
-				}
-
-				// apply percentage-based selection if specified
-				if host.Percentage != nil && *host.Percentage < 100 {
-					seed := fmt.Sprintf("%s-%s", host.Host, i.config.Disruption.DisruptionUID)
-					newIps = network.SelectIPsByPercentage(newIps, *host.Percentage, seed)
-				}
-
-				oldIps := []*net.IPNet{}
-
-				for _, currentTcFilter := range currentTcFilters {
-					if !containsIP(newIps, currentTcFilter.ip) {
-						// If any of the IPs have changed, lets completely reset the filters for this host
-						hostWatcherLog.Debugw("outdated ip found, will update filters for host",
-							tags.HostKey, host.Host,
-							tags.OutdatedIPKey, currentTcFilter.ip.String(),
-						)
-
-						changedHosts = append(changedHosts, host)
-
-						continue perHost
-					}
-
-					// We may have multiple tc filters for a single IP, we need to build just a list of IPs so we can check the count
-					if !containsIP(oldIps, currentTcFilter.ip) {
-						oldIps = append(oldIps, currentTcFilter.ip)
-					}
-				}
-
-				if len(newIps) != len(oldIps) {
-					hostWatcherLog.Debugw(fmt.Sprintf("%d ips found, expected %d. will update filters for host", len(newIps), len(oldIps)), tags.HostKey, host.Host, tags.NewIPsKey, newIps, tags.OldIpsKey, oldIps)
-					// If we have more or fewer IPs than before, we obviously have a change and need to update the tc filters
-					changedHosts = append(changedHosts, host)
-				}
-			}
-
-			if len(changedHosts) > 0 {
-				for _, changedHost := range changedHosts {
-					for _, filter := range hosts.hostFilterMap[changedHost] {
-						if err := i.removeTcFilter(interfaces, filter.priority); err != nil {
-							if strings.Contains(err.Error(), "Filter with specified priority/protocol not found") {
-								hostWatcherLog.Warnw("could not find outdated tc filter", tags.ErrorKey, err, tags.HostKey, changedHost.Host, tags.FilterIPKey, filter.ip, tags.FilterPriorityKey, filter.priority)
-							} else {
-								hostWatcherLog.Errorw("error removing out of date tc filter", tags.ErrorKey, err, tags.HostKey, changedHost.Host) // Clean() removes the entire qdiscs, thus there is no risk of leaking any filters here if Clean succeeds
-							}
-						}
-					}
-				}
-
-				filterMap, err := i.addFiltersForHosts(interfaces, changedHosts, flowid)
-				if err != nil {
-					hostWatcherLog.Errorw("error updating filters for hosts", tags.HostsKey, changedHosts, tags.ErrorKey, err)
-					continue
-				}
-
-				for changedHost, filter := range filterMap {
-					hosts.hostFilterMap[changedHost] = filter
-				}
-			}
-
-			if err := i.config.Netns.Exit(); err != nil {
-				hostWatcherLog.Errorw("unable to exit the given container network namespace", tags.ErrorKey, err)
-			}
-		}
-	}
-}
-
-func containsIP(ips []*net.IPNet, lookupIP *net.IPNet) bool {
-	for _, ip := range ips {
-		if ip.String() == lookupIP.String() { // Need to compare the final strings with subnets
-			return true
-		}
-	}
-
-	return false
-}
-
-// addFiltersForHosts creates tc filters on given interfaces for given hosts classifying matching packets in the given flowid
-func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, hosts []v1beta1.NetworkDisruptionHostSpec, flowid string) (map[v1beta1.NetworkDisruptionHostSpec]tcFilters, error) {
-	hostFilterMap := map[v1beta1.NetworkDisruptionHostSpec]tcFilters{}
-
-	for _, host := range hosts {
-		if err := i.config.InjectorCtx.Err(); err != nil {
-			i.config.Log.Warnw("interrupting adding filters for hosts", tags.ErrorKey, err)
-
-			return nil, nil
-		}
-
-		// resolve given hosts if needed
-		ips, err := resolveHost(i.config.DNSClient, host.Host, host.DNSResolver)
-		if err != nil {
-			return nil, fmt.Errorf("error resolving given host %s: %w", host.Host, err)
-		}
-
-		i.config.Log.Infof("resolved %s as %s", host.Host, ips)
-
-		// apply percentage-based selection if specified
-		if host.Percentage != nil && *host.Percentage < 100 && *host.Percentage > 0 {
-			// use disruption UID as seed for consistent selection across all pods in the same disruption run
-			seed := fmt.Sprintf("%s-%s", host.Host, i.config.Disruption.DisruptionUID)
-			originalCount := len(ips)
-			ips = network.SelectIPsByPercentage(ips, *host.Percentage, seed)
-			i.config.Log.Infow("selected subset of IPs based on percentage",
-				tags.HostKey, host.Host,
-				"percentage", *host.Percentage,
-				"original_count", originalCount,
-				"selected_count", len(ips),
-			)
-		}
-
-		filtersForHost := tcFilters{}
-
-		for _, ip := range ips {
-			var (
-				srcPort, dstPort int
-				srcIP, dstIP     *net.IPNet
-			)
-
-			// handle flow direction
-			switch host.Flow {
-			case v1beta1.FlowIngress:
-				srcPort = host.Port
-				srcIP = ip
-			default:
-				dstPort = host.Port
-				dstIP = ip
-			}
-
-			// cast connection state
-			connState := network.NewConnState(host.ConnState)
-			for _, protocol := range network.AllProtocols(host.Protocol) {
-				// create tc filter
-				priority, err := i.config.TrafficController.AddFilter(interfaces, "1:0", "", srcIP, dstIP, srcPort, dstPort, protocol, connState, flowid)
-				if err != nil {
-					return nil, fmt.Errorf("error adding filter for host %s: %w", host.Host, err)
-				}
-
-				filtersForHost = append(filtersForHost, tcFilter{
-					ip:       ip,
-					priority: priority,
-				})
-			}
-		}
-
-		i.config.Log.Debugw("tc filters created for host", tags.HostKey, host, tags.FiltersKey, filtersForHost)
-		hostFilterMap[host] = filtersForHost
-	}
-
-	return hostFilterMap, nil
 }
 
 // AddNetem adds network disruptions using the drivers in the networkDisruptionInjector
@@ -1378,6 +1098,13 @@ func (i *networkDisruptionInjector) clearOperations() error {
 		interfaces = append(interfaces, link.Name())
 	}
 
+	// Detach BPF disruption engine (removes clsact qdisc and IFB device)
+	if i.engine != nil {
+		if err := i.engine.Detach(); err != nil {
+			i.config.Log.Warnw("error detaching BPF disruption engine", tags.ErrorKey, err)
+		}
+	}
+
 	// clear link qdisc if needed
 	if err := i.config.TrafficController.ClearQdisc(interfaces); err != nil {
 		return fmt.Errorf("error deleting root qdisc: %w", err)
@@ -1387,6 +1114,259 @@ func (i *networkDisruptionInjector) clearOperations() error {
 	i.operations = []linkOperation{}
 
 	return nil
+}
+
+// specToRules converts a NetworkDisruptionSpec and resolved hosts into BPF disruption rules.
+// safeguardIPs are added as ALLOW rules to prevent disruption of critical traffic.
+func specToRules(spec v1beta1.NetworkDisruptionSpec, hosts []v1beta1.NetworkDisruptionHostSpec, resolvedIPs map[string][]*net.IPNet, safeguardIPs []*net.IPNet) []bpfdisrupt.Rule {
+	rules := []bpfdisrupt.Rule{}
+
+	// Add safeguard IPs as ALLOW rules (LPM /32 entries beat /0 match-all)
+	for _, ip := range safeguardIPs {
+		rules = append(rules, bpfdisrupt.Rule{
+			Direction: bpfdisrupt.DirEgress,
+			CIDR:      ip.String(),
+			Action:    bpfdisrupt.ActionAllow,
+		})
+	}
+
+	// Add allowed hosts as ALLOW rules
+	for _, host := range spec.AllowedHosts {
+		ips, ok := resolvedIPs[host.Host]
+		if !ok {
+			continue
+		}
+
+		for _, ip := range ips {
+			rules = append(rules, bpfdisrupt.Rule{
+				Direction: bpfdisrupt.DirEgress, // allowed hosts affect both directions via LPM precedence
+				CIDR:      ip.String(),
+				Action:    bpfdisrupt.ActionAllow,
+			})
+		}
+	}
+
+	// If no hosts specified, add match-all rule
+	if len(hosts) == 0 {
+		rules = append(rules, bpfdisrupt.Rule{
+			Direction: bpfdisrupt.DirEgress,
+			CIDR:      "0.0.0.0/0",
+			Action:    bpfdisrupt.ActionDisrupt,
+		})
+
+		return rules
+	}
+
+	// Add rules for each host
+	for _, host := range hosts {
+		ips, ok := resolvedIPs[host.Host]
+		if !ok {
+			continue
+		}
+
+		// Determine direction
+		dir := bpfdisrupt.DirEgress
+		if host.Flow == v1beta1.FlowIngress {
+			dir = bpfdisrupt.DirIngress
+		}
+
+		// Determine action
+		action := bpfdisrupt.ActionDisrupt
+		dropPct := 0
+
+		// For ingress-only drop (no delay/bandwidth/corrupt/duplicate), use ActionDrop
+		if dir == bpfdisrupt.DirIngress && spec.Drop > 0 &&
+			spec.Delay == 0 && spec.BandwidthLimit == 0 && spec.Corrupt == 0 && spec.Duplicate == 0 {
+			action = bpfdisrupt.ActionDrop
+			dropPct = spec.Drop
+		}
+
+		for _, ip := range ips {
+			rules = append(rules, bpfdisrupt.Rule{
+				Direction: dir,
+				CIDR:      ip.String(),
+				Action:    action,
+				DropPct:   dropPct,
+				Port:      host.Port,
+				Protocol:  host.Protocol,
+			})
+		}
+	}
+
+	return rules
+}
+
+// hasIngressShaping returns true if any host has FlowIngress with disruptions
+// that require shaping (delay, jitter, bandwidth, corruption, duplication) rather than just drop.
+func hasIngressShaping(spec v1beta1.NetworkDisruptionSpec) bool {
+	hasIngress := false
+
+	for _, host := range spec.Hosts {
+		if host.Flow == v1beta1.FlowIngress {
+			hasIngress = true
+
+			break
+		}
+	}
+
+	if !hasIngress {
+		return false
+	}
+
+	// If any shaping parameter is set alongside ingress hosts, IFB is needed
+	return spec.Delay > 0 || spec.BandwidthLimit > 0 || spec.Corrupt > 0 || spec.Duplicate > 0
+}
+
+// startBPFHostWatcher launches a background goroutine that periodically re-resolves
+// host DNS entries and updates the BPF LPM trie rules via engine.UpdateRules().
+func (i *networkDisruptionInjector) startBPFHostWatcher(safeguardIPs []*net.IPNet) {
+	if i.hostWatcherCancel != nil {
+		return // already running
+	}
+
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	i.hostWatcherCancel = cancelFunc
+
+	go i.watchBPFHostChanges(ctx, safeguardIPs)
+}
+
+// watchBPFHostChanges periodically re-resolves all hosts and updates BPF disruption rules.
+func (i *networkDisruptionInjector) watchBPFHostChanges(ctx context.Context, safeguardIPs []*net.IPNet) {
+	watcherLog := i.config.Log.With(tags.RetryIntervalKey, i.config.HostResolveInterval.String())
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(i.config.HostResolveInterval):
+			if err := i.config.Netns.Enter(); err != nil {
+				watcherLog.Errorw("unable to enter the given container network namespace, retrying on next watch occurrence", tags.ErrorKey, err)
+
+				continue
+			}
+
+			// Re-resolve all hosts
+			resolvedIPs := map[string][]*net.IPNet{}
+
+			allHosts := make([]v1beta1.NetworkDisruptionHostSpec, 0, len(i.spec.Hosts)+len(i.spec.AllowedHosts))
+			allHosts = append(allHosts, i.spec.Hosts...)
+			allHosts = append(allHosts, i.spec.AllowedHosts...)
+
+			for _, host := range allHosts {
+				if host.Host == "" {
+					continue
+				}
+
+				ips, err := resolveHost(i.config.DNSClient, host.Host, host.DNSResolver)
+				if err != nil {
+					watcherLog.Errorw("error resolving host", tags.ErrorKey, err, tags.HostKey, host.Host)
+
+					continue
+				}
+
+				if host.Percentage != nil && *host.Percentage < 100 {
+					seed := fmt.Sprintf("%s-%s", host.Host, i.config.Disruption.DisruptionUID)
+					ips = network.SelectIPsByPercentage(ips, *host.Percentage, seed)
+				}
+
+				resolvedIPs[host.Host] = ips
+			}
+
+			// Rebuild host rules and merge with service rules atomically
+			hostRules := specToRules(i.spec, i.spec.Hosts, resolvedIPs, safeguardIPs)
+			if err := i.rebuildAndUpdateAllRules(hostRules); err != nil {
+				watcherLog.Errorw("error updating BPF disruption rules", tags.ErrorKey, err)
+			}
+
+			if err := i.config.Netns.Exit(); err != nil {
+				watcherLog.Errorw("unable to exit the given container network namespace", tags.ErrorKey, err)
+			}
+		}
+	}
+}
+
+// rebuildAndUpdateAllRules rebuilds the complete BPF rule set from all sources
+// (hosts, services, safeguards) and atomically updates the engine.
+// Called by both host and service watchers when their resolved IPs change.
+func (i *networkDisruptionInjector) rebuildAndUpdateAllRules(hostRules []bpfdisrupt.Rule) error {
+	i.serviceRulesMu.Lock()
+	currentServiceRules := make([]bpfdisrupt.Rule, len(i.serviceRules))
+	copy(currentServiceRules, i.serviceRules)
+	i.serviceRulesMu.Unlock()
+
+	allRules := make([]bpfdisrupt.Rule, 0, len(hostRules)+len(currentServiceRules)+len(i.sshSafeguard))
+	allRules = append(allRules, hostRules...)
+	allRules = append(allRules, currentServiceRules...)
+	allRules = append(allRules, i.sshSafeguard...)
+
+	return i.engine.UpdateRules(allRules)
+}
+
+// updateServiceRules updates the service portion of the BPF rules and triggers a full rebuild.
+func (i *networkDisruptionInjector) updateServiceRules(serviceRules []bpfdisrupt.Rule) error {
+	i.serviceRulesMu.Lock()
+	i.serviceRules = serviceRules
+	i.serviceRulesMu.Unlock()
+
+	// Rebuild host rules from current state
+	resolvedIPs := map[string][]*net.IPNet{}
+
+	allHosts := make([]v1beta1.NetworkDisruptionHostSpec, 0, len(i.spec.Hosts)+len(i.spec.AllowedHosts))
+	allHosts = append(allHosts, i.spec.Hosts...)
+	allHosts = append(allHosts, i.spec.AllowedHosts...)
+
+	for _, host := range allHosts {
+		if host.Host == "" {
+			continue
+		}
+
+		ips, err := resolveHost(i.config.DNSClient, host.Host, host.DNSResolver)
+		if err != nil {
+			continue
+		}
+
+		if host.Percentage != nil && *host.Percentage < 100 {
+			seed := fmt.Sprintf("%s-%s", host.Host, i.config.Disruption.DisruptionUID)
+			ips = network.SelectIPsByPercentage(ips, *host.Percentage, seed)
+		}
+
+		resolvedIPs[host.Host] = ips
+	}
+
+	hostRules := specToRules(i.spec, i.spec.Hosts, resolvedIPs, i.safeguardIPs)
+
+	return i.rebuildAndUpdateAllRules(hostRules)
+}
+
+// serviceEndpointsToRules converts a list of service tc filters (endpoint IP/port/protocol tuples)
+// into BPF disruption rules. This is the service analog of specToRules for hosts.
+func serviceEndpointsToRules(filters []tcServiceFilter) []bpfdisrupt.Rule {
+	rules := []bpfdisrupt.Rule{}
+
+	for _, filter := range filters {
+		if filter.service.ip == nil {
+			continue
+		}
+
+		protocol := ""
+
+		switch filter.service.protocol {
+		case v1.ProtocolTCP:
+			protocol = "tcp"
+		case v1.ProtocolUDP:
+			protocol = "udp"
+		}
+
+		rules = append(rules, bpfdisrupt.Rule{
+			Direction: bpfdisrupt.DirEgress,
+			CIDR:      filter.service.ip.String(),
+			Action:    bpfdisrupt.ActionDisrupt,
+			Port:      filter.service.port,
+			Protocol:  protocol,
+		})
+	}
+
+	return rules
 }
 
 // isHeadless returns true if the service is a headless service, i.e., has no defined ClusterIP

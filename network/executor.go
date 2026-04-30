@@ -27,6 +27,39 @@ type ebpfTCFilterConfigExecutor struct {
 	dryRun bool
 }
 
+// GenericExecutor is a command executor that runs the given args[0] as the command
+// with args[1:] as arguments. It is exported for use by other packages.
+type GenericExecutor struct {
+	Log    *zap.SugaredLogger
+	DryRun bool
+}
+
+// Run executes the given args using the first argument as the command path.
+func (e GenericExecutor) Run(args []string) (int, string, error) {
+	if len(args) == 0 {
+		return 1, "", fmt.Errorf("no command provided")
+	}
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	cmd := exec.Command(args[0], args[1:]...) //nolint:gosec // args are constructed internally by the BPF disruption engine, not from user input
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+
+	e.Log.Debugf("running command: %v", cmd.String())
+
+	if e.DryRun {
+		return 0, "", nil
+	}
+
+	err := cmd.Run()
+	if err != nil {
+		err = fmt.Errorf("encountered error (%w) using args (%s): %s", err, args, stderr.String())
+	}
+
+	return cmd.ProcessState.ExitCode(), stdout.String(), err
+}
+
 // NewBPFTCFilterConfigExecutor create a new instance of an executor responsible of configure tc eBPF filter program
 func NewBPFTCFilterConfigExecutor(log *zap.SugaredLogger, dryRun bool) executor {
 	return ebpfTCFilterConfigExecutor{

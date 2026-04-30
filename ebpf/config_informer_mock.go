@@ -214,6 +214,51 @@ func (_c *ConfigInformerMock_IsKernelConfigAvailable_Call) RunAndReturn(run func
 	return _c
 }
 
+// ValidateNetworkDisruptionConfig provides a mock function with no fields
+func (_m *ConfigInformerMock) ValidateNetworkDisruptionConfig() error {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for ValidateNetworkDisruptionConfig")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func() error); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// ConfigInformerMock_ValidateNetworkDisruptionConfig_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ValidateNetworkDisruptionConfig'
+type ConfigInformerMock_ValidateNetworkDisruptionConfig_Call struct {
+	*mock.Call
+}
+
+// ValidateNetworkDisruptionConfig is a helper method to define mock.On call
+func (_e *ConfigInformerMock_Expecter) ValidateNetworkDisruptionConfig() *ConfigInformerMock_ValidateNetworkDisruptionConfig_Call {
+	return &ConfigInformerMock_ValidateNetworkDisruptionConfig_Call{Call: _e.mock.On("ValidateNetworkDisruptionConfig")}
+}
+
+func (_c *ConfigInformerMock_ValidateNetworkDisruptionConfig_Call) Run(run func()) *ConfigInformerMock_ValidateNetworkDisruptionConfig_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *ConfigInformerMock_ValidateNetworkDisruptionConfig_Call) Return(_a0 error) *ConfigInformerMock_ValidateNetworkDisruptionConfig_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *ConfigInformerMock_ValidateNetworkDisruptionConfig_Call) RunAndReturn(run func() error) *ConfigInformerMock_ValidateNetworkDisruptionConfig_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ValidateRequiredSystemConfig provides a mock function with no fields
 func (_m *ConfigInformerMock) ValidateRequiredSystemConfig() error {
 	ret := _m.Called()
