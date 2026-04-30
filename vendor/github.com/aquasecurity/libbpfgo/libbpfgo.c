@@ -43,25 +43,9 @@ void cgo_libbpf_set_print_fn()
     libbpf_set_print(libbpf_print_fn);
 }
 
-struct user_ring_buffer *cgo_init_user_ring_buf(int map_fd)
-{
-    struct user_ring_buffer *rb;
-
-    rb = user_ring_buffer__new(map_fd, NULL);
-    if (!rb) {
-        int saved_errno = errno;
-        fprintf(stderr, "Failed to initialize user ring buffer: %s\n", strerror(errno));
-        errno = saved_errno;
-
-        return NULL;
-    }
-
-    return rb;
-}
-
 struct ring_buffer *cgo_init_ring_buf(int map_fd, uintptr_t ctx)
 {
-    struct ring_buffer *rb;
+    struct ring_buffer *rb = NULL;
 
     rb = ring_buffer__new(map_fd, ringbufferCallback, (void *) ctx, NULL);
     if (!rb) {
@@ -73,20 +57,6 @@ struct ring_buffer *cgo_init_ring_buf(int map_fd, uintptr_t ctx)
     }
 
     return rb;
-}
-
-int cgo_add_ring_buf(struct ring_buffer *rb, int map_fd, uintptr_t ctx)
-{
-    int ret = ring_buffer__add(rb, map_fd, ringbufferCallback, (void *) ctx);
-    if (ret != 0) {
-        int saved_errno = errno;
-        fprintf(stderr, "Failed to add ring buffer: %s\n", strerror(errno));
-        errno = saved_errno;
-
-        return ret;
-    }
-
-    return ret;
 }
 
 struct perf_buffer *cgo_init_perf_buf(int map_fd, int page_cnt, uintptr_t ctx)
@@ -147,31 +117,6 @@ int cgo_bpf_prog_detach_cgroup_legacy(int prog_fd,   // eBPF program file descri
     return syscall(__NR_bpf, BPF_PROG_DETACH, &attr, sizeof(attr));
 }
 
-struct bpf_link *cgo_bpf_program__attach_uprobe_multi(
-    struct bpf_program *prog,
-    pid_t pid,
-    const char *binary_path,
-    const char *func_pattern,
-    const unsigned long *offsets, // bpf_uprobe_multi_opts.offsets
-    const __u64 *cookies,         // bpf_uprobe_multi_opts.cookies
-    size_t cnt,                   // bpf_uprobe_multi_opts.cnt
-    bool retprobe                 // bpf_uprobe_multi_opts.retprobe
-)
-{
-    struct bpf_uprobe_multi_opts opts = {};
-    opts.sz = sizeof(opts);
-    opts.offsets = offsets;
-    opts.cookies = cookies;
-    opts.cnt = cnt;
-    opts.retprobe = retprobe;
-
-    return bpf_program__attach_uprobe_multi(prog, pid, binary_path, func_pattern, &opts);
-}
-
-//
-// struct handlers
-//
-
 struct bpf_iter_attach_opts *cgo_bpf_iter_attach_opts_new(__u32 map_fd,
                                                           enum bpf_cgroup_iter_order order,
                                                           __u32 cgroup_fd,
@@ -216,53 +161,9 @@ void cgo_bpf_iter_attach_opts_free(struct bpf_iter_attach_opts *opts)
     free(opts);
 }
 
-struct bpf_test_run_opts *cgo_bpf_test_run_opts_new(const void *data_in,
-                                                    void *data_out,
-                                                    __u32 data_size_in,
-                                                    __u32 data_size_out,
-                                                    const void *ctx_in,
-                                                    void *ctx_out,
-                                                    __u32 ctx_size_in,
-                                                    __u32 ctx_size_out,
-                                                    int repeat,
-                                                    __u32 flags,
-                                                    __u32 cpu,
-                                                    __u32 batch_size)
-{
-    struct bpf_test_run_opts *opts;
-    opts = calloc(1, sizeof(*opts));
-    if (!opts)
-        return NULL;
-
-    opts->sz = sizeof(*opts);
-    opts->data_in = data_in;
-    opts->data_out = data_out;
-    opts->data_size_in = data_size_in;
-    opts->data_size_out = data_size_out;
-    opts->ctx_in = ctx_in;
-    opts->ctx_out = ctx_out;
-    opts->ctx_size_in = ctx_size_in;
-    opts->ctx_size_out = ctx_size_out;
-    opts->repeat = repeat;
-    opts->flags = flags;
-    opts->cpu = cpu;
-    opts->batch_size = batch_size;
-
-    return opts;
-}
-
-void cgo_bpf_test_run_opts_free(struct bpf_test_run_opts *opts)
-{
-    if (!opts)
-        return;
-
-    free(opts);
-}
-
 struct bpf_object_open_opts *cgo_bpf_object_open_opts_new(const char *btf_file_path,
                                                           const char *kconfig_path,
-                                                          const char *bpf_obj_name,
-                                                          __u32 kernel_log_level)
+                                                          const char *bpf_obj_name)
 {
     struct bpf_object_open_opts *opts;
     opts = calloc(1, sizeof(*opts));
@@ -273,7 +174,6 @@ struct bpf_object_open_opts *cgo_bpf_object_open_opts_new(const char *btf_file_p
     opts->btf_custom_path = btf_file_path;
     opts->kconfig = kconfig_path;
     opts->object_name = bpf_obj_name;
-    opts->kernel_log_level = kernel_log_level;
 
     return opts;
 }
@@ -332,276 +232,6 @@ struct bpf_map_batch_opts *cgo_bpf_map_batch_opts_new(__u64 elem_flags, __u64 fl
 }
 
 void cgo_bpf_map_batch_opts_free(struct bpf_map_batch_opts *opts)
-{
-    free(opts);
-}
-
-struct bpf_map_info *cgo_bpf_map_info_new()
-{
-    struct bpf_map_info *info;
-    info = calloc(1, sizeof(*info));
-    if (!info)
-        return NULL;
-
-    return info;
-}
-
-__u32 cgo_bpf_map_info_size()
-{
-    return sizeof(struct bpf_map_info);
-}
-
-void cgo_bpf_map_info_free(struct bpf_map_info *info)
-{
-    free(info);
-}
-
-struct bpf_tc_opts *cgo_bpf_tc_opts_new(
-    int prog_fd, __u32 flags, __u32 prog_id, __u32 handle, __u32 priority)
-{
-    struct bpf_tc_opts *opts;
-    opts = calloc(1, sizeof(*opts));
-    if (!opts)
-        return NULL;
-
-    opts->sz = sizeof(*opts);
-    opts->prog_fd = prog_fd;
-    opts->flags = flags;
-    opts->prog_id = prog_id;
-    opts->handle = handle;
-    opts->priority = priority;
-
-    return opts;
-}
-
-void cgo_bpf_tc_opts_free(struct bpf_tc_opts *opts)
-{
-    free(opts);
-}
-
-struct bpf_tc_hook *cgo_bpf_tc_hook_new()
-{
-    struct bpf_tc_hook *hook;
-    hook = calloc(1, sizeof(*hook));
-    if (!hook)
-        return NULL;
-
-    hook->sz = sizeof(*hook);
-
-    return hook;
-}
-
-void cgo_bpf_tc_hook_free(struct bpf_tc_hook *hook)
-{
-    free(hook);
-}
-
-struct bpf_kprobe_opts *cgo_bpf_kprobe_opts_new(__u64 bpf_cookie,
-                                                size_t offset,
-                                                bool retprobe,
-                                                int attach_mode)
-{
-    struct bpf_kprobe_opts *opts;
-    opts = calloc(1, sizeof(*opts));
-    if (!opts)
-        return NULL;
-
-    opts->sz = sizeof(*opts);
-    opts->bpf_cookie = bpf_cookie;
-    opts->offset = offset;
-    opts->retprobe = retprobe;
-    opts->attach_mode = attach_mode;
-
-    return opts;
-}
-
-void cgo_bpf_kprobe_opts_free(struct bpf_kprobe_opts *opts)
-{
-    free(opts);
-}
-
-//
-// struct getters
-//
-
-// bpf_map_info
-
-__u32 cgo_bpf_map_info_type(struct bpf_map_info *info)
-{
-    if (!info)
-        return 0;
-
-    return info->type;
-}
-
-__u32 cgo_bpf_map_info_id(struct bpf_map_info *info)
-{
-    if (!info)
-        return 0;
-
-    return info->id;
-}
-
-__u32 cgo_bpf_map_info_key_size(struct bpf_map_info *info)
-{
-    if (!info)
-        return 0;
-
-    return info->key_size;
-}
-
-__u32 cgo_bpf_map_info_value_size(struct bpf_map_info *info)
-{
-    if (!info)
-        return 0;
-
-    return info->value_size;
-}
-
-__u32 cgo_bpf_map_info_max_entries(struct bpf_map_info *info)
-{
-    if (!info)
-        return 0;
-
-    return info->max_entries;
-}
-
-__u32 cgo_bpf_map_info_map_flags(struct bpf_map_info *info)
-{
-    if (!info)
-        return 0;
-
-    return info->map_flags;
-}
-
-char *cgo_bpf_map_info_name(struct bpf_map_info *info)
-{
-    if (!info)
-        return NULL;
-
-    return info->name;
-}
-
-__u32 cgo_bpf_map_info_ifindex(struct bpf_map_info *info)
-{
-    if (!info)
-        return 0;
-
-    return info->ifindex;
-}
-
-__u32 cgo_bpf_map_info_btf_vmlinux_value_type_id(struct bpf_map_info *info)
-{
-    if (!info)
-        return 0;
-
-    return info->btf_vmlinux_value_type_id;
-}
-
-__u64 cgo_bpf_map_info_netns_dev(struct bpf_map_info *info)
-{
-    if (!info)
-        return 0;
-
-    return info->netns_dev;
-}
-
-__u64 cgo_bpf_map_info_netns_ino(struct bpf_map_info *info)
-{
-    if (!info)
-        return 0;
-
-    return info->netns_ino;
-}
-
-__u32 cgo_bpf_map_info_btf_id(struct bpf_map_info *info)
-{
-    if (!info)
-        return 0;
-
-    return info->btf_id;
-}
-
-__u32 cgo_bpf_map_info_btf_key_type_id(struct bpf_map_info *info)
-{
-    if (!info)
-        return 0;
-
-    return info->btf_key_type_id;
-}
-
-__u32 cgo_bpf_map_info_btf_value_type_id(struct bpf_map_info *info)
-{
-    if (!info)
-        return 0;
-
-    return info->btf_value_type_id;
-}
-
-__u64 cgo_bpf_map_info_map_extra(struct bpf_map_info *info)
-{
-    if (!info)
-        return 0;
-
-    return info->map_extra;
-}
-
-// bpf_tc_opts
-
-int cgo_bpf_tc_opts_prog_fd(struct bpf_tc_opts *opts)
-{
-    if (!opts)
-        return 0;
-
-    return opts->prog_fd;
-}
-
-__u32 cgo_bpf_tc_opts_flags(struct bpf_tc_opts *opts)
-{
-    if (!opts)
-        return 0;
-
-    return opts->flags;
-}
-
-__u32 cgo_bpf_tc_opts_prog_id(struct bpf_tc_opts *opts)
-{
-    if (!opts)
-        return 0;
-
-    return opts->prog_id;
-}
-
-__u32 cgo_bpf_tc_opts_handle(struct bpf_tc_opts *opts)
-{
-    if (!opts)
-        return 0;
-
-    return opts->handle;
-}
-
-__u32 cgo_bpf_tc_opts_priority(struct bpf_tc_opts *opts)
-{
-    if (!opts)
-        return 0;
-
-    return opts->priority;
-}
-
-struct bpf_xdp_attach_opts *cgo_bpf_xdp_attach_opts_new(__u32 fd)
-{
-    struct bpf_xdp_attach_opts *opts;
-    opts = calloc(1, sizeof(*opts));
-
-    if (!opts)
-        return NULL;
-    opts->sz = sizeof(*opts);
-    opts->old_prog_fd = fd;
-
-    return opts;
-}
-
-void cgo_bpf_xdp_attach_opts_free(struct bpf_xdp_attach_opts *opts)
 {
     free(opts);
 }

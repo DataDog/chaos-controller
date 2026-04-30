@@ -28,7 +28,6 @@ func perfLostCallback(ctx unsafe.Pointer, cpu C.int, cnt C.ulonglong) {
 func ringbufferCallback(ctx unsafe.Pointer, data unsafe.Pointer, size C.int) C.int {
 	ch := eventChannels.get(uint(uintptr(ctx))).(chan []byte)
 	ch <- C.GoBytes(data, size)
-
 	return C.int(0)
 }
 

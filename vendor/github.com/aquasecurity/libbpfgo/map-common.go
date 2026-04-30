@@ -18,40 +18,37 @@ import (
 type MapType uint32
 
 const (
-	MapTypeUnspec              MapType = C.BPF_MAP_TYPE_UNSPEC
-	MapTypeHash                MapType = C.BPF_MAP_TYPE_HASH
-	MapTypeArray               MapType = C.BPF_MAP_TYPE_ARRAY
-	MapTypeProgArray           MapType = C.BPF_MAP_TYPE_PROG_ARRAY
-	MapTypePerfEventArray      MapType = C.BPF_MAP_TYPE_PERF_EVENT_ARRAY
-	MapTypePerCPUHash          MapType = C.BPF_MAP_TYPE_PERCPU_HASH
-	MapTypePerCPUArray         MapType = C.BPF_MAP_TYPE_PERCPU_ARRAY
-	MapTypeStackTrace          MapType = C.BPF_MAP_TYPE_STACK_TRACE
-	MapTypeCgroupArray         MapType = C.BPF_MAP_TYPE_CGROUP_ARRAY
-	MapTypeLRUHash             MapType = C.BPF_MAP_TYPE_LRU_HASH
-	MapTypeLRUPerCPUHash       MapType = C.BPF_MAP_TYPE_LRU_PERCPU_HASH
-	MapTypeLPMTrie             MapType = C.BPF_MAP_TYPE_LPM_TRIE
-	MapTypeArrayOfMaps         MapType = C.BPF_MAP_TYPE_ARRAY_OF_MAPS
-	MapTypeHashOfMaps          MapType = C.BPF_MAP_TYPE_HASH_OF_MAPS
-	MapTypeDevMap              MapType = C.BPF_MAP_TYPE_DEVMAP
-	MapTypeSockMap             MapType = C.BPF_MAP_TYPE_SOCKMAP
-	MapTypeCPUMap              MapType = C.BPF_MAP_TYPE_CPUMAP
-	MapTypeXSKMap              MapType = C.BPF_MAP_TYPE_XSKMAP
-	MapTypeSockHash            MapType = C.BPF_MAP_TYPE_SOCKHASH
-	MapTypeCgroupStorage       MapType = C.BPF_MAP_TYPE_CGROUP_STORAGE
-	MapTypeReusePortSockArray  MapType = C.BPF_MAP_TYPE_REUSEPORT_SOCKARRAY
-	MapTypePerCPUCgroupStorage MapType = C.BPF_MAP_TYPE_PERCPU_CGROUP_STORAGE
-	MapTypeQueue               MapType = C.BPF_MAP_TYPE_QUEUE
-	MapTypeStack               MapType = C.BPF_MAP_TYPE_STACK
-	MapTypeSKStorage           MapType = C.BPF_MAP_TYPE_SK_STORAGE
-	MapTypeDevmapHash          MapType = C.BPF_MAP_TYPE_DEVMAP_HASH
-	MapTypeStructOps           MapType = C.BPF_MAP_TYPE_STRUCT_OPS
-	MapTypeRingbuf             MapType = C.BPF_MAP_TYPE_RINGBUF
-	MapTypeInodeStorage        MapType = C.BPF_MAP_TYPE_INODE_STORAGE
-	MapTypeTaskStorage         MapType = C.BPF_MAP_TYPE_TASK_STORAGE
-	MapTypeBloomFilter         MapType = C.BPF_MAP_TYPE_BLOOM_FILTER
-	MapTypeUserRingbuf         MapType = C.BPF_MAP_TYPE_USER_RINGBUF
-	MapTypeCgrpStorage         MapType = C.BPF_MAP_TYPE_CGRP_STORAGE
-	MapTypeArena               MapType = C.BPF_MAP_TYPE_ARENA
+	MapTypeUnspec MapType = iota
+	MapTypeHash
+	MapTypeArray
+	MapTypeProgArray
+	MapTypePerfEventArray
+	MapTypePerCPUHash
+	MapTypePerCPUArray
+	MapTypeStackTrace
+	MapTypeCgroupArray
+	MapTypeLRUHash
+	MapTypeLRUPerCPUHash
+	MapTypeLPMTrie
+	MapTypeArrayOfMaps
+	MapTypeHashOfMaps
+	MapTypeDevMap
+	MapTypeSockMap
+	MapTypeCPUMap
+	MapTypeXSKMap
+	MapTypeSockHash
+	MapTypeCgroupStorage
+	MapTypeReusePortSockArray
+	MapTypePerCPUCgroupStorage
+	MapTypeQueue
+	MapTypeStack
+	MapTypeSKStorage
+	MapTypeDevmapHash
+	MapTypeStructOps
+	MapTypeRingbuf
+	MapTypeInodeStorage
+	MapTypeTaskStorage
+	MapTypeBloomFilter
 )
 
 var mapTypeToString = map[MapType]string{
@@ -86,23 +83,10 @@ var mapTypeToString = map[MapType]string{
 	MapTypeInodeStorage:        "BPF_MAP_TYPE_INODE_STORAGE",
 	MapTypeTaskStorage:         "BPF_MAP_TYPE_TASK_STORAGE",
 	MapTypeBloomFilter:         "BPF_MAP_TYPE_BLOOM_FILTER",
-	MapTypeUserRingbuf:         "BPF_MAP_TYPE_USER_RINGBUF",
-	MapTypeCgrpStorage:         "BPF_MAP_TYPE_CGRP_STORAGE",
-	MapTypeArena:               "BPF_MAP_TYPE_ARENA",
 }
 
 func (t MapType) String() string {
-	str, ok := mapTypeToString[t]
-	if !ok {
-		// MapTypeUnspec must exist in mapTypeToString to avoid infinite recursion.
-		return BPFProgTypeUnspec.String()
-	}
-
-	return str
-}
-
-func (t MapType) Name() string {
-	return C.GoString(C.libbpf_bpf_map_type_str(C.enum_bpf_map_type(t)))
+	return mapTypeToString[t]
 }
 
 //
@@ -153,37 +137,40 @@ func GetMapFDByID(id uint32) (int, error) {
 
 // GetMapInfoByFD returns the BPFMapInfo for the map with the given file descriptor.
 func GetMapInfoByFD(fd int) (*BPFMapInfo, error) {
-	infoC := C.cgo_bpf_map_info_new()
-	defer C.cgo_bpf_map_info_free(infoC)
+	var info C.struct_bpf_map_info
+	var infoLen C.uint = C.uint(C.sizeof_struct_bpf_map_info)
 
-	infoLenC := C.cgo_bpf_map_info_size()
-	retC := C.bpf_map_get_info_by_fd(C.int(fd), infoC, &infoLenC)
+	retC := C.bpf_map_get_info_by_fd(C.int(fd), &info, &infoLen)
 	if retC < 0 {
 		return nil, fmt.Errorf("failed to get map info for fd %d: %w", fd, syscall.Errno(-retC))
 	}
 
 	return &BPFMapInfo{
-		Type:                  MapType(C.cgo_bpf_map_info_type(infoC)),
-		ID:                    uint32(C.cgo_bpf_map_info_id(infoC)),
-		KeySize:               uint32(C.cgo_bpf_map_info_key_size(infoC)),
-		ValueSize:             uint32(C.cgo_bpf_map_info_value_size(infoC)),
-		MaxEntries:            uint32(C.cgo_bpf_map_info_max_entries(infoC)),
-		MapFlags:              uint32(C.cgo_bpf_map_info_map_flags(infoC)),
-		Name:                  C.GoString(C.cgo_bpf_map_info_name(infoC)),
-		IfIndex:               uint32(C.cgo_bpf_map_info_ifindex(infoC)),
-		BTFVmlinuxValueTypeID: uint32(C.cgo_bpf_map_info_btf_vmlinux_value_type_id(infoC)),
-		NetnsDev:              uint64(C.cgo_bpf_map_info_netns_dev(infoC)),
-		NetnsIno:              uint64(C.cgo_bpf_map_info_netns_ino(infoC)),
-		BTFID:                 uint32(C.cgo_bpf_map_info_btf_id(infoC)),
-		BTFKeyTypeID:          uint32(C.cgo_bpf_map_info_btf_key_type_id(infoC)),
-		BTFValueTypeID:        uint32(C.cgo_bpf_map_info_btf_value_type_id(infoC)),
-		MapExtra:              uint64(C.cgo_bpf_map_info_map_extra(infoC)),
+		Type:                  MapType(uint32(info._type)),
+		ID:                    uint32(info.id),
+		KeySize:               uint32(info.key_size),
+		ValueSize:             uint32(info.value_size),
+		MaxEntries:            uint32(info.max_entries),
+		MapFlags:              uint32(info.map_flags),
+		Name:                  C.GoString(&info.name[0]),
+		IfIndex:               uint32(info.ifindex),
+		BTFVmlinuxValueTypeID: uint32(info.btf_vmlinux_value_type_id),
+		NetnsDev:              uint64(info.netns_dev),
+		NetnsIno:              uint64(info.netns_ino),
+		BTFID:                 uint32(info.btf_id),
+		BTFKeyTypeID:          uint32(info.btf_key_type_id),
+		BTFValueTypeID:        uint32(info.btf_value_type_id),
+		MapExtra:              uint64(info.map_extra),
 	}, nil
 }
 
-// CalcMapValueSize calculates the size of the value for a map.
+//
+// Map misc internal
+//
+
+// calcMapValueSize calculates the size of the value for a map.
 // For per-CPU maps, it is calculated based on the number of possible CPUs.
-func CalcMapValueSize(valueSize int, mapType MapType) (int, error) {
+func calcMapValueSize(valueSize int, mapType MapType) (int, error) {
 	if valueSize <= 0 {
 		return 0, fmt.Errorf("value size must be greater than 0")
 	}
