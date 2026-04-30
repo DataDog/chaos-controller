@@ -1503,7 +1503,7 @@ func WithPidsLimit(limit int64) SpecOpts {
 		if s.Linux.Resources.Pids == nil {
 			s.Linux.Resources.Pids = &specs.LinuxPids{}
 		}
-		s.Linux.Resources.Pids.Limit = limit
+		s.Linux.Resources.Pids.Limit = &limit
 		return nil
 	}
 }

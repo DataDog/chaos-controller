@@ -9,10 +9,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/opencontainers/runc/libcontainer/cgroups"
-	"github.com/opencontainers/runc/libcontainer/cgroups/fs"
-	"github.com/opencontainers/runc/libcontainer/cgroups/fs2"
-	"github.com/opencontainers/runc/libcontainer/configs"
+	"github.com/opencontainers/cgroups"
+	"github.com/opencontainers/cgroups/fs"
+	"github.com/opencontainers/cgroups/fs2"
 	"go.uber.org/zap"
 
 	"github.com/DataDog/chaos-controller/o11y/tags"
@@ -26,8 +25,8 @@ type instManager struct {
 type pkgManager struct{}
 
 func newAllCGroupManager(cgroupFile string, cgroupMount string, log *zap.SugaredLogger) (allCGroupManager, error) {
-	cg := &configs.Cgroup{
-		Resources: &configs.Resources{},
+	cg := &cgroups.Cgroup{
+		Resources: &cgroups.Resources{},
 	}
 
 	// parse the proc cgroup file
