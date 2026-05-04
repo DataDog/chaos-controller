@@ -80,7 +80,7 @@ RUN apt-get update && \
     mv bpftool /usr/bin/bpftool-amd64
 
 # Final stage
-FROM gcr.io/distroless/python3-debian12:latest
+FROM gcr.io/distroless/python3-debian13:latest
 
 ARG TARGETARCH
 
@@ -112,7 +112,7 @@ ENTRYPOINT ["/usr/local/bin/chaos-injector"]
 
 LABEL baseimage.os="debian"
 LABEL baseimage.isgbi="custom"
-LABEL baseimage.name="gcr.io/distroless/python3-debian12:latest"
+LABEL baseimage.name="gcr.io/distroless/python3-debian13:latest"
 
 ARG BUILDSTAMP
 LABEL baseimage.buildstamp="${BUILDSTAMP}"
