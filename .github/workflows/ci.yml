@@ -139,12 +139,20 @@ jobs:
           echo "All 3 attempts failed"
           exit 1
       - name: Save controller logs
-        if: failure()
+        if: always()
         run: |
           mkdir -p /tmp/logs
-          minikube kubectl -- -n chaos-engineering logs -lapp=chaos-controller -c manager --tail=-1 > /tmp/logs/e2e.txt 2>&1 || true
+          minikube kubectl -- -n chaos-engineering logs -lapp=chaos-controller -c manager --tail=-1 > /tmp/logs/manager.txt 2>&1 || true
+          minikube kubectl -- -n chaos-engineering describe pods -lapp=chaos-controller > /tmp/logs/manager-describe.txt 2>&1 || true
+          minikube kubectl -- get pods -A -o wide > /tmp/logs/all-pods.txt 2>&1 || true
+          minikube kubectl -- describe pods -l chaos.datadoghq.com/disruption-name -A > /tmp/logs/chaos-pods-describe.txt 2>&1 || true
+          for pod in $(minikube kubectl -- get pods -A -l chaos.datadoghq.com/disruption-name -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{"\n"}{end}' 2>/dev/null); do
+            ns="${pod%/*}"; name="${pod#*/}"
+            minikube kubectl -- -n "${ns}" logs "${name}" --all-containers=true --tail=-1 --prefix=true > "/tmp/logs/chaos-pod-${ns}-${name}.txt" 2>&1 || true
+          done
+          minikube kubectl -- get events -A --sort-by='.lastTimestamp' > /tmp/logs/events.txt 2>&1 || true
       - name: Upload controller logs
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: e2e-controller-logs
