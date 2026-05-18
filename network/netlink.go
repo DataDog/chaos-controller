@@ -126,6 +126,19 @@ func (a netlinkAdapter) LinkByName(name string) (NetlinkLink, error) {
 	return newNetlinkLink(link), nil
 }
 
+// isDefaultDst reports whether the destination corresponds to the default route.
+// Older netlink versions left Dst nil for default routes; newer versions
+// (vishvananda/netlink v1.3+) populate it with the zero IP and a /0 mask.
+func isDefaultDst(dst *net.IPNet) bool {
+	if dst == nil {
+		return true
+	}
+
+	ones, _ := dst.Mask.Size()
+
+	return ones == 0 && dst.IP.IsUnspecified()
+}
+
 func (a netlinkAdapter) DefaultRoutes() ([]NetlinkRoute, error) {
 	defaultRoutes := []NetlinkRoute{}
 
@@ -134,19 +147,22 @@ func (a netlinkAdapter) DefaultRoutes() ([]NetlinkRoute, error) {
 		return nil, fmt.Errorf("error listing routes: %w", err)
 	}
 
-	// find the default route, the one with no source nor destination
+	// find the default route, identified by a /0 prefix (or no destination on older
+	// netlink versions) and a non-nil gateway.
 	for _, route := range routes {
-		if route.Dst == nil && route.Gw != nil {
-			link, err := netlink.LinkByIndex(route.LinkIndex)
-			if err != nil {
-				return nil, fmt.Errorf("error identifying default route link: %w", err)
-			}
-
-			defaultRoutes = append(defaultRoutes, netlinkRoute{
-				link: newNetlinkLink(link),
-				gw:   route.Gw,
-			})
+		if !isDefaultDst(route.Dst) || route.Gw == nil {
+			continue
 		}
+
+		link, err := netlink.LinkByIndex(route.LinkIndex)
+		if err != nil {
+			return nil, fmt.Errorf("error identifying default route link: %w", err)
+		}
+
+		defaultRoutes = append(defaultRoutes, netlinkRoute{
+			link: newNetlinkLink(link),
+			gw:   route.Gw,
+		})
 	}
 
 	if len(defaultRoutes) == 0 {
