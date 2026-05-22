@@ -29,7 +29,7 @@ require (
 	github.com/onsi/gomega v1.39.1
 	github.com/opencontainers/cgroups v0.0.6
 	github.com/robfig/cron v1.2.0
-	github.com/slack-go/slack v0.17.3
+	github.com/slack-go/slack v0.23.1
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
