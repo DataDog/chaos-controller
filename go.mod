@@ -12,7 +12,7 @@ require (
 	github.com/aquasecurity/libbpfgo/helpers v0.4.5
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/cenkalti/backoff v2.2.1+incompatible
-	github.com/containerd/containerd v1.7.30
+	github.com/containerd/containerd v1.7.32
 	github.com/coreos/go-iptables v0.8.0
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/fsnotify/fsnotify v1.9.0
@@ -196,7 +196,7 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.58.0 // indirect
 	go.opentelemetry.io/otel/log v0.11.0 // indirect
 	go.opentelemetry.io/otel/metric v1.43.0 // indirect
-	go.opentelemetry.io/otel/sdk v1.40.0 // indirect
+	go.opentelemetry.io/otel/sdk v1.43.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect

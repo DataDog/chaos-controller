@@ -263,7 +263,7 @@ github.com/cihub/seelog/archive/zip
 # github.com/containerd/cgroups v1.1.0
 ## explicit; go 1.17
 github.com/containerd/cgroups/stats/v1
-# github.com/containerd/containerd v1.7.30
+# github.com/containerd/containerd v1.7.32
 ## explicit; go 1.24.0
 github.com/containerd/containerd
 github.com/containerd/containerd/archive
@@ -946,9 +946,8 @@ go.opentelemetry.io/otel/semconv/v1.20.0
 go.opentelemetry.io/otel/semconv/v1.21.0
 go.opentelemetry.io/otel/semconv/v1.26.0
 go.opentelemetry.io/otel/semconv/v1.37.0
-go.opentelemetry.io/otel/semconv/v1.39.0
-go.opentelemetry.io/otel/semconv/v1.39.0/otelconv
 go.opentelemetry.io/otel/semconv/v1.40.0
+go.opentelemetry.io/otel/semconv/v1.40.0/otelconv
 # go.opentelemetry.io/otel/log v0.11.0
 ## explicit; go 1.22.0
 go.opentelemetry.io/otel/log
@@ -960,8 +959,8 @@ go.opentelemetry.io/otel/log/internal/global
 go.opentelemetry.io/otel/metric
 go.opentelemetry.io/otel/metric/embedded
 go.opentelemetry.io/otel/metric/noop
-# go.opentelemetry.io/otel/sdk v1.40.0
-## explicit; go 1.24.0
+# go.opentelemetry.io/otel/sdk v1.43.0
+## explicit; go 1.25.0
 go.opentelemetry.io/otel/sdk
 go.opentelemetry.io/otel/sdk/instrumentation
 go.opentelemetry.io/otel/sdk/internal/x
