@@ -27,7 +27,6 @@ package seelog
 import (
 	"bytes"
 	"encoding/xml"
-	"fmt"
 	"io"
 	"os"
 )
@@ -186,27 +185,4 @@ func LoggerFromCustomReceiver(receiver CustomReceiver) (LoggerInterface, error) 
 	}
 
 	return createLoggerFromFullConfig(conf)
-}
-
-func CloneLogger(logger LoggerInterface) (LoggerInterface, error) {
-	switch logger := logger.(type) {
-	default:
-		return nil, fmt.Errorf("unexpected type %T", logger)
-	case *asyncAdaptiveLogger:
-		clone, err := NewAsyncAdaptiveLogger(logger.commonLogger.config, logger.minInterval, logger.maxInterval, logger.criticalMsgCount)
-		if err != nil {
-			return nil, err
-		}
-		return clone, nil
-	case *asyncLoopLogger:
-		return NewAsyncLoopLogger(logger.commonLogger.config), nil
-	case *asyncTimerLogger:
-		clone, err := NewAsyncTimerLogger(logger.commonLogger.config, logger.interval)
-		if err != nil {
-			return nil, err
-		}
-		return clone, nil
-	case *syncLogger:
-		return NewSyncLogger(logger.commonLogger.config), nil
-	}
 }

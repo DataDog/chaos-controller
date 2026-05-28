@@ -17,7 +17,8 @@ const maxRedisNbCommands = 3
 
 // Redis commands consisting in 2 words
 var redisCompoundCommandSet = map[string]bool{
-	"CLIENT": true, "CLUSTER": true, "COMMAND": true, "CONFIG": true, "DEBUG": true, "SCRIPT": true}
+	"CLIENT": true, "CLUSTER": true, "COMMAND": true, "CONFIG": true, "DEBUG": true, "SCRIPT": true,
+}
 
 // QuantizeRedisString returns a quantized version of a Redis query.
 //
@@ -123,12 +124,26 @@ func obfuscateRedisCmd(out *strings.Builder, cmd string, args ...string) {
 	out.WriteByte(' ')
 
 	switch strings.ToUpper(cmd) {
-	case "AUTH":
+	case "AUTH", "MIGRATE", "HELLO":
 		// Obfuscate everything after command
 		// • AUTH password
+		// • MIGRATE host port key|"" destination-db timeout [COPY] [REPLACE] [AUTH password] [AUTH2 username password] [KEYS key [key ...]]
+		// • HELLO [protover [AUTH username password] [SETNAME clientname]]
 		if len(args) > 0 {
 			args[0] = "?"
 			args = args[:1]
+		}
+
+	case "ACL":
+		// Obfuscate all arguments after the subcommand
+		// • ACL SETUSER username on >password ~keys &channels +commands
+		// • ACL GETUSER username
+		// • ACL DELUSER username [username ...]
+		// • ACL LIST
+		// • ACL WHOAMI
+		if len(args) > 1 {
+			args[1] = "?"
+			args = args[:2]
 		}
 
 	case "APPEND", "GETSET", "LPUSHX", "GEORADIUSBYMEMBER", "RPUSHX",
@@ -147,10 +162,9 @@ func obfuscateRedisCmd(out *strings.Builder, cmd string, args ...string) {
 		// • ZSCORE key member
 		obfuscateRedisArgN(args, 1)
 
-	case "HSET", "HSETNX", "LREM", "LSET", "SETBIT", "SETEX", "PSETEX",
+	case "HSETNX", "LREM", "LSET", "SETBIT", "SETEX", "PSETEX",
 		"SETRANGE", "ZINCRBY", "SMOVE", "RESTORE":
 		// Obfuscate 3rd argument:
-		// • HSET key field value
 		// • HSETNX key field value
 		// • LREM key count value
 		// • LSET key index value
@@ -189,8 +203,9 @@ func obfuscateRedisCmd(out *strings.Builder, cmd string, args ...string) {
 		// • GEOADD key longitude latitude member [longitude latitude member ...]
 		obfuscateRedisArgsStep(args, 1, 3)
 
-	case "HMSET":
+	case "HSET", "HMSET":
 		// Every 2nd argument starting from first.
+		// • HSET key field value [field value ...]
 		// • HMSET key field value [field value ...]
 		obfuscateRedisArgsStep(args, 1, 2)
 

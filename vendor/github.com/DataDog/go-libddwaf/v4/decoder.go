@@ -9,7 +9,7 @@ import (
 	"fmt"
 
 	"github.com/DataDog/go-libddwaf/v4/internal/bindings"
-	"github.com/DataDog/go-libddwaf/v4/internal/unsafe"
+	"github.com/DataDog/go-libddwaf/v4/internal/ffi"
 	"github.com/DataDog/go-libddwaf/v4/waferrors"
 )
 
@@ -30,9 +30,9 @@ func decodeErrors(obj *bindings.WAFObject) (map[string][]string, error) {
 
 	wafErrors := map[string][]string{}
 	for i := uint64(0); i < obj.NbEntries; i++ {
-		objElem := unsafe.CastWithOffset[bindings.WAFObject](obj.Value, i)
+		objElem := ffi.CastWithOffset[bindings.WAFObject](obj.Value, i)
 
-		errorMessage := unsafe.GostringSized(unsafe.Cast[byte](objElem.ParameterName), objElem.ParameterNameLength)
+		errorMessage := ffi.GostringSized(ffi.Cast[byte](objElem.ParameterName), objElem.ParameterNameLength)
 		ruleIds, err := decodeStringArray(objElem)
 		if err != nil {
 			return nil, err
@@ -57,8 +57,8 @@ func decodeDiagnostics(obj *bindings.WAFObject) (Diagnostics, error) {
 		err   error
 	)
 	for i := uint64(0); i < obj.NbEntries; i++ {
-		objElem := unsafe.CastWithOffset[bindings.WAFObject](obj.Value, i)
-		key := unsafe.GostringSized(unsafe.Cast[byte](objElem.ParameterName), objElem.ParameterNameLength)
+		objElem := ffi.CastWithOffset[bindings.WAFObject](obj.Value, i)
+		key := ffi.GostringSized(ffi.Cast[byte](objElem.ParameterName), objElem.ParameterNameLength)
 		switch key {
 		case "actions":
 			diags.Actions, err = decodeFeature(objElem)
@@ -76,10 +76,12 @@ func decodeDiagnostics(obj *bindings.WAFObject) (Diagnostics, error) {
 			diags.RulesOverrides, err = decodeFeature(objElem)
 		case "processors":
 			diags.Processors, err = decodeFeature(objElem)
+		case "processor_overrides":
+			diags.ProcessorOverrides, err = decodeFeature(objElem)
 		case "scanners":
 			diags.Scanners, err = decodeFeature(objElem)
 		case "ruleset_version":
-			diags.Version = unsafe.GostringSized(unsafe.Cast[byte](objElem.Value), objElem.NbEntries)
+			diags.Version = ffi.GostringSized(ffi.Cast[byte](objElem.Value), objElem.NbEntries)
 		default:
 			// ignore?
 		}
@@ -102,11 +104,11 @@ func decodeFeature(obj *bindings.WAFObject) (*Feature, error) {
 	var err error
 
 	for i := uint64(0); i < obj.NbEntries; i++ {
-		objElem := unsafe.CastWithOffset[bindings.WAFObject](obj.Value, i)
-		key := unsafe.GostringSized(unsafe.Cast[byte](objElem.ParameterName), objElem.ParameterNameLength)
+		objElem := ffi.CastWithOffset[bindings.WAFObject](obj.Value, i)
+		key := ffi.GostringSized(ffi.Cast[byte](objElem.ParameterName), objElem.ParameterNameLength)
 		switch key {
 		case "error":
-			feature.Error = unsafe.GostringSized(unsafe.Cast[byte](objElem.Value), objElem.NbEntries)
+			feature.Error = ffi.GostringSized(ffi.Cast[byte](objElem.Value), objElem.NbEntries)
 		case "errors":
 			feature.Errors, err = decodeErrors(objElem)
 		case "failed":
@@ -149,12 +151,12 @@ func decodeStringArray(obj *bindings.WAFObject) ([]string, error) {
 
 	strArr := make([]string, 0, obj.NbEntries)
 	for i := uint64(0); i < obj.NbEntries; i++ {
-		objElem := unsafe.CastWithOffset[bindings.WAFObject](obj.Value, i)
+		objElem := ffi.CastWithOffset[bindings.WAFObject](obj.Value, i)
 		if objElem.Type != bindings.WAFStringType {
 			return nil, fmt.Errorf("decodeStringArray: %w: expected string, got %s", waferrors.ErrInvalidObjectType, objElem.Type)
 		}
 
-		strArr = append(strArr, unsafe.GostringSized(unsafe.Cast[byte](objElem.Value), objElem.NbEntries))
+		strArr = append(strArr, ffi.GostringSized(ffi.Cast[byte](objElem.Value), objElem.NbEntries))
 	}
 
 	return strArr, nil

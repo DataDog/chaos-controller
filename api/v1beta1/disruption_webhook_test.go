@@ -491,7 +491,7 @@ var _ = Describe("Disruption Webhook", func() {
 						EventDisruptionAnnotation: string(disruptionJSON),
 					}
 
-					recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+					recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), "%s", Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
 
 					// Action
 					_, err = newDisruption.ValidateCreate(ctx, newDisruption)
@@ -551,7 +551,7 @@ var _ = Describe("Disruption Webhook", func() {
 						EventDisruptionAnnotation: string(disruptionJSON),
 					}
 
-					recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+					recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), "%s", Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
 
 					// Action
 					_, err = newDisruption.ValidateCreate(ctx, newDisruption)
@@ -658,7 +658,7 @@ var _ = Describe("Disruption Webhook", func() {
 						EventDisruptionAnnotation: string(disruptionJSON),
 					}
 
-					recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+					recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), "%s", Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
 
 					// Action
 					_, err = newDisruption.ValidateCreate(ctx, newDisruption)
@@ -684,7 +684,7 @@ var _ = Describe("Disruption Webhook", func() {
 						EventDisruptionAnnotation: string(disruptionJSON),
 					}
 
-					recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+					recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), "%s", Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
 
 					// Action
 					_, err = newDisruption.ValidateCreate(ctx, newDisruption)
@@ -746,7 +746,7 @@ var _ = Describe("Disruption Webhook", func() {
 							EventDisruptionAnnotation: string(disruptionJSON),
 						}
 
-						recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+						recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), "%s", Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
 
 						// Action
 						_, err = newDisruption.ValidateCreate(ctx, newDisruption)
@@ -784,7 +784,7 @@ var _ = Describe("Disruption Webhook", func() {
 							EventDisruptionAnnotation: string(disruptionJSON),
 						}
 
-						recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+						recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), "%s", Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
 
 						// Action
 						_, err = newDisruption.ValidateCreate(ctx, newDisruption)
@@ -811,7 +811,7 @@ var _ = Describe("Disruption Webhook", func() {
 							EventDisruptionAnnotation: string(disruptionJSON),
 						}
 
-						recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+						recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), "%s", Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
 
 						// Action
 						_, err = newDisruption.ValidateCreate(ctx, newDisruption)
@@ -834,7 +834,7 @@ var _ = Describe("Disruption Webhook", func() {
 							EventDisruptionAnnotation: string(disruptionJSON),
 						}
 
-						recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+						recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), "%s", Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
 
 						// Action
 						_, err = newDisruption.ValidateCreate(ctx, newDisruption)
@@ -879,7 +879,7 @@ var _ = Describe("Disruption Webhook", func() {
 						EventDisruptionAnnotation: string(disruptionJSON),
 					}
 
-					recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+					recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), "%s", Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
 
 					// Action
 					_, err = newDisruption.ValidateCreate(ctx, newDisruption)
@@ -901,7 +901,7 @@ var _ = Describe("Disruption Webhook", func() {
 						EventDisruptionAnnotation: string(disruptionJSON),
 					}
 
-					recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+					recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), "%s", Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
 
 					// Action
 					_, err = newDisruption.ValidateCreate(ctx, newDisruption)
@@ -943,7 +943,7 @@ var _ = Describe("Disruption Webhook", func() {
 						EventDisruptionAnnotation: string(disruptionJSON),
 					}
 
-					recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+					recorderMock.EXPECT().AnnotatedEventf(newDisruption, expectedAnnotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), "%s", Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
 
 					// Action
 					_, err = newDisruption.ValidateCreate(ctx, newDisruption)

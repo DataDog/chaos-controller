@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"runtime"
 	"strconv"
@@ -31,32 +30,6 @@ const (
 	headerComputedTopLevel = "Datadog-Client-Computed-Top-Level"
 )
 
-func defaultDialer(timeout time.Duration) *net.Dialer {
-	return &net.Dialer{
-		Timeout:   timeout,
-		KeepAlive: 30 * time.Second,
-		DualStack: true,
-	}
-}
-
-func defaultHTTPClient(timeout time.Duration, disableKeepAlives bool) *http.Client {
-	if timeout == 0 {
-		timeout = defaultHTTPTimeout
-	}
-	return &http.Client{
-		Transport: &http.Transport{
-			Proxy:                 http.ProxyFromEnvironment,
-			DialContext:           defaultDialer(timeout).DialContext,
-			MaxIdleConns:          100,
-			IdleConnTimeout:       90 * time.Second,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ExpectContinueTimeout: 1 * time.Second,
-			DisableKeepAlives:     disableKeepAlives,
-		},
-		Timeout: timeout,
-	}
-}
-
 const (
 	defaultHostname          = "localhost"
 	defaultPort              = "8126"
@@ -66,13 +39,15 @@ const (
 	traceCountHeader         = "X-Datadog-Trace-Count"       // header containing the number of traces in the payload
 	obfuscationVersionHeader = "Datadog-Obfuscation-Version" // header containing the version of obfuscation used, if any
 
-	tracesAPIPath = "/v0.4/traces"
-	statsAPIPath  = "/v0.6/stats"
+	tracesAPIPath   = "/v0.4/traces"
+	tracesAPIPathV1 = "/v1.0/traces"
+	statsAPIPath    = "/v0.6/stats"
 )
 
-// transport is an interface for communicating data to the agent.
-type transport interface {
-	// send sends the payload p to the agent using the transport set up.
+// ddTransport is an interface for communicating data to the Datadog agent
+// using Datadog-specific protocols (msgpack traces, stats payloads).
+type ddTransport interface {
+	// send sends the msgpack-encoded payload p to the agent using the transport set up.
 	// It returns a non-nil response body when no error occurred.
 	send(p payload) (body io.ReadCloser, err error)
 	// sendStats sends the given stats payload to the agent.
@@ -89,16 +64,22 @@ type httpTransport struct {
 	headers  map[string]string // the Transport headers
 }
 
-// newTransport returns a new Transport implementation that sends traces to a
-// trace agent at the given url, using a given *http.Client.
-//
-// In general, using this method is only necessary if you have a trace agent
-// running on a non-default port, if it's located on another machine, or when
-// otherwise needing to customize the transport layer, for instance when using
-// a unix domain socket.
-func newHTTPTransport(url string, client *http.Client) *httpTransport {
-	// initialize the default EncoderPool with Encoder headers
-	defaultHeaders := map[string]string{
+// newHTTPTransport returns a new Transport implementation that sends traces
+// to the given traceURL and stats to the given statsURL, using the provided
+// *http.Client and headers. The caller is responsible for providing the
+// appropriate headers (e.g. datadogHeaders() for Datadog mode, or OTLP
+// headers resolved from config).
+func newHTTPTransport(traceURL string, statsURL string, client *http.Client, headers map[string]string) *httpTransport {
+	return &httpTransport{
+		traceURL: traceURL,
+		statsURL: statsURL,
+		client:   client,
+		headers:  headers,
+	}
+}
+
+func datadogHeaders() map[string]string {
+	h := map[string]string{
 		"Datadog-Meta-Lang":             "go",
 		"Datadog-Meta-Lang-Version":     strings.TrimPrefix(runtime.Version(), "go"),
 		"Datadog-Meta-Lang-Interpreter": runtime.Compiler + "-" + runtime.GOARCH + "-" + runtime.GOOS,
@@ -106,20 +87,15 @@ func newHTTPTransport(url string, client *http.Client) *httpTransport {
 		"Content-Type":                  "application/msgpack",
 	}
 	if cid := internal.ContainerID(); cid != "" {
-		defaultHeaders["Datadog-Container-ID"] = cid
+		h["Datadog-Container-ID"] = cid
 	}
 	if eid := internal.EntityID(); eid != "" {
-		defaultHeaders["Datadog-Entity-ID"] = eid
+		h["Datadog-Entity-ID"] = eid
 	}
 	if extEnv := internal.ExternalEnvironment(); extEnv != "" {
-		defaultHeaders["Datadog-External-Env"] = extEnv
+		h["Datadog-External-Env"] = extEnv
 	}
-	return &httpTransport{
-		traceURL: fmt.Sprintf("%s%s", url, tracesAPIPath),
-		statsURL: fmt.Sprintf("%s%s", url, statsAPIPath),
-		client:   client,
-		headers:  defaultHeaders,
-	}
+	return h
 }
 
 func (t *httpTransport) sendStats(p *pb.ClientStatsPayload, tracerObfuscationVersion int) error {
@@ -162,7 +138,7 @@ func (t *httpTransport) sendStats(p *pb.ClientStatsPayload, tracerObfuscationVer
 func (t *httpTransport) send(p payload) (body io.ReadCloser, err error) {
 	req, err := http.NewRequest("POST", t.traceURL, p)
 	if err != nil {
-		return nil, fmt.Errorf("cannot create http request: %s", err.Error())
+		return nil, fmt.Errorf("cannot create http request: %s", err)
 	}
 	stats := p.stats()
 	req.ContentLength = int64(stats.size)
@@ -170,13 +146,13 @@ func (t *httpTransport) send(p payload) (body io.ReadCloser, err error) {
 		req.Header.Set(header, value)
 	}
 	req.Header.Set(traceCountHeader, strconv.Itoa(stats.itemCount))
-	req.Header.Set(headerComputedTopLevel, "yes")
+	req.Header.Set(headerComputedTopLevel, "t")
 	if t := getGlobalTracer(); t != nil {
 		tc := t.TracerConf()
 		if tc.TracingAsTransport || tc.CanComputeStats {
 			// tracingAsTransport uses this header to disable the trace agent's stats computation
 			// while making canComputeStats() always false to also disable client stats computation.
-			req.Header.Set("Datadog-Client-Computed-Stats", "yes")
+			req.Header.Set("Datadog-Client-Computed-Stats", "t")
 		}
 		droppedTraces := int(tracerstats.Count(tracerstats.AgentDroppedP0Traces))
 		partialTraces := int(tracerstats.Count(tracerstats.PartialTraces))

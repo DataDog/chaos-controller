@@ -28,6 +28,7 @@ var (
 	defaultOriginDetection              = true
 	defaultChannelModeErrorsWhenFull    = false
 	defaultErrorHandler                 = func(error) {}
+	defaultAggregatorShardCount         = 1
 )
 
 // Options contains the configuration options for a client.
@@ -49,11 +50,13 @@ type Options struct {
 	aggregation                  bool
 	extendedAggregation          bool
 	maxBufferedSamplesPerContext int
+	aggregatorShardCount         int
 	telemetryAddr                string
 	originDetection              bool
 	containerID                  string
 	channelModeErrorsWhenFull    bool
 	errorHandler                 ErrorHandler
+	tagCardinality               *Cardinality
 }
 
 func resolveOptions(options []Option) (*Options, error) {
@@ -78,6 +81,7 @@ func resolveOptions(options []Option) (*Options, error) {
 		originDetection:              defaultOriginDetection,
 		channelModeErrorsWhenFull:    defaultChannelModeErrorsWhenFull,
 		errorHandler:                 defaultErrorHandler,
+		aggregatorShardCount:         defaultAggregatorShardCount,
 	}
 
 	for _, option := range options {
@@ -409,6 +413,31 @@ func WithOriginDetection() Option {
 func WithContainerID(id string) Option {
 	return func(o *Options) error {
 		o.containerID = id
+		return nil
+	}
+}
+
+// WithCardinality sets the tag cardinality of the metric.
+func WithCardinality(card Cardinality) Option {
+	return func(o *Options) error {
+		if !card.isValid() {
+			return fmt.Errorf("invalid cardinality %d", card)
+		}
+		o.tagCardinality = &card
+		return nil
+	}
+}
+
+// WithAggregatorShardCount sets the number of shards used for the aggregator.
+// Higher values reduce lock contention but increase memory usage.
+//
+// The default is 1 as to mimic current behavior.
+func WithAggregatorShardCount(shardCount int) Option {
+	return func(o *Options) error {
+		if shardCount < 1 {
+			return fmt.Errorf("shardCount must be a positive integer")
+		}
+		o.aggregatorShardCount = shardCount
 		return nil
 	}
 }

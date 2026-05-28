@@ -1151,7 +1151,7 @@ func (r *DisruptionReconciler) recordEventOnDisruption(instance *chaosv1beta1.Di
 	if targetName != "" {
 		r.Recorder.AnnotatedEventf(instance, map[string]string{
 			tagutil.TargetNameKey: targetName,
-		}, disEvent.Type, string(disEvent.Reason), message)
+		}, disEvent.Type, string(disEvent.Reason), "%s", message)
 	} else {
 		r.Recorder.Event(instance, disEvent.Type, string(disEvent.Reason), message)
 	}

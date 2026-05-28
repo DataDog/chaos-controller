@@ -93,7 +93,8 @@ var propagationMapping = map[string]string{
 func getDDorOtelConfig(configName string) string {
 	config, ok := otelDDConfigs[configName]
 	if !ok {
-		panic(fmt.Sprintf("Programming Error: %v not found in supported configurations", configName))
+		log.Debug("Programming Error: %s not found in supported configurations", configName)
+		return ""
 	}
 
 	// 1. Check managed stable config if handsOff
@@ -224,7 +225,7 @@ func mapSampleRate(ot string) (string, error) {
 func mapPropagationStyle(ot string) (string, error) {
 	ot = strings.TrimSpace(strings.ToLower(ot))
 	supportedStyles := make([]string, 0)
-	for _, otStyle := range strings.Split(ot, ",") {
+	for otStyle := range strings.SplitSeq(ot, ",") {
 		otStyle = strings.TrimSpace(otStyle)
 		if _, ok := propagationMapping[otStyle]; ok {
 			supportedStyles = append(supportedStyles, propagationMapping[otStyle])

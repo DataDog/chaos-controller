@@ -12,6 +12,8 @@ import (
 
 	"github.com/DataDog/datadog-agent/pkg/obfuscate"
 	"github.com/DataDog/datadog-agent/pkg/trace/stats"
+
+	"github.com/DataDog/dd-trace-go/v2/ddtrace/ext"
 	"github.com/DataDog/dd-trace-go/v2/internal"
 	"github.com/DataDog/dd-trace-go/v2/internal/civisibility/constants"
 	"github.com/DataDog/dd-trace-go/v2/internal/civisibility/utils"
@@ -29,6 +31,16 @@ var tracerObfuscationVersion = 1
 // covered in one stats bucket.
 var defaultStatsBucketSize = (10 * time.Second).Nanoseconds()
 
+// statsConcentrator abstracts the stats-computation lifecycle so that callers
+// don't need nil checks when stats are disabled (e.g. OTLP export mode).
+type statsConcentrator interface {
+	Start()
+	Stop()
+	flushAndSend(now time.Time, includeCurrent bool)
+	newTracerStatSpan(s *Span, obfuscator *obfuscate.Obfuscator) (*tracerStatSpan, bool)
+	trySendSpan(s *tracerStatSpan)
+}
+
 // concentrator aggregates and stores statistics on incoming spans in time buckets,
 // flushing them occasionally to the underlying transport located in the given
 // tracer config.
@@ -39,7 +51,7 @@ type concentrator struct {
 	In chan *tracerStatSpan
 
 	// stopped reports whether the concentrator is stopped (when non-zero)
-	stopped uint32
+	stopped uint32 // +checkatomic
 
 	spanConcentrator *stats.SpanConcentrator
 
@@ -55,6 +67,7 @@ type concentrator struct {
 type tracerStatSpan struct {
 	statSpan *stats.StatSpan
 	origin   string
+	version  string // per-span version tag; "" means use global aggKey version
 }
 
 // newConcentrator creates a new concentrator using the given tracer
@@ -64,9 +77,9 @@ func newConcentrator(c *config, bucketSize int64, statsdClient internal.StatsdCl
 		ComputeStatsBySpanKind: true,
 		BucketInterval:         defaultStatsBucketSize,
 	}
-	env := c.agent.defaultEnv
-	if c.env != "" {
-		env = c.env
+	env := c.agent.load().defaultEnv
+	if c.internalConfig.Env() != "" {
+		env = c.internalConfig.Env()
 	}
 	if env == "" {
 		// We do this to avoid a panic in the stats calculation logic when env is empty
@@ -76,14 +89,14 @@ func newConcentrator(c *config, bucketSize int64, statsdClient internal.StatsdCl
 		log.Debug("No DD Env found, normally the agent should have one")
 	}
 	gitCommitSha := ""
-	if c.ciVisibilityEnabled {
+	if c.internalConfig.CIVisibilityEnabled() {
 		// We only have this data if we're in CI Visibility
 		gitCommitSha = utils.GetCITags()[constants.GitCommitSHA]
 	}
 	aggKey := stats.PayloadAggregationKey{
-		Hostname:     c.hostname,
+		Hostname:     c.internalConfig.Hostname(),
 		Env:          env,
-		Version:      c.version,
+		Version:      c.internalConfig.Version(),
 		ContainerID:  "", // This intentionally left empty as the Agent will attach the container ID only in certain situations.
 		GitCommitSha: gitCommitSha,
 		ImageTag:     "",
@@ -113,18 +126,14 @@ func (c *concentrator) Start() {
 		return
 	}
 	c.stop = make(chan struct{})
-	c.wg.Add(1)
-	go func() {
-		defer c.wg.Done()
+	c.wg.Go(func() {
 		tick := time.NewTicker(time.Duration(c.bucketSize) * time.Nanosecond)
 		defer tick.Stop()
 		c.runFlusher(tick.C)
-	}()
-	c.wg.Add(1)
-	go func() {
-		defer c.wg.Done()
+	})
+	c.wg.Go(func() {
 		c.runIngester()
-	}()
+	})
 }
 
 // runFlusher runs the flushing loop which sends stats to the underlying transport.
@@ -161,31 +170,54 @@ func (c *concentrator) runIngester() {
 	}
 }
 
+// +checklocksignore — Post-finish: reads finished span fields during stats computation.
 func (c *concentrator) newTracerStatSpan(s *Span, obfuscator *obfuscate.Obfuscator) (*tracerStatSpan, bool) {
 	resource := s.resource
 	if c.shouldObfuscate() {
 		resource = obfuscatedResource(obfuscator, s.spanType, s.resource)
 	}
-	statSpan, ok := c.spanConcentrator.NewStatSpan(s.service, resource,
-		s.name, s.spanType, s.parentID, s.start, s.duration, s.error, s.meta, s.metrics, c.cfg.agent.peerTags)
+
+	httpMethod := s.meta[ext.HTTPMethod]
+	httpEndpoint := s.meta[ext.HTTPEndpoint]
+
+	statSpan, ok := c.spanConcentrator.NewStatSpanWithConfig(stats.StatSpanConfig{
+		Service:      s.service,
+		Resource:     resource,
+		Name:         s.name,
+		Type:         s.spanType,
+		ParentID:     s.parentID,
+		Start:        s.start,
+		Duration:     s.duration,
+		Error:        s.error,
+		Meta:         s.meta,
+		Metrics:      s.metrics,
+		PeerTags:     c.cfg.agent.load().peerTags,
+		HTTPMethod:   httpMethod,
+		HTTPEndpoint: httpEndpoint,
+	})
 	if !ok {
 		return nil, false
 	}
-	origin := s.meta[keyOrigin]
 	return &tracerStatSpan{
 		statSpan: statSpan,
-		origin:   origin,
+		origin:   s.meta[keyOrigin],
+		version:  s.meta[ext.Version],
 	}, true
 }
 
 func (c *concentrator) shouldObfuscate() bool {
 	// Obfuscate if agent reports an obfuscation version AND our version is at least as new
-	return c.cfg.agent.obfuscationVersion > 0 && c.cfg.agent.obfuscationVersion <= tracerObfuscationVersion
+	agentObfVersion := c.cfg.agent.load().obfuscationVersion
+	return agentObfVersion > 0 && agentObfVersion <= tracerObfuscationVersion
 }
 
 // add s into the concentrator's internal stats buckets.
 func (c *concentrator) add(s *tracerStatSpan) {
-	c.spanConcentrator.AddSpan(s.statSpan, c.aggregationKey, "", nil, s.origin)
+	aggKey := c.aggregationKey
+	if s.version != "" {
+		aggKey.Version = s.version
+	}
+	c.spanConcentrator.AddSpan(s.statSpan, aggKey, "", nil, s.origin)
 }
 
 // Stop stops the concentrator and blocks until the operation completes.
@@ -222,7 +254,7 @@ func (c *concentrator) flushAndSend(timenow time.Time, includeCurrent bool) {
 	if c.shouldObfuscate() {
 		obfVersion = tracerObfuscationVersion
 	} else {
-		log.Debug("Stats Obfuscation was skipped, agent will obfuscate (tracer %d, agent %d)", tracerObfuscationVersion, c.cfg.agent.obfuscationVersion)
+		log.Debug("Stats Obfuscation was skipped, agent will obfuscate (tracer %d, agent %d)", tracerObfuscationVersion, c.cfg.agent.load().obfuscationVersion)
 	}
 
 	if len(csps) == 0 {
@@ -236,10 +268,42 @@ func (c *concentrator) flushAndSend(timenow time.Time, includeCurrent bool) {
 	for _, csp := range csps {
 		csp.ProcessTags = processtags.GlobalTags().String()
 		flushedBuckets += len(csp.Stats)
-		if err := c.cfg.transport.sendStats(csp, obfVersion); err != nil {
+		var err error
+		for attempt := 0; attempt <= c.cfg.sendRetries; attempt++ {
+			err = c.cfg.ddTransport.sendStats(csp, obfVersion)
+			if err == nil {
+				break
+			}
+			if attempt < c.cfg.sendRetries {
+				time.Sleep(c.cfg.internalConfig.RetryInterval())
+			}
+		}
+		if err != nil {
 			c.statsd().Incr("datadog.tracer.stats.flush_errors", nil, 1)
 			log.Error("Error sending stats payload: %s", err.Error())
 		}
 	}
 	c.statsd().Incr("datadog.tracer.stats.flush_buckets", nil, float64(flushedBuckets))
 }
+
+// trySendSpan attempts a non-blocking send of the stat span to the
+// concentrator's input channel.
+func (c *concentrator) trySendSpan(s *tracerStatSpan) {
+	select {
+	case c.In <- s:
+	default:
+		log.Error("Stats channel full, disregarding span.")
+	}
+}
+
+// noopConcentrator is a no-op implementation of statsConcentrator used when
+// client-side stats are disabled (e.g. OTLP export mode).
+type noopConcentrator struct{}
+
+func (c *noopConcentrator) Start()                           {}
+func (c *noopConcentrator) Stop()                            {}
+func (c *noopConcentrator) flushAndSend(_ time.Time, _ bool) {}
+func (c *noopConcentrator) newTracerStatSpan(_ *Span, _ *obfuscate.Obfuscator) (*tracerStatSpan, bool) {
+	return nil, false
+}
+func (c *noopConcentrator) trySendSpan(_ *tracerStatSpan) {}

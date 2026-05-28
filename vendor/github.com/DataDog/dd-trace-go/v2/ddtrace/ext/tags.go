@@ -61,6 +61,9 @@ const (
 	// See https://docs.datadoghq.com/tracing/trace_collection/tracing_naming_convention/#http-requests
 	HTTPRequestHeaders = "http.request.headers"
 
+	// HTTPEndpoint sets the HTTP endpoint tag.
+	HTTPEndpoint = "http.endpoint"
+
 	// SpanName is a pseudo-key for setting a span's operation name by means of
 	// a tag. It is mostly here to facilitate vendor-agnostic frameworks like Opentracing
 	// and OpenCensus.
@@ -87,11 +90,18 @@ const (
 	// ErrorType specifies the error type.
 	ErrorType = "error.type"
 
-	// ErrorStack specifies the stack dump.
+	// ErrorStack specifies the stack dump when the error is thrown.
 	ErrorStack = "error.stack"
 
+	// ErrorHandlingStack specifies the stack dump when the error is captured.
+	ErrorHandlingStack = "error.handling_stack"
+
 	// ErrorDetails holds details about an error which implements a formatter.
+	// Deprecated: Use ErrorStack instead. This tag is not supported by Error Tracking.
 	ErrorDetails = "error.details"
+
+	// ErrorNoStackTrace is a tag that specifies that the error stack trace should not be captured.
+	ErrorNoStackTrace = "error.no_stack_trace"
 
 	// Environment specifies the environment to use with a trace.
 	Environment = "env"
@@ -144,4 +154,18 @@ const (
 
 	// CloudResourceID is the cloud provider resource identifier.
 	CloudResourceID = "cloud.resource_id"
+
+	// KeyServiceSource is the span meta key for tracking the origin of a
+	// service name override (_dd.svc_src).
+	KeyServiceSource = "_dd.svc_src"
+
+	// ServiceSourceMapping is the service source value used when the
+	// service name is renamed by DD_SERVICE_MAPPING.
+	ServiceSourceMapping = "opt.mapping"
+
+	// DSMTransactionID is the span tag key for a Data Streams transaction identifier.
+	DSMTransactionID = "dsm.transaction.id"
+
+	// DSMTransactionCheckpoint is the span tag key for a Data Streams transaction checkpoint name.
+	DSMTransactionCheckpoint = "dsm.transaction.checkpoint"
 )

@@ -3,14 +3,14 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-present Datadog, Inc.
 
-//go:build (linux || darwin) && (amd64 || arm64) && !go1.26 && !datadog.no_waf && !cgo && appsec
+//go:build (linux || darwin) && (amd64 || arm64) && !go1.27 && !datadog.no_waf && !cgo && appsec
 
 package log
 
 import (
 	"sync"
 
-	"github.com/DataDog/go-libddwaf/v4/internal/unsafe"
+	"github.com/DataDog/go-libddwaf/v4/internal/ffi"
 
 	"github.com/ebitengine/purego"
 )
@@ -29,9 +29,9 @@ func CallbackFunctionPointer() uintptr {
 }
 
 func ddwafLogCallbackFn(level Level, fnPtr, filePtr *byte, line uint, msgPtr *byte, _ uint64) {
-	function := unsafe.Gostring(fnPtr)
-	file := unsafe.Gostring(filePtr)
-	message := unsafe.Gostring(msgPtr)
+	function := ffi.Gostring(fnPtr)
+	file := ffi.Gostring(filePtr)
+	message := ffi.Gostring(msgPtr)
 
 	logMessage(level, function, file, line, message)
 }

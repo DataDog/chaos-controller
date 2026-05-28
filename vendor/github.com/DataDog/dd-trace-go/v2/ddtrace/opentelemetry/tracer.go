@@ -9,12 +9,13 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/hex"
+	"log/slog"
 
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/baggage"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/ext"
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"github.com/DataDog/dd-trace-go/v2/internal/telemetry"
-	"github.com/DataDog/dd-trace-go/v2/internal/telemetry/log"
+	telemetrylog "github.com/DataDog/dd-trace-go/v2/internal/telemetry/log"
 
 	otelbaggage "go.opentelemetry.io/otel/baggage"
 	oteltrace "go.opentelemetry.io/otel/trace"
@@ -54,7 +55,7 @@ func (t *oteltracer) Start(ctx context.Context, spanName string, opts ...oteltra
 	}
 	telemetry.Count(telemetry.NamespaceTracers, "spans_created", telemetryTags).Submit(1.0)
 	var cfg tracer.StartSpanConfig
-	cfg.Tags = make(map[string]interface{})
+	cfg.Tags = make(map[string]any)
 	if opts, ok := spanOptionsFromContext(ctx); ok {
 		ddopts = append(ddopts, opts...)
 		for _, o := range opts {
@@ -128,7 +129,7 @@ func mergeBaggageFromContext(ctx context.Context) otelbaggage.Baggage {
 				if err == nil {
 					otelBag = b
 				} else {
-					log.Debug("Error adding baggage member with key %s; dropping", key)
+					telemetrylog.Debug("Error adding baggage member; dropping", slog.String("key", key))
 				}
 			}
 		}
@@ -165,3 +166,29 @@ func (c *otelCtxToDDCtx) SpanID() uint64 {
 }
 
 func (c *otelCtxToDDCtx) ForeachBaggageItem(_ func(k, v string) bool) {}
+
+// SamplingDecision returns the sampling decision associated with this span context.
+// According to the OpenTelemetry specification, the sampling decision is made when the span is started.
+// Therefore, not having the Sampled TraceFlag set means that the trace should be dropped.
+// - https://github.com/open-telemetry/opentelemetry-go/blob/main/sdk/trace/tracer.go#L109
+// - https://github.com/open-telemetry/opentelemetry-go/blob/main/sdk/trace/tracer.go#L126
+func (c *otelCtxToDDCtx) SamplingDecision() uint32 {
+	if c.oc.IsSampled() {
+		return 2 // decisionKeep
+	}
+	return 1 // decisionDrop
+}
+
+// Priority returns the sampling priority associated with this span context.
+// According to the OpenTelemetry specification, the sampling decision is made when the span is started.
+// Therefore, not having the Sampled TraceFlag set means that the trace should be dropped.
+// - https://github.com/open-telemetry/opentelemetry-go/blob/main/sdk/trace/tracer.go#L109
+// - https://github.com/open-telemetry/opentelemetry-go/blob/main/sdk/trace/tracer.go#L126
+func (c *otelCtxToDDCtx) Priority() *float64 {
+	if c.oc.IsSampled() {
+		p := float64(ext.PriorityAutoKeep)
+		return &p
+	}
+	p := float64(ext.PriorityAutoReject)
+	return &p
+}

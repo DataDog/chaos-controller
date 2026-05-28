@@ -9,9 +9,10 @@ import (
 	"fmt"
 	"runtime"
 	"sync/atomic"
+	"unsafe"
 
 	"github.com/DataDog/go-libddwaf/v4/internal/bindings"
-	"github.com/DataDog/go-libddwaf/v4/internal/unsafe"
+	"github.com/DataDog/go-libddwaf/v4/internal/ffi"
 	"github.com/DataDog/go-libddwaf/v4/timer"
 	"github.com/DataDog/go-libddwaf/v4/waferrors"
 )
@@ -55,7 +56,7 @@ func (handle *Handle) NewContext(timerOptions ...timer.Option) (*Context, error)
 		return nil, fmt.Errorf("handle was released")
 	}
 
-	cContext := wafLib.ContextInit(handle.cHandle)
+	cContext := bindings.Lib.ContextInit(handle.cHandle)
 	if cContext == 0 {
 		handle.Close() // We couldn't get a context, so we no longer have an implicit reference to the Handle in it...
 		return nil, fmt.Errorf("could not get C context")
@@ -77,13 +78,13 @@ func (handle *Handle) NewContext(timerOptions ...timer.Option) (*Context, error)
 // Addresses returns the list of addresses the WAF has been configured to monitor based on the input
 // ruleset.
 func (handle *Handle) Addresses() []string {
-	return wafLib.KnownAddresses(handle.cHandle)
+	return bindings.Lib.KnownAddresses(handle.cHandle)
 }
 
 // Actions returns the list of actions the WAF has been configured to monitor based on the input
 // ruleset.
 func (handle *Handle) Actions() []string {
-	return wafLib.KnownActions(handle.cHandle)
+	return bindings.Lib.KnownActions(handle.cHandle)
 }
 
 // Close decrements the reference counter of this [Handle], possibly allowing it to be destroyed
@@ -95,7 +96,7 @@ func (handle *Handle) Close() {
 		return
 	}
 
-	wafLib.Destroy(handle.cHandle)
+	bindings.Lib.Destroy(handle.cHandle)
 	handle.cHandle = 0 // Makes it easy to spot use-after-free/double-free issues
 }
 
@@ -144,15 +145,18 @@ func newConfig(pinner *runtime.Pinner, keyObfuscatorRegex string, valueObfuscato
 			MaxStringLength:   bindings.MaxStringLength,
 		},
 		Obfuscator: bindings.WAFConfigObfuscator{
-			KeyRegex:   unsafe.PtrToUintptr(unsafe.Cstring(pinner, keyObfuscatorRegex)),
-			ValueRegex: unsafe.PtrToUintptr(unsafe.Cstring(pinner, valueObfuscatorRegex)),
+			KeyRegex:   uintptr(unsafe.Pointer(ffi.Cstring(pinner, keyObfuscatorRegex))),
+			ValueRegex: uintptr(unsafe.Pointer(ffi.Cstring(pinner, valueObfuscatorRegex))),
 		},
 		// Prevent libddwaf from freeing our Go-memory-allocated ddwaf_objects
 		FreeFn: 0,
 	}
 }
 
-func goRunError(rc bindings.WAFReturnCode) error {
+// goRunError returns decodes a [bindings.WAFReturnCode] and returns the
+// corresponding [waferrors] constant. If no error is matched ([bindings.WAFOK]
+// or [bindings.WAFMatch]), the value of [err] is returned instead.
+func goRunError(rc bindings.WAFReturnCode, err error) error {
 	switch rc {
 	case bindings.WAFErrInternal:
 		return waferrors.ErrInternal
@@ -162,7 +166,7 @@ func goRunError(rc bindings.WAFReturnCode) error {
 		return waferrors.ErrInvalidArgument
 	case bindings.WAFOK, bindings.WAFMatch:
 		// No error...
-		return nil
+		return err
 	default:
 		return fmt.Errorf("unknown waf return code %d", int(rc))
 	}

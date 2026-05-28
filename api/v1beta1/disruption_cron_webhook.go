@@ -257,7 +257,7 @@ func (d *DisruptionCron) emitEvent(eventReason EventReason) {
 		EventDisruptionCronAnnotation: string(disruptionCronJSON),
 	}
 
-	disruptionCronWebhookRecorder.AnnotatedEventf(d, annotations, Events[eventReason].Type, string(eventReason), Events[eventReason].OnDisruptionTemplateMessage)
+	disruptionCronWebhookRecorder.AnnotatedEventf(d, annotations, Events[eventReason].Type, string(eventReason), "%s", Events[eventReason].OnDisruptionTemplateMessage)
 }
 
 func (d *DisruptionCron) validateDisruptionCronName() error {
