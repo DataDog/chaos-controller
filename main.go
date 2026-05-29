@@ -48,7 +48,9 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/client-go/tools/cache"
 
+	chaoscache "github.com/DataDog/chaos-controller/cache"
 	ctrl "sigs.k8s.io/controller-runtime"
+	runtimecache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -132,6 +134,12 @@ func main() {
 			Port:    cfg.Controller.Webhook.Port,
 			CertDir: cfg.Controller.Webhook.CertDir,
 		}),
+		Cache: runtimecache.Options{
+			ByObject: map[client.Object]runtimecache.ByObject{
+				&corev1.Pod{}:  {Transform: chaoscache.PodTransformer},
+				&corev1.Node{}: {Transform: chaoscache.NodeTransformer},
+			},
+		},
 	})
 	if err != nil {
 		logger.Fatalw("unable to start manager", tags.ErrorKey, err)
