@@ -5,6 +5,7 @@ import (
 	"math"
 	"runtime"
 	"runtime/metrics"
+	"time"
 )
 
 func getBaseTags() []string {
@@ -68,4 +69,18 @@ func formatByteSize(bytes uint64) string {
 		exp++
 	}
 	return fmt.Sprintf(format, float64(bytes)/float64(div), string("KMGTPE"[exp])+"i")
+}
+
+func newTagCacher(interval time.Duration, now func() time.Time, source func() []string) func() []string {
+	var (
+		lastRefresh time.Time
+		tags        []string
+	)
+	return func() []string {
+		if t := now(); t.Sub(lastRefresh) >= interval {
+			lastRefresh = t
+			tags = source()
+		}
+		return tags
+	}
 }

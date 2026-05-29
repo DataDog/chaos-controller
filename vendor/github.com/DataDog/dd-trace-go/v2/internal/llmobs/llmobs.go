@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"math/big"
 	"slices"
@@ -36,10 +37,19 @@ var (
 	errLLMObsNotEnabled        = errors.New("LLMObs is not enabled. Ensure the tracer has been started with the option tracer.WithLLMObsEnabled(true) or set DD_LLMOBS_ENABLED=true")
 	errAgentlessRequiresAPIKey = errors.New("LLMOBs agentless mode requires a valid API key - set the DD_API_KEY env variable to configure one")
 	errMLAppRequired           = errors.New("ML App is required for sending LLM Observability data")
+	errAgentModeNotSupported   = errors.New("DD_LLMOBS_AGENTLESS_ENABLED has been configured to false but the agent is not available or does not support LLMObs")
+	errInvalidMetricLabel      = errors.New("label is required for evaluation metrics")
+	errFinishedSpan            = errors.New("span is already finished")
+	errEvalJoinBothPresent     = errors.New("provide either span/trace IDs or tag key/value, not both")
+	errEvalJoinNonePresent     = errors.New("must provide either span/trace IDs or tag key/value for joining")
+	errInvalidSpanJoin         = errors.New("both span and trace IDs are required for span-based joining")
+	errInvalidTagJoin          = errors.New("both tag key and value are required for tag-based joining")
 )
 
 const (
-	baggageKeyExperimentID = "_ml_obs.experiment_id"
+	baggageKeyExperimentID           = "_ml_obs.experiment_id"
+	baggageKeyExperimentRunID        = "_ml_obs.experiment_run_id"
+	baggageKeyExperimentRunIteration = "_ml_obs.experiment_run_iteration"
 )
 
 const (
@@ -106,6 +116,9 @@ type llmobsContext struct {
 	outputMessages  []LLMMessage
 	outputText      string
 
+	// tool specific
+	intent string
+
 	// experiment specific
 	experimentInput          any
 	experimentExpectedOutput any
@@ -126,8 +139,9 @@ type LLMObs struct {
 	evalMetricsCh chan *transport.LLMObsMetric
 
 	// runtime buffers, payloads are accumulated here and flushed periodically
-	bufSpanEvents  []*transport.LLMObsSpanEvent
-	bufEvalMetrics []*transport.LLMObsMetric
+	bufSpanEvents     []*transport.LLMObsSpanEvent
+	bufSpanEventsSize int // cumulative JSON size of buffered span events
+	bufEvalMetrics    []*transport.LLMObsMetric
 
 	// lifecycle
 	mu            sync.Mutex
@@ -139,15 +153,22 @@ type LLMObs struct {
 }
 
 func newLLMObs(cfg *config.Config, tracer Tracer) (*LLMObs, error) {
+	agentSupportsLLMObs := cfg.AgentFeatures.EVPProxyV2
+	if !agentSupportsLLMObs {
+		log.Debug("llmobs: agent not available or does not support llmobs")
+	}
 	if cfg.AgentlessEnabled != nil {
+		if !*cfg.AgentlessEnabled && !agentSupportsLLMObs {
+			return nil, errAgentModeNotSupported
+		}
 		cfg.ResolvedAgentlessEnabled = *cfg.AgentlessEnabled
 	} else {
 		// if agentlessEnabled is not set and evp_proxy is supported in the agent, default to use the agent
-		cfg.ResolvedAgentlessEnabled = !cfg.AgentFeatures.EVPProxyV2
+		cfg.ResolvedAgentlessEnabled = !agentSupportsLLMObs
 		if cfg.ResolvedAgentlessEnabled {
-			log.Debug("llmobs: DD_LLMOBS_AGENTLESS_ENABLED not set, defaulting to true since agent mode is supported")
+			log.Debug("llmobs: DD_LLMOBS_AGENTLESS_ENABLED not set, defaulting to agentless mode")
 		} else {
-			log.Debug("llmobs: DD_LLMOBS_AGENTLESS_ENABLED not set, defaulting to false since agent mode is not supported")
+			log.Debug("llmobs: DD_LLMOBS_AGENTLESS_ENABLED not set, defaulting to agent mode")
 		}
 	}
 
@@ -174,7 +195,11 @@ func newLLMObs(cfg *config.Config, tracer Tracer) (*LLMObs, error) {
 
 // Start starts the global LLMObs instance with the given configuration and tracer.
 // Returns an error if LLMObs is already running or if configuration is invalid.
-func Start(cfg config.Config, tracer Tracer) error {
+func Start(cfg config.Config, tracer Tracer) (err error) {
+	startTime := time.Now()
+	defer func() {
+		trackLLMObsStart(startTime, err, cfg)
+	}()
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -216,6 +241,7 @@ func ActiveLLMObs() (*LLMObs, error) {
 func Flush() {
 	if activeLLMObs != nil {
 		activeLLMObs.Flush()
+		trackUserFlush()
 	}
 }
 
@@ -229,10 +255,8 @@ func (l *LLMObs) Run() {
 	l.running = true
 	l.mu.Unlock()
 
-	l.wg.Add(1)
-	go func() {
+	l.wg.Go(func() {
 		// this goroutine should be the only one writing to the internal buffers
-		defer l.wg.Done()
 
 		ticker := time.NewTicker(l.flushInterval)
 		defer ticker.Stop()
@@ -240,27 +264,32 @@ func (l *LLMObs) Run() {
 		for {
 			select {
 			case ev := <-l.spanEventsCh:
+				evSize := jsonSize(ev)
+				if l.bufSpanEventsSize+evSize > sizeLimitEVPEvent {
+					log.Debug("llmobs: span events buffer size limit reached, flushing before adding new event")
+					params := l.clearBuffersNonLocked()
+					l.wg.Go(func() {
+						l.batchSend(params)
+					})
+				}
 				l.bufSpanEvents = append(l.bufSpanEvents, ev)
+				l.bufSpanEventsSize += evSize
 
 			case evalMetric := <-l.evalMetricsCh:
 				l.bufEvalMetrics = append(l.bufEvalMetrics, evalMetric)
 
 			case <-ticker.C:
 				params := l.clearBuffersNonLocked()
-				l.wg.Add(1)
-				go func() {
-					defer l.wg.Done()
+				l.wg.Go(func() {
 					l.batchSend(params)
-				}()
+				})
 
 			case <-l.flushNowCh:
 				log.Debug("llmobs: on-demand flush signal")
 				params := l.clearBuffersNonLocked()
-				l.wg.Add(1)
-				go func() {
-					defer l.wg.Done()
+				l.wg.Go(func() {
 					l.batchSend(params)
-				}()
+				})
 
 			case <-l.stopCh:
 				log.Debug("llmobs: stop signal")
@@ -270,7 +299,7 @@ func (l *LLMObs) Run() {
 				return
 			}
 		}
-	}()
+	})
 }
 
 // clearBuffersNonLocked clears the internal buffers and returns the corresponding batchSendParams to send to the backend.
@@ -281,6 +310,7 @@ func (l *LLMObs) clearBuffersNonLocked() batchSendParams {
 		evalMetrics: l.bufEvalMetrics,
 	}
 	l.bufSpanEvents = nil
+	l.bufSpanEventsSize = 0
 	l.bufEvalMetrics = nil
 	return params
 }
@@ -355,8 +385,9 @@ func (l *LLMObs) batchSend(params batchSendParams) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
+	// Use an empty context so each retry in the transport gets its own
+	// fresh per-request timeout rather than all retries sharing a single deadline.
+	ctx := context.Background()
 
 	var wg sync.WaitGroup
 
@@ -374,9 +405,10 @@ func (l *LLMObs) batchSend(params batchSendParams) {
 				}
 			}
 			if err := l.Transport.PushSpanEvents(ctx, events); err != nil {
-				log.Error("llmobs: PushSpanEvents failed: %v", err.Error())
+				log.Error("llmobs: failed to push span events: %v", err.Error())
+				trackDroppedPayload(len(events), telemetryMetricDroppedSpanEvents, "transport_error")
 			} else {
-				log.Debug("llmobs: PushSpanEvents success")
+				log.Debug("llmobs: push span events success")
 			}
 		}()
 	}
@@ -394,9 +426,10 @@ func (l *LLMObs) batchSend(params batchSendParams) {
 				}
 			}
 			if err := l.Transport.PushEvalMetrics(ctx, metrics); err != nil {
-				log.Error("llmobs: PushEvalMetrics failed: %v", err.Error())
+				log.Error("llmobs: failed to push eval metrics: %v", err.Error())
+				trackDroppedPayload(len(metrics), telemetryMetricDroppedEvalEvents, "transport_error")
 			} else {
-				log.Debug("llmobs: PushEvalMetrics success")
+				log.Debug("llmobs: push eval metrics success")
 			}
 		}()
 	}
@@ -480,16 +513,20 @@ func (l *LLMObs) llmobsSpanEvent(span *Span) *transport.LLMObsSpanEvent {
 		if spanKind != SpanKindLLM {
 			log.Warn("llmobs: dropping prompt on non-LLM span kind, annotating prompts is only supported for LLM span kinds")
 		} else {
-			input["prompt"] = inputPrompt
-		}
-	} else if spanKind == SpanKindLLM {
-		if span.parent != nil && span.parent.llmCtx.prompt != nil {
-			input["prompt"] = span.parent.llmCtx.prompt
+			input["prompt"] = promptPayload{Prompt: *inputPrompt, MLApp: span.mlApp}
 		}
 	}
 
 	if toolDefinitions := span.llmCtx.toolDefinitions; len(toolDefinitions) > 0 {
 		meta["tool_definitions"] = toolDefinitions
+	}
+
+	if intent := span.llmCtx.intent; intent != "" {
+		if spanKind != SpanKindTool {
+			log.Warn("llmobs: dropping intent on non-tool span kind, annotating intent is only supported for tool span kinds")
+		} else {
+			meta["intent"] = intent
+		}
 	}
 
 	spanStatus := "ok"
@@ -513,6 +550,8 @@ func (l *LLMObs) llmobsSpanEvent(span *Span) *transport.LLMObsSpanEvent {
 	parentID := defaultParentID
 	if span.parent != nil {
 		parentID = span.parent.apm.SpanID()
+	} else if span.propagated != nil {
+		parentID = span.propagated.SpanID
 	}
 	if span.llmTraceID == "" {
 		log.Warn("llmobs: span has no trace ID")
@@ -531,6 +570,11 @@ func (l *LLMObs) llmobsSpanEvent(span *Span) *transport.LLMObsSpanEvent {
 	tags["ddtrace.version"] = version.Tag
 	tags["language"] = "go"
 
+	sessionID := span.propagatedSessionID()
+	if sessionID != "" {
+		tags["session_id"] = sessionID
+	}
+
 	errTag := "0"
 	if span.error != nil {
 		errTag = "1"
@@ -544,19 +588,26 @@ func (l *LLMObs) llmobsSpanEvent(span *Span) *transport.LLMObsSpanEvent {
 		tags["integration"] = span.integration
 	}
 
-	for k, v := range span.llmCtx.tags {
-		tags[k] = v
-	}
+	maps.Copy(tags, span.llmCtx.tags)
 	tagsSlice := make([]string, 0, len(tags))
 	for k, v := range tags {
 		tagsSlice = append(tagsSlice, fmt.Sprintf("%s:%s", k, v))
+	}
+
+	ddAttrs := transport.DDAttributes{
+		SpanID:     spanID,
+		TraceID:    span.llmTraceID,
+		APMTraceID: span.apm.TraceID(),
+	}
+	if span.scope != "" {
+		ddAttrs.Scope = span.scope
 	}
 
 	ev := &transport.LLMObsSpanEvent{
 		SpanID:           spanID,
 		TraceID:          span.llmTraceID,
 		ParentID:         parentID,
-		SessionID:        span.propagatedSessionID(),
+		SessionID:        sessionID,
 		Tags:             tagsSlice,
 		Name:             span.name,
 		StartNS:          span.startTime.UnixNano(),
@@ -567,23 +618,37 @@ func (l *LLMObs) llmobsSpanEvent(span *Span) *transport.LLMObsSpanEvent {
 		Metrics:          span.llmCtx.metrics,
 		CollectionErrors: nil,
 		SpanLinks:        span.spanLinks,
-		Scope:            span.scope,
+		DDAttributes:     ddAttrs,
 	}
 	if b, err := json.Marshal(ev); err == nil {
-		if len(b) > sizeLimitEVPEvent {
+		rawSize := len(b)
+		trackSpanEventRawSize(ev, rawSize)
+
+		truncated := false
+		if rawSize > sizeLimitEVPEvent {
 			log.Warn(
 				"llmobs: dropping llmobs span event input/output because its size (%s) exceeds the event size limit (5MB)",
-				readableBytes(len(b)),
+				readableBytes(rawSize),
 			)
-			dropSpanEventIO(ev)
+			truncated = dropSpanEventIO(ev)
+			if !truncated {
+				log.Debug("llmobs: attempted to drop span event IO but it was not present")
+			}
 		}
+		actualSize := rawSize
+		if truncated {
+			if b, err := json.Marshal(ev); err == nil {
+				actualSize = len(b)
+			}
+		}
+		trackSpanEventSize(ev, actualSize, truncated)
 	}
 	return ev
 }
 
-func dropSpanEventIO(ev *transport.LLMObsSpanEvent) {
+func dropSpanEventIO(ev *transport.LLMObsSpanEvent) bool {
 	if ev == nil {
-		return
+		return false
 	}
 	droppedIO := false
 	if _, ok := ev.Meta["input"]; ok {
@@ -599,11 +664,14 @@ func dropSpanEventIO(ev *transport.LLMObsSpanEvent) {
 	} else {
 		log.Debug("llmobs: attempted to drop span event IO but it was not present")
 	}
+	return droppedIO
 }
 
 // StartSpan starts a new LLMObs span with the given kind, name, and configuration.
 // Returns the created span and a context containing the span.
 func (l *LLMObs) StartSpan(ctx context.Context, kind SpanKind, name string, cfg StartSpanConfig) (*Span, context.Context) {
+	defer trackSpanStarted()
+
 	spanName := name
 	if spanName == "" {
 		spanName = string(kind)
@@ -645,6 +713,7 @@ func (l *LLMObs) StartSpan(ctx context.Context, kind SpanKind, name string, cfg 
 	span.mlApp = cfg.MLApp
 	span.spanKind = kind
 	span.sessionID = cfg.SessionID
+	span.integration = cfg.Integration
 
 	span.llmCtx = llmobsContext{
 		modelName:     cfg.ModelName,
@@ -661,38 +730,90 @@ func (l *LLMObs) StartSpan(ctx context.Context, kind SpanKind, name string, cfg 
 			log.Warn("llmobs: ML App is required for sending LLM Observability data.")
 		}
 	}
+
+	experimentID := apmSpan.BaggageItem(baggageKeyExperimentID)
+	experimentRunID := apmSpan.BaggageItem(baggageKeyExperimentRunID)
+	experimentRunIteration := apmSpan.BaggageItem(baggageKeyExperimentRunIteration)
+	if experimentID != "" || experimentRunID != "" || experimentRunIteration != "" {
+		if span.llmCtx.tags == nil {
+			span.llmCtx.tags = make(map[string]string)
+		}
+		if experimentID != "" {
+			span.scope = "experiments"
+			span.llmCtx.tags["experiment_id"] = experimentID
+		}
+		if experimentRunID != "" {
+			span.llmCtx.tags["run_id"] = experimentRunID
+		}
+		if experimentRunIteration != "" {
+			span.llmCtx.tags["run_iteration"] = experimentRunIteration
+		}
+	}
+
 	log.Debug("llmobs: starting LLMObs span: %s, span_kind: %s, ml_app: %s", spanName, kind, span.mlApp)
 	return span, contextWithActiveLLMSpan(ctx, span)
 }
 
-// StartExperimentSpan starts a new experiment span with the given name, experiment ID, and configuration.
+// ExperimentInfo holds the experiment identifiers propagated via baggage to distributed child spans.
+type ExperimentInfo struct {
+	ID           string
+	RunID        string
+	RunIteration int
+}
+
+// StartExperimentSpan starts a new experiment span with the given name and configuration.
+// ExperimentInfo fields are propagated via baggage so distributed child spans inherit them.
 // Returns the created span and a context containing the span.
-func (l *LLMObs) StartExperimentSpan(ctx context.Context, name string, experimentID string, cfg StartSpanConfig) (*Span, context.Context) {
+func (l *LLMObs) StartExperimentSpan(ctx context.Context, name string, params ExperimentInfo, cfg StartSpanConfig) (*Span, context.Context) {
 	span, ctx := l.StartSpan(ctx, SpanKindExperiment, name, cfg)
 
-	if experimentID != "" {
-		span.apm.SetBaggageItem(baggageKeyExperimentID, experimentID)
+	if params.ID != "" {
+		span.apm.SetBaggageItem(baggageKeyExperimentID, params.ID)
 		span.scope = "experiments"
+	}
+	if params.RunID != "" {
+		span.apm.SetBaggageItem(baggageKeyExperimentRunID, params.RunID)
+	}
+	if params.RunIteration > 0 {
+		span.apm.SetBaggageItem(baggageKeyExperimentRunIteration, fmt.Sprintf("%d", params.RunIteration))
 	}
 	return span, ctx
 }
 
 // SubmitEvaluation submits an evaluation metric for a span.
 // The span can be identified either by span/trace IDs or by tag key-value pairs.
-func (l *LLMObs) SubmitEvaluation(cfg EvaluationConfig) error {
-	// Validate exactly one join method is provided
-	hasSpanJoin := cfg.SpanID != "" && cfg.TraceID != ""
-	hasTagJoin := cfg.TagKey != "" && cfg.TagValue != ""
+func (l *LLMObs) SubmitEvaluation(cfg EvaluationConfig) (err error) {
+	var metric *transport.LLMObsMetric
+	defer func() {
+		trackSubmitEvaluationMetric(metric, err)
+	}()
 
+	if cfg.Label == "" {
+		return errInvalidMetricLabel
+	}
+	var (
+		hasTagJoin  bool
+		hasSpanJoin bool
+	)
+	if cfg.SpanID != "" || cfg.TraceID != "" {
+		if !(cfg.SpanID != "" && cfg.TraceID != "") {
+			return errInvalidSpanJoin
+		}
+		hasSpanJoin = true
+	}
+	if cfg.TagKey != "" || cfg.TagValue != "" {
+		if !(cfg.TagKey != "" && cfg.TagValue != "") {
+			return errInvalidTagJoin
+		}
+		hasTagJoin = true
+	}
 	if hasSpanJoin && hasTagJoin {
-		return errors.New("provide either span/trace IDs or tag key/value, not both")
+		return errEvalJoinBothPresent
 	}
 	if !hasSpanJoin && !hasTagJoin {
-		return errors.New("must provide either span/trace IDs or tag key/value for joining")
+		return errEvalJoinNonePresent
 	}
-	if cfg.Label == "" {
-		return errors.New("label is required for evaluation metrics")
-	}
+
 	numValues := 0
 	if cfg.CategoricalValue != nil {
 		numValues++
@@ -711,7 +832,6 @@ func (l *LLMObs) SubmitEvaluation(cfg EvaluationConfig) error {
 	if mlApp == "" {
 		mlApp = l.Config.MLApp
 	}
-
 	timestampMS := cfg.TimestampMS
 	if timestampMS == 0 {
 		timestampMS = time.Now().UnixMilli()
@@ -731,12 +851,20 @@ func (l *LLMObs) SubmitEvaluation(cfg EvaluationConfig) error {
 		}
 	}
 
-	metric := &transport.LLMObsMetric{
+	tags := make([]string, 0, len(cfg.Tags)+1)
+	for _, tag := range cfg.Tags {
+		if !strings.HasPrefix(tag, "ddtrace.version:") {
+			tags = append(tags, tag)
+		}
+	}
+	tags = append(tags, fmt.Sprintf("ddtrace.version:%s", version.Tag))
+
+	metric = &transport.LLMObsMetric{
 		JoinOn:      joinOn,
 		Label:       cfg.Label,
 		MLApp:       mlApp,
 		TimestampMS: timestampMS,
-		Tags:        cfg.Tags,
+		Tags:        tags,
 	}
 
 	if cfg.CategoricalValue != nil {
@@ -791,6 +919,15 @@ func newLLMObsTraceID() string {
 
 	// 32-byte hex string
 	return fmt.Sprintf("%032x", x)
+}
+
+// jsonSize returns the JSON-encoded byte size of v, or 0 if marshaling fails.
+func jsonSize(v any) int {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return 0
+	}
+	return len(b)
 }
 
 // isAPIKeyValid reports whether the given string is a structurally valid API key

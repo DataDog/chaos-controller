@@ -6,16 +6,17 @@
 package profiler
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -105,7 +106,6 @@ type config struct {
 	cpuDuration          time.Duration
 	cpuProfileRate       int
 	uploadTimeout        time.Duration
-	maxGoroutinesWait    int
 	mutexFraction        int
 	blockRate            int
 	outputDir            string
@@ -183,11 +183,10 @@ func defaultConfig() (*config, error) {
 		blockRate:            DefaultBlockRate,
 		mutexFraction:        DefaultMutexFraction,
 		uploadTimeout:        DefaultUploadTimeout,
-		maxGoroutinesWait:    1000, // arbitrary value, should limit STW to ~30ms
 		deltaProfiles:        internal.BoolEnv("DD_PROFILING_DELTA", true),
 		logStartup:           internal.BoolEnv("DD_TRACE_STARTUP_LOGS", true),
 		endpointCountEnabled: internal.BoolEnv(traceprof.EndpointCountEnvVar, false),
-		compressionConfig:    env.Get("DD_PROFILING_DEBUG_COMPRESSION_SETTINGS"),
+		compressionConfig:    cmp.Or(env.Get("DD_PROFILING_DEBUG_COMPRESSION_SETTINGS"), "zstd"),
 		traceConfig: executionTraceConfig{
 			Enabled: internal.BoolEnv("DD_PROFILING_EXECUTION_TRACE_ENABLED", executionTraceEnabledDefault),
 			Period:  internal.DurationEnv("DD_PROFILING_EXECUTION_TRACE_PERIOD", 15*time.Minute),
@@ -215,7 +214,7 @@ func defaultConfig() (*config, error) {
 	if v := env.Get("DD_PROFILING_UPLOAD_TIMEOUT"); v != "" {
 		d, err := time.ParseDuration(v)
 		if err != nil {
-			return nil, fmt.Errorf("DD_PROFILING_UPLOAD_TIMEOUT: %s", err.Error())
+			return nil, fmt.Errorf("DD_PROFILING_UPLOAD_TIMEOUT: %s", err)
 		}
 		WithUploadTimeout(d)(&c)
 	}
@@ -242,9 +241,7 @@ func defaultConfig() (*config, error) {
 		tags = internal.ParseTagString(v)
 		internal.CleanGitMetadataTags(tags)
 	}
-	for key, val := range internal.GetGitMetadataTags() {
-		tags[key] = val
-	}
+	maps.Copy(tags, internal.GetGitMetadataTags())
 	for key, val := range tags {
 		if val != "" {
 			WithTags(key + ":" + val)(&c)
@@ -269,14 +266,6 @@ func defaultConfig() (*config, error) {
 	if v := env.Get("DD_PROFILING_OUTPUT_DIR"); v != "" {
 		withOutputDir(v)(&c)
 	}
-	if v := env.Get("DD_PROFILING_WAIT_PROFILE_MAX_GOROUTINES"); v != "" {
-		n, err := strconv.Atoi(v)
-		if err != nil {
-			return nil, fmt.Errorf("DD_PROFILING_WAIT_PROFILE_MAX_GOROUTINES: %s", err.Error())
-		}
-		c.maxGoroutinesWait = n
-	}
-
 	return &c, nil
 }
 

@@ -9,13 +9,14 @@ import (
 	"slices"
 	"time"
 
+	"github.com/DataDog/go-libddwaf/v4"
+	"github.com/DataDog/go-libddwaf/v4/timer"
+
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/ext"
 	"github.com/DataDog/dd-trace-go/v2/instrumentation/appsec/trace"
 	"github.com/DataDog/dd-trace-go/v2/internal"
 	emitter "github.com/DataDog/dd-trace-go/v2/internal/appsec/emitter/waf"
 	"github.com/DataDog/dd-trace-go/v2/internal/samplernames"
-	"github.com/DataDog/go-libddwaf/v4"
-	"github.com/DataDog/go-libddwaf/v4/timer"
 )
 
 const (
@@ -31,13 +32,22 @@ const (
 
 	durationExtSuffix = ".duration_ext"
 
-	blockedRequestTag = "appsec.blocked"
+	blockedRequestTag  = "appsec.blocked"
+	downwardRequestTag = wafSpanTagPrefix + "downstream_request"
 )
 
 // AddRulesMonitoringTags adds the tags related to security rules monitoring
 func AddRulesMonitoringTags(th trace.TagSetter) {
 	th.SetTag(wafVersionTag, libddwaf.Version())
 	th.SetTag(ext.ManualKeep, samplernames.AppSec)
+}
+
+func addDownwardRequestTag(th trace.TagSetter, value int) {
+	if value == 0 {
+		return
+	}
+
+	th.SetTag(downwardRequestTag, value)
 }
 
 // AddWAFMonitoringTags adds the tags related to the monitoring of the WAF

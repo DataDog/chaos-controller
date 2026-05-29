@@ -8,9 +8,10 @@ package bindings
 import (
 	"fmt"
 	"structs"
+	"unsafe"
 
+	"github.com/DataDog/go-libddwaf/v4/internal/ffi"
 	"github.com/DataDog/go-libddwaf/v4/internal/pin"
-	"github.com/DataDog/go-libddwaf/v4/internal/unsafe"
 	"github.com/DataDog/go-libddwaf/v4/waferrors"
 	"github.com/pkg/errors"
 )
@@ -163,7 +164,7 @@ func (w *WAFObject) SetMapData(pinner pin.Pinner, data []WAFObject) {
 // SetMapKey sets the receiving [WAFObject] to a new map key with the given
 // string.
 func (w *WAFObject) SetMapKey(pinner pin.Pinner, key string) {
-	header := unsafe.NativeStringUnwrap(key)
+	header := ffi.NativeStringUnwrap(key)
 
 	w.ParameterNameLength = uint64(header.Len)
 	if w.ParameterNameLength == 0 {
@@ -175,14 +176,14 @@ func (w *WAFObject) SetMapKey(pinner pin.Pinner, key string) {
 }
 
 func (w *WAFObject) MapKey() string {
-	return string(unsafe.Slice(*(**byte)(unsafe.Pointer(&w.ParameterName)), w.ParameterNameLength))
+	return string(ffi.Slice(*(**byte)(unsafe.Pointer(&w.ParameterName)), w.ParameterNameLength))
 }
 
 func (w *WAFObject) Values() ([]WAFObject, error) {
 	if !w.IsArray() && !w.IsMap() {
 		return nil, errors.New("value is not an array or map")
 	}
-	return unsafe.Slice(*(**WAFObject)(unsafe.Pointer(&w.Value)), w.NbEntries), nil
+	return ffi.Slice(*(**WAFObject)(unsafe.Pointer(&w.Value)), w.NbEntries), nil
 }
 
 func (w *WAFObject) AnyValue() (any, error) {
@@ -282,7 +283,7 @@ func (w *WAFObject) StringValue() (string, error) {
 	if !w.IsString() {
 		return "", errors.New("value is not a string")
 	}
-	return string(unsafe.Slice(*(**byte)(unsafe.Pointer(&w.Value)), w.NbEntries)), nil
+	return string(ffi.Slice(*(**byte)(unsafe.Pointer(&w.Value)), w.NbEntries)), nil
 }
 
 func (w *WAFObject) UIntValue() (uint64, error) {
@@ -292,11 +293,11 @@ func (w *WAFObject) UIntValue() (uint64, error) {
 	return uint64(w.Value), nil
 }
 
-var blankCStringValue = unsafe.Pointer(unsafe.NativeStringUnwrap("\x00").Data)
+var blankCStringValue = unsafe.Pointer(ffi.NativeStringUnwrap("\x00").Data)
 
 // SetString sets the receiving [WAFObject] value to the given string.
 func (w *WAFObject) SetString(pinner pin.Pinner, str string) {
-	header := unsafe.NativeStringUnwrap(str)
+	header := ffi.NativeStringUnwrap(str)
 
 	w.Type = WAFStringType
 	w.NbEntries = uint64(header.Len)
@@ -311,13 +312,13 @@ func (w *WAFObject) SetString(pinner pin.Pinner, str string) {
 // SetInt sets the receiving [WAFObject] value to the given int.
 func (w *WAFObject) SetInt(i int64) {
 	w.Type = WAFIntType
-	w.Value = unsafe.NativeToUintptr(i)
+	w.Value = ffi.NativeToUintptr(i)
 }
 
 // SetUint sets the receiving [WAFObject] value to the given uint.
 func (w *WAFObject) SetUint(i uint64) {
 	w.Type = WAFUintType
-	w.Value = unsafe.NativeToUintptr(i)
+	w.Value = ffi.NativeToUintptr(i)
 }
 
 // SetBool sets the receiving [WAFObject] value to the given bool.
@@ -333,7 +334,7 @@ func (w *WAFObject) SetBool(b bool) {
 // SetFloat sets the receiving [WAFObject] value to the given float.
 func (w *WAFObject) SetFloat(f float64) {
 	w.Type = WAFFloatType
-	w.Value = unsafe.NativeToUintptr(f)
+	w.Value = ffi.NativeToUintptr(f)
 }
 
 // SetNil sets the receiving [WAFObject] to nil.
@@ -365,7 +366,7 @@ func (w *WAFObject) setArrayDataTyped(pinner pin.Pinner, arr []WAFObject, t WAFO
 		return
 	}
 
-	ptr := unsafe.Pointer(unsafe.SliceData(arr))
+	ptr := unsafe.Pointer(ffi.SliceData(arr))
 	pinner.Pin(ptr)
 	w.Value = uintptr(ptr)
 }

@@ -16,6 +16,7 @@ REFERENCE_REPO=""
 DRY_RUN=false
 VERBOSE=false
 CLEANUP_DOWNLOADED=false
+YES=false
 
 # Usage function
 usage() {
@@ -28,6 +29,7 @@ usage() {
     echo "  -d, --reference FILE  Path to reference.go.mod file (default: ./reference.go.mod)"
     echo "  -r, --repo REPO       GitHub repository to download go.mod from"
     echo "  -n, --dry-run         Show what would be changed without making changes"
+    echo "  -y, --yes             Automatically answer yes to all prompts"
     echo "  -v, --verbose         Enable verbose output"
     echo "  -h, --help            Show this help message"
     echo ""
@@ -70,6 +72,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         -n|--dry-run)
             DRY_RUN=true
+            shift
+            ;;
+        -y|--yes)
+            YES=true
             shift
             ;;
         -v|--verbose)
@@ -382,8 +388,12 @@ sync_go_version() {
         if [[ "$DRY_RUN" == "true" ]]; then
             log_info "Dry run mode - would update Go version from $local_go_version to $reference_go_version"
         else
-            echo -n "Do you want to update the local Go version to match reference? [y/N]: "
-            read -r response
+            if [[ "$YES" == "true" ]]; then
+                response="y"
+            else
+                echo -n "Do you want to update the local Go version to match reference? [y/N]: "
+                read -r response
+            fi
             if [[ "$response" =~ ^[Yy]$ ]]; then
                 # Update Go version
                 sed -i.bak "s|^go $local_go_version|go $reference_go_version|g" "$LOCAL_GO_MOD"
@@ -449,8 +459,12 @@ compare_shared_dependencies() {
     fi
 
     # Ask for confirmation
-    echo -n "Do you want to update the local go.mod with reference versions? [y/N]: "
-    read -r response
+    if [[ "$YES" == "true" ]]; then
+        response="y"
+    else
+        echo -n "Do you want to update the local go.mod with reference versions? [y/N]: "
+        read -r response
+    fi
     if [[ ! "$response" =~ ^[Yy]$ ]]; then
         log_info "Update cancelled by user"
         return 0

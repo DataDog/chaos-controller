@@ -4,7 +4,7 @@
 // Copyright 2016-present Datadog, Inc.
 
 // Build when the target OS or architecture are not supported
-//go:build (!linux && !darwin) || (!amd64 && !arm64) || go1.26 || datadog.no_waf || (!cgo && !appsec)
+//go:build (!linux && !darwin) || (!amd64 && !arm64) || go1.27 || datadog.no_waf || (!cgo && !appsec)
 
 package bindings
 
@@ -16,7 +16,7 @@ import (
 
 type WAFLib struct{}
 
-func NewWAFLib() (*WAFLib, error) {
+func newWAFLib() (*WAFLib, error) {
 	return nil, errors.New("go-libddwaf is not supported on this platform")
 }
 
@@ -55,5 +55,7 @@ func (*WAFLib) ObjectFree(*WAFObject) {}
 func (*WAFLib) Run(WAFContext, *WAFObject, *WAFObject, *WAFObject, uint64) WAFReturnCode {
 	return WAFErrInternal
 }
+
+func (waf *WAFLib) ObjectFromJSON(json []byte) (WAFObject, bool) { return WAFObject{}, false }
 
 func (*WAFLib) Handle() uintptr { return 0 }

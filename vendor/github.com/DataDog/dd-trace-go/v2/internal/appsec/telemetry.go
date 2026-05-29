@@ -9,17 +9,20 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"runtime"
 	"sync"
+	"sync/atomic"
+
+	"github.com/DataDog/go-libddwaf/v4"
+	"github.com/DataDog/go-libddwaf/v4/waferrors"
 
 	"github.com/DataDog/dd-trace-go/v2/internal/appsec/config"
 	"github.com/DataDog/dd-trace-go/v2/internal/log"
 	"github.com/DataDog/dd-trace-go/v2/internal/telemetry"
 	telemetrylog "github.com/DataDog/dd-trace-go/v2/internal/telemetry/log"
-	"github.com/DataDog/go-libddwaf/v4"
-	"github.com/DataDog/go-libddwaf/v4/waferrors"
 )
 
 var (
@@ -33,15 +36,33 @@ var (
 		{Name: "waf_supports_target", Value: wafSupported, Origin: telemetry.OriginCode},
 		{Name: "waf_healthy", Value: wafUsable, Origin: telemetry.OriginCode},
 	}
+	appsecEnabledOrigin atomic.Pointer[telemetry.Origin]
 )
 
 // init sends the static telemetry for AppSec.
 func init() {
 	telemetry.RegisterAppConfigs(staticConfigs...)
+	telemetry.AddFlushTicker(func(client telemetry.Client) {
+		var val float64
+		if Enabled() {
+			val = 1.0
+		}
+
+		origin := telemetry.OriginDefault
+		if o := appsecEnabledOrigin.Load(); o != nil {
+			origin = *o
+		}
+
+		client.Gauge(telemetry.NamespaceAppSec, "enabled", []string{"origin:" + string(origin)}).Submit(val)
+	})
 }
 
 func registerAppsecStartTelemetry(mode config.EnablementMode, origin telemetry.Origin) {
-	if mode == config.RCStandby {
+	telemetry.RegisterAppConfig(config.EnvEnabled, Enabled(), origin)
+	appsecEnabledOrigin.Store(&origin)
+	detectLibDLOnce.Do(detectLibDL)
+
+	if !Enabled() {
 		return
 	}
 
@@ -50,9 +71,6 @@ func registerAppsecStartTelemetry(mode config.EnablementMode, origin telemetry.O
 	}
 
 	telemetry.ProductStarted(telemetry.NamespaceAppSec)
-	// TODO: add appsec.enabled metric once this metric is enabled backend-side
-
-	detectLibDLOnce.Do(detectLibDL)
 }
 
 func detectLibDL() {
@@ -60,14 +78,15 @@ func detectLibDL() {
 		return
 	}
 
+	logger := telemetrylog.With(telemetry.WithTags([]string{"product:appsec"}))
 	for _, method := range detectLibDLMethods {
 		if ok, err := method.method(); ok {
-			telemetrylog.Debug("libdl detected using method: %s", method.name, telemetry.WithTags([]string{"method:" + method.name}))
-			log.Debug("libdl detected using method: %s", method.name)
+			logger.Debug("libdl detected using method", slog.String("method", method.name))
+			log.Debug("appsec: libdl detected using method: %s", method.name)
 			telemetry.RegisterAppConfig("libdl_present", true, telemetry.OriginCode)
 			return
 		} else if err != nil {
-			log.Debug("failed to detect libdl with method %s: %v", method.name, err.Error())
+			log.Debug("appsec: failed to detect libdl with method %s: %v", method.name, err.Error())
 		}
 	}
 

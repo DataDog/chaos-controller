@@ -298,7 +298,7 @@ func (d *Disruption) ValidateCreate(ctx context.Context, obj runtime.Object) (_ 
 		EventDisruptionAnnotation: string(disruptionJSON),
 	}
 
-	recorder.AnnotatedEventf(disruptionObj, annotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
+	recorder.AnnotatedEventf(disruptionObj, annotations, Events[EventDisruptionCreated].Type, string(EventDisruptionCreated), "%s", Events[EventDisruptionCreated].OnDisruptionTemplateMessage)
 
 	return nil, nil
 }

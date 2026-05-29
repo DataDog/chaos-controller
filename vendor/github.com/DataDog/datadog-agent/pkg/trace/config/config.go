@@ -15,10 +15,9 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/DataDog/opentelemetry-mapping-go/pkg/otlp/attributes"
-
 	"github.com/DataDog/datadog-agent/comp/core/tagger/origindetection"
 	"github.com/DataDog/datadog-agent/pkg/obfuscate"
+	ddattributes "github.com/DataDog/datadog-agent/pkg/opentelemetry-mapping-go/otlp/attributes"
 	"github.com/DataDog/datadog-agent/pkg/remoteconfig/state"
 	"github.com/DataDog/datadog-agent/pkg/trace/log"
 	"github.com/DataDog/datadog-agent/pkg/trace/traceutil"
@@ -80,18 +79,16 @@ type OTLP struct {
 	ProbabilisticSampling float64
 
 	// AttributesTranslator specifies an OTLP to Datadog attributes translator.
-	AttributesTranslator *attributes.Translator `mapstructure:"-"`
-
-	// IgnoreMissingDatadogFields specifies whether we should recompute DD span fields if the corresponding "datadog."
-	// namespaced span attributes are missing. If it is false (default), we will use the incoming "datadog." namespaced
-	// OTLP span attributes to construct the DD span, and if they are missing, we will recompute them from the other
-	// OTLP semantic convention attributes. If it is true, we will only populate a field if its associated "datadog."
-	// OTLP span attribute exists, otherwise we will leave it empty.
-	IgnoreMissingDatadogFields bool `mapstructure:"ignore_missing_datadog_fields"`
+	AttributesTranslator *ddattributes.Translator `mapstructure:"-"`
 
 	// GrpcMaxRecvMsgSizeMib specifies the max receive message size (in Mib) in OTLP receiver gRPC server in the trace agent binary.
 	// This config only applies to Agent OTLP ingestion. It does not apply to OSS Datadog exporter/connector or DDOT.
 	GrpcMaxRecvMsgSizeMib int `mapstructure:"-"`
+
+	// IgnoreMissingDatadogFields is deprecated and no longer used.
+	// It is kept for backwards compatibility with external packages.
+	// Deprecated: This field is ignored - the Agent now always uses standard OTel semantic conventions.
+	IgnoreMissingDatadogFields bool `mapstructure:"-"`
 }
 
 // ObfuscationConfig holds the configuration for obfuscating sensitive data
@@ -141,7 +138,9 @@ type ObfuscationConfig struct {
 
 func obfuscationMode(conf *AgentConfig, sqllexerEnabled bool) obfuscate.ObfuscationMode {
 	if conf.SQLObfuscationMode != "" {
-		if conf.SQLObfuscationMode == string(obfuscate.ObfuscateOnly) || conf.SQLObfuscationMode == string(obfuscate.ObfuscateAndNormalize) {
+		if conf.SQLObfuscationMode == string(obfuscate.ObfuscateOnly) ||
+			conf.SQLObfuscationMode == string(obfuscate.NormalizeOnly) ||
+			conf.SQLObfuscationMode == string(obfuscate.ObfuscateAndNormalize) {
 			return obfuscate.ObfuscationMode(conf.SQLObfuscationMode)
 		}
 		log.Warnf("Invalid SQL obfuscator mode %s, falling back to default", conf.SQLObfuscationMode)
@@ -173,15 +172,35 @@ func (o *ObfuscationConfig) Export(conf *AgentConfig) obfuscate.Config {
 		Valkey:               o.Valkey,
 		Memcached:            o.Memcached,
 		CreditCard:           o.CreditCards,
-		Logger:               new(debugLogger),
+		FullLogger:           new(logger),
 		Cache:                o.Cache,
 	}
 }
 
-type debugLogger struct{}
+type logger struct{}
 
-func (debugLogger) Debugf(format string, params ...interface{}) {
+func (logger) Tracef(format string, params ...interface{}) {
+	log.Tracef(format, params...)
+}
+
+func (logger) Debugf(format string, params ...interface{}) {
 	log.Debugf(format, params...)
+}
+
+func (logger) Infof(format string, params ...interface{}) {
+	log.Infof(format, params...)
+}
+
+func (logger) Warnf(format string, params ...interface{}) {
+	log.Warnf(format, params...)
+}
+
+func (logger) Errorf(format string, params ...interface{}) {
+	log.Errorf(format, params...)
+}
+
+func (logger) Criticalf(format string, params ...interface{}) {
+	log.Criticalf(format, params...)
 }
 
 // Enablable can represent any option that has an "enabled" boolean sub-field.
@@ -246,6 +265,8 @@ type ProfilingProxyConfig struct {
 	DDURL string
 	// AdditionalEndpoints ...
 	AdditionalEndpoints map[string][]string
+	// ReceiverTimeout is the timeout in seconds for profile upload requests
+	ReceiverTimeout int
 }
 
 // EVPProxy contains the settings for the EVPProxy proxy.
@@ -337,11 +358,12 @@ type AgentConfig struct {
 	Endpoints []*Endpoint
 
 	// Concentrator
-	BucketInterval         time.Duration // the size of our pre-aggregation per bucket
-	ExtraAggregators       []string      // DEPRECATED
-	PeerTagsAggregation    bool          // enables/disables stats aggregation for peer entity tags, used by Concentrator and ClientStatsAggregator
-	ComputeStatsBySpanKind bool          // enables/disables the computing of stats based on a span's `span.kind` field
-	PeerTags               []string      // additional tags to use for peer entity stats aggregation
+	BucketInterval            time.Duration // the size of our pre-aggregation per bucket
+	ExtraAggregators          []string      // DEPRECATED
+	PeerTagsAggregation       bool          // enables/disables stats aggregation for peer entity tags, used by Concentrator and ClientStatsAggregator
+	ComputeStatsBySpanKind    bool          // enables/disables the computing of stats based on a span's `span.kind` field
+	PeerTags                  []string      // additional tags to use for peer entity stats aggregation
+	SpanDerivedPrimaryTagKeys []string      // tag keys to use for span-derived primary tag stats aggregation
 
 	// Sampler configuration
 	ExtraSampleRate float64
@@ -394,10 +416,10 @@ type AgentConfig struct {
 	// case, the sender will drop failed payloads when it is unable to enqueue
 	// them for another retry.
 	MaxSenderRetries int
-	// HTTP client used in writer connections. If nil, default client values will be used.
-	HTTPClientFunc func() *http.Client `json:"-"`
 	// HTTP Transport used in writer connections. If nil, default transport values will be used.
 	HTTPTransportFunc func() *http.Transport `json:"-"`
+	// ClientStatsFlushInterval specifies the frequency at which the client stats aggregator will flush its buffer.
+	ClientStatsFlushInterval time.Duration
 
 	// internal telemetry
 	StatsdEnabled  bool
@@ -474,8 +496,8 @@ type AgentConfig struct {
 	// DebuggerProxy contains the settings for the Live Debugger proxy.
 	DebuggerProxy DebuggerProxyConfig
 
-	// DebuggerDiagnosticsProxy contains the settings for the Live Debugger diagnostics proxy.
-	DebuggerDiagnosticsProxy DebuggerProxyConfig
+	// DebuggerIntakeProxy contains the settings for the Live Debugger intake proxy.
+	DebuggerIntakeProxy DebuggerProxyConfig
 
 	// SymDBProxy contains the settings for the Symbol Database proxy.
 	SymDBProxy SymDBProxyConfig
@@ -490,9 +512,13 @@ type AgentConfig struct {
 
 	// RemoteConfigClient retrieves sampling updates from the remote config backend
 	RemoteConfigClient RemoteClient `json:"-"`
+	// MRFRemoteConfigClient retrieves MRF updates from the remote config DC.
+	MRFRemoteConfigClient RemoteClient `json:"-"`
 
 	// ContainerTags ...
 	ContainerTags func(cid string) ([]string, error) `json:"-"`
+	// ContainerTagsBuffer enables buffering of payloads until full container tags extraction
+	ContainerTagsBuffer bool
 
 	// ContainerIDFromOriginInfo ...
 	ContainerIDFromOriginInfo func(originInfo origindetection.OriginInfo) (string, error) `json:"-"`
@@ -506,20 +532,33 @@ type AgentConfig struct {
 	// Install Signature
 	InstallSignature InstallSignatureConfig
 
-	// Lambda function name
-	LambdaFunctionName string
+	// Additional profile tags are statically defined tags to attach to proxied profiles, this is primarily used by serverless
+	AdditionalProfileTags map[string]string
 
-	// Azure container apps tags, in the form of a comma-separated list of
-	// key-value pairs, starting with a comma
-	AzureContainerAppTags string
+	// AuthToken is the auth token for the agent
+	AuthToken string `json:"-"`
 
-	// GetAgentAuthToken retrieves an auth token to communicate with other agent processes
-	// Function will be nil if in an environment without an auth token
-	GetAgentAuthToken func() string `json:"-"`
+	// IPC TLS client config
+	IPCTLSClientConfig *tls.Config `json:"-"`
 
-	// IsMRFEnabled determines whether Multi-Region Failover is enabled. It is based on the core config's
-	// `multi_region_failover.enabled` and `multi_region_failover.failover_apm` settings.
-	IsMRFEnabled func() bool `json:"-"`
+	// IPC TLS server config
+	IPCTLSServerConfig *tls.Config `json:"-"`
+
+	MRFFailoverAPMDefault bool
+	MRFFailoverAPMRC      *bool // failover_apm set by remoteconfig. `nil` if not configured
+
+	// DebugV1Payloads enables debug logging for V1 payloads when they fail to decode
+	DebugV1Payloads bool
+
+	// SendAllInternalStats enables all internal stats to be published, otherwise some less-frequently-used stats will be omitted when zero to save costs
+	SendAllInternalStats bool
+
+	// APMMode specifies whether using "edge" APM mode. May support other modes in the future. If unset, it has no impact.
+	APMMode string
+
+	// OTelGateway indicates whether the agent is configured as an OTel gateway.
+	// When true, the tag "_dd.otel.gateway" will be attached to the AgentPayload.
+	OTelGateway bool
 }
 
 // RemoteClient client is used to APM Sampling Updates from a remote source.
@@ -575,16 +614,15 @@ func New() *AgentConfig {
 		PipeSecurityDescriptor: "D:AI(A;;GA;;;WD)",
 		GUIPort:                "5002",
 
-		StatsWriter:             new(WriterConfig),
-		TraceWriter:             new(WriterConfig),
-		ConnectionResetInterval: 0, // disabled
-		MaxSenderRetries:        4,
+		StatsWriter:              new(WriterConfig),
+		TraceWriter:              new(WriterConfig),
+		ConnectionResetInterval:  0, // disabled
+		MaxSenderRetries:         4,
+		ClientStatsFlushInterval: 2 * time.Second, // bucket duration (2s)
 
 		StatsdHost:    "localhost",
 		StatsdPort:    8125,
 		StatsdEnabled: true,
-
-		LambdaFunctionName: os.Getenv("AWS_LAMBDA_FUNCTION_NAME"),
 
 		MaxMemory:        5e8, // 500 Mb, should rarely go above 50 Mb
 		MaxCPU:           0.5, // 50%, well behaving agents keep below 5%
@@ -602,13 +640,14 @@ func New() *AgentConfig {
 		Proxy:                     http.ProxyFromEnvironment,
 		OTLPReceiver:              &OTLP{},
 		ContainerTags:             noopContainerTagsFunc,
+		ContainerTagsBuffer:       false, // disabled here for otlp collector exporter, enabled in comp/trace-agent
 		ContainerIDFromOriginInfo: NoopContainerIDFromOriginInfoFunc,
 		TelemetryConfig: &TelemetryConfig{
 			Endpoints: []*Endpoint{{Host: TelemetryEndpointPrefix + "datadoghq.com"}},
 		},
 		EVPProxy: EVPProxy{
 			Enabled:        true,
-			MaxPayloadSize: 5 * 1024 * 1024,
+			MaxPayloadSize: 10 * 1024 * 1024,
 		},
 		OpenLineageProxy: OpenLineageProxy{
 			Enabled:    true,
@@ -625,7 +664,12 @@ func computeGlobalTags() map[string]string {
 	if inAzureAppServices() {
 		return traceutil.GetAppServicesTags()
 	}
-	return make(map[string]string)
+
+	tags := make(map[string]string)
+	if inECSManagedInstancesSidecar() {
+		tags["_dd.origin"] = "ecs_managed_instances"
+	}
+	return tags
 }
 
 // ErrContainerTagsFuncNotDefined is returned when the containerTags function is not defined.
@@ -662,10 +706,6 @@ func (c *AgentConfig) UpdateAPIKey(val string) {
 // NewHTTPClient returns a new http.Client to be used for outgoing connections to the
 // Datadog API.
 func (c *AgentConfig) NewHTTPClient() *ResetClient {
-	// If a custom HTTPClientFunc been set, use it. Otherwise use default client values
-	if c.HTTPClientFunc != nil {
-		return NewResetClient(c.ConnectionResetInterval, c.HTTPClientFunc)
-	}
 	return NewResetClient(c.ConnectionResetInterval, func() *http.Client {
 		return &http.Client{
 			Timeout:   10 * time.Second,
@@ -712,6 +752,14 @@ func (c *AgentConfig) AllFeatures() []string {
 	return feats
 }
 
+// MRFFailoverAPM determines whether APM data should be failed over to the secondary (MRF) DC.
+func (c *AgentConfig) MRFFailoverAPM() bool {
+	if c.MRFFailoverAPMRC != nil {
+		return *c.MRFFailoverAPMRC
+	}
+	return c.MRFFailoverAPMDefault
+}
+
 // ConfiguredPeerTags returns the set of peer tags that should be used
 // for aggregation based on the various config values and the base set of tags.
 func (c *AgentConfig) ConfiguredPeerTags() []string {
@@ -721,8 +769,22 @@ func (c *AgentConfig) ConfiguredPeerTags() []string {
 	return preparePeerTags(append(basePeerTags, c.PeerTags...))
 }
 
+// ConfiguredSpanDerivedPrimaryTagKeys returns the set of span-derived primary tag keys that should be used
+// for stats aggregation. These tag keys will be used to extract tags from spans
+// for use in aggregation keys, similar to peer tags.
+func (c *AgentConfig) ConfiguredSpanDerivedPrimaryTagKeys() []string {
+	if len(c.SpanDerivedPrimaryTagKeys) == 0 {
+		return nil
+	}
+	return preparePeerTags(c.SpanDerivedPrimaryTagKeys)
+}
+
 func inAzureAppServices() bool {
 	_, existsLinux := os.LookupEnv("WEBSITE_STACK")
 	_, existsWin := os.LookupEnv("WEBSITE_APPSERVICEAPPLOGS_TRACE_ENABLED")
 	return existsLinux || existsWin
+}
+
+func inECSManagedInstancesSidecar() bool {
+	return os.Getenv("DD_ECS_DEPLOYMENT_MODE") == "sidecar" && os.Getenv("AWS_EXECUTION_ENV") == "AWS_ECS_MANAGED_INSTANCES"
 }

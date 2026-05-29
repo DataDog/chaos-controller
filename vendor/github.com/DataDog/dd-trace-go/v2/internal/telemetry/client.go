@@ -49,7 +49,6 @@ func newClient(tracerConfig internal.TracerConfig, config ClientConfig) (*client
 		tracerConfig: tracerConfig,
 		writer:       writer,
 		clientConfig: config,
-		flushMapper:  mapper.NewDefaultMapper(config.HeartbeatInterval, config.ExtendedHeartbeatInterval),
 		payloadQueue: internal.NewRingQueue[transport.Payload](config.PayloadQueueSize),
 
 		dependencies: dependencies{
@@ -65,21 +64,22 @@ func newClient(tracerConfig internal.TracerConfig, config ClientConfig) (*client
 			skipAllowlist: config.Debug,
 			queueSize:     config.DistributionsSize,
 		},
-		logger: logger{
-			store:           xsync.NewMapOf[loggerKey, *loggerValue](),
-			maxDistinctLogs: config.MaxDistinctLogs,
-		},
+		appEndpoints: appEndpoints{isFirst: true},
+		backend:      newLoggerBackend(config.MaxDistinctLogs),
 	}
+
+	client.flushMapper = mapper.NewDefaultMapper(config.HeartbeatInterval, config.ExtendedHeartbeatInterval, client.configuration.All)
 
 	client.dataSources = append(client.dataSources,
 		&client.integrations,
 		&client.products,
 		&client.configuration,
 		&client.dependencies,
+		&client.appEndpoints,
 	)
 
 	if config.LogsEnabled {
-		client.dataSources = append(client.dataSources, &client.logger)
+		client.dataSources = append(client.dataSources, client.backend)
 	}
 
 	if config.MetricsEnabled {
@@ -106,9 +106,10 @@ type client struct {
 	products      products
 	configuration configuration
 	dependencies  dependencies
-	logger        logger
+	backend       *loggerBackend
 	metrics       metrics
 	distributions distributions
+	appEndpoints  appEndpoints
 
 	// flushMapper is the transformer to use for the next flush on the gathered bodies on this tick
 	flushMapper   mapper.Mapper
@@ -130,12 +131,12 @@ type client struct {
 	flushTickerFuncsMu sync.Mutex
 }
 
-func (c *client) Log(level LogLevel, text string, options ...LogOption) {
+func (c *client) Log(record Record, options ...LogOption) {
 	if !c.clientConfig.LogsEnabled {
 		return
 	}
 
-	c.logger.Add(level, text, options...)
+	c.backend.Add(record, options...)
 }
 
 func (c *client) MarkIntegrationAsLoaded(integration Integration) {
@@ -198,8 +199,21 @@ func (c *client) AddFlushTicker(f func(Client)) {
 	c.flushTickerFuncs = append(c.flushTickerFuncs, f)
 }
 
+func (c *client) callFlushTickerFuncs() {
+	c.flushTickerFuncsMu.Lock()
+	defer c.flushTickerFuncsMu.Unlock()
+
+	for _, f := range c.flushTickerFuncs {
+		f(c)
+	}
+}
+
 func (c *client) Config() ClientConfig {
 	return c.clientConfig
+}
+
+func (c *client) RegisterAppEndpoint(opName string, resName string, attrs AppEndpointAttributes) {
+	c.appEndpoints.Add(opName, resName, attrs)
 }
 
 // Flush sends all the data sources before calling flush
@@ -216,21 +230,14 @@ func (c *client) Flush() {
 		} else {
 			log.Warn("panic while flushing telemetry data, stopping telemetry!")
 		}
-		telemetryClientDisabled = true
+		telemetryClientEnabled = false
 		if gc, ok := GlobalClient().(*client); ok && gc == c {
 			SwapClient(nil)
 		}
 	}()
 
 	// We call the flushTickerFuncs before flushing the data for data sources
-	{
-		c.flushTickerFuncsMu.Lock()
-		defer c.flushTickerFuncsMu.Unlock()
-
-		for _, f := range c.flushTickerFuncs {
-			f(c)
-		}
-	}
+	c.callFlushTickerFuncs()
 
 	payloads := make([]transport.Payload, 0, 8)
 	for _, ds := range c.dataSources {
@@ -308,7 +315,7 @@ func (c *client) flush(payloads []transport.Payload) (int, error) {
 		failedCalls = append(failedCalls, results[:len(results)-1]...)
 		successfulCall := results[len(results)-1]
 
-		if !speedIncreased && successfulCall.PayloadByteSize > c.clientConfig.EarlyFlushPayloadSize {
+		if successfulCall.RequestAttempted && !speedIncreased && successfulCall.PayloadByteSize > c.clientConfig.EarlyFlushPayloadSize {
 			// We increase the speed of the flushTicker to try to flush the remaining bodies faster as we are at risk of sending too large bodies to the backend
 			c.flushTicker.CanIncreaseSpeed()
 			speedIncreased = true
@@ -326,7 +333,7 @@ func (c *client) flush(payloads []transport.Payload) (int, error) {
 		for _, call := range failedCalls {
 			errs = append(errs, call.Error)
 		}
-		log.Debug("non-fatal error(s) while flushing telemetry data: %v", errors.Join(errs...).Error())
+		log.Debug("telemetry: non-fatal error(s) while flushing telemetry data: %v", errors.Join(errs...).Error())
 	}
 
 	return nbBytes, nil
@@ -347,6 +354,9 @@ func (c *client) computeFlushMetrics(results []internal.EndpointRequestResult, r
 	}
 
 	for i, result := range results {
+		if !result.RequestAttempted {
+			continue
+		}
 		endpoint := "endpoint:" + indexToEndpoint(i)
 		c.Count(transport.NamespaceTelemetry, "telemetry_api.requests", []string{endpoint}).Submit(1)
 		if result.StatusCode != 0 {
@@ -364,6 +374,14 @@ func (c *client) computeFlushMetrics(results []internal.EndpointRequestResult, r
 			}
 			c.Count(transport.NamespaceTelemetry, "telemetry_api.errors", []string{endpoint, typ}).Submit(1)
 		}
+	}
+
+	if len(results) == 0 {
+		return
+	}
+
+	if !results[len(results)-1].RequestAttempted {
+		return
 	}
 
 	if reason != nil {
