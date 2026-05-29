@@ -49,6 +49,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 
 	ctrl "sigs.k8s.io/controller-runtime"
+	ctrlcache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -132,6 +133,9 @@ func main() {
 			Port:    cfg.Controller.Webhook.Port,
 			CertDir: cfg.Controller.Webhook.CertDir,
 		}),
+		Cache: ctrlcache.Options{
+			DefaultTransform: ctrlcache.TransformStripManagedFields(),
+		},
 	})
 	if err != nil {
 		logger.Fatalw("unable to start manager", tags.ErrorKey, err)
@@ -244,9 +248,8 @@ func main() {
 	}
 
 	informerClient := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(informerClient, time.Hour*24, kubeinformers.WithNamespace(cfg.Injector.ChaosNamespace))
 
-	cont, err := disruptionReconciler.SetupWithManager(mgr, kubeInformerFactory)
+	cont, err := disruptionReconciler.SetupWithManager(mgr)
 	if err != nil {
 		logger.Fatalw("unable to create controller", tags.ControllerKey, chaosv1beta1.DisruptionKind, tags.ErrorKey, err)
 	}
@@ -287,7 +290,6 @@ func main() {
 	defer cancel()
 
 	stopCh := make(chan struct{})
-	kubeInformerFactory.Start(stopCh)
 
 	go disruptionReconciler.ReportMetrics(ctx)
 

@@ -35,7 +35,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -1211,7 +1210,7 @@ func (r *DisruptionReconciler) recordEventOnTarget(ctx context.Context, instance
 }
 
 // SetupWithManager setups the current reconciler with the given manager
-func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager, kubeInformerFactory kubeinformers.SharedInformerFactory) (controller.Controller, error) {
+func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager) (controller.Controller, error) {
 	podToDisruption := func(ctx context.Context, d *corev1.Pod) []reconcile.Request {
 		// podtoDisruption is a function that maps pods to disruptions. it is meant to be used as an event handler on a pod informer
 		// this function should safely return an empty list of requests to reconcile if the object we receive is not actually a chaos pod
