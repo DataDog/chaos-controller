@@ -25,7 +25,7 @@ Example: `/sync-deps DataDog/some-reference-repo`
 ## Phase 2 — Alignment loop
 
 Repeat until BOTH conditions pass:
-- **Condition A**: `./scripts/sync-dependencies.sh -r <repo> --dry-run` outputs "All shared dependencies are already synchronized!"
+- **Condition A**: `./scripts/sync-dependencies.sh -r <repo> --dry-run` outputs "All shared dependencies are already synchronized!" (use `--yes` to skip interactive prompts when applying changes)
 - **Condition B**: `go build ./...` exits 0
 
 ### Each iteration
