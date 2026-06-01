@@ -758,6 +758,11 @@ func (s DisruptionSpec) validateGlobalDisruptionScope(requireSelectors bool) (re
 		retErr = multierror.Append(retErr, errors.New("memory pressure disruptions apply to all containers, specifying certain containers does not isolate the disruption"))
 	}
 
+	// Rule: No specificity of containers on a disk-full disruption
+	if len(s.Containers) != 0 && s.DiskFull != nil {
+		retErr = multierror.Append(retErr, errors.New("disk full disruptions apply to the entire volume, specifying certain containers does not isolate the disruption"))
+	}
+
 	// Rule: DisruptionTrigger
 	if s.Triggers != nil && !s.Triggers.IsZero() {
 		if !s.Triggers.Inject.IsZero() && !s.Triggers.CreatePods.IsZero() {
@@ -782,7 +787,7 @@ func (s DisruptionSpec) validateGlobalDisruptionScope(requireSelectors bool) (re
 	// Rule: pulse compatibility
 	if s.Pulse != nil {
 		if s.Pulse.ActiveDuration.Duration() > 0 || s.Pulse.DormantDuration.Duration() > 0 {
-			if s.NodeFailure != nil || s.PodReplacement != nil || s.ContainerFailure != nil {
+			if s.NodeFailure != nil || s.PodReplacement != nil || s.ContainerFailure != nil || s.DiskFull != nil {
 				retErr = multierror.Append(retErr, errors.New("pulse is only compatible with network, cpu pressure, memory pressure, disk pressure, dns, and grpc disruptions"))
 			}
 		}

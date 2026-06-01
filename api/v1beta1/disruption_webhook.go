@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -760,13 +761,17 @@ func safetyNetAttemptsNodeRootDiskFailure(r *Disruption) bool {
 
 // safetyNetDiskFullMinFreeSpace checks that the disk full disruption does not breach the 1Mi minimum free space floor.
 func safetyNetDiskFullMinFreeSpace(r *Disruption) (bool, string) {
-	if r.Spec.Unsafemode != nil && r.Spec.Unsafemode.AllowDiskFullNoFloor {
-		return false, ""
+	// Always block capacity >= 100% even when AllowDiskFullNoFloor is set — a 100% fill
+	// is not recoverable without manual intervention regardless of the safety floor setting.
+	if r.Spec.DiskFull.Capacity != "" {
+		if pct, err := strconv.Atoi(strings.TrimSuffix(r.Spec.DiskFull.Capacity, "%")); err == nil && pct >= 100 {
+			return true, "disk full disruption with 100% capacity will leave 0 bytes free; " +
+				"use a lower capacity percentage"
+		}
 	}
 
-	if r.Spec.DiskFull.Capacity == "100%" {
-		return true, "disk full disruption with 100% capacity will leave 0 bytes free; " +
-			"set unsafeMode.allowDiskFullNoFloor=true to override the 1Mi safety floor"
+	if r.Spec.Unsafemode != nil && r.Spec.Unsafemode.AllowDiskFullNoFloor {
+		return false, ""
 	}
 
 	if r.Spec.DiskFull.Remaining != "" {
