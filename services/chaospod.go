@@ -302,6 +302,13 @@ func (m *chaosPodService) GenerateChaosPodsOfDisruption(instance *chaosv1beta1.D
 			}
 		}
 
+		// Pass the no-floor override flag so the injector respects unsafeMode.allowDiskFullNoFloor at runtime
+		if kind == chaostypes.DisruptionKindDiskFull &&
+			instance.Spec.Unsafemode != nil &&
+			instance.Spec.Unsafemode.AllowDiskFullNoFloor {
+			args = append(args, "--allow-no-floor")
+		}
+
 		pod := m.GenerateChaosPodOfDisruption(instance, targetName, targetNodeName, args, kind)
 
 		pods = append(pods, pod)
@@ -669,23 +676,44 @@ func (m *chaosPodService) generateChaosPodSpec(targetNodeName string, terminatio
 		}
 	}
 
-	// For disk-full disruptions, add a writable shadow mount for only the target path.
-	// The host root at /mnt/host stays read-only; this mounts the specific target directory
-	// as writable at /mnt/host/<path>, so the injector's path resolution works unchanged.
+	// For disk-full disruptions, add writable shadow mounts so the injector can write
+	// the ballast file to the container's volume backing directory.
+	// The injector resolves spec.Path to the actual host-side backing path at runtime via
+	// Runtime().HostPath() (e.g. /var/lib/kubelet/pods/<uid>/volumes/...). We mount
+	// /var/lib/kubelet/pods as writable to cover emptyDir, PVC, ConfigMap, and Secret volumes.
+	// The spec-path mount is kept as a secondary for hostPath-backed volumes where the
+	// host path equals the spec path.
 	if diskFullPath != "" {
-		podSpec.Volumes = append(podSpec.Volumes, corev1.Volume{
-			Name: "disk-full-target",
-			VolumeSource: corev1.VolumeSource{
-				HostPath: &corev1.HostPathVolumeSource{
-					Path: diskFullPath,
-					Type: &hostPathDirectory,
+		podSpec.Volumes = append(podSpec.Volumes,
+			corev1.Volume{
+				Name: "disk-full-kubelet-pods",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/var/lib/kubelet/pods",
+						Type: &hostPathDirectory,
+					},
 				},
 			},
-		})
-		podSpec.Containers[0].VolumeMounts = append(podSpec.Containers[0].VolumeMounts, corev1.VolumeMount{
-			Name:      "disk-full-target",
-			MountPath: filepath.Join("/mnt/host", diskFullPath),
-		})
+			corev1.Volume{
+				Name: "disk-full-target",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: diskFullPath,
+						Type: &hostPathDirectory,
+					},
+				},
+			},
+		)
+		podSpec.Containers[0].VolumeMounts = append(podSpec.Containers[0].VolumeMounts,
+			corev1.VolumeMount{
+				Name:      "disk-full-kubelet-pods",
+				MountPath: "/mnt/host/var/lib/kubelet/pods",
+			},
+			corev1.VolumeMount{
+				Name:      "disk-full-target",
+				MountPath: filepath.Join("/mnt/host", diskFullPath),
+			},
+		)
 	}
 
 	return podSpec

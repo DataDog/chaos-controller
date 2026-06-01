@@ -22,7 +22,7 @@ func Fallocate(file *os.File, offset int64, length int64) error {
 
 	fst := syscall.Fstore_t{
 		Flags:      syscall.F_ALLOCATECONTIG,
-		Posmode:    syscall.F_PREALLOCATE,
+		Posmode:    syscall.F_PEOFPOSMODE,
 		Offset:     0,
 		Length:     offset + length,
 		Bytesalloc: 0,

@@ -25,6 +25,7 @@ var diskFullCmd = &cobra.Command{
 		path, _ := cmd.Flags().GetString("path")
 		capacity, _ := cmd.Flags().GetString("capacity")
 		remaining, _ := cmd.Flags().GetString("remaining")
+		allowNoFloor, _ := cmd.Flags().GetBool("allow-no-floor")
 
 		spec := v1beta1.DiskFullSpec{
 			Path:      path,
@@ -33,7 +34,7 @@ var diskFullCmd = &cobra.Command{
 		}
 
 		for _, config := range configs {
-			inj, err := injector.NewDiskFullInjector(spec, injector.DiskFullInjectorConfig{Config: config})
+			inj, err := injector.NewDiskFullInjector(spec, injector.DiskFullInjectorConfig{Config: config, AllowNoFloor: allowNoFloor})
 			if err != nil {
 				if errors.Is(errors.Unwrap(err), os.ErrNotExist) || strings.Contains(err.Error(), "No such file or directory") {
 					log.Errorw("error initializing the disk full injector because the given path does not exist", tags.ErrorKey, err)
@@ -58,6 +59,7 @@ func init() {
 	diskFullCmd.Flags().String("path", "", "Path to apply disk full disruption to")
 	diskFullCmd.Flags().String("capacity", "", "Target fill percentage of total volume capacity (e.g., 95%)")
 	diskFullCmd.Flags().String("remaining", "", "Amount of free space to leave on the volume (e.g., 50Mi)")
+	diskFullCmd.Flags().Bool("allow-no-floor", false, "Skip the 1 MiB minimum free-space safety floor (requires unsafeMode.allowDiskFullNoFloor)")
 
-	_ = cobra.MarkFlagRequired(diskFullCmd.PersistentFlags(), "path")
+	_ = cobra.MarkFlagRequired(diskFullCmd.Flags(), "path")
 }

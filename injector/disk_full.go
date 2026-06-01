@@ -38,6 +38,9 @@ type diskFullInjector struct {
 // DiskFullInjectorConfig is the disk full injector config
 type DiskFullInjectorConfig struct {
 	Config
+	// AllowNoFloor skips the 1 MiB minimum free-space clamp when true,
+	// matching the unsafeMode.allowDiskFullNoFloor webhook override.
+	AllowNoFloor bool
 }
 
 // NewDiskFullInjector creates a disk full injector with the given config
@@ -72,7 +75,7 @@ func NewDiskFullInjector(spec v1beta1.DiskFullSpec, config DiskFullInjectorConfi
 		return nil, fmt.Errorf("target path %s does not exist: %w", hostPath, err)
 	}
 
-	ballastPath := filepath.Join(hostPath, ballastFilePrefix+config.Disruption.DisruptionName)
+	ballastPath := filepath.Join(hostPath, ballastFilePrefix+config.Disruption.DisruptionNamespace+"-"+config.Disruption.DisruptionName)
 
 	return &diskFullInjector{
 		spec:        spec,
@@ -101,10 +104,10 @@ func (i *diskFullInjector) injectVolumeFill() error {
 		return fmt.Errorf("error getting filesystem stats for %s: %w", i.hostPath, err)
 	}
 
-	// Note: on Linux, Blocks/Bavail are in units of Frsize (fragment size), not Bsize.
-	// On ext4/xfs (the common case), Bsize == Frsize. We use Bsize here for Darwin
-	// compatibility in tests. The injector runs on Linux where this is correct for
-	// standard filesystems.
+	// On Linux, Blocks/Bavail are technically in Frsize (fragment size) units, not Bsize.
+	// syscall.Statfs_t lacks a Frsize field on Darwin (used for tests), so we use Bsize.
+	// On ext4/xfs — the common case for this disruption — Bsize == Frsize, so the result
+	// is correct. FUSE/network mounts where they differ are an edge case.
 	totalBytes := stat.Blocks * uint64(stat.Bsize)
 	// Bavail excludes space reserved for root (~5% on ext4), so we may slightly
 	// underestimate bytes to fill. This is the safe direction.
@@ -115,13 +118,22 @@ func (i *diskFullInjector) injectVolumeFill() error {
 		return fmt.Errorf("error computing bytes to fill: %w", err)
 	}
 
-	// enforce 1Mi safety floor
-	if availableBytes > minFreeSpaceBytes && bytesToFill > availableBytes-minFreeSpaceBytes {
-		bytesToFill = availableBytes - minFreeSpaceBytes
-		i.config.Log.Infow("clamped fill size to enforce 1Mi safety floor",
-			"bytesToFill", bytesToFill,
-			"availableBytes", availableBytes,
-		)
+	// enforce 1Mi safety floor unless explicitly bypassed via unsafeMode.allowDiskFullNoFloor
+	if !i.config.AllowNoFloor {
+		if availableBytes <= minFreeSpaceBytes {
+			i.config.Log.Infow("1Mi safety floor already breached by current disk state, skipping injection",
+				"availableBytes", availableBytes,
+				"minFreeSpaceBytes", minFreeSpaceBytes,
+			)
+			return nil
+		}
+		if bytesToFill > availableBytes-minFreeSpaceBytes {
+			bytesToFill = availableBytes - minFreeSpaceBytes
+			i.config.Log.Infow("clamped fill size to enforce 1Mi safety floor",
+				"bytesToFill", bytesToFill,
+				"availableBytes", availableBytes,
+			)
+		}
 	}
 
 	if bytesToFill <= 0 {
@@ -188,6 +200,11 @@ func (i *diskFullInjector) computeBytesToFill(totalBytes, availableBytes uint64)
 		percent, err := strconv.Atoi(percentStr)
 		if err != nil {
 			return 0, fmt.Errorf("invalid capacity percentage %q: %w", i.spec.Capacity, err)
+		}
+
+		// Guard against virtual/overlay filesystems where Bavail can exceed Blocks.
+		if availableBytes > totalBytes {
+			availableBytes = totalBytes
 		}
 
 		usedBytes := totalBytes - availableBytes

@@ -35,6 +35,14 @@ func (s *DiskFullSpec) Validate() (retErr error) {
 		retErr = multierror.Append(retErr, fmt.Errorf("the path of the disk full disruption must not be empty"))
 	}
 
+	if s.Path == "/" {
+		retErr = multierror.Append(retErr, fmt.Errorf("path '/' is not allowed for disk full disruptions; it would fill the node's shared container storage"))
+	}
+
+	if strings.Contains(s.Path, "..") {
+		retErr = multierror.Append(retErr, fmt.Errorf("path must not contain '..' path traversal elements"))
+	}
+
 	hasCapacity := s.Capacity != ""
 	hasRemaining := s.Remaining != ""
 
