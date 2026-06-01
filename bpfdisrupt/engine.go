@@ -39,15 +39,16 @@ type CmdRunner interface {
 // It encapsulates clsact qdisc lifecycle, IFB device management,
 // BPF program attachment, and LPM trie map population.
 type Engine struct {
-	tc         network.TrafficController
-	nl         network.NetlinkAdapter
-	cmdRunner  CmdRunner
-	log        *zap.SugaredLogger
-	ifbName    string     // "" if no IFB device created
-	ifbIndex   int        // IFB device ifindex (for bpf_redirect)
-	interfaces []string   // target interfaces
-	mu         sync.Mutex // protects attached, ifbName, ifbIndex
-	attached   bool
+	tc           network.TrafficController
+	nl           network.NetlinkAdapter
+	cmdRunner    CmdRunner
+	log          *zap.SugaredLogger
+	ifbName      string     // "" if no IFB device created
+	ifbIndex     int        // IFB device ifindex (for bpf_redirect)
+	interfaces   []string   // target interfaces
+	mu           sync.Mutex // protects attached, ifbName, ifbIndex, currentRules
+	attached     bool
+	currentRules []Rule // snapshot of last successfully applied rules, for rollback
 }
 
 // NewEngine creates a new BPF disruption engine.
@@ -82,6 +83,28 @@ func (e *Engine) Attach(interfaces []string, rules []Rule, disruptionUID string,
 
 	e.interfaces = interfaces
 
+	// Track partial creation so the deferred cleanup can unwind only what was created.
+	var ifbCreated, clsactAdded bool
+
+	defer func() {
+		if !e.attached {
+			if clsactAdded {
+				if err := e.tc.ClearIngressQdisc(e.interfaces); err != nil {
+					e.log.Warnw("error cleaning up clsact qdisc on attach failure", "error", err)
+				}
+			}
+
+			if ifbCreated {
+				if err := e.nl.DeleteIFBDevice(e.ifbName); err != nil {
+					e.log.Warnw("error cleaning up IFB device on attach failure", "device", e.ifbName, "error", err)
+				}
+
+				e.ifbName = ""
+				e.ifbIndex = 0
+			}
+		}
+	}()
+
 	// Create IFB device if ingress shaping (delay/jitter/bandwidth) is needed
 	if needsIngressShaping {
 		uid8 := disruptionUID
@@ -97,6 +120,8 @@ func (e *Engine) Attach(interfaces []string, rules []Rule, disruptionUID string,
 		}
 
 		e.ifbIndex = ifbLink.Index()
+		ifbCreated = true
+
 		e.log.Infof("created IFB device %s (ifindex %d) for ingress shaping", e.ifbName, e.ifbIndex)
 	}
 
@@ -104,6 +129,8 @@ func (e *Engine) Attach(interfaces []string, rules []Rule, disruptionUID string,
 	if err := e.tc.AddClsact(interfaces); err != nil {
 		return fmt.Errorf("error adding clsact qdisc: %w", err)
 	}
+
+	clsactAdded = true
 
 	// Attach egress BPF classifier on the root prio qdisc (parent 1:0)
 	// This replaces the per-IP flower filters with a single BPF LPM trie lookup
@@ -121,7 +148,8 @@ func (e *Engine) Attach(interfaces []string, rules []Rule, disruptionUID string,
 		return fmt.Errorf("error populating disruption rules: %w", err)
 	}
 
-	e.attached = true
+	e.currentRules = rules
+	e.attached = true // defer no-ops from this point on
 
 	return nil
 }
@@ -154,11 +182,14 @@ func (e *Engine) Detach() error {
 	}
 
 	e.attached = false
+	e.currentRules = nil
 
 	return nil
 }
 
 // UpdateRules atomically replaces all rules in the BPF LPM trie map.
+// If repopulation fails mid-way, the previous rule set is restored on a best-effort basis
+// to avoid leaving the map in a torn state (e.g. missing safeguard ALLOW rules).
 // Called by DNS/service watchers when resolved IPs change.
 func (e *Engine) UpdateRules(rules []Rule) error {
 	e.mu.Lock()
@@ -168,13 +199,25 @@ func (e *Engine) UpdateRules(rules []Rule) error {
 		return fmt.Errorf("engine not attached")
 	}
 
+	oldRules := e.currentRules
+
 	// Clear existing rules
 	if _, _, err := e.cmdRunner.Run([]string{BPFConfigPath, "--clear"}); err != nil {
 		return fmt.Errorf("error clearing disruption rules: %w", err)
 	}
 
-	// Re-populate with new rules
-	return e.populateRules(rules)
+	if err := e.populateRules(rules); err != nil {
+		// Best-effort restore: re-populate with old rules to avoid a permanently empty/partial map.
+		if restoreErr := e.populateRules(oldRules); restoreErr != nil {
+			e.log.Warnw("failed to restore rules after update failure; disruption rules are inconsistent", "restoreError", restoreErr)
+		}
+
+		return fmt.Errorf("error populating disruption rules: %w", err)
+	}
+
+	e.currentRules = rules
+
+	return nil
 }
 
 // populateRules invokes the BPF config binary to add each rule to the LPM trie.

@@ -80,7 +80,8 @@ type NetworkDisruptionInjectorConfig struct {
 
 // tcServiceFilter describes a service endpoint used for BPF rule generation.
 type tcServiceFilter struct {
-	service networkDisruptionService
+	service   networkDisruptionService
+	direction bpfdisrupt.Direction
 }
 
 // serviceWatcher
@@ -132,7 +133,7 @@ func NewNetworkDisruptionInjector(spec v1beta1.NetworkDisruptionSpec, config Net
 		config.DNSClient = network.NewDNSClient(dnsConfig)
 	}
 
-	if spec.HasHTTPFilters() && config.BPFConfigInformer == nil {
+	if (spec.HasHTTPFilters() || hasIngressShaping(spec)) && config.BPFConfigInformer == nil {
 		config.BPFConfigInformer, err = ebpf.NewConfigInformer(config.Log, config.Disruption.DryRun, nil, nil, nil)
 		if err != nil {
 			return nil, fmt.Errorf("could not create the eBPF config informer instance for the network disruption: %w", err)
@@ -174,6 +175,14 @@ func (i *networkDisruptionInjector) Inject() error {
 
 		if !i.config.BPFConfigInformer.GetMapTypes().HaveArrayMapType {
 			return fmt.Errorf("the http network failure needs the array map type, but the kernel does not support this type of map")
+		}
+	}
+
+	// Validate that required kernel modules for IFB-based ingress shaping are available
+	// before attempting to create the IFB device in engine.Attach.
+	if hasIngressShaping(i.spec) && i.config.BPFConfigInformer != nil {
+		if err := i.config.BPFConfigInformer.ValidateNetworkDisruptionConfig(); err != nil {
+			return err
 		}
 	}
 
@@ -639,10 +648,16 @@ func (i *networkDisruptionInjector) applyOperations() error {
 	return nil
 }
 
-// buildServiceFiltersFromPod builds a list of tc filters per pod endpoint using the service ports
-func (i *networkDisruptionInjector) buildServiceFiltersFromPod(pod v1.Pod, servicePorts []v1.ServicePort) []tcServiceFilter {
+// buildServiceFiltersFromPod builds a list of tc filters per pod endpoint using the service ports.
+// flow must be v1beta1.FlowIngress or v1beta1.FlowEgress (or ""); defaults to egress.
+func (i *networkDisruptionInjector) buildServiceFiltersFromPod(pod v1.Pod, servicePorts []v1.ServicePort, flow string) []tcServiceFilter {
 	// compute endpoint IP (pod IP)
 	_, endpointIP, _ := net.ParseCIDR(fmt.Sprintf("%s/32", pod.Status.PodIP))
+
+	dir := bpfdisrupt.DirEgress
+	if flow == v1beta1.FlowIngress {
+		dir = bpfdisrupt.DirIngress
+	}
 
 	endpointsToWatch := []tcServiceFilter{}
 
@@ -653,6 +668,7 @@ func (i *networkDisruptionInjector) buildServiceFiltersFromPod(pod v1.Pod, servi
 				port:     int(port.TargetPort.IntVal),
 				protocol: port.Protocol,
 			},
+			direction: dir,
 		}
 
 		if i.findServiceFilter(endpointsToWatch, filter) == -1 { // forbid duplication
@@ -663,10 +679,16 @@ func (i *networkDisruptionInjector) buildServiceFiltersFromPod(pod v1.Pod, servi
 	return endpointsToWatch
 }
 
-// buildServiceFiltersFromService builds a list of tc filters per service using the service ports
-func (i *networkDisruptionInjector) buildServiceFiltersFromService(service v1.Service, servicePorts []v1.ServicePort) []tcServiceFilter {
+// buildServiceFiltersFromService builds a list of tc filters per service using the service ports.
+// flow must be v1beta1.FlowIngress or v1beta1.FlowEgress (or ""); defaults to egress.
+func (i *networkDisruptionInjector) buildServiceFiltersFromService(service v1.Service, servicePorts []v1.ServicePort, flow string) []tcServiceFilter {
 	// compute service IP (cluster IP)
 	_, serviceIP, _ := net.ParseCIDR(fmt.Sprintf("%s/32", service.Spec.ClusterIP))
+
+	dir := bpfdisrupt.DirEgress
+	if flow == v1beta1.FlowIngress {
+		dir = bpfdisrupt.DirIngress
+	}
 
 	endpointsToWatch := []tcServiceFilter{}
 
@@ -681,6 +703,7 @@ func (i *networkDisruptionInjector) buildServiceFiltersFromService(service v1.Se
 				port:     int(port.Port),
 				protocol: port.Protocol,
 			},
+			direction: dir,
 		}
 
 		if i.findServiceFilter(endpointsToWatch, filter) == -1 { // forbid duplication
@@ -764,7 +787,7 @@ func (i *networkDisruptionInjector) selectServiceFiltersByPercentage(filters []t
 }
 
 // handleKubernetesServiceChanges for every changes happening in the kubernetes service destination, we update the BPF disruption rules
-func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.Event, watcher *serviceWatcher) error {
+func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.Event, watcher *serviceWatcher) (returnErr error) {
 	var err error
 
 	if event.Type == watch.Error {
@@ -793,6 +816,12 @@ func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.E
 		return fmt.Errorf("unable to enter the given container network namespace: %w", err)
 	}
 
+	defer func() {
+		if exitErr := i.config.Netns.Exit(); exitErr != nil && returnErr == nil {
+			returnErr = fmt.Errorf("unable to exit the given container network namespace: %w", exitErr)
+		}
+	}()
+
 	podList, err := i.config.K8sClient.CoreV1().Pods(watcher.watchedServiceSpec.Namespace).List(context.Background(), metav1.ListOptions{
 		LabelSelector: labels.SelectorFromValidatedSet(service.Spec.Selector).String(),
 	})
@@ -812,7 +841,7 @@ func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.E
 
 	for _, pod := range podList.Items {
 		if pod.Status.PodIP != "" {
-			watcher.tcFiltersFromPodEndpoints = append(watcher.tcFiltersFromPodEndpoints, i.buildServiceFiltersFromPod(pod, watcher.servicePorts)...)
+			watcher.tcFiltersFromPodEndpoints = append(watcher.tcFiltersFromPodEndpoints, i.buildServiceFiltersFromPod(pod, watcher.servicePorts, watcher.watchedServiceSpec.Flow)...)
 		}
 	}
 
@@ -821,7 +850,7 @@ func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.E
 		watcher.tcFiltersFromPodEndpoints = i.selectServiceFiltersByPercentage(watcher.tcFiltersFromPodEndpoints, *watcher.watchedServiceSpec.Percentage, watcher.watchedServiceSpec.Name, watcher.watchedServiceSpec.Namespace)
 	}
 
-	nsServicesTcFilters := i.buildServiceFiltersFromService(*service, watcher.servicePorts)
+	nsServicesTcFilters := i.buildServiceFiltersFromService(*service, watcher.servicePorts, watcher.watchedServiceSpec.Flow)
 
 	switch event.Type {
 	case watch.Added, watch.Modified:
@@ -839,15 +868,11 @@ func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.E
 		i.config.Log.Warnw("error updating BPF rules for service changes", tags.ErrorKey, err)
 	}
 
-	if err := i.config.Netns.Exit(); err != nil {
-		return fmt.Errorf("unable to exit the given container network namespace: %w", err)
-	}
-
 	return nil
 }
 
 // handleKubernetesPodsChanges for every changes happening in the pods related to the kubernetes service destination, we update the BPF disruption rules
-func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Event, watcher *serviceWatcher) error {
+func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Event, watcher *serviceWatcher) (returnErr error) {
 	var err error
 
 	if event.Type == watch.Error {
@@ -871,7 +896,13 @@ func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Even
 		return fmt.Errorf("unable to enter the given container network namespace: %w", err)
 	}
 
-	tcFiltersFromPod := i.buildServiceFiltersFromPod(*pod, watcher.servicePorts)
+	defer func() {
+		if exitErr := i.config.Netns.Exit(); exitErr != nil && returnErr == nil {
+			returnErr = fmt.Errorf("unable to exit the given container network namespace: %w", exitErr)
+		}
+	}()
+
+	tcFiltersFromPod := i.buildServiceFiltersFromPod(*pod, watcher.servicePorts, watcher.watchedServiceSpec.Flow)
 	if len(tcFiltersFromPod) == 0 {
 		return fmt.Errorf("unable to find service %s/%s endpoints to filter", watcher.watchedServiceSpec.Name, watcher.watchedServiceSpec.Namespace)
 	}
@@ -926,10 +957,6 @@ func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Even
 		}
 	}
 
-	if err := i.config.Netns.Exit(); err != nil {
-		return fmt.Errorf("unable to exit the given container network namespace: %w", err)
-	}
-
 	return nil
 }
 
@@ -942,7 +969,7 @@ func (i *networkDisruptionInjector) watchServiceChanges(ctx context.Context, wat
 		if watcher.kubernetesServiceWatcher == nil {
 			watchLog := log.With(tags.WatcherNameKey, "kubernetesServiceWatcher")
 
-			k8sServiceWatcher, err := i.config.K8sClient.CoreV1().Services(watcher.watchedServiceSpec.Namespace).Watch(context.Background(), metav1.ListOptions{
+			k8sServiceWatcher, err := i.config.K8sClient.CoreV1().Services(watcher.watchedServiceSpec.Namespace).Watch(ctx, metav1.ListOptions{
 				ResourceVersion:     watcher.servicesResourceVersion,
 				AllowWatchBookmarks: true,
 			})
@@ -960,7 +987,7 @@ func (i *networkDisruptionInjector) watchServiceChanges(ctx context.Context, wat
 		if watcher.kubernetesPodEndpointsWatcher == nil {
 			watcherLog := log.With(tags.WatcherNameKey, "kubernetesPodEndpointsWatcher")
 
-			podsWatcher, err := i.config.K8sClient.CoreV1().Pods(watcher.watchedServiceSpec.Namespace).Watch(context.Background(), metav1.ListOptions{
+			podsWatcher, err := i.config.K8sClient.CoreV1().Pods(watcher.watchedServiceSpec.Namespace).Watch(ctx, metav1.ListOptions{
 				LabelSelector:       watcher.labelServiceSelector,
 				ResourceVersion:     watcher.podsResourceVersion,
 				AllowWatchBookmarks: true,
@@ -1146,8 +1173,9 @@ func specToRules(spec v1beta1.NetworkDisruptionSpec, hosts []v1beta1.NetworkDisr
 		}
 	}
 
-	// If no hosts specified, add match-all rule
-	if len(hosts) == 0 {
+	// If no hosts AND no services specified, add match-all rule.
+	// Service-only disruptions start with no rules; the service watcher populates them once endpoints resolve.
+	if len(hosts) == 0 && len(spec.Services) == 0 {
 		rules = append(rules, bpfdisrupt.Rule{
 			Direction: bpfdisrupt.DirEgress,
 			CIDR:      "0.0.0.0/0",
@@ -1196,8 +1224,9 @@ func specToRules(spec v1beta1.NetworkDisruptionSpec, hosts []v1beta1.NetworkDisr
 	return rules
 }
 
-// hasIngressShaping returns true if any host has FlowIngress with disruptions
+// hasIngressShaping returns true if any host or service has FlowIngress with disruptions
 // that require shaping (delay, jitter, bandwidth, corruption, duplication) rather than just drop.
+// IFB device creation is only needed for ingress shaping parameters.
 func hasIngressShaping(spec v1beta1.NetworkDisruptionSpec) bool {
 	hasIngress := false
 
@@ -1210,10 +1239,20 @@ func hasIngressShaping(spec v1beta1.NetworkDisruptionSpec) bool {
 	}
 
 	if !hasIngress {
+		for _, svc := range spec.Services {
+			if svc.Flow == v1beta1.FlowIngress {
+				hasIngress = true
+
+				break
+			}
+		}
+	}
+
+	if !hasIngress {
 		return false
 	}
 
-	// If any shaping parameter is set alongside ingress hosts, IFB is needed
+	// If any shaping parameter is set alongside ingress targets, IFB is needed
 	return spec.Delay > 0 || spec.BandwidthLimit > 0 || spec.Corrupt > 0 || spec.Duplicate > 0
 }
 
@@ -1358,7 +1397,7 @@ func serviceEndpointsToRules(filters []tcServiceFilter) []bpfdisrupt.Rule {
 		}
 
 		rules = append(rules, bpfdisrupt.Rule{
-			Direction: bpfdisrupt.DirEgress,
+			Direction: filter.direction,
 			CIDR:      filter.service.ip.String(),
 			Action:    bpfdisrupt.ActionDisrupt,
 			Port:      filter.service.port,

@@ -164,7 +164,7 @@ var _ = Describe("specToRules", func() {
 })
 
 var _ = Describe("serviceEndpointsToRules", func() {
-	It("should convert service filters to BPF rules", func() {
+	It("should convert service filters to BPF rules (egress)", func() {
 		_, ip, _ := net.ParseCIDR("10.0.0.1/32")
 		filters := []tcServiceFilter{
 			{
@@ -173,6 +173,7 @@ var _ = Describe("serviceEndpointsToRules", func() {
 					port:     8080,
 					protocol: v1.ProtocolTCP,
 				},
+				direction: bpfdisrupt.DirEgress,
 			},
 		}
 
@@ -185,10 +186,28 @@ var _ = Describe("serviceEndpointsToRules", func() {
 		Expect(rules[0].Direction).To(Equal(bpfdisrupt.DirEgress))
 	})
 
+	It("should convert service filters to BPF rules (ingress)", func() {
+		_, ip, _ := net.ParseCIDR("10.0.0.3/32")
+		filters := []tcServiceFilter{
+			{
+				service: networkDisruptionService{
+					ip:       ip,
+					port:     9090,
+					protocol: v1.ProtocolTCP,
+				},
+				direction: bpfdisrupt.DirIngress,
+			},
+		}
+
+		rules := serviceEndpointsToRules(filters)
+		Expect(rules).To(HaveLen(1))
+		Expect(rules[0].Direction).To(Equal(bpfdisrupt.DirIngress))
+	})
+
 	It("should handle UDP protocol", func() {
 		_, ip, _ := net.ParseCIDR("10.0.0.2/32")
 		filters := []tcServiceFilter{
-			{service: networkDisruptionService{ip: ip, port: 53, protocol: v1.ProtocolUDP}},
+			{service: networkDisruptionService{ip: ip, port: 53, protocol: v1.ProtocolUDP}, direction: bpfdisrupt.DirEgress},
 		}
 
 		rules := serviceEndpointsToRules(filters)
@@ -197,7 +216,7 @@ var _ = Describe("serviceEndpointsToRules", func() {
 
 	It("should skip entries with nil IP", func() {
 		filters := []tcServiceFilter{
-			{service: networkDisruptionService{ip: nil, port: 80, protocol: v1.ProtocolTCP}},
+			{service: networkDisruptionService{ip: nil, port: 80, protocol: v1.ProtocolTCP}, direction: bpfdisrupt.DirEgress},
 		}
 
 		rules := serviceEndpointsToRules(filters)
@@ -245,5 +264,35 @@ var _ = Describe("hasIngressShaping", func() {
 			},
 		}
 		Expect(hasIngressShaping(spec)).To(BeTrue())
+	})
+
+	It("should return true for service with ingress flow and delay", func() {
+		spec := v1beta1.NetworkDisruptionSpec{
+			Delay: 100,
+			Services: []v1beta1.NetworkDisruptionServiceSpec{
+				{Name: "my-svc", Namespace: "default", Flow: v1beta1.FlowIngress},
+			},
+		}
+		Expect(hasIngressShaping(spec)).To(BeTrue())
+	})
+
+	It("should return false for service with egress flow", func() {
+		spec := v1beta1.NetworkDisruptionSpec{
+			Delay: 100,
+			Services: []v1beta1.NetworkDisruptionServiceSpec{
+				{Name: "my-svc", Namespace: "default", Flow: v1beta1.FlowEgress},
+			},
+		}
+		Expect(hasIngressShaping(spec)).To(BeFalse())
+	})
+
+	It("should return false for service with ingress flow but drop-only", func() {
+		spec := v1beta1.NetworkDisruptionSpec{
+			Drop: 50,
+			Services: []v1beta1.NetworkDisruptionServiceSpec{
+				{Name: "my-svc", Namespace: "default", Flow: v1beta1.FlowIngress},
+			},
+		}
+		Expect(hasIngressShaping(spec)).To(BeFalse())
 	})
 })

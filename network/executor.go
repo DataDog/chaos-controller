@@ -57,7 +57,12 @@ func (e GenericExecutor) Run(args []string) (int, string, error) {
 		err = fmt.Errorf("encountered error (%w) using args (%s): %s", err, args, stderr.String())
 	}
 
-	return cmd.ProcessState.ExitCode(), stdout.String(), err
+	exitCode := 0
+	if cmd.ProcessState != nil {
+		exitCode = cmd.ProcessState.ExitCode()
+	}
+
+	return exitCode, stdout.String(), err
 }
 
 // NewBPFTCFilterConfigExecutor create a new instance of an executor responsible of configure tc eBPF filter program
@@ -92,7 +97,12 @@ func (e defaultTcExecutor) Run(args []string) (int, string, error) {
 		err = fmt.Errorf("encountered error (%w) using args (%s): %s", err, args, stderr.String())
 	}
 
-	return cmd.ProcessState.ExitCode(), stdout.String(), err
+	exitCode := 0
+	if cmd.ProcessState != nil {
+		exitCode = cmd.ProcessState.ExitCode()
+	}
+
+	return exitCode, stdout.String(), err
 }
 
 // Run executes the given args using bpf-network-tc-filter program
@@ -119,5 +129,10 @@ func (e ebpfTCFilterConfigExecutor) Run(args []string) (int, string, error) {
 		err = fmt.Errorf("encountered error (%w) using args (%s): %s", err, args, stderr.String())
 	}
 
-	return cmd.ProcessState.ExitCode(), stdout.String(), err
+	exitCode := 0
+	if cmd.ProcessState != nil {
+		exitCode = cmd.ProcessState.ExitCode()
+	}
+
+	return exitCode, stdout.String(), err
 }

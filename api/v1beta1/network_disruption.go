@@ -120,6 +120,9 @@ type NetworkDisruptionServiceSpec struct {
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=100
 	Percentage *int `json:"percentage,omitempty" chaos_validate:"omitempty,gte=1,lte=100"`
+	// +kubebuilder:validation:Enum=ingress;egress;""
+	// +optional
+	Flow string `json:"flow,omitempty" chaos_validate:"omitempty,oneofci=ingress egress"`
 }
 
 type NetworkDisruptionServicePortSpec struct {

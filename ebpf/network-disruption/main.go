@@ -3,8 +3,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2026 Datadog, Inc.
 
-//go:build !cgo
-// +build !cgo
+//go:build cgo
+// +build cgo
 
 package main
 
@@ -249,8 +249,6 @@ func clearMap() error {
 		keySize := 20 // sizeof(lpm_key): 4 (prefix_len) + 16 (ip)
 		key := C.malloc(C.ulong(keySize))
 
-		defer C.free(key)
-
 		for {
 			// Pass NULL as prev key to get the first remaining entry
 			ret := C.bpf_map_get_next_key_wrap(C.int(fd), nil, key)
@@ -266,6 +264,7 @@ func clearMap() error {
 		}
 
 		closeMap(bpfMap)
+		C.free(key)
 	}
 
 	return nil

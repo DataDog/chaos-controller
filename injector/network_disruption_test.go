@@ -94,6 +94,7 @@ var _ = Describe("Failure", func() {
 		BPFConfigInformerMock = ebpf.NewConfigInformerMock(GinkgoT())
 		BPFConfigInformerMock.EXPECT().ValidateRequiredSystemConfig().Return(nil).Maybe()
 		BPFConfigInformerMock.EXPECT().GetMapTypes().Return(ebpf.MapTypes{HaveArrayMapType: true}).Maybe()
+		BPFConfigInformerMock.EXPECT().ValidateNetworkDisruptionConfig().Return(nil).Maybe()
 
 		// netns
 		netnsManager = netns.NewManagerMock(GinkgoT())
