@@ -88,6 +88,9 @@ var _ = Describe("Chaos Pod Service", func() {
 		if chaosPodServiceConfig.Client == nil {
 			chaosPodServiceConfig.Client = k8sClientMock
 		}
+		if chaosPodServiceConfig.Reader == nil {
+			chaosPodServiceConfig.Reader = k8sClientMock
+		}
 
 		// Action
 		chaosPodService, err = services.NewChaosPodService(chaosPodServiceConfig)

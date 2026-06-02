@@ -80,6 +80,7 @@ type ChaosPodServiceInjectorConfig struct {
 // ChaosPodServiceConfig contains configuration options for the chaosPodService.
 type ChaosPodServiceConfig struct {
 	Client           client.Client                 // Kubernetes client for interacting with the API server.
+	Reader           client.Reader                 // Uncached reader for target pods in user namespaces.
 	ChaosNamespace   string                        // Namespace where chaos-related resources are located.
 	TargetSelector   targetselector.TargetSelector // Target selector for selecting target pods.
 	Injector         ChaosPodServiceInjectorConfig // Configuration options for the injector.
@@ -141,7 +142,7 @@ func (m *chaosPodService) HandleChaosPodTermination(ctx context.Context, disrupt
 	target := chaosPod.Labels[chaostypes.TargetLabel]
 
 	// Check if the target of the disruption is healthy (running and ready).
-	if err := m.config.TargetSelector.TargetIsHealthy(target, m.config.Client, disruption); err != nil {
+	if err := m.config.TargetSelector.TargetIsHealthy(target, m.config.Reader, disruption); err != nil {
 		// return the error unless we have a specific reason to ignore it.
 		if !apierrors.IsNotFound(err) && chaosPodAllowedErrors.isNotAllowed(strings.ToLower(err.Error())) {
 			return false, err
@@ -412,7 +413,7 @@ func (m *chaosPodService) HandleOrphanedChaosPods(ctx context.Context, req ctrl.
 		logger.Infow("checking if we can clean up orphaned chaos pod", tagutil.ChaosPodNameKey, pod.Name, tagutil.TargetNameKey, target)
 
 		// if target doesn't exist, we can try to clean up the chaos pod
-		if err = m.config.Client.Get(ctx, types.NamespacedName{Name: target, Namespace: req.Namespace}, &p); apierrors.IsNotFound(err) {
+		if err = m.config.Reader.Get(ctx, types.NamespacedName{Name: target, Namespace: req.Namespace}, &p); apierrors.IsNotFound(err) {
 			logger.Warnw("orphaned chaos pod detected, will attempt to delete", tagutil.ChaosPodNameKey, pod.Name)
 
 			if err = m.removeFinalizerForChaosPod(ctx, &pod); err != nil {

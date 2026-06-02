@@ -135,6 +135,16 @@ func main() {
 		}),
 		Cache: ctrlcache.Options{
 			DefaultTransform: ctrlcache.TransformStripManagedFields(),
+			// Restrict pod watch to the chaos namespace only. The controller only
+			// needs pod events for chaos pods (all in ChaosNamespace). Target pods
+			// in user namespaces are read via APIReader on the reconcile path.
+			ByObject: map[client.Object]ctrlcache.ByObject{
+				&corev1.Pod{}: {
+					Namespaces: map[string]ctrlcache.Config{
+						cfg.Injector.ChaosNamespace: {},
+					},
+				},
+			},
 		},
 	})
 	if err != nil {
@@ -208,6 +218,7 @@ func main() {
 
 	chaosPodService, err := services.NewChaosPodService(services.ChaosPodServiceConfig{
 		Client:         mgr.GetClient(),
+		Reader:         mgr.GetAPIReader(),
 		ChaosNamespace: cfg.Injector.ChaosNamespace,
 		TargetSelector: targetSelector,
 		Injector: services.ChaosPodServiceInjectorConfig{

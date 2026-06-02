@@ -712,7 +712,7 @@ func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *ch
 	case chaostypes.DisruptionLevelPod:
 		pod := corev1.Pod{}
 
-		if err = r.Client.Get(ctx, types.NamespacedName{Namespace: instance.Namespace, Name: target}, &pod); err != nil {
+		if err = r.APIReader.Get(ctx, types.NamespacedName{Namespace: instance.Namespace, Name: target}, &pod); err != nil {
 			return fmt.Errorf("error getting target to inject: %w", err)
 		}
 
@@ -1089,7 +1089,7 @@ func (r *DisruptionReconciler) getSelectorMatchingTargets(instance *chaosv1beta1
 	// select either pods or nodes depending on the disruption level
 	switch instance.Spec.Level {
 	case chaostypes.DisruptionLevelPod:
-		pods, totalCount, err := r.TargetSelector.GetMatchingPodsOverTotalPods(r.Client, instance)
+		pods, totalCount, err := r.TargetSelector.GetMatchingPodsOverTotalPods(r.APIReader, instance)
 		if err != nil {
 			return nil, 0, fmt.Errorf("can't get pods matching the given label selector: %w", err)
 		}
@@ -1100,7 +1100,7 @@ func (r *DisruptionReconciler) getSelectorMatchingTargets(instance *chaosv1beta1
 
 		totalAvailableTargetsCount = totalCount
 	case chaostypes.DisruptionLevelNode:
-		nodes, totalCount, err := r.TargetSelector.GetMatchingNodesOverTotalNodes(r.Client, instance)
+		nodes, totalCount, err := r.TargetSelector.GetMatchingNodesOverTotalNodes(r.APIReader, instance)
 		if err != nil {
 			return nil, 0, fmt.Errorf("can't get nodes matching the given label selector: %w", err)
 		}
@@ -1189,7 +1189,7 @@ func (r *DisruptionReconciler) recordEventOnTarget(ctx context.Context, instance
 	case chaostypes.DisruptionLevelPod:
 		p := &corev1.Pod{}
 
-		if err := r.Client.Get(ctx, types.NamespacedName{Namespace: instance.Namespace, Name: target}, p); err != nil {
+		if err := r.APIReader.Get(ctx, types.NamespacedName{Namespace: instance.Namespace, Name: target}, p); err != nil {
 			r.log.Errorw("event failed to be registered on target", tagutil.ErrorKey, err, tagutil.TargetNameKey, target)
 		}
 
@@ -1197,7 +1197,7 @@ func (r *DisruptionReconciler) recordEventOnTarget(ctx context.Context, instance
 	case chaostypes.DisruptionLevelNode:
 		n := &corev1.Node{}
 
-		if err := r.Client.Get(ctx, types.NamespacedName{Name: target}, n); err != nil {
+		if err := r.APIReader.Get(ctx, types.NamespacedName{Name: target}, n); err != nil {
 			r.log.Errorw("event failed to be registered on target", tagutil.ErrorKey, err, tagutil.TargetNameKey, target)
 		}
 
