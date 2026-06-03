@@ -1,0 +1,6 @@
+FROM debian:12-slim
+RUN apt-get update -qq && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq iproute2 iptables wget 2>/dev/null && \
+    rm -rf /var/lib/apt/lists/*
+COPY bin/integration.test /integration.test
+ENTRYPOINT ["/integration.test", "-test.v"]
