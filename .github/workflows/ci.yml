@@ -128,16 +128,7 @@ jobs:
       - name: Run e2e tests
         env:
           DATADOG_API_KEY: ${{ steps.dd-sts.outputs.api_key || '' }}
-        run: |
-          for attempt in 1 2 3; do
-            echo "=== Attempt ${attempt}/3 ==="
-            if make e2e-test KUBECTL="minikube kubectl --" E2E_TEST_CLUSTER_NAME="minikube" E2E_TEST_KUBECTL_CONTEXT="minikube"; then
-              exit 0
-            fi
-            echo "Attempt ${attempt} failed"
-          done
-          echo "All 3 attempts failed"
-          exit 1
+        run: make e2e-test KUBECTL="minikube kubectl --" E2E_TEST_CLUSTER_NAME="minikube" E2E_TEST_KUBECTL_CONTEXT="minikube"
       - name: Save controller logs
         if: always()
         run: |

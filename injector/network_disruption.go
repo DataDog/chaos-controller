@@ -134,8 +134,8 @@ func NewNetworkDisruptionInjector(spec v1beta1.NetworkDisruptionSpec, config Net
 		config.DNSClient = network.NewDNSClient(dnsConfig)
 	}
 
-	if (spec.HasHTTPFilters() || hasIngressShaping(spec)) && config.BPFConfigInformer == nil {
-		config.BPFConfigInformer, err = ebpf.NewConfigInformer(config.Log, config.Disruption.DryRun, nil, nil, nil)
+	if !config.Disruption.DryRun && (spec.HasHTTPFilters() || hasIngressShaping(spec)) && config.BPFConfigInformer == nil {
+		config.BPFConfigInformer, err = ebpf.NewConfigInformer(config.Log, false, nil, nil, nil)
 		if err != nil {
 			return nil, fmt.Errorf("could not create the eBPF config informer instance for the network disruption: %w", err)
 		}
@@ -166,7 +166,7 @@ func (i *networkDisruptionInjector) TargetName() string {
 
 // Inject injects the given network disruption into the given container
 func (i *networkDisruptionInjector) Inject() error {
-	if i.spec.HasHTTPFilters() {
+	if i.spec.HasHTTPFilters() && !i.config.Disruption.DryRun {
 		if err := i.config.BPFConfigInformer.ValidateRequiredSystemConfig(); err != nil {
 			return err
 		}

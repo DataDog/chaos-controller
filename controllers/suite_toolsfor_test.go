@@ -349,7 +349,7 @@ func CreateRunningPod(ctx SpecContext, pod corev1.Pod) <-chan corev1.Pod {
 				return fmt.Errorf("unable to check pods in phase: %w", err)
 			}
 
-			if len(runningPods) == 0 || allContainersAreRunning(ctx, runningPods...) {
+			if len(runningPods) > 0 && allContainersAreRunning(ctx, runningPods...) {
 				return nil
 			}
 
