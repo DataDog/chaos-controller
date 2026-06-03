@@ -11,6 +11,7 @@ import (
 
 	"github.com/DataDog/chaos-controller/o11y/tags"
 	"go.uber.org/zap"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	k8sclientcache "k8s.io/client-go/tools/cache"
 	controllerruntime "sigs.k8s.io/controller-runtime"
@@ -55,8 +56,20 @@ type Watcher interface {
 
 // WatcherConfig holds configuration values used to create a new Watcher instance.
 type WatcherConfig struct {
-	// CacheOptions for configuring the cache.
+	// CacheOptions for configuring the cache. Ignored when CachePool is set.
 	CacheOptions k8scontrollercache.Options
+
+	// CachePool, when set, provides a shared namespace cache instead of creating
+	// a dedicated cache for this watcher.
+	CachePool *NamespaceCachePool
+
+	// Namespace is the target namespace used as the pool key when CachePool is set.
+	// Use "" for cluster-scoped (node-level) disruptions.
+	Namespace string
+
+	// LabelSelector, when set, filters reconcile enqueue requests so that only
+	// pod/node events matching the selector trigger a reconcile for this disruption.
+	LabelSelector labels.Selector
 
 	// Handler function that will be called when an event occurs.
 	Handler k8sclientcache.ResourceEventHandler
@@ -67,7 +80,7 @@ type WatcherConfig struct {
 	// Name of the watcher instance.
 	Name string
 
-	// Namespace of the resource to watch.
+	// NamespacedName of the disruption this watcher belongs to.
 	NamespacedName types.NamespacedName
 
 	// ObjectType of the object to watch.
@@ -100,8 +113,12 @@ type watcher struct {
 	// The configuration used to create the watcher
 	config WatcherConfig
 
-	// The context tuple that contains the context and cancellation function used to cancel the watcher
+	// The context tuple that contains the per-watcher context used for lifecycle tracking.
 	ctxTuple CtxTuple
+
+	// cacheCancelFunc cancels the cache goroutine. Only set when this watcher owns its cache.
+	// Nil when using a shared cache from NamespaceCachePool.
+	cacheCancelFunc context.CancelFunc
 }
 
 // NewWatcher is a function that creates a new watcher instance based on the given configuration values.
@@ -110,9 +127,22 @@ func NewWatcher(config WatcherConfig, cacheMock k8scontrollercache.Cache, cacheC
 		config: config,
 	}
 
-	// Used by unit test to allow mocking
-	if cacheMock == nil {
-		// create cache if it hasn't been set yet
+	switch {
+	case cacheMock != nil:
+		// Unit test: use provided mock cache.
+		watcherInstance.cache = cacheMock
+
+	case config.CachePool != nil:
+		// Shared cache: get-or-create from the pool. The pool owns the cache lifecycle.
+		sharedCache, err := config.CachePool.GetOrCreate(config.Namespace, config.ObjectType)
+		if err != nil {
+			return nil, fmt.Errorf("error getting shared cache from pool: %w", err)
+		}
+
+		watcherInstance.cache = sharedCache
+
+	default:
+		// Own cache: create a dedicated cache for this watcher.
 		cache, err := k8scontrollercache.New(
 			controllerruntime.GetConfigOrDie(),
 			config.CacheOptions,
@@ -122,8 +152,6 @@ func NewWatcher(config WatcherConfig, cacheMock k8scontrollercache.Cache, cacheC
 		}
 
 		watcherInstance.cache = cache
-	} else {
-		watcherInstance.cache = cacheMock
 	}
 
 	// Used by unit test to allow mocking
@@ -135,9 +163,16 @@ func NewWatcher(config WatcherConfig, cacheMock k8scontrollercache.Cache, cacheC
 	return &watcherInstance, nil
 }
 
-// Clean is a method that cancels the context of a watcher instance.
+// Clean stops the watcher. For own-cache watchers, it cancels the cache goroutine.
+// For shared-cache watchers, it releases the reference in the pool.
 func (w *watcher) Clean() {
 	w.ctxTuple.CancelFunc()
+
+	if w.cacheCancelFunc != nil {
+		w.cacheCancelFunc()
+	} else if w.config.CachePool != nil {
+		w.config.CachePool.Release(w.config.Namespace)
+	}
 }
 
 // GetContextTuple is a method that returns a CtxTuple instance.
@@ -187,22 +222,36 @@ func (w *watcher) Start() error {
 		return fmt.Errorf("error adding event handler to the informer: %w", err)
 	}
 
-	// create context and cancel function for the watcher
-	cacheCtx, cacheCancelFunc := context.WithCancel(context.Background()) //nolint:gosec // G118 - cancel func is stored in ctxTuple and called on watcher cleanup
-	w.ctxTuple = CtxTuple{cacheCancelFunc, cacheCtx, w.config.NamespacedName}
+	// Per-watcher context used for lifecycle tracking (IsExpired, Clean).
+	// This is separate from the cache context so that cleaning a single watcher
+	// does not stop a shared cache.
+	watcherCtx, watcherCancelFunc := context.WithCancel(context.Background()) //nolint:gosec // G118 - cancel func is stored in ctxTuple and called on watcher cleanup
+	w.ctxTuple = CtxTuple{watcherCancelFunc, watcherCtx, w.config.NamespacedName}
 
-	// start the cache in a goroutine
-	go func() {
-		if err := w.cache.Start(cacheCtx); err != nil {
-			w.config.Log.Errorw("could not start the watcher", tags.ErrorKey, err)
-		}
-	}()
+	if w.config.CachePool == nil {
+		// Own cache: start it in a background goroutine.
+		cacheCtx, cacheCancelFunc := context.WithCancel(context.Background()) //nolint:gosec // G118 - cancel func stored in cacheCancelFunc and called on Clean
+		w.cacheCancelFunc = cacheCancelFunc
 
-	// create a SyncingSource for the controller
-	w.cacheSource = source.Kind(w.cache, w.config.ObjectType, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, a client.Object) []reconcile.Request {
-		return []reconcile.Request{
-			{NamespacedName: w.ctxTuple.NamespacedName},
+		go func() {
+			if err := w.cache.Start(cacheCtx); err != nil {
+				w.config.Log.Errorw("could not start the watcher", tags.ErrorKey, err)
+			}
+		}()
+	}
+	// Shared cache: already started by the pool.
+
+	// Build the SyncingSource. When a LabelSelector is configured, only enqueue
+	// reconcile requests for events whose object labels match — avoiding spurious
+	// reconciles for pods in the same namespace that belong to other disruptions.
+	labelSelector := w.config.LabelSelector
+
+	w.cacheSource = source.Kind(w.cache, w.config.ObjectType, handler.TypedEnqueueRequestsFromMapFunc(func(_ context.Context, obj client.Object) []reconcile.Request {
+		if labelSelector != nil && !labelSelector.Matches(labels.Set(obj.GetLabels())) {
+			return nil
 		}
+
+		return []reconcile.Request{{NamespacedName: w.ctxTuple.NamespacedName}}
 	}))
 
 	return nil

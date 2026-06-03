@@ -1231,12 +1231,37 @@ func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager) (controller.Co
 		return []reconcile.Request{{NamespacedName: types.NamespacedName{Name: name, Namespace: namespace}}}
 	}
 
-	return ctrl.NewControllerManagedBy(mgr).
+	cont, err := ctrl.NewControllerManagedBy(mgr).
 		For(&chaosv1beta1.Disruption{}).
 		WithOptions(controller.Options{RateLimiter: workqueue.NewTypedItemExponentialFailureRateLimiter[reconcile.Request](time.Second, time.Hour)}).
 		WatchesRawSource(source.Kind(mgr.GetCache(), &corev1.Pod{}, handler.TypedEnqueueRequestsFromMapFunc(podToDisruption))).
 		WithEventFilter(chaosEventsPredicate()).
 		Build(r)
+	if err != nil {
+		return nil, err
+	}
+
+	// Register a single shared chaos pod handler on the manager's pod informer.
+	// This replaces per-disruption ChaosPodWatcher caches: all chaos pod events are
+	// handled by one shared handler that dispatches by reading disruption labels from
+	// the pod at event time.
+	podInformer, err := mgr.GetCache().GetInformer(context.Background(), &corev1.Pod{})
+	if err != nil {
+		return nil, fmt.Errorf("SetupWithManager: failed to get pod informer: %w", err)
+	}
+
+	sharedHandler := watchers.NewSharedChaosPodHandler(
+		r.APIReader,
+		r.Recorder,
+		r.BaseLog,
+		watchers.NewWatcherMetricsAdapter(r.MetricsSink, r.BaseLog),
+	)
+
+	if _, err := podInformer.AddEventHandler(sharedHandler); err != nil {
+		return nil, fmt.Errorf("SetupWithManager: failed to register shared chaos pod handler: %w", err)
+	}
+
+	return cont, nil
 }
 
 // chaosEventsPredicate determines if given event is a chaos related one or not

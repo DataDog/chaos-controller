@@ -271,6 +271,7 @@ func main() {
 		Reader:         mgr.GetAPIReader(),
 		Recorder:       disruptionReconciler.Recorder,
 		ChaosNamespace: cfg.Injector.ChaosNamespace,
+		CachePool:      watchers.NewNamespaceCachePool(ctrl.GetConfigOrDie()),
 	}
 	watcherFactory := watchers.NewWatcherFactory(watchersFactoryConfig)
 	disruptionReconciler.DisruptionsWatchersManager = watchers.NewDisruptionsWatchersManager(cont, watcherFactory, mgr.GetAPIReader())

@@ -16,6 +16,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -32,12 +33,37 @@ type DisruptionTargetHandler struct {
 	disruption     *v1beta1.Disruption
 	log            *zap.SugaredLogger
 	metricsAdapter WatcherMetricsAdapter
+	// labelSelector filters events when the handler is registered on a shared namespace
+	// cache. Only objects matching the selector are processed; others are skipped.
+	labelSelector labels.Selector
 }
 
 const DisruptionTargetHandlerName = "DisruptionTargetHandler"
 
+// matchesSelector returns false when a shared-cache label selector is configured and
+// the object's labels do not match it — allowing the handler to skip objects that
+// belong to other disruptions sharing the same namespace cache.
+func (d DisruptionTargetHandler) matchesSelector(obj interface{}) bool {
+	if d.labelSelector == nil {
+		return true
+	}
+
+	switch o := obj.(type) {
+	case *corev1.Pod:
+		return d.labelSelector.Matches(labels.Set(o.Labels))
+	case *corev1.Node:
+		return d.labelSelector.Matches(labels.Set(o.Labels))
+	}
+
+	return true
+}
+
 // OnAdd new target
 func (d DisruptionTargetHandler) OnAdd(obj interface{}, _ bool) {
+	if !d.matchesSelector(obj) {
+		return
+	}
+
 	pod, okPod := obj.(*corev1.Pod)
 	node, okNode := obj.(*corev1.Node)
 
@@ -55,6 +81,10 @@ func (d DisruptionTargetHandler) OnAdd(obj interface{}, _ bool) {
 
 // OnDelete target
 func (d DisruptionTargetHandler) OnDelete(obj interface{}) {
+	if !d.matchesSelector(obj) {
+		return
+	}
+
 	pod, okPod := obj.(*corev1.Pod)
 	node, okNode := obj.(*corev1.Node)
 
@@ -72,6 +102,10 @@ func (d DisruptionTargetHandler) OnDelete(obj interface{}) {
 
 // OnUpdate target
 func (d DisruptionTargetHandler) OnUpdate(oldObj, newObj interface{}) {
+	if !d.matchesSelector(newObj) {
+		return
+	}
+
 	oldPod, okOldPod := oldObj.(*corev1.Pod)
 	newPod, okNewPod := newObj.(*corev1.Pod)
 	oldNode, okOldNode := oldObj.(*corev1.Node)
