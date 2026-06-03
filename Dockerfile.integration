@@ -1,13 +1,14 @@
-# Stage 1: compile eBPF object (runs inside Docker Desktop Linux VM)
+# Stage 1: compile BPF object (clang + libbpf headers, no Go needed)
 FROM debian:12 AS bpf-builder
 RUN apt-get update -qq && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y -qq clang libbpf-dev 2>/dev/null && \
     rm -rf /var/lib/apt/lists/*
 
 COPY ebpf/ /build/ebpf/
-RUN UNAME_ARCH=$(uname -m) && \
-    ARCH="x86" && \
-    [ "$UNAME_ARCH" = "aarch64" ] && ARCH="arm64" || true && \
+RUN set -e; \
+    UNAME_ARCH=$(uname -m); \
+    ARCH="x86"; \
+    [ "$UNAME_ARCH" = "aarch64" ] && ARCH="arm64" || true; \
     clang \
         -D "__TARGET_ARCH_${ARCH}" \
         -I "/usr/include/${UNAME_ARCH}-linux-gnu" \
