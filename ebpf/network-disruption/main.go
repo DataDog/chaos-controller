@@ -37,7 +37,7 @@ import (
 )
 
 const (
-	DisruptionRulesMapName = "disruption_rules"
+	DisruptionRulesMapName = "disruption_rl"
 
 	ActionAllow   = 0
 	ActionDisrupt = 1
@@ -198,6 +198,9 @@ func addEntry() error {
 	bpfMapIDs, err := libbpfgo.GetMapsIDsByName(DisruptionRulesMapName)
 	if err != nil {
 		return fmt.Errorf("could not get map IDs for %s: %w", DisruptionRulesMapName, err)
+	}
+	if len(bpfMapIDs) == 0 {
+		return fmt.Errorf("no BPF maps named %q found — BPF filter may not be loaded", DisruptionRulesMapName)
 	}
 
 	for _, id := range bpfMapIDs {
