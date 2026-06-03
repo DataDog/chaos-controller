@@ -125,8 +125,10 @@ func (i *diskFullInjector) injectVolumeFill() error {
 				"availableBytes", availableBytes,
 				"minFreeSpaceBytes", minFreeSpaceBytes,
 			)
+
 			return nil
 		}
+
 		if bytesToFill > availableBytes-minFreeSpaceBytes {
 			bytesToFill = availableBytes - minFreeSpaceBytes
 			i.config.Log.Infow("clamped fill size to enforce 1Mi safety floor",
