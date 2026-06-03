@@ -353,7 +353,7 @@ var _ = Describe("Validator", func() {
 			It("should not validate", func() {
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).Should(ContainSubstring("Port is set to -1, but must be greater or equal to 0"))
-				Expect(err.Error()).Should(ContainSubstring("Protocol is set to grpc, but must be one of the following: \"udp, tcp\""))
+				Expect(err.Error()).Should(ContainSubstring("Protocol is set to grpc, but must be one of the following: \"icmp, icmpv6, udp, tcp\""))
 				Expect(err.Error()).Should(ContainSubstring("Flow is set to away, but must be one of the following: \"ingress, egress\""))
 				Expect(err.Error()).Should(ContainSubstring("ConnState is set to all, but must be one of the following: \"new, est\""))
 			})
@@ -398,7 +398,7 @@ var _ = Describe("Validator", func() {
 			It("should not validate", func() {
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).Should(ContainSubstring("ServiceName is a required field, and must be set"))
-				Expect(err.Error()).Should(ContainSubstring("Protocol is set to http, but must be one of the following: \"tcp, udp\""))
+				Expect(err.Error()).Should(ContainSubstring("Protocol is set to http, but must be one of the following: \"icmp, icmpv6, tcp, udp\""))
 				Expect(err.Error()).Should(ContainSubstring("Flow is set to both, but must be one of the following: \"ingress, egress\""))
 				Expect(err.Error()).Should(ContainSubstring("ConnState is set to old, but must be one of the following: \"new, est\""))
 			})
