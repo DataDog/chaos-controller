@@ -3,8 +3,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2026 Datadog, Inc.
 
-//go:build cgo
-// +build cgo
+//go:build !cgo
+// +build !cgo
 
 package main
 
