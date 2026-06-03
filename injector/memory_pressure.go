@@ -78,7 +78,9 @@ func (i *memoryPressureInjector) Inject() error {
 	}
 
 	if err := i.backgroundCmd.Start(); err != nil {
-		defer i.cancel()
+		i.cancel()
+		i.backgroundCmd = nil
+		i.cancel = nil
 
 		return fmt.Errorf("unable to start process for injector: %w", err)
 	}

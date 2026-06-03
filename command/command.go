@@ -141,6 +141,7 @@ func (w *backgroundCmd) Start() error {
 	}
 
 	if err := w.Cmd.Start(); err != nil {
+		close(w.done)
 		return fmt.Errorf("unable to exec command '%s': %w", w.String(), err)
 	}
 
@@ -156,12 +157,14 @@ func (w *backgroundCmd) Start() error {
 	case <-time.After(cmdBootstrapAllowedDuration):
 	case err := <-chErr:
 		if err != nil {
+			close(w.done)
 			return fmt.Errorf("an error occurred during startup of exec command: %w", err)
 		}
 	}
 
 	w.pid = w.PID()
 	if w.pid == process.NotFoundProcessPID {
+		close(w.done)
 		return fmt.Errorf("no process created, processState exit code is %v", w.ExitCode())
 	}
 

@@ -87,6 +87,7 @@ func stopAndWaitForBackgroundCmd(log *zap.SugaredLogger, backgroundCmd command.B
 	case <-backgroundCmd.Done():
 	case <-time.After(5 * time.Second):
 		log.Warnw("timed out waiting for background process to exit")
+		return fmt.Errorf("timed out waiting for background process to exit")
 	}
 
 	return nil
