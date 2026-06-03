@@ -28,8 +28,7 @@ var (
 )
 
 func TestIntegration(t *testing.T) {
-	mountProc, ok := os.LookupEnv("CHAOS_INJECTOR_MOUNT_PROC")
-	if !ok || mountProc == "" {
+	if _, ok := os.LookupEnv("CHAOS_INJECTOR_MOUNT_PROC"); !ok {
 		t.Skip("CHAOS_INJECTOR_MOUNT_PROC not set — run via `make test-integration`")
 	}
 

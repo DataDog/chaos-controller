@@ -1,6 +1,25 @@
+# Stage 1: compile eBPF object (runs inside Docker Desktop Linux VM)
+FROM debian:12 AS bpf-builder
+RUN apt-get update -qq && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq clang libbpf-dev 2>/dev/null && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY ebpf/ /build/ebpf/
+RUN UNAME_ARCH=$(uname -m) && \
+    ARCH="x86" && \
+    [ "$UNAME_ARCH" = "aarch64" ] && ARCH="arm64" || true && \
+    clang \
+        -D "__TARGET_ARCH_${ARCH}" \
+        -I "/usr/include/${UNAME_ARCH}-linux-gnu" \
+        -O2 -c -target bpf -g \
+        -o /bpf-network-disruption.bpf.o \
+        /build/ebpf/network-disruption/disruption.bpf.c
+
+# Stage 2: test runner
 FROM debian:12-slim
 RUN apt-get update -qq && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y -qq iproute2 iptables wget 2>/dev/null && \
     rm -rf /var/lib/apt/lists/*
+COPY --from=bpf-builder /bpf-network-disruption.bpf.o /usr/local/bin/bpf-network-disruption.bpf.o
 COPY bin/integration.test /integration.test
 ENTRYPOINT ["/integration.test", "-test.v"]

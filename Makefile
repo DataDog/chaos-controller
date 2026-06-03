@@ -291,10 +291,9 @@ test: generate-controller manifests
 test-integration:
 	GOOS=linux GOARCH=$(GOARCH) go test -c -tags=integration -o bin/integration.test ./injector/
 	docker build -f Dockerfile.integration -t chaos-integration-test:local .
-	docker run --rm --privileged \
-		-v /proc:/mnt/proc \
+	docker run --rm --privileged --pid=host \
 		-v /var/run/docker.sock:/var/run/docker.sock \
-		-e CHAOS_INJECTOR_MOUNT_PROC=/mnt/proc/ \
+		-e CHAOS_INJECTOR_MOUNT_PROC=/proc/ \
 		-e DOCKER_HOST=unix:///var/run/docker.sock \
 		chaos-integration-test:local -test.run=TestIntegration $(TEST_ARGS)
 
