@@ -11,6 +11,7 @@ import (
 	"math"
 	"net"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -140,15 +141,12 @@ func NewNetworkDisruptionInjector(spec v1beta1.NetworkDisruptionSpec, config Net
 		}
 	}
 
-	// Create BPF disruption engine
-	var engine *bpfdisrupt.Engine
-	if config.BPFDisruptCmdRunner != nil {
-		engine = bpfdisrupt.NewEngine(config.TrafficController, config.NetlinkAdapter, config.BPFDisruptCmdRunner, config.Log)
-	} else {
-		// Use the default generic executor for running the BPF config binary
-		cmdRunner := &network.GenericExecutor{Log: config.Log, DryRun: config.Disruption.DryRun}
-		engine = bpfdisrupt.NewEngine(config.TrafficController, config.NetlinkAdapter, cmdRunner, config.Log)
+	cmdRunner := config.BPFDisruptCmdRunner
+	if cmdRunner == nil {
+		cmdRunner = &network.GenericExecutor{Log: config.Log, DryRun: config.Disruption.DryRun}
 	}
+
+	engine := bpfdisrupt.NewEngine(config.TrafficController, config.NetlinkAdapter, cmdRunner, config.Log)
 
 	return &networkDisruptionInjector{
 		spec:       spec,
@@ -522,16 +520,8 @@ func (i *networkDisruptionInjector) applyOperations() error {
 	}
 
 	// add operations
-	for _, operation := range i.operations {
-		if err := operation(interfaces, parent, fmt.Sprintf("%d:", handle)); err != nil {
-			return fmt.Errorf("could not perform operation on newly created qdisc: %w", err)
-		}
-
-		// update parent reference and handle identifier for the next operation
-		// the next operation parent will be the current handle identifier
-		// the next handle identifier is just an increment of the actual one
-		parent = fmt.Sprintf("%d:", handle)
-		handle++
+	if err := i.applyOperationsToIfaces(interfaces, parent, handle); err != nil {
+		return fmt.Errorf("could not perform operation on newly created qdisc: %w", err)
 	}
 
 	// Build safeguard IPs for BPF ALLOW rules (prevent disruption of critical traffic)
@@ -552,32 +542,7 @@ func (i *networkDisruptionInjector) applyOperations() error {
 		// ARP is non-IP traffic that BPF naturally passes through (no safeguard needed).
 	}
 
-	// Resolve all hosts and allowed hosts to IPs
-	resolvedIPs := map[string][]*net.IPNet{}
-
-	allHosts := make([]v1beta1.NetworkDisruptionHostSpec, 0, len(i.spec.Hosts)+len(i.spec.AllowedHosts))
-	allHosts = append(allHosts, i.spec.Hosts...)
-	allHosts = append(allHosts, i.spec.AllowedHosts...)
-
-	for _, host := range allHosts {
-		if host.Host == "" {
-			continue
-		}
-
-		ips, err := resolveHost(i.config.DNSClient, host.Host, host.DNSResolver)
-		if err != nil {
-			i.config.Log.Warnw("error resolving host for BPF rules", tags.HostKey, host.Host, tags.ErrorKey, err)
-
-			continue
-		}
-
-		if host.Percentage != nil && *host.Percentage < 100 {
-			seed := fmt.Sprintf("%s-%s", host.Host, i.config.Disruption.DisruptionUID)
-			ips = network.SelectIPsByPercentage(ips, *host.Percentage, seed)
-		}
-
-		resolvedIPs[host.Host] = ips
-	}
+	resolvedIPs := i.resolveAllHosts()
 
 	// Warn about connState not being supported in BPF mode
 	for _, host := range i.spec.Hosts {
@@ -620,16 +585,8 @@ func (i *networkDisruptionInjector) applyOperations() error {
 			return fmt.Errorf("can't create IFB prio qdisc: %w", err)
 		}
 
-		ifbParent := "1:4"
-		ifbHandle := uint32(2)
-
-		for _, operation := range i.operations {
-			if err := operation(ifbIfaces, ifbParent, fmt.Sprintf("%d:", ifbHandle)); err != nil {
-				return fmt.Errorf("could not apply operation on IFB device: %w", err)
-			}
-
-			ifbParent = fmt.Sprintf("%d:", ifbHandle)
-			ifbHandle++
+		if err := i.applyOperationsToIfaces(ifbIfaces, "1:4", 2); err != nil {
+			return fmt.Errorf("could not apply operation on IFB device: %w", err)
 		}
 	}
 
@@ -739,27 +696,16 @@ func (i *networkDisruptionInjector) selectServiceFiltersByPercentage(filters []t
 		return filters
 	}
 
-	// Extract IPs from filters
-	ips := make([]*net.IPNet, 0, len(filters))
 	ipToFiltersMap := make(map[string][]tcServiceFilter)
+	ips := make([]*net.IPNet, 0, len(filters))
 
 	for _, filter := range filters {
 		ipStr := filter.service.ip.String()
-		ipToFiltersMap[ipStr] = append(ipToFiltersMap[ipStr], filter)
-
-		// Only add unique IPs
-		alreadyAdded := false
-
-		for _, existingIP := range ips {
-			if existingIP.String() == ipStr {
-				alreadyAdded = true
-				break
-			}
-		}
-
-		if !alreadyAdded {
+		if _, seen := ipToFiltersMap[ipStr]; !seen {
 			ips = append(ips, filter.service.ip)
 		}
+
+		ipToFiltersMap[ipStr] = append(ipToFiltersMap[ipStr], filter)
 	}
 
 	// Use consistent hashing to select subset of IPs
@@ -1107,6 +1053,24 @@ func (i *networkDisruptionInjector) addOutputLimitOperation(bytesPerSec uint) {
 	i.operations = append(i.operations, operation)
 }
 
+// applyOperationsToIfaces runs all queued tc operations on the given interfaces in order,
+// threading the tc handle identifiers through each successive operation.
+func (i *networkDisruptionInjector) applyOperationsToIfaces(ifaces []string, startParent string, startHandle uint32) error {
+	parent := startParent
+	handle := startHandle
+
+	for _, operation := range i.operations {
+		if err := operation(ifaces, parent, fmt.Sprintf("%d:", handle)); err != nil {
+			return err
+		}
+
+		parent = fmt.Sprintf("%d:", handle)
+		handle++
+	}
+
+	return nil
+}
+
 // clearOperations removes all disruptions by clearing all custom qdiscs created for the given config struct (filters will be deleted as well)
 func (i *networkDisruptionInjector) clearOperations() error {
 	i.config.Log.Infof("clearing root qdiscs")
@@ -1228,32 +1192,14 @@ func specToRules(spec v1beta1.NetworkDisruptionSpec, hosts []v1beta1.NetworkDisr
 // that require shaping (delay, jitter, bandwidth, corruption, duplication) rather than just drop.
 // IFB device creation is only needed for ingress shaping parameters.
 func hasIngressShaping(spec v1beta1.NetworkDisruptionSpec) bool {
-	hasIngress := false
-
-	for _, host := range spec.Hosts {
-		if host.Flow == v1beta1.FlowIngress {
-			hasIngress = true
-
-			break
-		}
-	}
-
-	if !hasIngress {
-		for _, svc := range spec.Services {
-			if svc.Flow == v1beta1.FlowIngress {
-				hasIngress = true
-
-				break
-			}
-		}
-	}
-
-	if !hasIngress {
-		return false
-	}
+	hasIngress := slices.ContainsFunc(spec.Hosts, func(h v1beta1.NetworkDisruptionHostSpec) bool {
+		return h.Flow == v1beta1.FlowIngress
+	}) || slices.ContainsFunc(spec.Services, func(s v1beta1.NetworkDisruptionServiceSpec) bool {
+		return s.Flow == v1beta1.FlowIngress
+	})
 
 	// If any shaping parameter is set alongside ingress targets, IFB is needed
-	return spec.Delay > 0 || spec.BandwidthLimit > 0 || spec.Corrupt > 0 || spec.Duplicate > 0
+	return hasIngress && (spec.Delay > 0 || spec.BandwidthLimit > 0 || spec.Corrupt > 0 || spec.Duplicate > 0)
 }
 
 // startBPFHostWatcher launches a background goroutine that periodically re-resolves
@@ -1284,32 +1230,7 @@ func (i *networkDisruptionInjector) watchBPFHostChanges(ctx context.Context, saf
 				continue
 			}
 
-			// Re-resolve all hosts
-			resolvedIPs := map[string][]*net.IPNet{}
-
-			allHosts := make([]v1beta1.NetworkDisruptionHostSpec, 0, len(i.spec.Hosts)+len(i.spec.AllowedHosts))
-			allHosts = append(allHosts, i.spec.Hosts...)
-			allHosts = append(allHosts, i.spec.AllowedHosts...)
-
-			for _, host := range allHosts {
-				if host.Host == "" {
-					continue
-				}
-
-				ips, err := resolveHost(i.config.DNSClient, host.Host, host.DNSResolver)
-				if err != nil {
-					watcherLog.Errorw("error resolving host", tags.ErrorKey, err, tags.HostKey, host.Host)
-
-					continue
-				}
-
-				if host.Percentage != nil && *host.Percentage < 100 {
-					seed := fmt.Sprintf("%s-%s", host.Host, i.config.Disruption.DisruptionUID)
-					ips = network.SelectIPsByPercentage(ips, *host.Percentage, seed)
-				}
-
-				resolvedIPs[host.Host] = ips
-			}
+			resolvedIPs := i.resolveAllHosts()
 
 			// Rebuild host rules and merge with service rules atomically
 			hostRules := specToRules(i.spec, i.spec.Hosts, resolvedIPs, safeguardIPs)
@@ -1347,32 +1268,7 @@ func (i *networkDisruptionInjector) updateServiceRules(serviceRules []bpfdisrupt
 	i.serviceRules = serviceRules
 	i.serviceRulesMu.Unlock()
 
-	// Rebuild host rules from current state
-	resolvedIPs := map[string][]*net.IPNet{}
-
-	allHosts := make([]v1beta1.NetworkDisruptionHostSpec, 0, len(i.spec.Hosts)+len(i.spec.AllowedHosts))
-	allHosts = append(allHosts, i.spec.Hosts...)
-	allHosts = append(allHosts, i.spec.AllowedHosts...)
-
-	for _, host := range allHosts {
-		if host.Host == "" {
-			continue
-		}
-
-		ips, err := resolveHost(i.config.DNSClient, host.Host, host.DNSResolver)
-		if err != nil {
-			continue
-		}
-
-		if host.Percentage != nil && *host.Percentage < 100 {
-			seed := fmt.Sprintf("%s-%s", host.Host, i.config.Disruption.DisruptionUID)
-			ips = network.SelectIPsByPercentage(ips, *host.Percentage, seed)
-		}
-
-		resolvedIPs[host.Host] = ips
-	}
-
-	hostRules := specToRules(i.spec, i.spec.Hosts, resolvedIPs, i.safeguardIPs)
+	hostRules := specToRules(i.spec, i.spec.Hosts, i.resolveAllHosts(), i.safeguardIPs)
 
 	return i.rebuildAndUpdateAllRules(hostRules)
 }
@@ -1411,4 +1307,36 @@ func serviceEndpointsToRules(filters []tcServiceFilter) []bpfdisrupt.Rule {
 // isHeadless returns true if the service is a headless service, i.e., has no defined ClusterIP
 func isHeadless(service v1.Service) bool {
 	return service.Spec.ClusterIP == "" || strings.ToLower(service.Spec.ClusterIP) == "none"
+}
+
+// resolveAllHosts resolves all spec hosts (targets and allowed) to IP networks,
+// applying percentage-based selection where specified. Unresolvable hosts are skipped with a warning.
+func (i *networkDisruptionInjector) resolveAllHosts() map[string][]*net.IPNet {
+	resolvedIPs := map[string][]*net.IPNet{}
+
+	allHosts := make([]v1beta1.NetworkDisruptionHostSpec, 0, len(i.spec.Hosts)+len(i.spec.AllowedHosts))
+	allHosts = append(allHosts, i.spec.Hosts...)
+	allHosts = append(allHosts, i.spec.AllowedHosts...)
+
+	for _, host := range allHosts {
+		if host.Host == "" {
+			continue
+		}
+
+		ips, err := resolveHost(i.config.DNSClient, host.Host, host.DNSResolver)
+		if err != nil {
+			i.config.Log.Warnw("error resolving host", tags.HostKey, host.Host, tags.ErrorKey, err)
+
+			continue
+		}
+
+		if host.Percentage != nil && *host.Percentage < 100 {
+			seed := fmt.Sprintf("%s-%s", host.Host, i.config.Disruption.DisruptionUID)
+			ips = network.SelectIPsByPercentage(ips, *host.Percentage, seed)
+		}
+
+		resolvedIPs[host.Host] = ips
+	}
+
+	return resolvedIPs
 }

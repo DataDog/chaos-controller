@@ -2,6 +2,34 @@
 
 ## Testing Locally
 
+### Unit tests
+
+```bash
+make test                                  # all unit tests (Ginkgo v2, mocked)
+make test TEST_ARGS="injector"             # filter by package
+```
+
+### Network disruption integration tests
+
+Tests the network disruption injector against real Linux kernel primitives (tc,
+iptables, netlink) inside a privileged Docker container. No Kubernetes cluster
+required.
+
+```bash
+make test-integration                      # compile for Linux, build Docker image, run
+make test-integration TEST_ARGS="-ginkgo.focus='latency'"  # filter specs
+```
+
+**Prerequisites**: Docker Desktop (or Linux Docker daemon). Tests require:
+- `--privileged` container (tc/iptables access)
+- `--pid=host` (process namespace for netns entry)
+- Docker socket (`/var/run/docker.sock`) for container orchestration
+
+**What it tests**: structural (tc qdisc rules applied to kernel) and behavioral
+(HTTP latency and ICMP packet loss observable by a sender container).
+
+---
+
 [demo.yaml](examples/demo.yaml) contains testing resources you can apply directly to your cluster in whatever namespace you choose (`chaos-demo` by default), by running:
 
 - `kubectl apply -f examples/demo.yaml`
