@@ -17,17 +17,17 @@ spec:
     cloud:
       aws:
         - service: "S3" # service name as declared in the provider file (see doc for details)
-          protocol: tcp # optional, protocol to drop packets on (can be tcp or udp, defaults to both)
+          protocol: tcp # optional, protocol to drop packets on (can be icmp, icmpv6, tcp, or udp; defaults to all protocols)
           flow: ingress # optional, flow direction (egress: outgoing traffic, ingress: incoming traffic, defaults to egress)
           connState: new # optional, connection state (new: new connections, est: established connections, defaults to all states)
       gcp:
         - service: "Google" # service name as declared in the provider file (see doc for details)
-          protocol: tcp # optional, protocol to drop packets on (can be tcp or udp, defaults to both)
+          protocol: tcp # optional, protocol to drop packets on (can be icmp, icmpv6, tcp, or udp; defaults to all protocols)
           flow: ingress # optional, flow direction (egress: outgoing traffic, ingress: incoming traffic, defaults to egress)
           connState: new # optional, connection state (new: new connections, est: established connections, defaults to all states)
       datadog:
         - service: "synthetics" # service name as declared in the provider file (see doc for details)
-          protocol: tcp # optional, protocol to drop packets on (can be tcp or udp, defaults to both)
+          protocol: tcp # optional, protocol to drop packets on (can be icmp, icmpv6, tcp, or udp; defaults to all protocols)
           flow: ingress # optional, flow direction (egress: outgoing traffic, ingress: incoming traffic, defaults to egress)
           connState: new # optional, connection state (new: new connections, est: established connections, defaults to all states)
     drop: 100 # percentage of outgoing packets to drop

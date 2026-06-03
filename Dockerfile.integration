@@ -28,10 +28,14 @@ RUN make network-disruption
 FROM ubuntu:24.04
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
-        iproute2 iptables wget linux-tools-common bpftool 2>/dev/null || \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y \
-        iproute2 iptables wget && \
+        iproute2 iptables wget linux-tools-common linux-tools-generic && \
     rm -rf /var/lib/apt/lists/*
+# Expose bpftool in PATH: prefer standalone package, fall back to kernel-versioned binary.
+RUN (apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y bpftool && \
+     rm -rf /var/lib/apt/lists/*) || \
+    (find /usr/lib/linux-tools -maxdepth 2 -name bpftool 2>/dev/null | head -1 | \
+     xargs -I{} ln -sf {} /usr/local/bin/bpftool) || true
+RUN bpftool version || echo "WARNING: bpftool not available; ingress-shaping tests will skip BPF feature detection"
 
 ARG TARGETARCH
 COPY --from=ebpf-builder /app/bin/injector/ebpf/${TARGETARCH}/bpf-network-disruption \

@@ -227,6 +227,7 @@ func (e *Engine) populateRules(rules []Rule) error {
 			BPFConfigPath,
 			"--ip", rule.CIDR,
 			"--action", rule.Action.String(),
+			"--direction", rule.Direction.String(),
 		}
 
 		if rule.Action == ActionDrop && rule.DropPct > 0 {

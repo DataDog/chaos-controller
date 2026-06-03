@@ -288,14 +288,17 @@ test: generate-controller manifests
 		GINKGO_TEST_ARGS="-r --skip-package=controllers --randomize-suites --timeout=10m $(TEST_ARGS)"
 
 ## Run network disruption integration tests (requires Docker Desktop)
+## Full verbose output is written to /tmp/chaos-integration-test.log
 test-integration:
 	GOOS=linux GOARCH=$(GOARCH) go test -c -tags=integration -o bin/integration.test ./injector/
-	docker build -f Dockerfile.integration -t chaos-integration-test:local .
+	docker build -q -f Dockerfile.integration -t chaos-integration-test:local .
 	docker run --rm --privileged --pid=host \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-e CHAOS_INJECTOR_MOUNT_PROC=/proc/ \
 		-e DOCKER_HOST=unix:///var/run/docker.sock \
-		chaos-integration-test:local -test.run=TestIntegration $(TEST_ARGS)
+		chaos-integration-test:local -test.run=TestIntegration $(TEST_ARGS) \
+		2>&1 | tee /tmp/chaos-integration-test.log | grep -v "logger.go:[0-9]*:"
+	@echo "Full log: /tmp/chaos-integration-test.log"
 
 spellcheck-deps:
 ifeq (, $(shell which npm))

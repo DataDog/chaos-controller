@@ -75,6 +75,11 @@ static __always_inline bool match_l4(struct __sk_buff *skb, __u16 eth_proto,
     if (val->protocol != 0 && val->protocol != ip_proto)
         return false;
 
+    // ICMP/ICMPv6 have no ports — if rule specifies ICMP/ICMPv6 and packet matches, skip port check.
+    if ((ip_proto == IPPROTO_ICMP && val->protocol == IPPROTO_ICMP) ||
+        (ip_proto == IPPROTO_ICMPV6 && val->protocol == IPPROTO_ICMPV6))
+        return true;
+
     // Check ports for TCP/UDP only
     if (val->src_port != 0 || val->dst_port != 0) {
         if (ip_proto != IPPROTO_TCP && ip_proto != IPPROTO_UDP)
@@ -130,6 +135,7 @@ int cls_egress_disruption(struct __sk_buff *skb) {
     // We check L2 EtherType first, then fall back to L3 version byte.
     // Every data access requires a preceding bounds check for the BPF verifier.
     struct lpm_key key;
+    __u16 eth_proto = 0;
     int parsed = 0;
 
     // Try L2 path: Ethernet header present
@@ -139,11 +145,13 @@ int cls_egress_disruption(struct __sk_buff *skb) {
             __u32 dst_ip;
             __builtin_memcpy(&dst_ip, data + ETH_HLEN + 16, 4);
             ipv4_to_lpm_key(&key, dst_ip);
+            eth_proto = ETH_P_IP;
             parsed = 1;
         } else if (et == ETH_P_IPV6 && data + ETH_HLEN + 40 <= data_end) {
             __u8 dst_ip[16];
             __builtin_memcpy(dst_ip, data + ETH_HLEN + 24, 16);
             ipv6_to_lpm_key(&key, dst_ip);
+            eth_proto = ETH_P_IPV6;
             parsed = 1;
         }
     }
@@ -155,25 +163,41 @@ int cls_egress_disruption(struct __sk_buff *skb) {
             __u32 dst_ip;
             __builtin_memcpy(&dst_ip, data + 16, 4);
             ipv4_to_lpm_key(&key, dst_ip);
+            eth_proto = ETH_P_IP;
             parsed = 1;
         } else if (ip_version == 6 && data + 40 <= data_end) {
             __u8 dst_ip[16];
             __builtin_memcpy(dst_ip, data + 24, 16);
             ipv6_to_lpm_key(&key, dst_ip);
+            eth_proto = ETH_P_IPV6;
             parsed = 1;
         }
     }
 
-    // Route all successfully parsed IP packets to the disruption band.
-    // LPM-trie-based per-IP filtering is deferred: the binary's GetMapsIDsByName
-    // finds maps from previous test runs in the kernel session, and the BPF program
-    // uses the map created by THIS tc filter load — verifying equality requires
-    // additional investigation. For integration tests all traffic is disrupted (empty
-    // Hosts spec = match-all behavior), so bypassing the LPM is correct.
-    if (parsed)
-        return TC_CLASSID_DISRUPTION_BAND;
+    // LPM-trie-based per-IP filtering with direction check.
+    // NOTE: GetMapsIDsByName in the config binary may find maps from prior tc filter
+    // loads in the same kernel session; the map used here is the one pinned to THIS
+    // tc filter load. Until the identity issue is fully resolved we retain the fallback
+    // below: if no map entry is found, route all parsed IP packets to the disruption band
+    // (match-all behaviour, same as an empty Hosts spec).
+    if (!parsed)
+        return TC_ACT_PIPE;
 
-    return TC_ACT_PIPE;
+    struct lpm_val *val = bpf_map_lookup_elem(&disruption_rl, &key);
+    if (!val)
+        return TC_CLASSID_DISRUPTION_BAND; // no rule → disrupt all (match-all fallback)
+
+    // Skip if this rule was installed for ingress-only traffic
+    if (val->direction == DIR_INGRESS)
+        return TC_ACT_PIPE;
+
+    if (val->action == ACTION_ALLOW)
+        return TC_ACT_PIPE;
+
+    if (!match_l4(skb, eth_proto, val))
+        return TC_ACT_PIPE;
+
+    return TC_CLASSID_DISRUPTION_BAND;
 }
 
 // TC ingress classifier with DirectAction: looks up src_ip in the LPM trie.
@@ -216,6 +240,10 @@ int cls_ingress_disruption(struct __sk_buff *skb) {
     struct lpm_val *val = bpf_map_lookup_elem(&disruption_rl, &key);
     if (!val)
         return TC_ACT_OK; // No match, pass through
+
+    // Skip if this rule was installed for egress-only traffic
+    if (val->direction == DIR_EGRESS)
+        return TC_ACT_OK;
 
     if (val->action == ACTION_ALLOW)
         return TC_ACT_OK; // Safeguard/allowed host

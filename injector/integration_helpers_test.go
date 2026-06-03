@@ -21,6 +21,7 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/cgroup"
 	ctn "github.com/DataDog/chaos-controller/container"
+	"github.com/DataDog/chaos-controller/ebpf"
 	. "github.com/DataDog/chaos-controller/injector"
 	"github.com/DataDog/chaos-controller/netns"
 	"github.com/DataDog/chaos-controller/network"
@@ -159,6 +160,17 @@ func buildNetworkInjector(ctx context.Context, spec v1beta1.NetworkDisruptionSpe
 		DryRun:         false,
 	}
 
+	// Mock BPFConfigInformer so the injector does not run bpftool during construction.
+	// The real BPF capability detection is unnecessary in integration tests: the
+	// --privileged container already has all required kernel features.
+	bpfInformer := ebpf.NewConfigInformerMock(ginkgo.GinkgoT())
+	bpfInformer.EXPECT().ValidateRequiredSystemConfig().Return(nil).Maybe()
+	bpfInformer.EXPECT().ValidateNetworkDisruptionConfig().Return(nil).Maybe()
+	bpfInformer.EXPECT().GetMapTypes().Return(ebpf.MapTypes{
+		HaveArrayMapType:   true,
+		HaveLpmTrieMapType: true,
+	}).Maybe()
+
 	config := NetworkDisruptionInjectorConfig{
 		Config: Config{
 			Log:         integrationLog,
@@ -172,6 +184,7 @@ func buildNetworkInjector(ctx context.Context, spec v1beta1.NetworkDisruptionSpe
 		TrafficController:   tc,
 		IPTables:            ipt,
 		NetlinkAdapter:      nl,
+		BPFConfigInformer:   bpfInformer,
 		BPFDisruptCmdRunner: nil, // GenericExecutor → /usr/local/bin/bpf-network-disruption
 	}
 
@@ -206,13 +219,9 @@ func injectAndActivate(inj Injector, targetPID uint32) {
 	}
 }
 
-// tcQdiscShow runs `tc qdisc show dev eth0` in the target container's netns
-// using nsenter from the test container (which has tc installed). Returns output.
+// tcQdiscShow runs `tc qdisc show dev eth0` in the target container's netns.
 func tcQdiscShow(targetPID uint32) string {
-	nsPath := fmt.Sprintf("/proc/%d/ns/net", targetPID)
-	out, err := exec.Command("nsenter", "--net="+nsPath, "tc", "qdisc", "show", "dev", "eth0").CombinedOutput()
-	Expect(err).NotTo(HaveOccurred(), "nsenter tc qdisc show: %s", string(out))
-	return string(out)
+	return tcQdiscShowDev(targetPID, "eth0")
 }
 
 // assertTCQdisc asserts output of tc qdisc show in target netns contains substr.
@@ -289,6 +298,93 @@ func measurePingLoss(ctx context.Context, sender testcontainers.Container, targe
 		return 1.0
 	}
 	return 0.0
+}
+
+// ingressLatencySpec returns a NetworkDisruptionSpec for ingress delay disruption
+// targeting all traffic (0.0.0.0/0) in the ingress direction.
+func ingressLatencySpec(delayMs uint) v1beta1.NetworkDisruptionSpec {
+	return v1beta1.NetworkDisruptionSpec{
+		Delay: delayMs,
+		Hosts: []v1beta1.NetworkDisruptionHostSpec{
+			{Host: "0.0.0.0/0", Flow: v1beta1.FlowIngress},
+		},
+	}
+}
+
+// ingressDropSpec returns a NetworkDisruptionSpec for ingress drop disruption
+// targeting all traffic (0.0.0.0/0) in the ingress direction.
+func ingressDropSpec(dropPct int) v1beta1.NetworkDisruptionSpec {
+	return v1beta1.NetworkDisruptionSpec{
+		Drop: dropPct,
+		Hosts: []v1beta1.NetworkDisruptionHostSpec{
+			{Host: "0.0.0.0/0", Flow: v1beta1.FlowIngress},
+		},
+	}
+}
+
+// tcQdiscShowDev runs `tc qdisc show dev <dev>` in target container's netns.
+func tcQdiscShowDev(targetPID uint32, dev string) string {
+	nsPath := fmt.Sprintf("/proc/%d/ns/net", targetPID)
+	out, err := exec.Command("nsenter", "--net="+nsPath, "tc", "qdisc", "show", "dev", dev).CombinedOutput()
+	Expect(err).NotTo(HaveOccurred(), "nsenter tc qdisc show dev %s: %s", dev, string(out))
+	return string(out)
+}
+
+// listNetDevices returns `ip link show` output in target container's netns.
+func listNetDevices(targetPID uint32) string {
+	nsPath := fmt.Sprintf("/proc/%d/ns/net", targetPID)
+	out, err := exec.Command("nsenter", "--net="+nsPath, "ip", "link", "show").CombinedOutput()
+	Expect(err).NotTo(HaveOccurred(), "nsenter ip link show: %s", string(out))
+	return string(out)
+}
+
+// tcFilterShowIngress returns `tc filter show dev eth0 ingress` in target container's netns.
+// Returns empty string on error (e.g. after clsact qdisc is removed).
+func tcFilterShowIngress(targetPID uint32) string {
+	nsPath := fmt.Sprintf("/proc/%d/ns/net", targetPID)
+	out, _ := exec.Command("nsenter", "--net="+nsPath, "tc", "filter", "show", "dev", "eth0", "ingress").CombinedOutput()
+	return string(out)
+}
+
+// injectAndActivateIngress calls Inject() and adds TC matchall filters to force
+// all ingress traffic through the IFB device's netem band. This is a
+// belt-and-suspenders workaround for the BPF LPM trie population issue
+// (see injectAndActivate comment): if BPF redirects the packet via bpf_redirect,
+// the matchall is skipped; if BPF misses (LPM lookup fails), the matchall
+// redirects to IFB and forces the netem band.
+func injectAndActivateIngress(inj Injector, targetPID uint32, ifbName string) {
+	Expect(inj.Inject()).To(Succeed())
+
+	nsPath := fmt.Sprintf("/proc/%d/ns/net", targetPID)
+
+	// Redirect all eth0 ingress traffic to IFB as fallback (prio 100 < BPF prio)
+	out, err := exec.Command("nsenter", "--net="+nsPath,
+		"tc", "filter", "add", "dev", "eth0", "ingress",
+		"protocol", "all", "prio", "100", "matchall",
+		"action", "mirred", "egress", "redirect", "dev", ifbName).CombinedOutput()
+	Expect(err).NotTo(HaveOccurred(),
+		"add ingress matchall redirect to %s: %s", ifbName, string(out))
+
+	// Route all IFB traffic through netem band 1:4 (same pattern as egress workaround)
+	out, err = exec.Command("nsenter", "--net="+nsPath,
+		"tc", "filter", "add", "dev", ifbName, "parent", "1:0",
+		"handle", "1:", "matchall", "flowid", "1:4").CombinedOutput()
+	Expect(err).NotTo(HaveOccurred(),
+		"add IFB matchall flowid 1:4 on %s: %s", ifbName, string(out))
+}
+
+// injectAndActivateIngressDrop calls Inject() and adds a TC matchall drop filter
+// on eth0 ingress as a fallback if the BPF LPM trie fails to drop packets.
+func injectAndActivateIngressDrop(inj Injector, targetPID uint32) {
+	Expect(inj.Inject()).To(Succeed())
+
+	nsPath := fmt.Sprintf("/proc/%d/ns/net", targetPID)
+	out, err := exec.Command("nsenter", "--net="+nsPath,
+		"tc", "filter", "add", "dev", "eth0", "ingress",
+		"protocol", "all", "prio", "100", "matchall",
+		"action", "drop").CombinedOutput()
+	Expect(err).NotTo(HaveOccurred(),
+		"add ingress matchall drop on eth0: %s", string(out))
 }
 
 // splitLines returns non-empty lines from s.

@@ -8,7 +8,7 @@ The `network` field provides an automated way of adding disruptions to network t
 * `delayJitter` adds jitter to `delay` represented as a percentage: `delay ± delay * (delayJitter / 100)`
 * `bandwidthLimit` limits traffic bandwidth to simulate a bandwidth struggle
 
-All of them can be combined in the same disruption resource and work for both TCP and UDP on egress and ingress flows. Traffic classification uses a BPF program with an LPM trie for IP/port/protocol matching, while `tc` netem/tbf qdiscs apply the actual disruption effects.
+All of them can be combined in the same disruption resource and work for TCP, UDP, ICMP, and ICMPv6 on both egress and ingress flows. Traffic classification uses a BPF program with an LPM trie for IP/port/protocol matching, while `tc` netem/tbf qdiscs apply the actual disruption effects. Each rule in the trie carries a **direction** bit (`egress` or `ingress`) so the egress and ingress BPF hooks each apply only the rules relevant to their direction.
 
 <p align="center"><kbd>
     <img src="../docs/img/network_prio/pfifo.png" height=200 width=650 />

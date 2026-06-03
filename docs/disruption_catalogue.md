@@ -78,7 +78,7 @@ Target by IP address, CIDR block, or hostname.
 | ------------- | ------ | ------------------------------------------------------- |
 | `host`        | string | IP, CIDR, or hostname                                   |
 | `port`        | int    | Port number (0–65535)                                   |
-| `protocol`    | string | `tcp`, `udp`, or omit for both                          |
+| `protocol`    | string | `icmp`, `icmpv6`, `tcp`, `udp`, or omit for all         |
 | `flow`        | string | `egress` (default), `ingress`                           |
 | `connState`   | string | `new`, `est`, or omit for all                           |
 | `dnsResolver` | string | `pod`, `node`, `pod-fallback-node`, `node-fallback-pod` |
@@ -128,7 +128,7 @@ Filter by HTTP method and/or request path (uses eBPF).
 
 - Maximum 2048 tc filters per disruption. Complex host/service/cloud configurations can exhaust this limit.
 - SSH (port 22), node IP, default gateway, cloud metadata (169.254.169.254), and ARP are automatically excluded. Disable with `disableDefaultAllowedHosts: true`.
-- Ingress flow only works for TCP and requires at least a port or host.
+- `protocol: icmp` and `protocol: icmpv6` are matched on IP protocol number only; `port` is ignored for ICMP/ICMPv6 entries.
 - `bandwidthLimit` must be ≥ 32 bytes/sec when set.
 - All packets experience a small additional latency due to `prio` qdisc processing even if no delay is configured.
 - DNS resolution for hostname-based hosts is repeated on an interval, which can add latency to filter setup.
@@ -208,13 +208,13 @@ spec:
     corrupt: 100
 ```
 
-**Drop all ingress traffic on port 80:**
+**Drop all ingress TCP traffic on port 80:**
 
 ```yaml
 apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
-  name: network-ingress
+  name: network-ingress-drop
   namespace: chaos-demo
 spec:
   level: pod
@@ -225,7 +225,67 @@ spec:
     drop: 100
     hosts:
       - port: 80
+        protocol: tcp
         flow: ingress
+```
+
+**Add 200ms delay to all incoming traffic (ingress shaping via IFB):**
+
+```yaml
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: network-ingress-delay
+  namespace: chaos-demo
+spec:
+  level: pod
+  selector:
+    service: demo-nginx
+  count: 1
+  network:
+    delay: 200
+    hosts:
+      - host: 10.0.0.0/8
+        flow: ingress
+```
+
+**Drop all incoming ICMP ping requests (port field is ignored for icmp/icmpv6):**
+
+```yaml
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: network-icmp-ingress-drop
+  namespace: chaos-demo
+spec:
+  level: pod
+  selector:
+    service: demo-nginx
+  count: 1
+  network:
+    drop: 100
+    hosts:
+      - protocol: icmp
+        flow: ingress
+```
+
+**Add latency to outgoing ICMP only (egress, leaves TCP/UDP unaffected):**
+
+```yaml
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: network-icmp-egress-delay
+  namespace: chaos-demo
+spec:
+  level: pod
+  selector:
+    service: demo-nginx
+  count: 1
+  network:
+    delay: 200
+    hosts:
+      - protocol: icmp
 ```
 
 **Drop packets to a Kubernetes service:**

@@ -18,8 +18,10 @@
 #define ETH_P_IPV6      0x86DD
 
 // IP protocol numbers
+#define IPPROTO_ICMP    1
 #define IPPROTO_TCP     6
 #define IPPROTO_UDP     17
+#define IPPROTO_ICMPV6  58
 
 // Maximum entries in the LPM trie
 #define MAX_DISRUPTION_ENTRIES 4096
@@ -47,5 +49,6 @@ struct lpm_val {
     __u16 src_port;      // Source port to match (0 = match all)
     __u16 dst_port;      // Destination port to match (0 = match all)
     __u8  protocol;      // IP protocol to match: IPPROTO_TCP, IPPROTO_UDP (0 = match all)
-    __u8  _pad[3];       // Padding to align struct to 4 bytes
+    __u8  direction;     // DIR_EGRESS, DIR_INGRESS, or 0 (match both directions)
+    __u8  _pad[2];       // Padding to align struct to 4 bytes
 };

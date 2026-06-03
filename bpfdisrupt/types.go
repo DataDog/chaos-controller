@@ -9,12 +9,16 @@ package bpfdisrupt
 type Direction uint32
 
 const (
+	// DirBoth applies the rule on both egress and ingress hooks (value 0 = default/unset).
+	DirBoth    Direction = 0
 	DirEgress  Direction = 1
 	DirIngress Direction = 2
 )
 
 func (d Direction) String() string {
 	switch d {
+	case DirBoth:
+		return "both"
 	case DirEgress:
 		return "egress"
 	case DirIngress:

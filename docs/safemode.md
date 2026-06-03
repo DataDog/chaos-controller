@@ -74,7 +74,7 @@ spec:
   count: 1
   network:
     drop: 10
-    flow: ingress # disrupt incoming traffic instead of outgoing (requires at least a port or a host to be specified, only works for TCP, please read implementation details before using to know the current limitations)
+    flow: ingress # disrupt incoming traffic instead of outgoing (disrupts incoming traffic; supports tcp, udp, icmp, icmpv6)
     hosts:
       drop: 100
 ```

@@ -53,7 +53,8 @@ var (
 	nIFBIfindex = flag.Uint32("ifb-ifindex", 0, "IFB device ifindex for ingress shaping redirect")
 	nSrcPort    = flag.Uint16("src-port", 0, "Source port to match (0 = match all)")
 	nDstPort    = flag.Uint16("dst-port", 0, "Destination port to match (0 = match all)")
-	nProtocol   = flag.String("protocol", "", "IP protocol to match: tcp, udp (empty = match all)")
+	nProtocol   = flag.String("protocol", "", "IP protocol to match: icmp, icmpv6, tcp, udp (empty = match all)")
+	nDirection  = flag.String("direction", "", "Traffic direction: egress, ingress (empty = match both)")
 	nClear      = flag.Bool("clear", false, "Clear all entries from the disruption rules map")
 )
 
@@ -65,7 +66,7 @@ type lpmKey struct {
 }
 
 // lpmVal matches struct lpm_val in the BPF program.
-// Total size: 20 bytes (3x uint32 + 2x uint16 + 1x uint8 + 3 pad bytes)
+// Total size: 20 bytes (3x uint32 + 2x uint16 + 2x uint8 + 2 pad bytes)
 type lpmVal struct {
 	Action     uint32
 	DropPct    uint32
@@ -73,7 +74,8 @@ type lpmVal struct {
 	SrcPort    uint16
 	DstPort    uint16
 	Protocol   uint8
-	Pad        [3]byte
+	Direction  uint8 // 0=both, 1=egress, 2=ingress (matches DIR_* constants in BPF)
+	Pad        [2]byte
 }
 
 func main() {
@@ -109,8 +111,8 @@ func main() {
 		logger.Fatalf("could not add entry to disruption rules map: %v", err)
 	}
 
-	logger.Infof("entry added to disruption rules map: ip=%s action=%s drop_pct=%d ifb_ifindex=%d src_port=%d dst_port=%d protocol=%s",
-		*nIP, *nAction, *nDropPct, *nIFBIfindex, *nSrcPort, *nDstPort, *nProtocol)
+	logger.Infof("entry added to disruption rules map: ip=%s action=%s drop_pct=%d ifb_ifindex=%d src_port=%d dst_port=%d protocol=%s direction=%s",
+		*nIP, *nAction, *nDropPct, *nIFBIfindex, *nSrcPort, *nDstPort, *nProtocol, *nDirection)
 }
 
 func parseAction(s string) (uint32, error) {
@@ -159,6 +161,10 @@ func cidrToLPMKey(cidr string) (lpmKey, error) {
 
 func parseProtocol(s string) (uint8, error) {
 	switch s {
+	case "icmp":
+		return 1, nil // IPPROTO_ICMP
+	case "icmpv6":
+		return 58, nil // IPPROTO_ICMPV6
 	case "tcp":
 		return 6, nil // IPPROTO_TCP
 	case "udp":
@@ -166,7 +172,20 @@ func parseProtocol(s string) (uint8, error) {
 	case "":
 		return 0, nil // match all
 	default:
-		return 0, fmt.Errorf("unknown protocol: %s (supported: tcp, udp)", s)
+		return 0, fmt.Errorf("unknown protocol: %s (supported: icmp, icmpv6, tcp, udp)", s)
+	}
+}
+
+func parseDirection(s string) (uint8, error) {
+	switch s {
+	case "both", "":
+		return 0, nil // DIR_BOTH: match both directions
+	case "egress":
+		return 1, nil // DIR_EGRESS
+	case "ingress":
+		return 2, nil // DIR_INGRESS
+	default:
+		return 0, fmt.Errorf("unknown direction: %s (supported: both, egress, ingress)", s)
 	}
 }
 
@@ -186,6 +205,11 @@ func addEntry() error {
 		return err
 	}
 
+	dir, err := parseDirection(*nDirection)
+	if err != nil {
+		return err
+	}
+
 	val := lpmVal{
 		Action:     action,
 		DropPct:    *nDropPct,
@@ -193,6 +217,7 @@ func addEntry() error {
 		SrcPort:    *nSrcPort,
 		DstPort:    *nDstPort,
 		Protocol:   proto,
+		Direction:  dir,
 	}
 
 	bpfMapIDs, err := libbpfgo.GetMapsIDsByName(DisruptionRulesMapName)
@@ -220,7 +245,8 @@ func addEntry() error {
 		binary.LittleEndian.PutUint16(valBytes[12:14], val.SrcPort)
 		binary.LittleEndian.PutUint16(valBytes[14:16], val.DstPort)
 		valBytes[16] = val.Protocol
-		// bytes 17-19 are padding (zero)
+		valBytes[17] = val.Direction
+		// bytes 18-19 are padding (zero)
 
 		if err := bpfMap.Update(unsafe.Pointer(&keyBytes[0]), unsafe.Pointer(&valBytes[0])); err != nil {
 			closeMap(bpfMap)

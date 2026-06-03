@@ -4,7 +4,7 @@
 
 The `flow` field allows you to either disrupt outgoing traffic (`egress`) or incoming traffic (`ingress`).
 
-Both directions support all disruption types (drop, delay, jitter, bandwidth limit, corruption, duplication) and all protocols (TCP, UDP, ICMP).
+Both directions support all disruption types (drop, delay, jitter, bandwidth limit, corruption, duplication) and all protocols (TCP, UDP, ICMP, ICMPv6).
 
 If you are still not sure which one you should use, consider the following example. Say you have 3 pods:
 * `server`: an `nginx` pod listening on 80
@@ -35,18 +35,20 @@ Ingress disruption uses a BPF TC classifier attached to the `clsact` qdisc on th
 - **Shaping** (delay, jitter, bandwidth, corruption, duplication): Matched packets are redirected to an IFB (Intermediate Functional Block) virtual device via `bpf_redirect`. The IFB device has a prio/netem/tbf qdisc chain that applies the shaping effects.
 
 This approach:
-- Works for **all protocols** (TCP, UDP, ICMP) since it operates at the packet level
+- Works for **all protocols** (TCP, UDP, ICMP, ICMPv6) since it operates at the packet level
 - Matches the **real originating pod IP** (not cluster VIPs) since it inspects the packet's source address directly
 - Supports **per-host filtering** via the `hosts` field on ingress
-- Supports **per-port/protocol filtering** — the `port` and `protocol` fields on hosts are matched in the BPF program after the IP lookup
+- Supports **per-port/protocol filtering** — the `port` and `protocol` fields on hosts are matched in the BPF program after the IP lookup; ICMP/ICMPv6 entries match on protocol number only (`port` is ignored)
+- Rules in the shared LPM trie carry a **direction** field (`egress` or `ingress`); the ingress hook skips egress-only rules so they do not accidentally disrupt inbound traffic
 
 ## Q: How does egress disruption work?
 
 Egress disruption uses the same BPF LPM trie to classify outgoing packets by their **destination IP**. Matched packets are routed to a disruption band in the prio qdisc where netem/tbf apply the disruption effects.
 
 The BPF classifier replaces per-IP tc flower filters, providing:
-- **Protocol-agnostic** classification (works for TCP, UDP, and any IP protocol)
-- **L4 port/protocol matching** — the `port` and `protocol` fields are checked in the BPF program after the IP lookup
+- **Protocol-agnostic** classification (works for TCP, UDP, ICMP, ICMPv6, and any IP protocol)
+- **L4 port/protocol matching** — the `port` and `protocol` fields are checked in the BPF program after the IP lookup; ICMP/ICMPv6 entries match on protocol number only
+- **Direction-aware rules** — the egress hook skips ingress-only rules so they do not accidentally disrupt outbound traffic
 - **Atomic rule updates** when DNS-resolved IPs or service endpoints change (single LPM trie map update instead of per-filter add/delete)
 - **CIDR matching** via LPM trie prefix semantics
 - **Service endpoint filtering** — Kubernetes service endpoints (both ClusterIP and headless) are resolved to BPF rules and dynamically updated as pods are added/removed

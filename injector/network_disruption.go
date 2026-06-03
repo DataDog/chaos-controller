@@ -1112,16 +1112,17 @@ func (i *networkDisruptionInjector) clearOperations() error {
 func specToRules(spec v1beta1.NetworkDisruptionSpec, hosts []v1beta1.NetworkDisruptionHostSpec, resolvedIPs map[string][]*net.IPNet, safeguardIPs []*net.IPNet) []bpfdisrupt.Rule {
 	rules := []bpfdisrupt.Rule{}
 
-	// Add safeguard IPs as ALLOW rules (LPM /32 entries beat /0 match-all)
+	// Add safeguard IPs as ALLOW rules (LPM /32 entries beat /0 match-all).
+	// DirBoth ensures both egress and ingress hooks honour the ALLOW rule.
 	for _, ip := range safeguardIPs {
 		rules = append(rules, bpfdisrupt.Rule{
-			Direction: bpfdisrupt.DirEgress,
+			Direction: bpfdisrupt.DirBoth,
 			CIDR:      ip.String(),
 			Action:    bpfdisrupt.ActionAllow,
 		})
 	}
 
-	// Add allowed hosts as ALLOW rules
+	// Add allowed hosts as ALLOW rules (DirBoth so the exclusion applies on both hooks).
 	for _, host := range spec.AllowedHosts {
 		ips, ok := resolvedIPs[host.Host]
 		if !ok {
@@ -1130,7 +1131,7 @@ func specToRules(spec v1beta1.NetworkDisruptionSpec, hosts []v1beta1.NetworkDisr
 
 		for _, ip := range ips {
 			rules = append(rules, bpfdisrupt.Rule{
-				Direction: bpfdisrupt.DirEgress, // allowed hosts affect both directions via LPM precedence
+				Direction: bpfdisrupt.DirBoth,
 				CIDR:      ip.String(),
 				Action:    bpfdisrupt.ActionAllow,
 			})
