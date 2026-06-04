@@ -111,6 +111,13 @@ func NewChaosPodService(config ChaosPodServiceConfig) (ChaosPodService, error) {
 		return nil, fmt.Errorf("you must provide a non nil Kubernetes client")
 	}
 
+	// Default Reader to Client for backwards compatibility: callers that do not set
+	// Reader explicitly still get a working implementation (cached reads) rather than
+	// a nil-pointer panic during TargetIsHealthy / HandleOrphanedChaosPods.
+	if config.Reader == nil {
+		config.Reader = config.Client
+	}
+
 	return &chaosPodService{
 		config: config,
 	}, nil

@@ -55,7 +55,9 @@ func (d DisruptionTargetHandler) matchesSelector(obj interface{}) bool {
 		return d.labelSelector.Matches(labels.Set(o.Labels))
 	}
 
-	return true
+	// Unknown type (e.g. cache.DeletedFinalStateUnknown tombstone): skip rather than
+	// matching all disruptions, which would produce spurious metrics and log entries.
+	return false
 }
 
 // OnAdd new target
