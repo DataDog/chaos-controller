@@ -8,6 +8,7 @@ package watchers
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/DataDog/chaos-controller/o11y/tags"
 	"go.uber.org/zap"
@@ -22,6 +23,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
+
+// sharedCacheInformerSyncTimeout is the maximum time watcher.Start() will wait for
+// a shared-cache informer to sync. Own-cache watchers use context.Background() because
+// the cache is started only after GetInformer registers the type (no blocking). Shared
+// caches may already be running when a second disruption in the same namespace reuses
+// them; GetInformer on a started cache calls WaitForCacheSync and would block indefinitely
+// on RBAC or network failures without this bound.
+const sharedCacheInformerSyncTimeout = 30 * time.Second
 
 type WatcherEventType string
 
@@ -232,8 +241,19 @@ func (w *watcher) IsExpired() bool {
 
 // Start starts the watcher and sets up the cache and event handlers.
 func (w *watcher) Start() error {
-	// get informer from cache
-	info, err := w.cache.GetInformer(context.Background(), w.config.ObjectType)
+	// For shared caches the cache may already be started (by a previous watcher in the
+	// same namespace). GetInformer on a started cache blocks via WaitForCacheSync until
+	// the informer syncs — which never completes if RBAC or network is broken. Use a
+	// bounded context so watcher creation fails fast with an error instead of hanging.
+	getInformerCtx := context.Background()
+	if w.config.CachePool != nil {
+		var cancel context.CancelFunc
+		getInformerCtx, cancel = context.WithTimeout(context.Background(), sharedCacheInformerSyncTimeout) //nolint:gosec // G118 - cancel called via defer
+
+		defer cancel()
+	}
+
+	info, err := w.cache.GetInformer(getInformerCtx, w.config.ObjectType)
 	if err != nil {
 		return fmt.Errorf("error getting informer from cache: %w", err)
 	}
