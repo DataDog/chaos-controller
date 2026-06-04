@@ -107,6 +107,13 @@ type watcher struct {
 	// The Kubernetes resource cache that stores watched resources
 	cache k8scontrollercache.Cache
 
+	// informer is stored so that the per-disruption event handler can be removed when the watcher
+	// is cleaned up while the shared namespace cache (pool) is still alive for other disruptions.
+	informer k8scontrollercache.Informer
+
+	// handlerReg is the registration returned by AddEventHandler. Used to remove the handler on cleanup.
+	handlerReg k8sclientcache.ResourceEventHandlerRegistration
+
 	// The source that provides the cache with Kubernetes resource updates
 	cacheSource source.SyncingSource
 
@@ -164,13 +171,20 @@ func NewWatcher(config WatcherConfig, cacheMock k8scontrollercache.Cache, cacheC
 }
 
 // Clean stops the watcher. For own-cache watchers, it cancels the cache goroutine.
-// For shared-cache watchers, it releases the reference in the pool.
+// For shared-cache watchers, it removes the per-disruption event handler from the shared
+// informer (so it stops firing for this disruption) and releases the pool reference.
 func (w *watcher) Clean() {
 	w.ctxTuple.CancelFunc()
 
 	if w.cacheCancelFunc != nil {
 		w.cacheCancelFunc()
 	} else if w.config.CachePool != nil {
+		// Remove the event handler so it stops processing events for this disruption
+		// even if the shared cache remains alive for other disruptions.
+		if w.informer != nil && w.handlerReg != nil {
+			_ = w.informer.RemoveEventHandler(w.handlerReg)
+		}
+
 		w.config.CachePool.Release(w.config.Namespace)
 	}
 }
@@ -216,11 +230,17 @@ func (w *watcher) Start() error {
 		return fmt.Errorf("error getting informer from cache: %w", err)
 	}
 
-	// add event handler to informer
-	_, err = info.AddEventHandler(w.config.Handler)
+	// Store the informer and register the per-disruption event handler.
+	// The registration is kept so it can be removed in Clean() when the watcher
+	// is torn down while the shared namespace cache (pool) stays alive.
+	w.informer = info
+
+	reg, err := info.AddEventHandler(w.config.Handler)
 	if err != nil {
 		return fmt.Errorf("error adding event handler to the informer: %w", err)
 	}
+
+	w.handlerReg = reg
 
 	// Per-watcher context used for lifecycle tracking (IsExpired, Clean).
 	// This is separate from the cache context so that cleaning a single watcher
@@ -241,13 +261,17 @@ func (w *watcher) Start() error {
 	}
 	// Shared cache: already started by the pool.
 
-	// Build the SyncingSource. When a LabelSelector is configured, only enqueue
-	// reconcile requests for events whose object labels match — avoiding spurious
-	// reconciles for pods in the same namespace that belong to other disruptions.
-	labelSelector := w.config.LabelSelector
-
+	// Build the SyncingSource.
+	// No label-selector filter is applied here intentionally:
+	//  - Own caches: the cache is already restricted to matching pods via CacheOptions,
+	//    so only matching pod events arrive — filtering would be a no-op.
+	//  - Shared namespace caches: filtering only the NEW labels would miss update events
+	//    where a pod is relabeled OUT of the selector, preventing RemoveDeadTargets from
+	//    running and leaving chaos pods on targets the user removed from the selector.
+	//    Allowing all namespace events through is correct; the reconciler handles it.
+	// The watcher context check stops enqueuing after the watcher is cleaned up.
 	w.cacheSource = source.Kind(w.cache, w.config.ObjectType, handler.TypedEnqueueRequestsFromMapFunc(func(_ context.Context, obj client.Object) []reconcile.Request {
-		if labelSelector != nil && !labelSelector.Matches(labels.Set(obj.GetLabels())) {
+		if w.ctxTuple.Ctx.Err() != nil {
 			return nil
 		}
 
