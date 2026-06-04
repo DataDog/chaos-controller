@@ -30,6 +30,7 @@ type poolEntry struct {
 	ctx      context.Context
 	cancel   context.CancelFunc
 	refCount int
+	started  bool // whether cache.Start has been called
 }
 
 // NewNamespaceCachePool creates an empty pool. k8sConfig is used when creating new
@@ -44,6 +45,10 @@ func NewNamespaceCachePool(k8sConfig *rest.Config) *NamespaceCachePool {
 // GetOrCreate returns the shared cache for the given namespace, creating one if it
 // does not yet exist. The caller must call Release when it no longer needs the cache.
 // For cluster-scoped resources (nodes), pass namespace="" to get a cluster-wide cache.
+//
+// The cache is NOT started here. Call StartCache after all informers have been
+// registered (i.e. after Watcher.Start) to avoid GetInformer blocking indefinitely
+// on an already-running cache when informer sync cannot complete.
 func (p *NamespaceCachePool) GetOrCreate(namespace string, objectType client.Object) (k8scontrollercache.Cache, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -69,20 +74,37 @@ func (p *NamespaceCachePool) GetOrCreate(namespace string, objectType client.Obj
 
 	ctx, cancel := context.WithCancel(context.Background()) //nolint:gosec // G118 - cancel is stored and called on Release
 
-	go func() {
-		// Ignoring error: cache.Start only errors on context cancellation,
-		// which is the normal clean shutdown path via Release().
-		_ = cache.Start(ctx) //nolint:errcheck
-	}()
-
 	p.entries[namespace] = &poolEntry{
 		cache:    cache,
 		ctx:      ctx,
 		cancel:   cancel,
 		refCount: 1,
+		started:  false,
 	}
 
 	return cache, nil
+}
+
+// StartCache starts the shared cache for the given namespace if it has not already
+// been started. It should be called after all informers are registered on the cache
+// (i.e. after Watcher.Start) so that controller-runtime does not block GetInformer
+// calls on an already-running cache when informer sync cannot complete.
+func (p *NamespaceCachePool) StartCache(namespace string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	entry, ok := p.entries[namespace]
+	if !ok || entry.started {
+		return
+	}
+
+	entry.started = true
+
+	go func() {
+		// Ignoring error: cache.Start only errors on context cancellation,
+		// which is the normal clean shutdown path via Release().
+		_ = entry.cache.Start(entry.ctx) //nolint:errcheck
+	}()
 }
 
 // Release decrements the reference count for the given namespace. When it reaches

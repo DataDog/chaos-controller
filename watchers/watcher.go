@@ -270,6 +270,11 @@ func (w *watcher) Start() error {
 	// Shared cache: already started by the pool.
 
 	if w.config.CachePool != nil {
+		// Start the shared cache now that the informer has been registered on it.
+		// Starting before GetInformer could cause GetInformer to block indefinitely
+		// if the informer sync cannot complete (e.g. RBAC issues).
+		w.config.CachePool.StartCache(w.config.Namespace)
+
 		// Shared cache path: bypass source.Kind entirely.
 		//
 		// source.Kind discards the ResourceEventHandlerRegistration it receives from

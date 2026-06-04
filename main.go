@@ -301,7 +301,9 @@ func main() {
 
 	defer cancel()
 
-	stopCh := make(chan struct{})
+	// Buffered so the send at mgr.Start failure doesn't block when rollout informers
+	// are disabled and nobody is reading the channel.
+	stopCh := make(chan struct{}, 1)
 
 	go disruptionReconciler.ReportMetrics(ctx)
 
