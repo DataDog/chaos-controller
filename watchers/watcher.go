@@ -240,7 +240,18 @@ func (w *watcher) IsExpired() bool {
 }
 
 // Start starts the watcher and sets up the cache and event handlers.
-func (w *watcher) Start() error {
+func (w *watcher) Start() (retErr error) {
+	// For shared caches: release the pool reference acquired in NewWatcher if Start
+	// fails at any point. Without this, a failed watcher is never added to the manager
+	// so Clean() is never called, leaving a permanently leaked refCount.
+	if w.config.CachePool != nil {
+		defer func() {
+			if retErr != nil {
+				w.config.CachePool.Release(w.config.Namespace)
+			}
+		}()
+	}
+
 	// For shared caches the cache may already be started (by a previous watcher in the
 	// same namespace). GetInformer on a started cache blocks via WaitForCacheSync until
 	// the informer syncs — which never completes if RBAC or network is broken. Use a
