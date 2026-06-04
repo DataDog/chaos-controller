@@ -26,25 +26,49 @@ import (
 //
 // The disruption is identified at event time from the pod's labels rather than being
 // pre-stored at construction time.
+//
+// In HA deployments, caches start on all replicas before leadership is acquired.
+// The elected channel (mgr.Elected()) is used to gate event/metric emission so that
+// only the leader replica acts on chaos pod failures, preventing duplicate K8s events.
 type SharedChaosPodHandler struct {
 	reader         client.Reader
 	recorder       record.EventRecorder
 	log            *zap.SugaredLogger
 	metricsAdapter WatcherMetricsAdapter
+	// elected is closed when this replica becomes the leader. Nil means no gating
+	// (single-replica deployments or tests).
+	elected <-chan struct{}
 }
 
 // NewSharedChaosPodHandler creates a SharedChaosPodHandler.
+// Pass mgr.Elected() as elected so standby replicas skip event/metric emission.
 func NewSharedChaosPodHandler(
 	reader client.Reader,
 	recorder record.EventRecorder,
 	log *zap.SugaredLogger,
 	metricsAdapter WatcherMetricsAdapter,
+	elected <-chan struct{},
 ) *SharedChaosPodHandler {
 	return &SharedChaosPodHandler{
 		reader:         reader,
 		recorder:       recorder,
 		log:            log,
 		metricsAdapter: metricsAdapter,
+		elected:        elected,
+	}
+}
+
+// isLeader returns true when this replica holds leadership (or leader election is disabled).
+func (h *SharedChaosPodHandler) isLeader() bool {
+	if h.elected == nil {
+		return true
+	}
+
+	select {
+	case <-h.elected:
+		return true
+	default:
+		return false
 	}
 }
 
@@ -53,7 +77,12 @@ func (h *SharedChaosPodHandler) OnAdd(_ interface{}, _ bool) {}
 
 // OnUpdate emits metrics and sends a Kubernetes event to the parent Disruption when
 // a chaos pod unexpectedly transitions to a failed phase.
+// Only the leader replica acts so that standby replicas don't emit duplicate events.
 func (h *SharedChaosPodHandler) OnUpdate(oldObj, newObj interface{}) {
+	if !h.isLeader() {
+		return
+	}
+
 	oldPod, okOld := oldObj.(*corev1.Pod)
 	newPod, okNew := newObj.(*corev1.Pod)
 

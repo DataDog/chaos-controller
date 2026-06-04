@@ -1255,6 +1255,7 @@ func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager) (controller.Co
 		r.Recorder,
 		r.BaseLog,
 		watchers.NewWatcherMetricsAdapter(r.MetricsSink, r.BaseLog),
+		mgr.Elected(), // gate event/metric emission on leadership in HA deployments
 	)
 
 	if _, err := podInformer.AddEventHandler(sharedHandler); err != nil {
