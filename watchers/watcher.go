@@ -23,7 +23,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-
 type WatcherEventType string
 
 const (
