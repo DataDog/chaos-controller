@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	k8sclientcache "k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/workqueue"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	k8scontrollercache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -270,7 +271,7 @@ func (w *watcher) Start() error {
 	//    running and leaving chaos pods on targets the user removed from the selector.
 	//    Allowing all namespace events through is correct; the reconciler handles it.
 	// The watcher context check stops enqueuing after the watcher is cleaned up.
-	w.cacheSource = source.Kind(w.cache, w.config.ObjectType, handler.TypedEnqueueRequestsFromMapFunc(func(_ context.Context, obj client.Object) []reconcile.Request {
+	innerSource := source.Kind(w.cache, w.config.ObjectType, handler.TypedEnqueueRequestsFromMapFunc(func(_ context.Context, obj client.Object) []reconcile.Request {
 		if w.ctxTuple.Ctx.Err() != nil {
 			return nil
 		}
@@ -278,10 +279,49 @@ func (w *watcher) Start() error {
 		return []reconcile.Request{{NamespacedName: w.ctxTuple.NamespacedName}}
 	}))
 
+	if w.config.CachePool != nil {
+		// Shared cache: wrap the source so its internal informer handler is deregistered
+		// when the watcher context is cancelled, preventing stale handlers from accumulating
+		// on the shared informer across disruption create/delete cycles.
+		w.cacheSource = &watcherBoundSource{inner: innerSource, watcherCtx: w.ctxTuple.Ctx}
+	} else {
+		w.cacheSource = innerSource
+	}
+
 	return nil
 }
 
 // GetConfig return the configuration of the Watcher instance
 func (w *watcher) GetConfig() WatcherConfig {
 	return w.config
+}
+
+// watcherBoundSource wraps a SyncingSource and ties its lifecycle to a watcher context.
+// When the watcher context is cancelled (via Clean()), a merged context is cancelled,
+// which causes the inner source to deregister its internal queue handler from the shared
+// informer — preventing stale handlers from accumulating on long-running controllers.
+type watcherBoundSource struct {
+	inner      source.SyncingSource
+	watcherCtx context.Context
+}
+
+func (s *watcherBoundSource) Start(ctx context.Context, q workqueue.TypedRateLimitingInterface[reconcile.Request]) error {
+	// Merge the controller's context with the watcher's lifecycle context so the source
+	// stops (and deregisters its informer handler) when either is cancelled.
+	mergedCtx, cancel := context.WithCancel(ctx) //nolint:gosec // G118 - cancel is fired by the goroutine below
+
+	go func() {
+		defer cancel()
+
+		select {
+		case <-s.watcherCtx.Done():
+		case <-ctx.Done():
+		}
+	}()
+
+	return s.inner.Start(mergedCtx, q)
+}
+
+func (s *watcherBoundSource) WaitForSync(ctx context.Context) error {
+	return s.inner.WaitForSync(ctx)
 }
