@@ -108,12 +108,16 @@ type watcher struct {
 	// The Kubernetes resource cache that stores watched resources
 	cache k8scontrollercache.Cache
 
-	// informer is stored so that the per-disruption event handler can be removed when the watcher
+	// informer is stored so that per-disruption event handlers can be removed when the watcher
 	// is cleaned up while the shared namespace cache (pool) is still alive for other disruptions.
 	informer k8scontrollercache.Informer
 
-	// handlerReg is the registration returned by AddEventHandler. Used to remove the handler on cleanup.
+	// handlerReg is the registration for w.config.Handler (metrics/events). Removed on cleanup.
 	handlerReg k8sclientcache.ResourceEventHandlerRegistration
+
+	// sharedSource is set when using CachePool. It owns the enqueue-handler registration on
+	// the shared informer and must be stopped during Clean().
+	sharedSource *sharedCacheEnqueueSource
 
 	// The source that provides the cache with Kubernetes resource updates
 	cacheSource source.SyncingSource
@@ -172,18 +176,21 @@ func NewWatcher(config WatcherConfig, cacheMock k8scontrollercache.Cache, cacheC
 }
 
 // Clean stops the watcher. For own-cache watchers, it cancels the cache goroutine.
-// For shared-cache watchers, it removes the per-disruption event handler from the shared
-// informer (so it stops firing for this disruption) and releases the pool reference.
+// For shared-cache watchers, it removes both registered handlers from the shared informer
+// (the metrics/events handler and the reconcile-enqueue handler) so they stop firing for
+// this disruption even while the cache stays alive for other disruptions.
 func (w *watcher) Clean() {
 	w.ctxTuple.CancelFunc()
 
 	if w.cacheCancelFunc != nil {
 		w.cacheCancelFunc()
 	} else if w.config.CachePool != nil {
-		// Remove the event handler so it stops processing events for this disruption
-		// even if the shared cache remains alive for other disruptions.
 		if w.informer != nil && w.handlerReg != nil {
 			_ = w.informer.RemoveEventHandler(w.handlerReg)
+		}
+
+		if w.sharedSource != nil {
+			w.sharedSource.stop()
 		}
 
 		w.config.CachePool.Release(w.config.Namespace)
@@ -262,30 +269,36 @@ func (w *watcher) Start() error {
 	}
 	// Shared cache: already started by the pool.
 
-	// Build the SyncingSource.
-	// No label-selector filter is applied here intentionally:
-	//  - Own caches: the cache is already restricted to matching pods via CacheOptions,
-	//    so only matching pod events arrive — filtering would be a no-op.
-	//  - Shared namespace caches: filtering only the NEW labels would miss update events
-	//    where a pod is relabeled OUT of the selector, preventing RemoveDeadTargets from
-	//    running and leaving chaos pods on targets the user removed from the selector.
-	//    Allowing all namespace events through is correct; the reconciler handles it.
-	// The watcher context check stops enqueuing after the watcher is cleaned up.
-	innerSource := source.Kind(w.cache, w.config.ObjectType, handler.TypedEnqueueRequestsFromMapFunc(func(_ context.Context, obj client.Object) []reconcile.Request {
-		if w.ctxTuple.Ctx.Err() != nil {
-			return nil
+	if w.config.CachePool != nil {
+		// Shared cache path: bypass source.Kind entirely.
+		//
+		// source.Kind discards the ResourceEventHandlerRegistration it receives from
+		// AddEventHandlerWithOptions, so there is no way to deregister it — the handler
+		// would accumulate on the shared informer across disruption create/delete cycles.
+		//
+		// Instead, register the enqueue handler directly on the informer and store its
+		// registration so Clean() can remove it. The sharedCacheEnqueueSource also handles
+		// the relabel-out case by checking old OR new labels on update events (not just new).
+		sharedSrc := &sharedCacheEnqueueSource{
+			informer:       info,
+			cache:          w.cache,
+			watcherCtx:     w.ctxTuple.Ctx,
+			namespacedName: w.ctxTuple.NamespacedName,
+			labelSelector:  w.config.LabelSelector,
 		}
 
-		return []reconcile.Request{{NamespacedName: w.ctxTuple.NamespacedName}}
-	}))
-
-	if w.config.CachePool != nil {
-		// Shared cache: wrap the source so its internal informer handler is deregistered
-		// when the watcher context is cancelled, preventing stale handlers from accumulating
-		// on the shared informer across disruption create/delete cycles.
-		w.cacheSource = &watcherBoundSource{inner: innerSource, watcherCtx: w.ctxTuple.Ctx}
+		w.sharedSource = sharedSrc
+		w.cacheSource = sharedSrc
 	} else {
-		w.cacheSource = innerSource
+		// Own cache: use source.Kind. The cache is already label-filtered via CacheOptions
+		// so only matching pod events arrive; the context check is a safety net.
+		w.cacheSource = source.Kind(w.cache, w.config.ObjectType, handler.TypedEnqueueRequestsFromMapFunc(func(_ context.Context, obj client.Object) []reconcile.Request {
+			if w.ctxTuple.Ctx.Err() != nil {
+				return nil
+			}
+
+			return []reconcile.Request{{NamespacedName: w.ctxTuple.NamespacedName}}
+		}))
 	}
 
 	return nil
@@ -296,32 +309,114 @@ func (w *watcher) GetConfig() WatcherConfig {
 	return w.config
 }
 
-// watcherBoundSource wraps a SyncingSource and ties its lifecycle to a watcher context.
-// When the watcher context is cancelled (via Clean()), a merged context is cancelled,
-// which causes the inner source to deregister its internal queue handler from the shared
-// informer — preventing stale handlers from accumulating on long-running controllers.
-type watcherBoundSource struct {
-	inner      source.SyncingSource
-	watcherCtx context.Context
+// sharedCacheEnqueueSource is a SyncingSource used for shared-cache (NamespaceCachePool) watchers.
+// It registers the reconcile-enqueue handler directly on the informer in Start(), storing the
+// registration so it can be removed in stop(). This avoids source.Kind, which would silently
+// discard its AddEventHandlerWithOptions registration and leave a stale handler on the shared
+// informer across disruption create/delete cycles.
+//
+// It also fixes the relabel-out case: on Update events it checks old OR new labels, so a pod
+// that is removed from the disruption's selector still triggers a reconcile and RemoveDeadTargets.
+type sharedCacheEnqueueSource struct {
+	informer       k8scontrollercache.Informer
+	cache          k8scontrollercache.Cache
+	watcherCtx     context.Context
+	namespacedName types.NamespacedName
+	labelSelector  labels.Selector
+	enqueueReg     k8sclientcache.ResourceEventHandlerRegistration
 }
 
-func (s *watcherBoundSource) Start(ctx context.Context, q workqueue.TypedRateLimitingInterface[reconcile.Request]) error {
-	// Merge the controller's context with the watcher's lifecycle context so the source
-	// stops (and deregisters its informer handler) when either is cancelled.
-	mergedCtx, cancel := context.WithCancel(ctx) //nolint:gosec // G118 - cancel is fired by the goroutine below
+func (s *sharedCacheEnqueueSource) Start(_ context.Context, q workqueue.TypedRateLimitingInterface[reconcile.Request]) error {
+	h := &sharedEnqueueHandler{
+		ctx:            s.watcherCtx,
+		queue:          q,
+		namespacedName: s.namespacedName,
+		labelSelector:  s.labelSelector,
+	}
 
-	go func() {
-		defer cancel()
+	reg, err := s.informer.AddEventHandler(h)
+	if err != nil {
+		return fmt.Errorf("failed to register enqueue handler on shared informer: %w", err)
+	}
 
-		select {
-		case <-s.watcherCtx.Done():
-		case <-ctx.Done():
-		}
-	}()
+	s.enqueueReg = reg
 
-	return s.inner.Start(mergedCtx, q)
+	return nil
 }
 
-func (s *watcherBoundSource) WaitForSync(ctx context.Context) error {
-	return s.inner.WaitForSync(ctx)
+func (s *sharedCacheEnqueueSource) WaitForSync(ctx context.Context) error {
+	if !s.cache.WaitForCacheSync(ctx) {
+		return fmt.Errorf("shared namespace cache did not sync")
+	}
+
+	return nil
+}
+
+// stop removes the enqueue handler from the shared informer.
+func (s *sharedCacheEnqueueSource) stop() {
+	if s.informer != nil && s.enqueueReg != nil {
+		_ = s.informer.RemoveEventHandler(s.enqueueReg)
+	}
+}
+
+// sharedEnqueueHandler is a k8sclientcache.ResourceEventHandler that enqueues reconcile
+// requests for a specific disruption. It is used only with shared (pool) caches.
+type sharedEnqueueHandler struct {
+	ctx            context.Context
+	queue          workqueue.TypedRateLimitingInterface[reconcile.Request]
+	namespacedName types.NamespacedName
+	labelSelector  labels.Selector
+}
+
+func (h *sharedEnqueueHandler) OnAdd(obj interface{}, _ bool) {
+	if h.ctx.Err() != nil || !h.matchesLabels(obj) {
+		return
+	}
+
+	h.queue.Add(reconcile.Request{NamespacedName: h.namespacedName})
+}
+
+func (h *sharedEnqueueHandler) OnUpdate(oldObj, newObj interface{}) {
+	if h.ctx.Err() != nil {
+		return
+	}
+
+	// Check old OR new labels: a pod relabeled OUT of the selector must still trigger
+	// reconciliation so RemoveDeadTargets can clean up chaos pods on the former target.
+	if !h.matchesLabels(oldObj) && !h.matchesLabels(newObj) {
+		return
+	}
+
+	h.queue.Add(reconcile.Request{NamespacedName: h.namespacedName})
+}
+
+func (h *sharedEnqueueHandler) OnDelete(obj interface{}) {
+	if h.ctx.Err() != nil {
+		return
+	}
+
+	// Unwrap tombstone: informers may wrap deleted objects in DeletedFinalStateUnknown
+	// when they were evicted from the delta FIFO before the delete was observed.
+	if d, ok := obj.(k8sclientcache.DeletedFinalStateUnknown); ok {
+		obj = d.Obj
+	}
+
+	if !h.matchesLabels(obj) {
+		return
+	}
+
+	h.queue.Add(reconcile.Request{NamespacedName: h.namespacedName})
+}
+
+func (h *sharedEnqueueHandler) matchesLabels(obj interface{}) bool {
+	if h.labelSelector == nil {
+		return true
+	}
+
+	o, ok := obj.(client.Object)
+	if !ok {
+		return false
+	}
+
+	return h.labelSelector.Matches(labels.Set(o.GetLabels()))
 }
