@@ -63,8 +63,10 @@ const (
 	DisruptionTargetWatcherName WatcherName = "DisruptionTarget"
 )
 
+// Only DisruptionTargetWatcher is created per-disruption.
+// Chaos pod watching is handled globally by SharedChaosPodHandler registered in
+// SetupWithManager, eliminating one informer cache per active disruption.
 var watchersNames = []WatcherName{
-	ChaosPodWatcherName,
 	DisruptionTargetWatcherName,
 }
 
