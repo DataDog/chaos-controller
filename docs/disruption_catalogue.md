@@ -684,8 +684,10 @@ Throttles I/O throughput on the block device backing a given path using cgroup b
 | `path`                        | string | Mount point inside the container (required) |
 | `throttling.readBytesPerSec`  | int    | Read throughput limit in bytes/sec          |
 | `throttling.writeBytesPerSec` | int    | Write throughput limit in bytes/sec         |
+| `throttling.readIOPSPerSec`   | int    | Read limit in IO operations/sec             |
+| `throttling.writeIOPSPerSec`  | int    | Write limit in IO operations/sec            |
 
-At least one of `readBytesPerSec` or `writeBytesPerSec` is required.
+At least one of `readBytesPerSec`, `writeBytesPerSec`, `readIOPSPerSec` or `writeIOPSPerSec` is required.
 
 ### Constraints and Limitations
 
