@@ -6,6 +6,7 @@
 package injector
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/env"
@@ -57,7 +59,10 @@ func NewDiskFullInjector(spec v1beta1.DiskFullSpec, config DiskFullInjectorConfi
 	if config.Disruption.Level == types.DisruptionLevelPod {
 		var err error
 
-		path, err = config.TargetContainer.Runtime().HostPath(config.TargetContainer.ID(), spec.Path)
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		path, err = config.TargetContainer.Runtime().HostPath(ctx, config.TargetContainer.ID(), spec.Path)
 		if err != nil {
 			return nil, fmt.Errorf("error resolving host path for disk full disruption: %w", err)
 		}
