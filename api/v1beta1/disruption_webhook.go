@@ -129,6 +129,7 @@ func (d *Disruption) ValidateCreate(ctx context.Context, obj k8sruntime.Object) 
 	if !ok {
 		return nil, fmt.Errorf("expected a *Disruption object but got %T", obj)
 	}
+
 	log := logger.With(
 		tagutil.DisruptionNameKey, disruptionObj.Name,
 		tagutil.DisruptionNamespaceKey, disruptionObj.Namespace,

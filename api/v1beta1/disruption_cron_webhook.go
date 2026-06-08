@@ -111,6 +111,7 @@ func (d *DisruptionCron) ValidateCreate(_ context.Context, obj k8sruntime.Object
 	if !ok {
 		return nil, fmt.Errorf("expected a *DisruptionCron object but got %T", obj)
 	}
+
 	log := disruptionCronWebhookLogger.With(
 		tagutil.DisruptionCronNameKey, disruptionCronObj.Name,
 		tagutil.DisruptionCronNamespaceKey, disruptionCronObj.Namespace,
