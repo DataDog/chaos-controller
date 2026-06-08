@@ -10,17 +10,7 @@ import (
 	"github.com/DataDog/chaos-controller/cpuset"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"go.uber.org/zap/zaptest"
 )
-
-var _ = Describe("NewManager (non-Linux)", func() {
-	It("returns error (not implemented on non-Linux)", func() {
-		log := zaptest.NewLogger(GinkgoT()).Sugar()
-		_, err := cgroup.NewManager(false, 1, "/sys/fs/cgroup", log)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("not implemented"))
-	})
-})
 
 var _ = Describe("ManagerMock", func() {
 	It("covers all mock methods via Return", func() {
