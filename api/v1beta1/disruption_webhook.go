@@ -760,18 +760,17 @@ func safetyNetAttemptsNodeRootDiskFailure(r *Disruption) bool {
 }
 
 // safetyNetDiskFullMinFreeSpace checks that the disk full disruption does not breach the 1Mi minimum free space floor.
+// When unsafeMode.allowDiskFullNoFloor is set, all floor checks are bypassed — the operator opted in knowingly.
 func safetyNetDiskFullMinFreeSpace(r *Disruption) (bool, string) {
-	// Always block capacity >= 100% even when AllowDiskFullNoFloor is set — a 100% fill
-	// is not recoverable without manual intervention regardless of the safety floor setting.
+	if r.Spec.Unsafemode != nil && r.Spec.Unsafemode.AllowDiskFullNoFloor {
+		return false, ""
+	}
+
 	if r.Spec.DiskFull.Capacity != "" {
 		if pct, err := strconv.Atoi(strings.TrimSuffix(r.Spec.DiskFull.Capacity, "%")); err == nil && pct >= 100 {
 			return true, "disk full disruption with 100% capacity will leave 0 bytes free; " +
-				"use a lower capacity percentage"
+				"use a lower capacity percentage or set unsafeMode.allowDiskFullNoFloor=true to override"
 		}
-	}
-
-	if r.Spec.Unsafemode != nil && r.Spec.Unsafemode.AllowDiskFullNoFloor {
-		return false, ""
 	}
 
 	if r.Spec.DiskFull.Remaining != "" {
