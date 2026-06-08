@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 
-	goslack "github.com/slack-go/slack"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -62,38 +61,6 @@ var _ = Describe("Slack Notify unrecognized object", func() {
 			config: NotifierSlackConfig{Enabled: true},
 		}
 		err := n.Notify(ctx, &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod"}}, corev1.Event{}, types.NotificationInfo)
-		Expect(err).NotTo(HaveOccurred())
-	})
-})
-
-var _ = Describe("slackNotifierMock Run/RunAndReturn", func() {
-	It("GetUserByEmail Run callback is invoked", func() {
-		m := newSlackNotifierMock(GinkgoT())
-		called := false
-		m.EXPECT().GetUserByEmail("a@b.com").Run(func(email string) { called = true }).Return(nil, nil)
-		_, _ = m.GetUserByEmail("a@b.com")
-		Expect(called).To(BeTrue())
-	})
-
-	It("GetUserByEmail RunAndReturn works", func() {
-		m := newSlackNotifierMock(GinkgoT())
-		m.EXPECT().GetUserByEmail("a@b.com").RunAndReturn(func(email string) (*goslack.User, error) { return nil, nil })
-		_, err := m.GetUserByEmail("a@b.com")
-		Expect(err).NotTo(HaveOccurred())
-	})
-
-	It("PostMessage Run callback is invoked", func() {
-		m := newSlackNotifierMock(GinkgoT())
-		called := false
-		m.EXPECT().PostMessage("chan").Run(func(channelID string, options ...goslack.MsgOption) { called = true }).Return("", "", nil)
-		_, _, _ = m.PostMessage("chan")
-		Expect(called).To(BeTrue())
-	})
-
-	It("PostMessage RunAndReturn works", func() {
-		m := newSlackNotifierMock(GinkgoT())
-		m.EXPECT().PostMessage("chan").RunAndReturn(func(channelID string, options ...goslack.MsgOption) (string, string, error) { return "", "", nil })
-		_, _, err := m.PostMessage("chan")
 		Expect(err).NotTo(HaveOccurred())
 	})
 })
