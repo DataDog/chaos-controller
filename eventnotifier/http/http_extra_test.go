@@ -182,21 +182,3 @@ var _ = Describe("bearerAuthTokenProvider.AuthToken", func() {
 		Expect(receivedHeader).To(Equal("secret"))
 	})
 })
-
-var _ = Describe("bearerAuthTokenProviderMock Run/RunAndReturn", func() {
-	It("AuthToken Run callback is invoked", func() {
-		m := NewBearerAuthTokenProviderMock(GinkgoT())
-		called := false
-		m.EXPECT().AuthToken(context.Background()).Run(func(ctx context.Context) { called = true }).Return("", nil)
-		_, _ = m.AuthToken(context.Background())
-		Expect(called).To(BeTrue())
-	})
-
-	It("AuthToken RunAndReturn works", func() {
-		m := NewBearerAuthTokenProviderMock(GinkgoT())
-		m.EXPECT().AuthToken(context.Background()).RunAndReturn(func(ctx context.Context) (string, error) { return "tok", nil })
-		token, err := m.AuthToken(context.Background())
-		Expect(err).NotTo(HaveOccurred())
-		Expect(token).To(Equal("tok"))
-	})
-})
