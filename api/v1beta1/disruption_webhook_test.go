@@ -1208,6 +1208,69 @@ var _ = Describe("Disruption Webhook", func() {
 			})
 		})
 	})
+
+	Describe("safetyNetDiskFullMinFreeSpace", func() {
+		makeDiskFullDisruption := func(spec DiskFullSpec, unsafemode *UnsafemodeSpec) *Disruption {
+			return &Disruption{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testDisruptionName,
+					Namespace: chaosNamespace,
+				},
+				Spec: DisruptionSpec{
+					DiskFull:   &spec,
+					Unsafemode: unsafemode,
+				},
+			}
+		}
+
+		When("capacity is below 100% without unsafe mode", func() {
+			It("should not trigger the safety net", func() {
+				d := makeDiskFullDisruption(DiskFullSpec{Path: "/data", Capacity: "95%"}, nil)
+				caught, _ := safetyNetDiskFullMinFreeSpace(d)
+				Expect(caught).To(BeFalse())
+			})
+		})
+
+		When("capacity is 100% without unsafe mode", func() {
+			It("should trigger the safety net", func() {
+				d := makeDiskFullDisruption(DiskFullSpec{Path: "/data", Capacity: "100%"}, nil)
+				caught, msg := safetyNetDiskFullMinFreeSpace(d)
+				Expect(caught).To(BeTrue())
+				Expect(msg).To(ContainSubstring("allowDiskFullNoFloor"))
+			})
+		})
+
+		When("capacity is 100% with allowDiskFullNoFloor=true", func() {
+			It("should not trigger the safety net", func() {
+				d := makeDiskFullDisruption(
+					DiskFullSpec{Path: "/data", Capacity: "100%"},
+					&UnsafemodeSpec{AllowDiskFullNoFloor: true},
+				)
+				caught, _ := safetyNetDiskFullMinFreeSpace(d)
+				Expect(caught).To(BeFalse())
+			})
+		})
+
+		When("remaining is below 1Mi without unsafe mode", func() {
+			It("should trigger the safety net", func() {
+				d := makeDiskFullDisruption(DiskFullSpec{Path: "/data", Remaining: "512Ki"}, nil)
+				caught, msg := safetyNetDiskFullMinFreeSpace(d)
+				Expect(caught).To(BeTrue())
+				Expect(msg).To(ContainSubstring("allowDiskFullNoFloor"))
+			})
+		})
+
+		When("remaining is 0 with allowDiskFullNoFloor=true", func() {
+			It("should not trigger the safety net", func() {
+				d := makeDiskFullDisruption(
+					DiskFullSpec{Path: "/data", Remaining: "0"},
+					&UnsafemodeSpec{AllowDiskFullNoFloor: true},
+				)
+				caught, _ := safetyNetDiskFullMinFreeSpace(d)
+				Expect(caught).To(BeFalse())
+			})
+		})
+	})
 })
 
 // makeValidNetworkDisruption is a helper that constructs a valid Disruption suited for basic webhook validation testing
