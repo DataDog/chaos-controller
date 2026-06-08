@@ -1284,7 +1284,6 @@ k8s.io/client-go,k8s.io/client-go/tools/clientcmd,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/tools/clientcmd/api,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/tools/clientcmd/api/latest,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/tools/clientcmd/api/v1,Apache-2.0
-k8s.io/client-go,k8s.io/client-go/tools/events,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/tools/internal/events,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/tools/leaderelection,Apache-2.0
 k8s.io/client-go,k8s.io/client-go/tools/leaderelection/resourcelock,Apache-2.0
