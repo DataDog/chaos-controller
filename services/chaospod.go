@@ -8,7 +8,6 @@ package services
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"reflect"
 	"strings"
 	"time"
@@ -676,13 +675,10 @@ func (m *chaosPodService) generateChaosPodSpec(targetNodeName string, terminatio
 		}
 	}
 
-	// For disk-full disruptions, add writable shadow mounts so the injector can write
-	// the ballast file to the container's volume backing directory.
-	// The injector resolves spec.Path to the actual host-side backing path at runtime via
-	// Runtime().HostPath() (e.g. /var/lib/kubelet/pods/<uid>/volumes/...). We mount
-	// /var/lib/kubelet/pods as writable to cover emptyDir, PVC, ConfigMap, and Secret volumes.
-	// The spec-path mount is kept as a secondary for hostPath-backed volumes where the
-	// host path equals the spec path.
+	// For disk-full disruptions, mount /var/lib/kubelet/pods writable so the injector can write
+	// the ballast file. The injector resolves spec.Path to the actual host-side backing path at
+	// runtime via Runtime().HostPath() (e.g. /var/lib/kubelet/pods/<uid>/volumes/...), which
+	// covers emptyDir, PVC, ConfigMap, and Secret volumes.
 	if diskFullPath != "" {
 		podSpec.Volumes = append(podSpec.Volumes,
 			corev1.Volume{
@@ -694,24 +690,11 @@ func (m *chaosPodService) generateChaosPodSpec(targetNodeName string, terminatio
 					},
 				},
 			},
-			corev1.Volume{
-				Name: "disk-full-target",
-				VolumeSource: corev1.VolumeSource{
-					HostPath: &corev1.HostPathVolumeSource{
-						Path: diskFullPath,
-						Type: &hostPathDirectory,
-					},
-				},
-			},
 		)
 		podSpec.Containers[0].VolumeMounts = append(podSpec.Containers[0].VolumeMounts,
 			corev1.VolumeMount{
 				Name:      "disk-full-kubelet-pods",
 				MountPath: "/mnt/host/var/lib/kubelet/pods",
-			},
-			corev1.VolumeMount{
-				Name:      "disk-full-target",
-				MountPath: filepath.Join("/mnt/host", diskFullPath),
 			},
 		)
 	}
