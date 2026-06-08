@@ -111,7 +111,7 @@ endif
 WATCHEXEC_ARCHIVE = watchexec-$(WATCHEXEC_VERSION)-$(WATCHEXEC_ARCH_WE)-$(WATCHEXEC_OS)
 WATCHEXEC_INSTALLED_VERSION = $(shell $(LOCALBIN)/watchexec --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
 
-PROTOC_INSTALLED_VERSION = $(shell $(LOCALBIN)/protoc --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+PROTOC_INSTALLED_VERSION = $(shell $(LOCALBIN)/protoc --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+' | head -1)
 
 PROTOC_GEN_GO_VERSION          = v1.27.1
 PROTOC_GEN_GO_INSTALLED_VERSION = $(shell $(LOCALBIN)/protoc-gen-go --version 2>&1 | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1)

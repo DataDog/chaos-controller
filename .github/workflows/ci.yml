@@ -188,11 +188,11 @@ jobs:
           git diff --exit-code
       - name: Validate disruptionlistener protobuf
         run: |
-          make generate-disruptionlistener-protobuf
+          make generate-disruptionlistener-protobuf PROTOC_OS=linux
           git diff --exit-code ':!go.*'
       - name: Validate chaosdogfood protobuf
         run: |
-          make generate-chaosdogfood-protobuf
+          make generate-chaosdogfood-protobuf PROTOC_OS=linux
           git diff --exit-code ':!go.*'
 
   python-checks:
