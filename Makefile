@@ -256,7 +256,7 @@ GINKGO_PROCS ?= 4
 _ginkgo_test:
 # Run the test and write a file if succeed
 # Do not stop on any error
-	-go run github.com/onsi/ginkgo/v2/ginkgo --fail-on-pending --keep-going --vv \
+	-go run github.com/onsi/ginkgo/v2/ginkgo --fail-on-pending --keep-going --no-color \
 		--cover --coverprofile=cover.profile --randomize-all \
 		--race --trace --json-report=report-$(GO_TEST_REPORT_NAME).json --junit-report=report-$(GO_TEST_REPORT_NAME).xml \
 		--compilers=$(GINKGO_PROCS) --procs=$(GINKGO_PROCS) \

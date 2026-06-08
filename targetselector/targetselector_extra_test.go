@@ -9,7 +9,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/DataDog/chaos-controller/mocks"
+	"github.com/DataDog/chaos-controller/cmd/mocks"
 	"github.com/DataDog/chaos-controller/targetselector"
 	"github.com/stretchr/testify/mock"
 	corev1 "k8s.io/api/core/v1"
