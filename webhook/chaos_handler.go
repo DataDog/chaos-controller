@@ -34,9 +34,10 @@ func (m *ChaosHandlerMutator) Handle(ctx context.Context, req admission.Request)
 
 	// ensure Decoder is set
 	if m.Decoder == nil {
-		m.Log.Errorw("webhook Decoder seems to be nil while it should not, aborting")
+		err := fmt.Errorf("webhook Decoder seems to be nil while it should not, aborting")
+		m.Log.Errorw(err.Error())
 
-		return admission.Errored(http.StatusInternalServerError, nil)
+		return admission.Errored(http.StatusInternalServerError, err)
 	}
 
 	// decode pod object

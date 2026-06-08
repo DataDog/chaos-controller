@@ -6,6 +6,7 @@
 package container
 
 import (
+	"context"
 	"fmt"
 	"strings"
 )
@@ -13,8 +14,8 @@ import (
 // Runtime is an interface abstracting a container runtime
 // being able to return a container PID from its ID
 type Runtime interface {
-	PID(id string) (uint32, error)
-	HostPath(id, path string) (string, error)
+	PID(ctx context.Context, id string) (uint32, error)
+	HostPath(ctx context.Context, id, path string) (string, error)
 }
 
 // ParseContainerID extract from given id the containerID and runtime

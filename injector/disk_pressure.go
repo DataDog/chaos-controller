@@ -6,10 +6,12 @@
 package injector
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/disk"
@@ -53,13 +55,16 @@ func NewDiskPressureInjector(spec v1beta1.DiskPressureSpec, config DiskPressureI
 
 	// get path from container info if we target a pod
 	if config.Disruption.Level == types.DisruptionLevelPod {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
 		// get host path from mount path
-		path, err = config.TargetContainer.Runtime().HostPath(config.TargetContainer.ID(), spec.Path)
+		path, err = config.TargetContainer.Runtime().HostPath(ctx, config.TargetContainer.ID(), spec.Path)
 		if err != nil {
 			return nil, fmt.Errorf("error initializing disk informer: %w", err)
 		}
 
-		if err == nil && len(path) == 0 {
+		if len(path) == 0 {
 			config.Log.Warnf("could not apply injector on container: %s; %s not found on this targeted container.", config.TargetContainer.Name(), spec.Path)
 			return nil, nil
 		}
