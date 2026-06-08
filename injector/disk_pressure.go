@@ -55,7 +55,6 @@ func NewDiskPressureInjector(spec v1beta1.DiskPressureSpec, config DiskPressureI
 
 	// get path from container info if we target a pod
 	if config.Disruption.Level == types.DisruptionLevelPod {
-		// TODO: Do proper context propagation
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 
