@@ -24,9 +24,9 @@ type DiskPressureThrottlingSpec struct {
 	ReadBytesPerSec *int `json:"readBytesPerSec,omitempty"`
 	// +kubebuilder:validation:Minimum=0
 	WriteBytesPerSec *int `json:"writeBytesPerSec,omitempty"`
-	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Minimum=2
 	ReadIOPSPerSec *int `json:"readIOPSPerSec,omitempty"`
-	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Minimum=2
 	WriteIOPSPerSec *int `json:"writeIOPSPerSec,omitempty"`
 }
 
@@ -35,16 +35,26 @@ func (s *DiskPressureSpec) Validate() error {
 	// a negative throttle value makes no sense and is rejected by the cgroup write.
 	// zero is allowed and means "no throttle" (it removes the limit on cgroups v1 and
 	// maps to "max" on cgroups v2). Reject negatives at the API level to fail fast.
-	throttles := map[string]*int{
+	bpsThrottles := map[string]*int{
 		"readBytesPerSec":  s.Throttling.ReadBytesPerSec,
 		"writeBytesPerSec": s.Throttling.WriteBytesPerSec,
-		"readIOPSPerSec":   s.Throttling.ReadIOPSPerSec,
-		"writeIOPSPerSec":  s.Throttling.WriteIOPSPerSec,
 	}
 
-	for name, value := range throttles {
+	for name, value := range bpsThrottles {
 		if value != nil && *value < 0 {
 			return fmt.Errorf("disk pressure throttling %s must be greater than or equal to 0, got %d", name, *value)
+		}
+	}
+
+	// cgroup requires IOPS values to be either 0 (remove limit) or >= 2; value 1 is rejected by the kernel
+	iopsThrottles := map[string]*int{
+		"readIOPSPerSec":  s.Throttling.ReadIOPSPerSec,
+		"writeIOPSPerSec": s.Throttling.WriteIOPSPerSec,
+	}
+
+	for name, value := range iopsThrottles {
+		if value != nil && *value != 0 && *value < 2 {
+			return fmt.Errorf("disk pressure throttling %s must be 0 (remove limit) or >= 2, got %d", name, *value)
 		}
 	}
 

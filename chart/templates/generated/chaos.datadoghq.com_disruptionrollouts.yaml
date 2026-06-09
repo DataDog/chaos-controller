@@ -176,13 +176,13 @@ spec:
                               minimum: 0
                               type: integer
                             readIOPSPerSec:
-                              minimum: 0
+                              minimum: 2
                               type: integer
                             writeBytesPerSec:
                               minimum: 0
                               type: integer
                             writeIOPSPerSec:
-                              minimum: 0
+                              minimum: 2
                               type: integer
                           type: object
                       required:

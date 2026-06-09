@@ -6,7 +6,7 @@
 apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
-  name: disk-pressure-read-iops
+  name: disk-pressure-write-iops
   namespace: chaos-demo
 spec:
   level: pod
@@ -16,4 +16,4 @@ spec:
   diskPressure:
     path: /mnt/data # mount point (in the pod) to apply throttle on
     throttling:
-      readIOPSPerSec: 10 # read throttling in io operations per sec
+      writeIOPSPerSec: 2 # write throttling in io operations per sec
