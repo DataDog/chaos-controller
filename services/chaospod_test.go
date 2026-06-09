@@ -26,7 +26,7 @@ import (
 	chaosapi "github.com/DataDog/chaos-controller/api"
 	chaosv1beta1 "github.com/DataDog/chaos-controller/api/v1beta1"
 	builderstest "github.com/DataDog/chaos-controller/builderstest"
-	"github.com/DataDog/chaos-controller/mocks"
+	"github.com/DataDog/chaos-controller/cmd/mocks"
 	"github.com/DataDog/chaos-controller/o11y/metrics"
 	"github.com/DataDog/chaos-controller/services"
 	"github.com/DataDog/chaos-controller/targetselector"

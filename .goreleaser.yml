@@ -5,6 +5,7 @@ before:
 builds:
   - id: controller
     binary: manager
+    main: ./cmd
     goos:
       - linux
     goarch:

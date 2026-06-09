@@ -3,7 +3,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2026 Datadog, Inc.
 
-package controllers
+package controller
 
 // +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions;disruptioncrons;disruptionrollouts,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=chaos.datadoghq.com,resources=disruptions/status;disruptioncrons/status;disruptionrollouts/status,verbs=get;update;patch

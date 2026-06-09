@@ -2,7 +2,7 @@ domain: datadoghq.com
 repo: github.com/DataDog/chaos-controller
 projectName: chaos-controller
 layout:
-- go.kubebuilder.io/v3
+- go.kubebuilder.io/v4
 resources:
 - api:
     crdVersion: v1beta1
