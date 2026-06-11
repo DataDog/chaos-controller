@@ -20,13 +20,13 @@ type DiskPressureSpec struct {
 
 // DiskPressureThrottlingSpec represents a throttle on read and write disk operations
 type DiskPressureThrottlingSpec struct {
-	// +kubebuilder:validation:Minimum=2
+	// +kubebuilder:validation:Minimum=0
 	ReadBytesPerSec *int `json:"readBytesPerSec,omitempty"`
-	// +kubebuilder:validation:Minimum=2
+	// +kubebuilder:validation:Minimum=0
 	WriteBytesPerSec *int `json:"writeBytesPerSec,omitempty"`
-	// +kubebuilder:validation:Minimum=2
+	// +kubebuilder:validation:Minimum=0
 	ReadIOPSPerSec *int `json:"readIOPSPerSec,omitempty"`
-	// +kubebuilder:validation:Minimum=2
+	// +kubebuilder:validation:Minimum=0
 	WriteIOPSPerSec *int `json:"writeIOPSPerSec,omitempty"`
 }
 
