@@ -80,7 +80,7 @@ func NewDiskFullInjector(spec v1beta1.DiskFullSpec, config DiskFullInjectorConfi
 		return nil, fmt.Errorf("target path %s does not exist: %w", hostPath, err)
 	}
 
-	ballastPath := filepath.Join(hostPath, ballastFilePrefix+config.Disruption.DisruptionNamespace+"-"+config.Disruption.DisruptionName)
+	ballastPath := filepath.Join(hostPath, ballastFilePrefix+config.Disruption.DisruptionNamespace+"-"+config.Disruption.DisruptionName+"-"+config.Disruption.TargetName)
 
 	return &diskFullInjector{
 		spec:        spec,

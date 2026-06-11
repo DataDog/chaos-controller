@@ -46,6 +46,7 @@ var _ = Describe("DiskFull", func() {
 					Level:               types.DisruptionLevelNode,
 					DisruptionName:      "test-disruption",
 					DisruptionNamespace: "test-namespace",
+					TargetName:          "test-node",
 				},
 			},
 		}
@@ -120,7 +121,7 @@ var _ = Describe("DiskFull", func() {
 				err := inj.Inject()
 				Expect(err).ToNot(HaveOccurred())
 
-				ballastPath := filepath.Join(tmpDir, ".chaos-diskfull-test-namespace-test-disruption")
+				ballastPath := filepath.Join(tmpDir, ".chaos-diskfull-test-namespace-test-disruption-test-node")
 				info, statErr := os.Stat(ballastPath)
 				Expect(statErr).ToNot(HaveOccurred())
 				Expect(info.Size()).To(BeNumerically(">", 0))
@@ -138,7 +139,7 @@ var _ = Describe("DiskFull", func() {
 				err := inj.Inject()
 				Expect(err).ToNot(HaveOccurred())
 
-				ballastPath := filepath.Join(tmpDir, ".chaos-diskfull-test-namespace-test-disruption")
+				ballastPath := filepath.Join(tmpDir, ".chaos-diskfull-test-namespace-test-disruption-test-node")
 				info, statErr := os.Stat(ballastPath)
 				Expect(statErr).ToNot(HaveOccurred())
 				Expect(info.Size()).To(BeNumerically(">", 0))
@@ -155,7 +156,7 @@ var _ = Describe("DiskFull", func() {
 				err := inj.Inject()
 				Expect(err).ToNot(HaveOccurred())
 
-				ballastPath := filepath.Join(tmpDir, ".chaos-diskfull-test-namespace-test-disruption")
+				ballastPath := filepath.Join(tmpDir, ".chaos-diskfull-test-namespace-test-disruption-test-node")
 				_, statErr := os.Stat(ballastPath)
 				Expect(os.IsNotExist(statErr)).To(BeTrue())
 			})
@@ -170,7 +171,7 @@ var _ = Describe("DiskFull", func() {
 				err := inj.Inject()
 				Expect(err).ToNot(HaveOccurred())
 
-				ballastPath := filepath.Join(tmpDir, ".chaos-diskfull-test-namespace-test-disruption")
+				ballastPath := filepath.Join(tmpDir, ".chaos-diskfull-test-namespace-test-disruption-test-node")
 				_, statErr := os.Stat(ballastPath)
 				Expect(os.IsNotExist(statErr)).To(BeTrue())
 			})
@@ -195,7 +196,7 @@ var _ = Describe("DiskFull", func() {
 			err = inj.Inject()
 			Expect(err).ToNot(HaveOccurred())
 
-			ballastPath := filepath.Join(tmpDir, ".chaos-diskfull-test-namespace-test-disruption")
+			ballastPath := filepath.Join(tmpDir, ".chaos-diskfull-test-namespace-test-disruption-test-node")
 			_, statErr := os.Stat(ballastPath)
 			Expect(statErr).ToNot(HaveOccurred())
 
@@ -217,7 +218,7 @@ var _ = Describe("DiskFull", func() {
 
 		Context("when ballast file exists", func() {
 			BeforeEach(func() {
-				ballastPath := filepath.Join(tmpDir, ".chaos-diskfull-test-namespace-test-disruption")
+				ballastPath := filepath.Join(tmpDir, ".chaos-diskfull-test-namespace-test-disruption-test-node")
 				err := os.WriteFile(ballastPath, []byte("ballast"), 0644)
 				Expect(err).ToNot(HaveOccurred())
 			})
@@ -226,7 +227,7 @@ var _ = Describe("DiskFull", func() {
 				err := inj.Clean()
 				Expect(err).ToNot(HaveOccurred())
 
-				ballastPath := filepath.Join(tmpDir, ".chaos-diskfull-test-namespace-test-disruption")
+				ballastPath := filepath.Join(tmpDir, ".chaos-diskfull-test-namespace-test-disruption-test-node")
 				_, statErr := os.Stat(ballastPath)
 				Expect(os.IsNotExist(statErr)).To(BeTrue())
 			})
