@@ -337,9 +337,9 @@ func (m *chaosPodService) GenerateChaosPodOfDisruption(disruption *chaosv1beta1.
 	args = append(args,
 		"--deadline", time.Now().Add(chaostypes.InjectorPadDuration).Add(disruption.RemainingDuration()).Format(time.RFC3339))
 
-	var diskFullPath string
+	var diskFullWritablePath string
 	if kind == chaostypes.DisruptionKindDiskFull && disruption.Spec.DiskFull != nil {
-		diskFullPath = disruption.Spec.DiskFull.Path
+		diskFullWritablePath = m.resolveDiskFullWritablePath(disruption, targetName)
 	}
 
 	chaosPod = corev1.Pod{
@@ -349,7 +349,7 @@ func (m *chaosPodService) GenerateChaosPodOfDisruption(disruption *chaosv1beta1.
 			Annotations:  m.config.Injector.Annotations,                  // add extra annotations passed to the controller
 			Labels:       m.generateLabels(disruption, targetName, kind), // add default and extra podLabels passed to the controller
 		},
-		Spec: m.generateChaosPodSpec(targetNodeName, terminationGracePeriod, activeDeadlineSeconds, args, hostPathDirectory, hostPathFile, diskFullPath),
+		Spec: m.generateChaosPodSpec(targetNodeName, terminationGracePeriod, activeDeadlineSeconds, args, hostPathDirectory, hostPathFile, diskFullWritablePath),
 	}
 
 	// add finalizer to the pod, so it is not deleted before we can control its exit status
@@ -483,7 +483,7 @@ func (m *chaosPodService) generateLabels(disruption *chaosv1beta1.Disruption, ta
 	return podLabels
 }
 
-func (m *chaosPodService) generateChaosPodSpec(targetNodeName string, terminationGracePeriod int64, activeDeadlineSeconds int64, args []string, hostPathDirectory corev1.HostPathType, hostPathFile corev1.HostPathType, diskFullPath string) corev1.PodSpec {
+func (m *chaosPodService) generateChaosPodSpec(targetNodeName string, terminationGracePeriod int64, activeDeadlineSeconds int64, args []string, hostPathDirectory corev1.HostPathType, hostPathFile corev1.HostPathType, diskFullWritablePath string) corev1.PodSpec {
 	podSpec := corev1.PodSpec{
 		HostPID:                       true,                             // enable host pid
 		RestartPolicy:                 corev1.RestartPolicyNever,        // do not restart the pod on fail or completion
@@ -675,31 +675,136 @@ func (m *chaosPodService) generateChaosPodSpec(targetNodeName string, terminatio
 		}
 	}
 
-	// For disk-full disruptions, mount /var/lib/kubelet/pods writable so the injector can write
-	// the ballast file. The injector resolves spec.Path to the actual host-side backing path at
-	// runtime via Runtime().HostPath() (e.g. /var/lib/kubelet/pods/<uid>/volumes/...), which
-	// covers emptyDir, PVC, ConfigMap, and Secret volumes.
-	if diskFullPath != "" {
+	// For disk-full disruptions, mount the resolved backing storage path writable so the injector
+	// can write the ballast file. diskFullWritablePath is resolved at pod-creation time by looking
+	// up the PV host path for PVC-backed volumes, falling back to /var/lib/kubelet/pods for
+	// kubelet-managed volumes (emptyDir, ConfigMap, Secret). This works for any distribution
+	// without hardcoding storage provider paths.
+	if diskFullWritablePath != "" {
+		hostPathDirectoryOrCreate := corev1.HostPathDirectoryOrCreate
 		podSpec.Volumes = append(podSpec.Volumes,
 			corev1.Volume{
-				Name: "disk-full-kubelet-pods",
+				Name: "disk-full-writable",
 				VolumeSource: corev1.VolumeSource{
 					HostPath: &corev1.HostPathVolumeSource{
-						Path: "/var/lib/kubelet/pods",
-						Type: &hostPathDirectory,
+						Path: diskFullWritablePath,
+						Type: &hostPathDirectoryOrCreate,
 					},
 				},
 			},
 		)
 		podSpec.Containers[0].VolumeMounts = append(podSpec.Containers[0].VolumeMounts,
 			corev1.VolumeMount{
-				Name:      "disk-full-kubelet-pods",
-				MountPath: "/mnt/host/var/lib/kubelet/pods",
+				Name:      "disk-full-writable",
+				MountPath: "/mnt/host" + diskFullWritablePath,
 			},
 		)
 	}
 
 	return podSpec
+}
+
+// resolveDiskFullWritablePath returns the host directory that must be mounted writable for the
+// disk-full injector. For pod-level disruptions it queries the Kubernetes API to find the PV
+// backing the target volume; for node-level disruptions it returns the spec path directly.
+// Falls back to /var/lib/kubelet/pods (covers emptyDir/ConfigMap/Secret) on any error.
+func (m *chaosPodService) resolveDiskFullWritablePath(disruption *chaosv1beta1.Disruption, targetName string) string {
+	diskFullPath := disruption.Spec.DiskFull.Path
+
+	if disruption.Spec.Level != chaostypes.DisruptionLevelPod {
+		return diskFullPath
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	hostPath, err := m.resolvePodVolumeHostPath(ctx, disruption.Namespace, targetName, diskFullPath)
+	if err != nil {
+		cLog.FromContext(ctx).Warnw("could not resolve volume host path for disk-full, falling back to /var/lib/kubelet/pods",
+			"error", err,
+			"namespace", disruption.Namespace,
+			"pod", targetName,
+			"path", diskFullPath,
+		)
+
+		return "/var/lib/kubelet/pods"
+	}
+
+	return hostPath
+}
+
+// resolvePodVolumeHostPath looks up which volume in the pod is mounted at (or contains) containerPath,
+// then resolves the backing host directory from the Kubernetes API.
+func (m *chaosPodService) resolvePodVolumeHostPath(ctx context.Context, namespace, podName, containerPath string) (string, error) {
+	pod := &corev1.Pod{}
+	if err := m.config.Reader.Get(ctx, types.NamespacedName{Name: podName, Namespace: namespace}, pod); err != nil {
+		return "", fmt.Errorf("getting pod %s/%s: %w", namespace, podName, err)
+	}
+
+	volumeName := diskFullVolumeAtPath(pod, containerPath)
+	if volumeName == "" {
+		return "/var/lib/kubelet/pods", nil
+	}
+
+	for _, vol := range pod.Spec.Volumes {
+		if vol.Name != volumeName {
+			continue
+		}
+
+		if vol.PersistentVolumeClaim != nil {
+			return m.resolvePVCHostPath(ctx, namespace, vol.PersistentVolumeClaim.ClaimName)
+		}
+
+		// emptyDir, ConfigMap, Secret, projected — kubelet manages these under its pods directory
+		return "/var/lib/kubelet/pods", nil
+	}
+
+	return "/var/lib/kubelet/pods", nil
+}
+
+// resolvePVCHostPath looks up the PVC and its bound PV to get the local host path.
+// Returns an error for non-local PV types (NFS, CSI, etc.).
+func (m *chaosPodService) resolvePVCHostPath(ctx context.Context, namespace, pvcName string) (string, error) {
+	pvc := &corev1.PersistentVolumeClaim{}
+	if err := m.config.Reader.Get(ctx, types.NamespacedName{Name: pvcName, Namespace: namespace}, pvc); err != nil {
+		return "", fmt.Errorf("getting PVC %s/%s: %w", namespace, pvcName, err)
+	}
+
+	if pvc.Spec.VolumeName == "" {
+		return "", fmt.Errorf("PVC %s/%s is not bound to a PV", namespace, pvcName)
+	}
+
+	pv := &corev1.PersistentVolume{}
+	if err := m.config.Reader.Get(ctx, types.NamespacedName{Name: pvc.Spec.VolumeName}, pv); err != nil {
+		return "", fmt.Errorf("getting PV %s: %w", pvc.Spec.VolumeName, err)
+	}
+
+	switch {
+	case pv.Spec.HostPath != nil:
+		return pv.Spec.HostPath.Path, nil
+	case pv.Spec.Local != nil:
+		return pv.Spec.Local.Path, nil
+	default:
+		return "", fmt.Errorf("PV %s is not a host-local volume type (no HostPath or Local source)", pv.Name)
+	}
+}
+
+// diskFullVolumeAtPath returns the name of the volume in pod whose mount path is the deepest
+// prefix of containerPath. Returns "" if no match is found.
+func diskFullVolumeAtPath(pod *corev1.Pod, containerPath string) string {
+	bestLen := 0
+	best := ""
+
+	for _, container := range pod.Spec.Containers {
+		for _, mount := range container.VolumeMounts {
+			if strings.HasPrefix(containerPath, mount.MountPath) && len(mount.MountPath) > bestLen {
+				bestLen = len(mount.MountPath)
+				best = mount.Name
+			}
+		}
+	}
+
+	return best
 }
 
 func (m *chaosPodService) removeFinalizerForChaosPod(ctx context.Context, chaosPod *corev1.Pod) error {
