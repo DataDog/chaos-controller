@@ -4,11 +4,13 @@ The `diskPressure` field offers a way to apply IO throttling on a specific mount
 
 ## Throttling
 
-Unlike the CPU pressure, this kind of disruption is not done by stressing the disk but by throttling its capacities. A throttle can be applied on read or write operations, or both.
+Unlike the CPU pressure, this kind of disruption is not done by stressing the disk but by throttling its capacities. A throttle can be applied on read or write operations, or both. Two units are supported and can be combined:
+* **bandwidth** — bytes per second (`readBytesPerSec` / `writeBytesPerSec`)
+* **IOPS** — IO operations per second (`readIOPSPerSec` / `writeIOPSPerSec`)
 
 The throttling is done by using the [blkio cgroup controller](https://www.kernel.org/doc/Documentation/cgroup-v1/blkio-controller.txt), and more specifically:
-* by the `blkio.throttle.read_bps_device` and `blkio.throttle.write_bps_device` files for cgroup v1
-* by the `io.max` file for cgroup v2 ([more to read here](https://docs.kernel.org/admin-guide/cgroup-v2.html#io-interface-files))
+* for cgroup v1, by the `blkio.throttle.read_bps_device` / `blkio.throttle.write_bps_device` files (bandwidth) and the `blkio.throttle.read_iops_device` / `blkio.throttle.write_iops_device` files (IOPS)
+* by the `io.max` file for cgroup v2 — keys `rbps` / `wbps` (bandwidth) and `riops` / `wiops` (IOPS) ([more to read here](https://docs.kernel.org/admin-guide/cgroup-v2.html#io-interface-files))
 
 To apply the throttle, the injector will:
 
@@ -79,6 +81,8 @@ kubectl get -ojson pod demo-curl-547bb9c686-57484 | jq '.status.containerStatuse
 # echo "8:0 0" > /sys/fs/cgroup/blkio/kubepods/burstable/poda37541dc-4905-4a7f-98c0-7d13f58df0eb/cb33d4ce77f7396851196043a56e625f38429720cd5d3153cb061feae6038460/blkio.throttle.write_bps_device
 ```
 
+*If IOPS throttling was applied, reset `blkio.throttle.read_iops_device` and `blkio.throttle.write_iops_device` the same way (`echo "8:0 0" > ...`).*
+
 * Ensure that the values are reset
 
 ```
@@ -95,7 +99,7 @@ kubectl get -ojson pod demo-curl-547bb9c686-57484 | jq '.status.containerStatuse
 * Reset throttle values for the found device
 
 ```
-# echo "8:0 rbps=max wbps=max" > /sys/fs/cgroup/kubepods/burstable/poda37541dc-4905-4a7f-98c0-7d13f58df0eb/cb33d4ce77f7396851196043a56e625f38429720cd5d3153cb061feae6038460/io.max
+# echo "8:0 rbps=max wbps=max riops=max wiops=max" > /sys/fs/cgroup/kubepods/burstable/poda37541dc-4905-4a7f-98c0-7d13f58df0eb/cb33d4ce77f7396851196043a56e625f38429720cd5d3153cb061feae6038460/io.max
 ```
 
 * Ensure that the values are reset

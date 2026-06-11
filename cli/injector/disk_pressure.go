@@ -25,6 +25,8 @@ var diskPressureCmd = &cobra.Command{
 		path, _ := cmd.Flags().GetString("path")
 		writeBytesPerSec, _ := cmd.Flags().GetInt("write-bytes-per-sec")
 		readBytesPerSec, _ := cmd.Flags().GetInt("read-bytes-per-sec")
+		writeIOPSPerSec, _ := cmd.Flags().GetInt("write-iops-per-sec")
+		readIOPSPerSec, _ := cmd.Flags().GetInt("read-iops-per-sec")
 
 		// prepare spec
 		var writeBytesPerSecP *int
@@ -37,11 +39,23 @@ var diskPressureCmd = &cobra.Command{
 			readBytesPerSecP = &readBytesPerSec
 		}
 
+		var writeIOPSPerSecP *int
+		if writeIOPSPerSec != 0 {
+			writeIOPSPerSecP = &writeIOPSPerSec
+		}
+
+		var readIOPSPerSecP *int
+		if readIOPSPerSec != 0 {
+			readIOPSPerSecP = &readIOPSPerSec
+		}
+
 		spec := v1beta1.DiskPressureSpec{
 			Path: path,
 			Throttling: v1beta1.DiskPressureThrottlingSpec{
 				ReadBytesPerSec:  readBytesPerSecP,
 				WriteBytesPerSec: writeBytesPerSecP,
+				ReadIOPSPerSec:   readIOPSPerSecP,
+				WriteIOPSPerSec:  writeIOPSPerSecP,
 			},
 		}
 
@@ -72,6 +86,8 @@ func init() {
 	diskPressureCmd.Flags().String("path", "", "Path to apply/clean disk pressure to/from (will be applied to the whole disk)")
 	diskPressureCmd.Flags().Int("write-bytes-per-sec", 0, "Bytes per second throttling limit")
 	diskPressureCmd.Flags().Int("read-bytes-per-sec", 0, "Bytes per second throttling limit")
+	diskPressureCmd.Flags().Int("write-iops-per-sec", 0, "IO operations per second throttling limit")
+	diskPressureCmd.Flags().Int("read-iops-per-sec", 0, "IO operations per second throttling limit")
 
 	_ = cobra.MarkFlagRequired(diskPressureCmd.PersistentFlags(), "path")
 }

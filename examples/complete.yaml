@@ -111,6 +111,8 @@ spec:
     throttling:
       readBytesPerSec: 1024 # optional, read throttling in bytes per sec
       writeBytesPerSec: 2048 # optional, write throttling in bytes per sec
+      readIOPSPerSec: 50 # optional, read throttling in io operations per sec
+      writeIOPSPerSec: 75 # optional, write throttling in io operations per sec
   grpc: # disrupt gRPC responses by faking results
     port: 50051 # port that target grpc server is listening on
     endpoints:

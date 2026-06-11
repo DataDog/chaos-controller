@@ -163,8 +163,16 @@ spec:
                       description: DiskPressureThrottlingSpec represents a throttle on read and write disk operations
                       properties:
                         readBytesPerSec:
+                          minimum: 0
+                          type: integer
+                        readIOPSPerSec:
+                          minimum: 0
                           type: integer
                         writeBytesPerSec:
+                          minimum: 0
+                          type: integer
+                        writeIOPSPerSec:
+                          minimum: 0
                           type: integer
                       type: object
                   required:
