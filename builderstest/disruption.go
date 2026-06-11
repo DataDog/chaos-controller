@@ -89,6 +89,13 @@ func (b *DisruptionBuilder) WithDisruptionKind(kind types.DisruptionKindName) *D
 				if b.Spec.DiskFailure == nil {
 					b.Spec.DiskFailure = &v1beta1.DiskFailureSpec{}
 				}
+			case types.DisruptionKindDiskFull:
+				if b.Spec.DiskFull == nil {
+					b.Spec.DiskFull = &v1beta1.DiskFullSpec{
+						Path:     "/data",
+						Capacity: "95%",
+					}
+				}
 			}
 		})
 
@@ -226,6 +233,28 @@ func (b *DisruptionBuilder) WithInjectionStatus(status types.DisruptionInjection
 		b.modifiers,
 		func() {
 			b.Status.InjectionStatus = status
+		})
+
+	return b
+}
+
+// WithLevel sets the disruption level (node or pod).
+func (b *DisruptionBuilder) WithLevel(level types.DisruptionLevel) *DisruptionBuilder {
+	b.modifiers = append(
+		b.modifiers,
+		func() {
+			b.Spec.Level = level
+		})
+
+	return b
+}
+
+// WithDiskFull sets a custom DiskFull spec.
+func (b *DisruptionBuilder) WithDiskFull(spec *v1beta1.DiskFullSpec) *DisruptionBuilder {
+	b.modifiers = append(
+		b.modifiers,
+		func() {
+			b.Spec.DiskFull = spec
 		})
 
 	return b

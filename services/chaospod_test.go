@@ -1469,4 +1469,263 @@ var _ = Describe("Chaos Pod Service", func() {
 			})
 		})
 	})
+
+	Describe("disk-full writable path resolution", func() {
+		// These tests verify that GenerateChaosPodsOfDisruption produces a chaos pod
+		// with the correct disk-full-writable volume and mount for different volume types.
+
+		diskFullHostPath := func(pod corev1.Pod) string {
+			for _, vol := range pod.Spec.Volumes {
+				if vol.Name == "disk-full-writable" && vol.HostPath != nil {
+					return vol.HostPath.Path
+				}
+			}
+			return ""
+		}
+
+		diskFullMountPath := func(pod corev1.Pod) string {
+			for _, vm := range pod.Spec.Containers[0].VolumeMounts {
+				if vm.Name == "disk-full-writable" {
+					return vm.MountPath
+				}
+			}
+			return ""
+		}
+
+		generateDiskFullPods := func(disruption *chaosv1beta1.Disruption) ([]corev1.Pod, error) {
+			svc, err := services.NewChaosPodService(chaosPodServiceConfig)
+			Expect(err).ShouldNot(HaveOccurred())
+			metricsSinkMock.EXPECT().GetSinkName().Return(DefaultMetricsSinkName).Maybe()
+			return svc.GenerateChaosPodsOfDisruption(disruption, DefaultTargetName, DefaultTargetNodeName, nil, "")
+		}
+
+		Context("node-level disk-full disruption", func() {
+			BeforeEach(func() {
+				fc := fake.NewClientBuilder().Build()
+				chaosPodServiceConfig.Client = fc
+				chaosPodServiceConfig.Reader = fc
+			})
+
+			It("mounts spec.diskFull.path writable directly", func() {
+				disruption := builderstest.NewDisruptionBuilder().
+					WithLevel(chaostypes.DisruptionLevelNode).
+					WithDiskFull(&chaosv1beta1.DiskFullSpec{Path: "/data", Capacity: "95%"}).
+					WithNamespace(DefaultNamespace).
+					Build()
+
+				pods, err := generateDiskFullPods(&disruption)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(pods).To(HaveLen(1))
+				Expect(diskFullHostPath(pods[0])).To(Equal("/data"))
+				Expect(diskFullMountPath(pods[0])).To(Equal("/mnt/host/data"))
+			})
+		})
+
+		Context("pod-level disk-full disruption", func() {
+
+			Context("with a PVC backed by a HostPath PV", func() {
+				BeforeEach(func() {
+					targetPod := corev1.Pod{
+						ObjectMeta: metav1.ObjectMeta{Name: DefaultTargetName, Namespace: DefaultNamespace},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{{
+								Name:         "app",
+								VolumeMounts: []corev1.VolumeMount{{Name: "data-vol", MountPath: "/data"}},
+							}},
+							Volumes: []corev1.Volume{{
+								Name: "data-vol",
+								VolumeSource: corev1.VolumeSource{
+									PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: "my-pvc"},
+								},
+							}},
+						},
+					}
+					pvc := corev1.PersistentVolumeClaim{
+						ObjectMeta: metav1.ObjectMeta{Name: "my-pvc", Namespace: DefaultNamespace},
+						Spec:       corev1.PersistentVolumeClaimSpec{VolumeName: "my-pv"},
+					}
+					pv := corev1.PersistentVolume{
+						ObjectMeta: metav1.ObjectMeta{Name: "my-pv"},
+						Spec: corev1.PersistentVolumeSpec{
+							PersistentVolumeSource: corev1.PersistentVolumeSource{
+								HostPath: &corev1.HostPathVolumeSource{Path: "/var/lib/rancher/k3s/storage/pvc-abc"},
+							},
+						},
+					}
+					fc := fake.NewClientBuilder().WithObjects(&targetPod, &pvc, &pv).Build()
+					chaosPodServiceConfig.Client = fc
+					chaosPodServiceConfig.Reader = fc
+				})
+
+				It("mounts the PV HostPath writable", func() {
+					disruption := builderstest.NewDisruptionBuilder().
+						WithLevel(chaostypes.DisruptionLevelPod).
+						WithDiskFull(&chaosv1beta1.DiskFullSpec{Path: "/data", Capacity: "95%"}).
+						WithNamespace(DefaultNamespace).
+						Build()
+
+					pods, err := generateDiskFullPods(&disruption)
+					Expect(err).ShouldNot(HaveOccurred())
+					Expect(pods).To(HaveLen(1))
+					Expect(diskFullHostPath(pods[0])).To(Equal("/var/lib/rancher/k3s/storage/pvc-abc"))
+					Expect(diskFullMountPath(pods[0])).To(Equal("/mnt/host/var/lib/rancher/k3s/storage/pvc-abc"))
+				})
+			})
+
+			Context("with a PVC backed by a Local PV", func() {
+				BeforeEach(func() {
+					targetPod := corev1.Pod{
+						ObjectMeta: metav1.ObjectMeta{Name: DefaultTargetName, Namespace: DefaultNamespace},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{{
+								Name:         "app",
+								VolumeMounts: []corev1.VolumeMount{{Name: "data-vol", MountPath: "/data"}},
+							}},
+							Volumes: []corev1.Volume{{
+								Name: "data-vol",
+								VolumeSource: corev1.VolumeSource{
+									PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: "local-pvc"},
+								},
+							}},
+						},
+					}
+					pvc := corev1.PersistentVolumeClaim{
+						ObjectMeta: metav1.ObjectMeta{Name: "local-pvc", Namespace: DefaultNamespace},
+						Spec:       corev1.PersistentVolumeClaimSpec{VolumeName: "local-pv"},
+					}
+					pv := corev1.PersistentVolume{
+						ObjectMeta: metav1.ObjectMeta{Name: "local-pv"},
+						Spec: corev1.PersistentVolumeSpec{
+							PersistentVolumeSource: corev1.PersistentVolumeSource{
+								Local: &corev1.LocalVolumeSource{Path: "/mnt/disks/ssd1"},
+							},
+						},
+					}
+					fc := fake.NewClientBuilder().WithObjects(&targetPod, &pvc, &pv).Build()
+					chaosPodServiceConfig.Client = fc
+					chaosPodServiceConfig.Reader = fc
+				})
+
+				It("mounts the PV Local path writable", func() {
+					disruption := builderstest.NewDisruptionBuilder().
+						WithLevel(chaostypes.DisruptionLevelPod).
+						WithDiskFull(&chaosv1beta1.DiskFullSpec{Path: "/data", Capacity: "95%"}).
+						WithNamespace(DefaultNamespace).
+						Build()
+
+					pods, err := generateDiskFullPods(&disruption)
+					Expect(err).ShouldNot(HaveOccurred())
+					Expect(pods).To(HaveLen(1))
+					Expect(diskFullHostPath(pods[0])).To(Equal("/mnt/disks/ssd1"))
+					Expect(diskFullMountPath(pods[0])).To(Equal("/mnt/host/mnt/disks/ssd1"))
+				})
+			})
+
+			Context("with an emptyDir volume", func() {
+				BeforeEach(func() {
+					targetPod := corev1.Pod{
+						ObjectMeta: metav1.ObjectMeta{Name: DefaultTargetName, Namespace: DefaultNamespace},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{{
+								Name:         "app",
+								VolumeMounts: []corev1.VolumeMount{{Name: "cache-vol", MountPath: "/cache"}},
+							}},
+							Volumes: []corev1.Volume{{
+								Name:         "cache-vol",
+								VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+							}},
+						},
+					}
+					fc := fake.NewClientBuilder().WithObjects(&targetPod).Build()
+					chaosPodServiceConfig.Client = fc
+					chaosPodServiceConfig.Reader = fc
+				})
+
+				It("falls back to /var/lib/kubelet/pods", func() {
+					disruption := builderstest.NewDisruptionBuilder().
+						WithLevel(chaostypes.DisruptionLevelPod).
+						WithDiskFull(&chaosv1beta1.DiskFullSpec{Path: "/cache", Capacity: "95%"}).
+						WithNamespace(DefaultNamespace).
+						Build()
+
+					pods, err := generateDiskFullPods(&disruption)
+					Expect(err).ShouldNot(HaveOccurred())
+					Expect(pods).To(HaveLen(1))
+					Expect(diskFullHostPath(pods[0])).To(Equal("/var/lib/kubelet/pods"))
+					Expect(diskFullMountPath(pods[0])).To(Equal("/mnt/host/var/lib/kubelet/pods"))
+				})
+			})
+
+			Context("when target pod is not found in the API", func() {
+				BeforeEach(func() {
+					fc := fake.NewClientBuilder().Build()
+					chaosPodServiceConfig.Client = fc
+					chaosPodServiceConfig.Reader = fc
+				})
+
+				It("falls back to /var/lib/kubelet/pods", func() {
+					disruption := builderstest.NewDisruptionBuilder().
+						WithLevel(chaostypes.DisruptionLevelPod).
+						WithDiskFull(&chaosv1beta1.DiskFullSpec{Path: "/data", Capacity: "95%"}).
+						WithNamespace(DefaultNamespace).
+						Build()
+
+					pods, err := generateDiskFullPods(&disruption)
+					Expect(err).ShouldNot(HaveOccurred())
+					Expect(pods).To(HaveLen(1))
+					Expect(diskFullHostPath(pods[0])).To(Equal("/var/lib/kubelet/pods"))
+					Expect(diskFullMountPath(pods[0])).To(Equal("/mnt/host/var/lib/kubelet/pods"))
+				})
+			})
+
+			Context("with a PVC backed by a non-local PV (CSI)", func() {
+				BeforeEach(func() {
+					targetPod := corev1.Pod{
+						ObjectMeta: metav1.ObjectMeta{Name: DefaultTargetName, Namespace: DefaultNamespace},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{{
+								Name:         "app",
+								VolumeMounts: []corev1.VolumeMount{{Name: "data-vol", MountPath: "/data"}},
+							}},
+							Volumes: []corev1.Volume{{
+								Name: "data-vol",
+								VolumeSource: corev1.VolumeSource{
+									PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: "csi-pvc"},
+								},
+							}},
+						},
+					}
+					pvc := corev1.PersistentVolumeClaim{
+						ObjectMeta: metav1.ObjectMeta{Name: "csi-pvc", Namespace: DefaultNamespace},
+						Spec:       corev1.PersistentVolumeClaimSpec{VolumeName: "csi-pv"},
+					}
+					pv := corev1.PersistentVolume{
+						ObjectMeta: metav1.ObjectMeta{Name: "csi-pv"},
+						Spec: corev1.PersistentVolumeSpec{
+							PersistentVolumeSource: corev1.PersistentVolumeSource{
+								CSI: &corev1.CSIPersistentVolumeSource{Driver: "ebs.csi.aws.com", VolumeHandle: "vol-abc"},
+							},
+						},
+					}
+					fc := fake.NewClientBuilder().WithObjects(&targetPod, &pvc, &pv).Build()
+					chaosPodServiceConfig.Client = fc
+					chaosPodServiceConfig.Reader = fc
+				})
+
+				It("falls back to /var/lib/kubelet/pods", func() {
+					disruption := builderstest.NewDisruptionBuilder().
+						WithLevel(chaostypes.DisruptionLevelPod).
+						WithDiskFull(&chaosv1beta1.DiskFullSpec{Path: "/data", Capacity: "95%"}).
+						WithNamespace(DefaultNamespace).
+						Build()
+
+					pods, err := generateDiskFullPods(&disruption)
+					Expect(err).ShouldNot(HaveOccurred())
+					Expect(pods).To(HaveLen(1))
+					Expect(diskFullHostPath(pods[0])).To(Equal("/var/lib/kubelet/pods"))
+					Expect(diskFullMountPath(pods[0])).To(Equal("/mnt/host/var/lib/kubelet/pods"))
+				})
+			})
+		})
+	})
 })

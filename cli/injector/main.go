@@ -90,6 +90,7 @@ func init() {
 	rootCmd.AddCommand(memoryPressureCmd)
 	rootCmd.AddCommand(memoryPressureStressCmd)
 	rootCmd.AddCommand(diskFailureCmd)
+	rootCmd.AddCommand(diskFullCmd)
 	rootCmd.AddCommand(diskPressureCmd)
 	rootCmd.AddCommand(grpcDisruptionCmd)
 	rootCmd.AddCommand(dnsDisruptionCmd)
