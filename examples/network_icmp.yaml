@@ -1,0 +1,81 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2026 Datadog, Inc.
+
+# ICMP / ICMPv6 protocol disruption examples.
+#
+# The BPF disruption engine matches on IP protocol number for icmp (1) and
+# icmpv6 (58). Port matching is not applicable for these protocols and is
+# ignored even if specified.
+#
+# Use cases:
+#   - Simulate ping blackout (drop outgoing ICMP replies)
+#   - Simulate unreachable hosts as seen by health-check probes
+#   - Test application resilience when ICMP path-MTU-discovery is disrupted
+---
+# Drop all outgoing ICMP echo replies (target looks unreachable to external pings)
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: network-icmp-egress-drop
+  namespace: chaos-demo
+spec:
+  level: pod
+  selector:
+    service: demo-nginx
+  count: 1
+  network:
+    drop: 100
+    hosts:
+      - protocol: icmp   # IPv4 ICMP; flow defaults to egress
+---
+# Drop all incoming ICMP echo requests (target stops responding to pings)
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: network-icmp-ingress-drop
+  namespace: chaos-demo
+spec:
+  level: pod
+  selector:
+    service: demo-nginx
+  count: 1
+  network:
+    drop: 100
+    hosts:
+      - protocol: icmp
+        flow: ingress
+---
+# Drop incoming ICMPv6 (IPv6 ping / neighbor discovery disruption)
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: network-icmpv6-ingress-drop
+  namespace: chaos-demo
+spec:
+  level: pod
+  selector:
+    service: demo-nginx
+  count: 1
+  network:
+    drop: 100
+    hosts:
+      - protocol: icmpv6
+        flow: ingress
+---
+# Add 200ms delay to outgoing ICMP (simulates slow ping response times)
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: network-icmp-egress-delay
+  namespace: chaos-demo
+spec:
+  level: pod
+  selector:
+    service: demo-nginx
+  count: 1
+  network:
+    delay: 200
+    hosts:
+      - protocol: icmp   # egress ICMP only; TCP/UDP traffic is unaffected

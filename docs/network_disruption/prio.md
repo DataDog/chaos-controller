@@ -1,5 +1,7 @@
 # Network disruption: `tc` and `prio` qdiscs
 
+> **Note:** The chaos-controller now uses a **BPF TC classifier** with an LPM trie for IP/port/protocol matching, replacing the per-IP tc flower filters described in parts of this document. The `prio` qdisc and `netem`/`tbf` chains described below are still used for applying disruption effects (delay, loss, bandwidth). For ingress disruption, a `clsact` qdisc with a BPF DirectAction program is used, with optional IFB redirect for ingress shaping.
+
 ## Q: How are queuing disciplines leveraged in network disruptions?
 
 ### Building blocks: `prio` qdisc overview
@@ -90,13 +92,9 @@ Now that the disruption has been setup on the fourth band, we can apply filters 
     <img src="../../docs/img/network_prio/node/filter_1-1.png" height=330 width=650 />
 </kbd></p>
 
-We first filter for all packets related to health checks by the cloud provider or SSH to be sent to `Band 0`. We also consult `kubernetes.default` for any Kubernetes apiservers which should not be disrupted.
+A BPF classifier is attached at parent `1:0` that performs an LPM trie lookup on the packet's destination IP. Safeguard IPs (SSH port 22, cloud metadata service 169.254.169.254) are added as ALLOW entries in the trie, so matching packets skip disruption and flow to the default band. ARP traffic is non-IP and is naturally passed through by the BPF program.
 
-<p align="center"><kbd>
-    <img src="../../docs/img/network_prio/node/filter_1-4.png" height=330 width=650 />
-</kbd></p>
-
-Finally, we apply a filter to enqueue all packets to class `1:4` where the `destination IP` is encompassed by the `hosts` field (see [this documentation](../../docs/network_disruption/hosts-and-services.md) for more details). In this case, a filter is applied for `10.0.1.26/32` and another for `10.0.1.25/32`. If no hosts were specified, a single filter is applied for `0.0.0.0/0`. If a CIDR block or hostname is specified, corresponding filters are constructed for all IPs in that range.
+Host IPs from the disruption spec are added as DISRUPT entries. The BPF program returns flowid `1:4` for matched packets, routing them to the disruption band. If no hosts are specified, a `0.0.0.0/0` match-all entry is used. Port and protocol matching is also performed in the BPF program when specified.
 
 ### Network Disruption implementation for pod level
 
@@ -125,35 +123,17 @@ spec:
 
 The disruption should only affect packets leaving our target node. On top of the three default bands, chaos-controller creates a fourth band (class `1:4`) to which it will send packets identified as candidates for the disruptions. In this step, the filter on handle `1:` to route traffic to class `1:4` has not been set up. We will see the specific criteria in `Step 3` after setting up the fourth band completely.
 
-#### (Step 2)  Disrupt the fourth band for only the traffic originating from specified pods
+#### (Step 2) Disrupt the fourth band
 
-<p align="center"><kbd>
-    <img src="../../docs/img/network_prio/pod/2-1.png" height=270 width=650 />
-</kbd></p>
+The `netem`/`tbf` disruption chain is applied directly under class `1:4`. There is no nested prio qdisc or cgroup mark filter — the BPF classifier at parent `1:0` handles all traffic classification.
 
-To this fourth band, another `prio` qdisc with handle `2:` attached. This qdisc defaults to a priomap routing all traffic to `Band 0` (notated here as `{0}`). This band is a catch-all for packets which do not end up being disrupted.
-
-<p align="center"><kbd>
-    <img src="../../docs/img/network_prio/pod/3-1.png" height=280 width=650 />
-</kbd></p>
-
-For the disruption itself, the `chaos-controller` marks all packets leaving the (process associated with the) target pod with `classid` `2:2`. A filter on handle `2:` checks for this field and enqueues packets matching this criteria to prio class `2:2`. This class contains a qdisc applying the configured network disruption (in this case a netem delay) to all enqueued packets.
+> **Note:** When HTTP filters (`spec.network.http`) are active, a nested prio/mark/eBPF chain is still used under `1:4` to classify traffic by HTTP method and path. See the eBPF section below for details.
 
 #### (Step 3) Divert traffic
 
-Now that the disruption has been setup on the fourth band, we can apply filters to handle `1:` to send packets to the appropriate band.
+A BPF classifier is attached at parent `1:0`. Safeguard IPs (default gateway, node IP) are ALLOW entries in the BPF LPM trie, so matching packets skip disruption. Host IPs from the spec are DISRUPT entries that route packets to class `1:4`.
 
-<p align="center"><kbd>
-    <img src="../../docs/img/network_prio/pod/filter_1-1.png" height=330 width=650 />
-</kbd></p>
-
-We first filter for all packets related to `gateway IP` and `node IP` and send them to `Band 0`. We also consult `kubernetes.default` for any Kubernetes apiservers which should not be disrupted.
-
-<p align="center"><kbd>
-    <img src="../../docs/img/network_prio/pod/filter_1-4.png" height=330 width=650 />
-</kbd></p>
-
-Finally, we apply a filter to enqueue all packets to class `1:4` whenever the `destination IP` is encompassed by the `hosts` field (see [this documentation](../../docs/network_disruption/hosts-and-services.md) for more details). In this case, a filter is applied for `10.0.1.254/32` and another for `10.0.1.255/32`. If no hosts were specified, a single filter is applied for `0.0.0.0/0` and no traffic is ends up in class `2:1`.
+For ingress disruption, a separate BPF program is attached to a `clsact` qdisc on the ingress path. It looks up the packet's **source IP** (the true originating IP, not cluster VIPs) and either drops the packet (`TC_ACT_SHOT`) or redirects it to an IFB device for shaping via `bpf_redirect`.
 
 ### Network Disruption implementation for pod level with eBPF filters
 

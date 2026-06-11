@@ -22,6 +22,51 @@ func (_m *NetlinkLinkMock) EXPECT() *NetlinkLinkMock_Expecter {
 	return &NetlinkLinkMock_Expecter{mock: &_m.Mock}
 }
 
+// Index provides a mock function with no fields
+func (_m *NetlinkLinkMock) Index() int {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Index")
+	}
+
+	var r0 int
+	if rf, ok := ret.Get(0).(func() int); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+
+	return r0
+}
+
+// NetlinkLinkMock_Index_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Index'
+type NetlinkLinkMock_Index_Call struct {
+	*mock.Call
+}
+
+// Index is a helper method to define mock.On call
+func (_e *NetlinkLinkMock_Expecter) Index() *NetlinkLinkMock_Index_Call {
+	return &NetlinkLinkMock_Index_Call{Call: _e.mock.On("Index")}
+}
+
+func (_c *NetlinkLinkMock_Index_Call) Run(run func()) *NetlinkLinkMock_Index_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *NetlinkLinkMock_Index_Call) Return(_a0 int) *NetlinkLinkMock_Index_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *NetlinkLinkMock_Index_Call) RunAndReturn(run func() int) *NetlinkLinkMock_Index_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Name provides a mock function with no fields
 func (_m *NetlinkLinkMock) Name() string {
 	ret := _m.Called()

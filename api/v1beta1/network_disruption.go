@@ -99,8 +99,8 @@ type NetworkDisruptionHostSpec struct {
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=65535
 	Port int `json:"port,omitempty" chaos_validate:"omitempty,gte=0,lte=65535"`
-	// +kubebuilder:validation:Enum=tcp;udp;""
-	Protocol string `json:"protocol,omitempty" chaos_validate:"omitempty,oneofci=udp tcp"`
+	// +kubebuilder:validation:Enum=icmp;icmpv6;tcp;udp;""
+	Protocol string `json:"protocol,omitempty" chaos_validate:"omitempty,oneofci=icmp icmpv6 udp tcp"`
 	// +kubebuilder:validation:Enum=ingress;egress;""
 	Flow string `json:"flow,omitempty" chaos_validate:"omitempty,oneofci=ingress egress"`
 	// +kubebuilder:validation:Enum=new;est;""
@@ -120,6 +120,9 @@ type NetworkDisruptionServiceSpec struct {
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=100
 	Percentage *int `json:"percentage,omitempty" chaos_validate:"omitempty,gte=1,lte=100"`
+	// +kubebuilder:validation:Enum=ingress;egress;""
+	// +optional
+	Flow string `json:"flow,omitempty" chaos_validate:"omitempty,oneofci=ingress egress"`
 }
 
 type NetworkDisruptionServicePortSpec struct {
@@ -138,8 +141,8 @@ type NetworkDisruptionCloudSpec struct {
 type NetworkDisruptionCloudServiceSpec struct {
 	// +kubebuilder:validation:Required
 	ServiceName string `json:"service" chaos_validate:"required"`
-	// +kubebuilder:validation:Enum=tcp;udp;""
-	Protocol string `json:"protocol,omitempty" chaos_validate:"omitempty,oneofci=tcp udp"`
+	// +kubebuilder:validation:Enum=icmp;icmpv6;tcp;udp;""
+	Protocol string `json:"protocol,omitempty" chaos_validate:"omitempty,oneofci=icmp icmpv6 tcp udp"`
 	// +kubebuilder:validation:Enum=ingress;egress;""
 	Flow string `json:"flow,omitempty" chaos_validate:"omitempty,oneofci=ingress egress"`
 	// +kubebuilder:validation:Enum=new;est;""

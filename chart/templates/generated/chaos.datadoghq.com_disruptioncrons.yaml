@@ -363,6 +363,8 @@ spec:
                                 type: integer
                               protocol:
                                 enum:
+                                  - icmp
+                                  - icmpv6
                                   - tcp
                                   - udp
                                   - ""
@@ -393,6 +395,8 @@ spec:
                                     type: string
                                   protocol:
                                     enum:
+                                      - icmp
+                                      - icmpv6
                                       - tcp
                                       - udp
                                       - ""
@@ -420,6 +424,8 @@ spec:
                                     type: string
                                   protocol:
                                     enum:
+                                      - icmp
+                                      - icmpv6
                                       - tcp
                                       - udp
                                       - ""
@@ -447,6 +453,8 @@ spec:
                                     type: string
                                   protocol:
                                     enum:
+                                      - icmp
+                                      - icmpv6
                                       - tcp
                                       - udp
                                       - ""
@@ -515,6 +523,8 @@ spec:
                                 type: integer
                               protocol:
                                 enum:
+                                  - icmp
+                                  - icmpv6
                                   - tcp
                                   - udp
                                   - ""
@@ -538,6 +548,12 @@ spec:
                         services:
                           items:
                             properties:
+                              flow:
+                                enum:
+                                  - ingress
+                                  - egress
+                                  - ""
+                                type: string
                               name:
                                 type: string
                               namespace:

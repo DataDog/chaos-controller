@@ -49,17 +49,17 @@ spec:
       aws:
         - service: "S3"
           flow: egress # optional, available are egress or ingress
-          protocol: tcp # optional, available are tcp or udp
+          protocol: tcp # optional, available are icmp, icmpv6, tcp, or udp
           connState: new # optional, connection state (new: new connections, est: established connections, defaults to all states)
       gcp:
         - service: "Google" # only service available for gcp
           flow: egress # optional, available are egress or ingress
-          protocol: tcp # optional, available are tcp or udp
+          protocol: tcp # optional, available are icmp, icmpv6, tcp, or udp
           connState: new # optional, connection state (new: new connections, est: established connections, defaults to all states)
       datadog:
         - service: "api"
           flow: egress # optional, available are egress or ingress
-          protocol: tcp # optional, available are tcp or udp
+          protocol: tcp # optional, available are icmp, icmpv6, tcp, or udp
           connState: new # optional, connection state (new: new connections, est: established connections, defaults to all states)
     delay: 1000 # delay (in milliseconds) to add to outgoing packets, 10% of jitter will be added by default
 ```

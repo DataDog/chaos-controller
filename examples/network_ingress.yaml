@@ -3,10 +3,23 @@
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
 # Copyright 2026 Datadog, Inc.
 
+# Ingress disruption: disrupt traffic arriving at the target pod.
+# The BPF ingress classifier matches on source IP and applies the configured
+# disruption (drop, delay, etc.) before the packet reaches the application.
+#
+# Key differences from egress:
+#   - Packet matching uses the source IP (not destination IP)
+#   - Drop-only: BPF drops packets directly (no IFB device needed)
+#   - Shaping (delay/bandwidth/corrupt/duplicate): packets are redirected to an
+#     IFB virtual device where tc netem/tbf applies the effects
+#
+# All protocols are supported: tcp, udp, icmp, icmpv6.
+# Port matching is skipped for icmp/icmpv6 entries.
+---
 apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
 metadata:
-  name: network-ingress
+  name: network-ingress-drop
   namespace: chaos-demo
 spec:
   level: pod
@@ -16,5 +29,40 @@ spec:
   network:
     drop: 100
     hosts:
-      - port: 80
-        flow: ingress # disrupt incoming traffic instead of outgoing (requires at least a port or a host to be specified, only works for TCP, please read implementation details before using to know the current limitations)
+      - port: 80            # disrupt incoming TCP traffic on port 80
+        protocol: tcp
+        flow: ingress
+---
+# Ingress delay (shaping): creates an IFB device to apply netem delay
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: network-ingress-delay
+  namespace: chaos-demo
+spec:
+  level: pod
+  selector:
+    service: demo-nginx
+  count: 1
+  network:
+    delay: 200              # 200ms added to all incoming packets
+    hosts:
+      - host: 10.0.0.0/8   # only affect ingress from this CIDR
+        flow: ingress
+---
+# Ingress ICMP drop: discard all incoming ICMP pings (port field is ignored for icmp)
+apiVersion: chaos.datadoghq.com/v1beta1
+kind: Disruption
+metadata:
+  name: network-ingress-icmp-drop
+  namespace: chaos-demo
+spec:
+  level: pod
+  selector:
+    service: demo-nginx
+  count: 1
+  network:
+    drop: 100
+    hosts:
+      - protocol: icmp
+        flow: ingress

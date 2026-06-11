@@ -8,7 +8,7 @@
 
 As with all disruptions, pods or nodes are targeted for injection if they satisfy the conditions of the label selector specified in the `selector` field. 
 For network disruptions, we can also specify to only disrupt packets interacting with a particular host or set of hosts through the `network.hosts` field. We will refer to `network.hosts` field in the rest of the document as the `hosts` field.
-The `hosts` field takes a list of `host`/`port`/`protocol`/`connState` tuples. All three fields are optional.
+The `hosts` field takes a list of `host`/`port`/`protocol`/`connState` tuples. All fields are optional. `protocol` accepts `tcp`, `udp`, `icmp`, or `icmpv6`; omit to match all protocols. Note: `port` is ignored for `icmp` and `icmpv6` entries since those protocols do not carry port numbers.
 
 <p align="center"><kbd>
     <img src="../../docs/img/network_hosts/notation_egress.png" height=160 width=570 />
@@ -86,8 +86,7 @@ network:
 ```
 
 
-The controller will take care of applying `tc` rules in a way that targets any port that may be used to talk to that service. There are no changes to how you should configure this field in a `node` level disruption
-vs. a `pod` level disruption.
+The controller will resolve service endpoints and create BPF disruption rules targeting the appropriate IPs and ports. Service endpoints are dynamically updated as pods are added or removed. There are no changes to how you should configure this field in a `node` level disruption vs. a `pod` level disruption.
 
 ```
 network:
@@ -192,7 +191,7 @@ A pod typically has a single interface with which it interacts with the outside 
 
 If no `hosts` field is specified, all packets aside from those explicitly whitelisted in the **Assumptions** will be disrupted, in this case dropping 50% of traffic leaving (`egress`) or entering (`ingress`) the interface.
 
-Note: `ingress` traffic disruption is only guaranteed for `TCP`, not `UDP`. See [this documentation](../../docs/network_disruption/flow.md) for more details. For the remainder of this documentation, we will only discuss the default flow configuration (`egress`).
+Both `egress` and `ingress` flows support all protocols (TCP, UDP, ICMP, ICMPv6). See [this documentation](../../docs/network_disruption/flow.md) for more details on how ingress and egress disruption works. For the remainder of this documentation, we will only discuss the default flow configuration (`egress`).
 
 ### Case 2: IP address specified
 

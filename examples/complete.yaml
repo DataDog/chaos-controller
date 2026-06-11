@@ -54,7 +54,7 @@ spec:
     hosts: # optional, list of destination hosts to filter on
       - host: 10.0.0.0/8 # optional, IP, CIDR or hostname to filter on
         port: 80 # optional, port to drop packets on
-        protocol: tcp # optional, protocol to drop packets on (can be tcp or udp, defaults to both)
+        protocol: tcp # optional, protocol to drop packets on (can be icmp, icmpv6, tcp, or udp; defaults to all protocols)
         flow: ingress # optional, flow direction (egress: outgoing traffic, ingress: incoming traffic, defaults to egress)
         connState: new # optional, connection state (new: new connections, est: established connections, defaults to all states)
         dnsResolver: pod-fallback-node # optional, DNS resolution strategy (pod, node, pod-fallback-node, node-fallback-pod), defaults to pod-fallback-node. Use 'node' to bypass service mesh DNS proxies like Istio
@@ -62,7 +62,7 @@ spec:
     allowedHosts: # optional, list of excluded hosts which would not be disrupted
       - host: 10.0.0.1 # optional, IP, CIDR or hostname to filter on
         port: 80 # optional, port to filter on
-        protocol: tcp # optional, protocol to filter on (can be tcp or udp, defaults to both)
+        protocol: tcp # optional, protocol to filter on (can be icmp, icmpv6, tcp, or udp; defaults to all protocols)
         flow: ingress # optional, flow direction (egress: outgoing traffic, ingress: incoming traffic, defaults to egress)
         connState: new # optional, connection state (new: new connections, est: established connections, defaults to all states)
         dnsResolver: pod-fallback-node # optional, DNS resolution strategy (pod, node, pod-fallback-node, node-fallback-pod), defaults to pod-fallback-node. Use 'node' to bypass service mesh DNS proxies like Istio
@@ -79,17 +79,17 @@ spec:
     cloud:
       aws:
         - service: "S3" # service name as declared in the provider file (see doc for details)
-          protocol: tcp # optional, protocol to drop packets on (can be tcp or udp, defaults to both)
+          protocol: tcp # optional, protocol to drop packets on (can be icmp, icmpv6, tcp, or udp; defaults to all protocols)
           flow: ingress # optional, flow direction (egress: outgoing traffic, ingress: incoming traffic, defaults to egress)
           connState: new # optional, connection state (new: new connections, est: established connections, defaults to all states)
       gcp:
         - service: "Google" # service name as declared in the provider file (see doc for details)
-          protocol: tcp # optional, protocol to drop packets on (can be tcp or udp, defaults to both)
+          protocol: tcp # optional, protocol to drop packets on (can be icmp, icmpv6, tcp, or udp; defaults to all protocols)
           flow: ingress # optional, flow direction (egress: outgoing traffic, ingress: incoming traffic, defaults to egress)
           connState: new # optional, connection state (new: new connections, est: established connections, defaults to all states)
       datadog:
         - service: "synthetics" # service name as declared in the provider file (see doc for details)
-          protocol: tcp # optional, protocol to drop packets on (can be tcp or udp, defaults to both)
+          protocol: tcp # optional, protocol to drop packets on (can be icmp, icmpv6, tcp, or udp; defaults to all protocols)
           flow: ingress # optional, flow direction (egress: outgoing traffic, ingress: incoming traffic, defaults to egress)
           connState: new # optional, connection state (new: new connections, est: established connections, defaults to all states)
     http: # http filters

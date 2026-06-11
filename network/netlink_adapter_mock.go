@@ -25,6 +25,64 @@ func (_m *NetlinkAdapterMock) EXPECT() *NetlinkAdapterMock_Expecter {
 	return &NetlinkAdapterMock_Expecter{mock: &_m.Mock}
 }
 
+// AddIFBDevice provides a mock function with given fields: name
+func (_m *NetlinkAdapterMock) AddIFBDevice(name string) (NetlinkLink, error) {
+	ret := _m.Called(name)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddIFBDevice")
+	}
+
+	var r0 NetlinkLink
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (NetlinkLink, error)); ok {
+		return rf(name)
+	}
+	if rf, ok := ret.Get(0).(func(string) NetlinkLink); ok {
+		r0 = rf(name)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(NetlinkLink)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(name)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// NetlinkAdapterMock_AddIFBDevice_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddIFBDevice'
+type NetlinkAdapterMock_AddIFBDevice_Call struct {
+	*mock.Call
+}
+
+// AddIFBDevice is a helper method to define mock.On call
+//   - name string
+func (_e *NetlinkAdapterMock_Expecter) AddIFBDevice(name interface{}) *NetlinkAdapterMock_AddIFBDevice_Call {
+	return &NetlinkAdapterMock_AddIFBDevice_Call{Call: _e.mock.On("AddIFBDevice", name)}
+}
+
+func (_c *NetlinkAdapterMock_AddIFBDevice_Call) Run(run func(name string)) *NetlinkAdapterMock_AddIFBDevice_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *NetlinkAdapterMock_AddIFBDevice_Call) Return(_a0 NetlinkLink, _a1 error) *NetlinkAdapterMock_AddIFBDevice_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *NetlinkAdapterMock_AddIFBDevice_Call) RunAndReturn(run func(string) (NetlinkLink, error)) *NetlinkAdapterMock_AddIFBDevice_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DefaultRoutes provides a mock function with no fields
 func (_m *NetlinkAdapterMock) DefaultRoutes() ([]NetlinkRoute, error) {
 	ret := _m.Called()
@@ -78,6 +136,52 @@ func (_c *NetlinkAdapterMock_DefaultRoutes_Call) Return(_a0 []NetlinkRoute, _a1 
 }
 
 func (_c *NetlinkAdapterMock_DefaultRoutes_Call) RunAndReturn(run func() ([]NetlinkRoute, error)) *NetlinkAdapterMock_DefaultRoutes_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// DeleteIFBDevice provides a mock function with given fields: name
+func (_m *NetlinkAdapterMock) DeleteIFBDevice(name string) error {
+	ret := _m.Called(name)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteIFBDevice")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(name)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// NetlinkAdapterMock_DeleteIFBDevice_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteIFBDevice'
+type NetlinkAdapterMock_DeleteIFBDevice_Call struct {
+	*mock.Call
+}
+
+// DeleteIFBDevice is a helper method to define mock.On call
+//   - name string
+func (_e *NetlinkAdapterMock_Expecter) DeleteIFBDevice(name interface{}) *NetlinkAdapterMock_DeleteIFBDevice_Call {
+	return &NetlinkAdapterMock_DeleteIFBDevice_Call{Call: _e.mock.On("DeleteIFBDevice", name)}
+}
+
+func (_c *NetlinkAdapterMock_DeleteIFBDevice_Call) Run(run func(name string)) *NetlinkAdapterMock_DeleteIFBDevice_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *NetlinkAdapterMock_DeleteIFBDevice_Call) Return(_a0 error) *NetlinkAdapterMock_DeleteIFBDevice_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *NetlinkAdapterMock_DeleteIFBDevice_Call) RunAndReturn(run func(string) error) *NetlinkAdapterMock_DeleteIFBDevice_Call {
 	_c.Call.Return(run)
 	return _c
 }
