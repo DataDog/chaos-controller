@@ -1152,11 +1152,6 @@ func specToRules(spec v1beta1.NetworkDisruptionSpec, hosts []v1beta1.NetworkDisr
 
 	// Add rules for each host
 	for _, host := range hosts {
-		ips, ok := resolvedIPs[host.Host]
-		if !ok {
-			continue
-		}
-
 		// Determine direction
 		dir := bpfdisrupt.DirEgress
 		if host.Flow == v1beta1.FlowIngress {
@@ -1172,6 +1167,24 @@ func specToRules(spec v1beta1.NetworkDisruptionSpec, hosts []v1beta1.NetworkDisr
 			spec.Delay == 0 && spec.BandwidthLimit == 0 && spec.Corrupt == 0 && spec.Duplicate == 0 {
 			action = bpfdisrupt.ActionDrop
 			dropPct = spec.Drop
+		}
+
+		// When host is empty (protocol-only or port-only entry), use match-all CIDR.
+		if host.Host == "" {
+			rules = append(rules, bpfdisrupt.Rule{
+				Direction: dir,
+				CIDR:      "0.0.0.0/0",
+				Action:    action,
+				DropPct:   dropPct,
+				Port:      host.Port,
+				Protocol:  host.Protocol,
+			})
+			continue
+		}
+
+		ips, ok := resolvedIPs[host.Host]
+		if !ok {
+			continue
 		}
 
 		for _, ip := range ips {
