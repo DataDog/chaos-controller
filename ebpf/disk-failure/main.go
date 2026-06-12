@@ -10,20 +10,27 @@ package main
 
 import (
 	"C"
+	"bufio"
 	"bytes"
 	"encoding/binary"
 	"flag"
 	"os"
 	"os/signal"
+	"syscall"
+	"unsafe"
 
 	"github.com/DataDog/chaos-controller/ebpf"
 	"github.com/DataDog/chaos-controller/log"
 	bpf "github.com/aquasecurity/libbpfgo"
-	"github.com/aquasecurity/libbpfgo/helpers"
 	"go.uber.org/zap"
 )
 
 var nPid = flag.Uint64("process", 0, "Process to disrupt")
+var nCgroupPath = flag.String("cgroup-path", "", "Cgroupv2 directory path for ancestor-based filtering (covers kubectl exec sub-cgroups)")
+var nFilterDirInode = flag.Uint64("filter-dir-inode", 0, "Inode of filter path parent directory; enables relative-path disruption (e.g. after cd+cat)")
+var nFilterDirDev = flag.Uint64("filter-dir-dev", 0, "Device ID of filter path parent directory; disambiguates same-inode numbers across different mounts")
+var nFilterDirInode2 = flag.Uint64("filter-dir-inode2", 0, "Inode of filter path itself when it is a directory; enables exact-CWD match for relative opens")
+var nFilterDirDev2 = flag.Uint64("filter-dir-dev2", 0, "Device ID paired with filter-dir-inode2")
 var nPath = flag.String("path", "/", "Filter path")
 var nProbability = flag.Uint64("probability", 100, "Probability to disrupt")
 var nExitCode = flag.Uint64("exit-code", 1, "Exit code")
@@ -64,15 +71,23 @@ func main() {
 	err = bpfModule.BPFLoadObject()
 	must(err)
 
-	// reads data from the trace pipe that bpf_trace_printk() writes to,
-	// (/sys/kernel/debug/tracing/trace_pipe).
-	go helpers.TracePipeListen()
+	// Populate cgroup filter map after loading (maps are only accessible post-load).
+	if *nCgroupPath != "" {
+		initCgroupMap(bpfModule)
+	}
+
+	// Forward bpf_trace_printk() output to the zap logger so it appears in kubectl logs.
+	// The chaos pod mounts /sys/kernel/debug/tracing at /mnt/tracefs so the container
+	// rootfs has a valid target path. TracePipeListen() uses a hardcoded non-existent
+	// path, so we read trace_pipe directly here instead.
+	go listenTracePipe(logger)
 
 	// Load the BPF program
 	prog, err := bpfModule.GetProgram("injection_disk_failure")
 	must(err)
 
-	// Attach the kprope to catch sys openat syscall
+	// Attach the kprobe to the arch-specific openat syscall wrapper.
+	// The arch wrapper is tagged ALLOW_ERROR_INJECTION so bpf_override_return works.
 	_, err = prog.AttachKprobe(ebpf.SysOpenat)
 	must(err)
 
@@ -97,22 +112,53 @@ func main() {
 
 func printEvent(data []byte) {
 	ppid := int(binary.LittleEndian.Uint32(data[0:4]))
-	pid := int(binary.LittleEndian.Uint32(data[4:8]))
-	tid := int(binary.LittleEndian.Uint32(data[8:12]))
+	// tid = kernel TID (userspace thread ID via gettid())
+	tid := int(binary.LittleEndian.Uint32(data[4:8]))
+	// tgid = kernel TGID (userspace process ID via getpid()) — use this to identify the process in ps/kubectl
+	tgid := int(binary.LittleEndian.Uint32(data[8:12]))
 	gid := int(binary.LittleEndian.Uint32(data[12:16]))
 	comm := string(bytes.TrimRight(data[16:], "\x00"))
-	logger.Infof("Disrupt Ppid %d, Pid %d, Tid: %d, Gid: %d, Command: %s", ppid, pid, tid, gid, comm)
+	logger.Infof("Disrupt Ppid(host) %d, Tgid(host-pid) %d, Tid %d, Gid: %d, Command: %s", ppid, tgid, tid, gid, comm)
 }
 
-// The global variables are shared against the userspace application and the BPF application (loaded into the kernel).
-// This global variables allow the user application to parametrise the BPF application.
+// initGlobalVariables sets BPF global variables from command-line flags.
 func initGlobalVariables(bpfModule *bpf.Module) {
 	flag.Parse()
 
-	// Set the PID
 	var pid uint32
 	pid = uint32(*nPid)
 	if err := bpfModule.InitGlobalVariable("target_pid", pid); err != nil {
+		must(err)
+	}
+
+	// Enable cgroup-based filtering when a cgroup path is provided.
+	var useCgroupFilter int32
+	if *nCgroupPath != "" {
+		useCgroupFilter = 1
+	}
+	if err := bpfModule.InitGlobalVariable("use_cgroup_filter", useCgroupFilter); err != nil {
+		must(err)
+	}
+
+	// Filter directory inode for relative-path disruption.
+	filterDirInode := *nFilterDirInode
+	if err := bpfModule.InitGlobalVariable("filter_dir_inode", filterDirInode); err != nil {
+		must(err)
+	}
+
+	// Filter directory device ID — disambiguates same-inode numbers across mounts.
+	filterDirDev := uint32(*nFilterDirDev)
+	if err := bpfModule.InitGlobalVariable("filter_dir_dev", filterDirDev); err != nil {
+		must(err)
+	}
+
+	// Second inode/device for exact-CWD matching when filter path is a directory.
+	filterDirInode2 := *nFilterDirInode2
+	if err := bpfModule.InitGlobalVariable("filter_dir_inode2", filterDirInode2); err != nil {
+		must(err)
+	}
+	filterDirDev2 := uint32(*nFilterDirDev2)
+	if err := bpfModule.InitGlobalVariable("filter_dir_dev2", filterDirDev2); err != nil {
 		must(err)
 	}
 
@@ -136,6 +182,39 @@ func initGlobalVariables(bpfModule *bpf.Module) {
 	currentPid := uint32(os.Getpid())
 	if err := bpfModule.InitGlobalVariable("exclude_pid", currentPid); err != nil {
 		must(err)
+	}
+}
+
+// initCgroupMap opens the cgroupv2 directory and pins its fd into the target_cgroup
+// BPF_MAP_TYPE_CGROUP_ARRAY so the eBPF program can use bpf_current_task_under_cgroup().
+func initCgroupMap(bpfModule *bpf.Module) {
+	fd, err := syscall.Open(*nCgroupPath, syscall.O_RDONLY|syscall.O_DIRECTORY|syscall.O_CLOEXEC, 0)
+	must(err)
+	defer syscall.Close(fd)
+
+	cgroupMap, err := bpfModule.GetMap("target_cgroup")
+	must(err)
+
+	key := uint32(0)
+	fdUint := uint32(fd)
+	must(cgroupMap.Update(unsafe.Pointer(&key), unsafe.Pointer(&fdUint)))
+}
+
+// listenTracePipe reads bpf_trace_printk() output from the tracefs trace pipe and
+// forwards each line through the zap logger so it appears in kubectl logs.
+// The chaos pod mounts /sys/kernel/debug/tracing at /mnt/tracefs; if the mount is
+// absent (e.g. older deployments) the function logs a warning and returns.
+func listenTracePipe(log *zap.SugaredLogger) {
+	f, err := os.Open("/mnt/tracefs/trace_pipe")
+	if err != nil {
+		log.Warnw("trace pipe unavailable; bpf_trace_printk output will not appear in pod logs", "err", err)
+		return
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		log.Infow("bpf trace", "line", scanner.Text())
 	}
 }
 

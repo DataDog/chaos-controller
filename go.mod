@@ -9,7 +9,6 @@ require (
 	github.com/DataDog/datadog-go v4.8.3+incompatible
 	github.com/DataDog/jsonapi v0.13.0
 	github.com/aquasecurity/libbpfgo v0.5.1-libbpf-1.2
-	github.com/aquasecurity/libbpfgo/helpers v0.4.5
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/containerd/containerd v1.7.30

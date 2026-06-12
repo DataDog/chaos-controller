@@ -8,4 +8,7 @@
 
 package ebpf
 
+// SysOpenat is the kprobe target for disk-failure disruption.
+// __x64_sys_openat is tagged ALLOW_ERROR_INJECTION, which is required for
+// bpf_override_return to override the syscall return value.
 const SysOpenat = "__x64_sys_openat"

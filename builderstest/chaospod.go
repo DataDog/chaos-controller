@@ -292,6 +292,10 @@ func (b *ChaosPodBuilder) WithChaosSpec(targetNodeName string, terminationGraceP
 								MountPath: "/boot",
 								ReadOnly:  true,
 							},
+							{
+								Name:      "tracefs",
+								MountPath: "/mnt/tracefs",
+							},
 						},
 					},
 				},
@@ -355,6 +359,15 @@ func (b *ChaosPodBuilder) WithChaosSpec(targetNodeName string, terminationGraceP
 						VolumeSource: v1.VolumeSource{
 							HostPath: &v1.HostPathVolumeSource{
 								Path: "/boot",
+								Type: &hostPathDirectory,
+							},
+						},
+					},
+					{
+						Name: "tracefs",
+						VolumeSource: v1.VolumeSource{
+							HostPath: &v1.HostPathVolumeSource{
+								Path: "/sys/kernel/debug/tracing",
 								Type: &hostPathDirectory,
 							},
 						},
