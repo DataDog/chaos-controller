@@ -10,6 +10,7 @@ package main
 
 import (
 	"C"
+	"bufio"
 	"bytes"
 	"encoding/binary"
 	"flag"
@@ -21,7 +22,6 @@ import (
 	"github.com/DataDog/chaos-controller/ebpf"
 	"github.com/DataDog/chaos-controller/log"
 	bpf "github.com/aquasecurity/libbpfgo"
-	"github.com/aquasecurity/libbpfgo/helpers"
 	"go.uber.org/zap"
 )
 
@@ -76,9 +76,11 @@ func main() {
 		initCgroupMap(bpfModule)
 	}
 
-	// reads data from the trace pipe that bpf_trace_printk() writes to,
-	// (/sys/kernel/debug/tracing/trace_pipe).
-	go helpers.TracePipeListen()
+	// Forward bpf_trace_printk() output to the zap logger so it appears in kubectl logs.
+	// The chaos pod mounts /sys/kernel/debug/tracing at /mnt/tracefs so the container
+	// rootfs has a valid target path. TracePipeListen() uses a hardcoded non-existent
+	// path, so we read trace_pipe directly here instead.
+	go listenTracePipe(logger)
 
 	// Load the BPF program
 	prog, err := bpfModule.GetProgram("injection_disk_failure")
@@ -110,11 +112,13 @@ func main() {
 
 func printEvent(data []byte) {
 	ppid := int(binary.LittleEndian.Uint32(data[0:4]))
-	pid := int(binary.LittleEndian.Uint32(data[4:8]))
-	tid := int(binary.LittleEndian.Uint32(data[8:12]))
+	// tid = kernel TID (userspace thread ID via gettid())
+	tid := int(binary.LittleEndian.Uint32(data[4:8]))
+	// tgid = kernel TGID (userspace process ID via getpid()) — use this to identify the process in ps/kubectl
+	tgid := int(binary.LittleEndian.Uint32(data[8:12]))
 	gid := int(binary.LittleEndian.Uint32(data[12:16]))
 	comm := string(bytes.TrimRight(data[16:], "\x00"))
-	logger.Infof("Disrupt Ppid %d, Pid %d, Tid: %d, Gid: %d, Command: %s", ppid, pid, tid, gid, comm)
+	logger.Infof("Disrupt Ppid(host) %d, Tgid(host-pid) %d, Tid %d, Gid: %d, Command: %s", ppid, tgid, tid, gid, comm)
 }
 
 // initGlobalVariables sets BPF global variables from command-line flags.
@@ -194,6 +198,24 @@ func initCgroupMap(bpfModule *bpf.Module) {
 	key := uint32(0)
 	fdUint := uint32(fd)
 	must(cgroupMap.Update(unsafe.Pointer(&key), unsafe.Pointer(&fdUint)))
+}
+
+// listenTracePipe reads bpf_trace_printk() output from the tracefs trace pipe and
+// forwards each line through the zap logger so it appears in kubectl logs.
+// The chaos pod mounts /sys/kernel/debug/tracing at /mnt/tracefs; if the mount is
+// absent (e.g. older deployments) the function logs a warning and returns.
+func listenTracePipe(log *zap.SugaredLogger) {
+	f, err := os.Open("/mnt/tracefs/trace_pipe")
+	if err != nil {
+		log.Warnw("trace pipe unavailable; bpf_trace_printk output will not appear in pod logs", "err", err)
+		return
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		log.Infow("bpf trace", "line", scanner.Text())
+	}
 }
 
 func must(err error) {

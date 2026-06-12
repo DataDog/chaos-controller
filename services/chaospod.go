@@ -585,6 +585,13 @@ func (m *chaosPodService) generateChaosPodSpec(targetNodeName string, terminatio
 						MountPath: "/boot",
 						ReadOnly:  true,
 					},
+					{
+						// /sys/kernel/debug/tracing doesn't exist in the container rootfs so
+						// runc cannot create the bind-mount target there. Mount under /mnt
+						// where the directory can be created by the container runtime.
+						Name:      "tracefs",
+						MountPath: "/mnt/tracefs",
+					},
 				},
 			},
 		},
@@ -648,6 +655,18 @@ func (m *chaosPodService) generateChaosPodSpec(targetNodeName string, terminatio
 				VolumeSource: corev1.VolumeSource{
 					HostPath: &corev1.HostPathVolumeSource{
 						Path: "/boot",
+						Type: &hostPathDirectory,
+					},
+				},
+			},
+			{
+				// tracefs is required for bpf_trace_printk() output to reach the pod's
+				// stdout via TracePipeListen(). Without this mount the trace pipe open
+				// fails silently and no bpf_trace_printk log lines appear in kubectl logs.
+				Name: "tracefs",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/sys/kernel/debug/tracing",
 						Type: &hostPathDirectory,
 					},
 				},

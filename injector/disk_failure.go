@@ -82,10 +82,6 @@ func (i *DiskFailureInjector) Inject() error {
 		return fmt.Errorf("the disk failure needs the perf event array map type, but the current kernel does not support this type of map")
 	}
 
-	if !mapTypes.HaveCgroupArrayMapType {
-		return fmt.Errorf("the disk failure needs the cgroup array map type, but the current kernel does not support this type of map")
-	}
-
 	pid := 0
 	cgroupPath := ""
 
@@ -94,6 +90,25 @@ func (i *DiskFailureInjector) Inject() error {
 
 		if i.config.Cgroup != nil {
 			cgroupPath = i.config.Cgroup.CgroupV2Path()
+		}
+	}
+
+	// cgroupv2 filter is optional: only required when a cgroup path is available.
+	// On cgroupv1 clusters (or when the path can't be resolved) we fall back to the
+	// PID-based filter which covers direct children of the container init process.
+	if cgroupPath != "" && !mapTypes.HaveCgroupArrayMapType {
+		return fmt.Errorf("cgroupv2 filter requested but kernel lacks BPF_MAP_TYPE_CGROUP_ARRAY support")
+	}
+
+	// Verify the cgroup path is actually accessible before passing it to the eBPF
+	// program. If not (e.g. the container restarted and the old cgroup directory is
+	// gone), fall back to PID-based filtering rather than loading a stale FD into
+	// BPF_MAP_TYPE_CGROUP_ARRAY, which would silently filter nothing.
+	if cgroupPath != "" {
+		var cgroupStat syscall.Stat_t
+		if err := syscall.Stat(cgroupPath, &cgroupStat); err != nil {
+			i.config.Log.Warnw("cgroupv2 path not accessible, falling back to PID filter", "cgroupPath", cgroupPath, "pid", pid)
+			cgroupPath = ""
 		}
 	}
 
@@ -150,6 +165,8 @@ func (i *DiskFailureInjector) Inject() error {
 		}
 
 		args = append(args, "-probability", strings.TrimSuffix(i.spec.Probability, "%"))
+
+		i.config.Log.Infow("starting bpf-disk-failure", "path", path, "pid", pid, "cgroupPath", cgroupPath, "exitCode", exitCode, "args", args)
 
 		cmd := i.config.CmdFactory.NewCmd(context.Background(), EBPFDiskFailureCmd, args)
 

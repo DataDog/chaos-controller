@@ -43,8 +43,10 @@ unsigned int disruptedHits = 0;
 
 struct data_t {
     u32 ppid;
-    u32 pid;
+    // tid is the kernel thread ID (what userspace calls TID via gettid()).
+    // tgid is the kernel thread-group ID (what userspace calls PID via getpid()).
     u32 tid;
+    u32 tgid;
     u32 id;
     char comm[100];
 };
@@ -127,12 +129,13 @@ static int check_relative_path(int dirfd, const char *rel_path)
 
 // do_filter_by_process returns 1 if the current process should be excluded (filtered out),
 // 0 if it should be disrupted.
-static __always_inline int do_filter_by_process(u32 pid, u32 ppid)
+// tgid is the kernel TGID (== userspace PID from getpid()); ppid is the parent's TGID.
+static __always_inline int do_filter_by_process(u32 tgid, u32 ppid)
 {
     if (use_cgroup_filter) {
         return bpf_current_task_under_cgroup(&target_cgroup, 0) != 1 ? 1 : 0;
     } else if (target_pid != 0) {
-        return (ppid != target_pid && pid != target_pid) ? 1 : 0;
+        return (ppid != target_pid && tgid != target_pid) ? 1 : 0;
     }
     return 0;
 }
@@ -159,14 +162,19 @@ int injection_disk_failure(struct pt_regs *ctx)
     struct data_t data = {};
 
     u32 ppid = 0;
-    u32 pid = bpf_get_current_pid_tgid();
-    if (pid == exclude_pid) {
+    // bpf_get_current_pid_tgid() returns (tgid << 32 | tid).
+    // Lower 32 bits = kernel TID (thread ID); upper 32 bits = kernel TGID (process ID).
+    u64 pid_tgid = bpf_get_current_pid_tgid();
+    u32 tid = (u32)pid_tgid;            // kernel TID  == userspace TID (gettid)
+    u32 tgid = (u32)(pid_tgid >> 32);  // kernel TGID == userspace PID (getpid)
+    // Exclude the bpf-disk-failure binary itself (and all its threads) to prevent
+    // the injector from disrupting its own file operations.
+    if (tgid == exclude_pid) {
         return 0;
     }
-    u32 tid = bpf_get_current_pid_tgid() >> 32;
     u32 gid = bpf_get_current_uid_gid();
 
-    if (pid != 1) {
+    if (tgid != 1) {
         // Get parent pid (needed for cgroupv1 PID filter and exclude_pid check below)
         struct task_struct *task;
         struct task_struct *real_parent;
@@ -175,9 +183,9 @@ int injection_disk_failure(struct pt_regs *ctx)
         bpf_probe_read(&ppid, sizeof(ppid), &real_parent->tgid);
     }
 
-    if (do_filter_by_process(pid, ppid)) return 0;
+    if (do_filter_by_process(tgid, ppid)) return 0;
 
-    if (ppid == exclude_pid || tid == exclude_pid) {
+    if (ppid == exclude_pid || tgid == exclude_pid) {
         return 0;
     }
 
@@ -212,8 +220,8 @@ int injection_disk_failure(struct pt_regs *ctx)
     if (do_probability_check()) return 0;
 
     data.ppid = ppid;
-    data.pid = pid;
     data.tid = tid;
+    data.tgid = tgid;
     data.id = gid;
 
     // Get command name
@@ -222,8 +230,14 @@ int injection_disk_failure(struct pt_regs *ctx)
     // Add the event to the ring buffer
     bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &data, 100);
 
-    // Override return of process with an -ENOENT error.
+    // Override return of process with the configured error code.
+    // bpf_override_return requires CONFIG_BPF_KPROBE_OVERRIDE=y and the probed
+    // function must have ALLOW_ERROR_INJECTION in kernel source.
     bpf_override_return(ctx, -exit_code);
+    // Confirmation trace visible via /sys/kernel/debug/tracing/trace_pipe.
+    // If this line appears in the trace but the target process can still open the
+    // file, bpf_override_return is silently failing (ALLOW_ERROR_INJECTION missing).
+    printt("disk-failure: disrupted tgid=%d rc=-%d\n", tgid, (int)exit_code);
 
     return 0;
 }

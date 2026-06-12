@@ -120,7 +120,7 @@ var _ = Describe("Disk Failure", func() {
 				})
 			})
 
-			When("the bpf map type cgroup array is not supported", func() {
+			When("the bpf map type cgroup array is not supported but cgroupv2 path is requested", func() {
 				BeforeEach(func() {
 					BPFConfigInformerMock = ebpf.NewConfigInformerMock(GinkgoT())
 					BPFConfigInformerMock.EXPECT().ValidateRequiredSystemConfig().Return(nil).Once()
@@ -129,11 +129,16 @@ var _ = Describe("Disk Failure", func() {
 						HaveCgroupArrayMapType:    false,
 					})
 					config.BPFConfigInformer = BPFConfigInformerMock
+					// cgroupv2 path is needed to trigger the cgroup array map requirement
+					config.Disruption.Level = types.DisruptionLevelPod
+					containerMock.EXPECT().PID().Return(PID).Once()
+					cgroupManagerMock.EXPECT().CgroupV2Path().Return(GinkgoT().TempDir()).Once()
+					config.Config.Cgroup = cgroupManagerMock
 				})
 
 				It("should return an error", func() {
 					Expect(err).Should(HaveOccurred())
-					Expect(err).To(MatchError("the disk failure needs the cgroup array map type, but the current kernel does not support this type of map"))
+					Expect(err).To(MatchError("cgroupv2 filter requested but kernel lacks BPF_MAP_TYPE_CGROUP_ARRAY support"))
 				})
 			})
 		})
@@ -227,9 +232,11 @@ var _ = Describe("Disk Failure", func() {
 				})
 
 				Context("with cgroupv2 enabled", func() {
-					const cgroupPathValue = "/sys/fs/cgroup/kubepods/pod123/container456"
+					var cgroupPathValue string
 
 					BeforeEach(func() {
+						// Use a real directory so the syscall.Stat existence check passes.
+						cgroupPathValue = GinkgoT().TempDir()
 						cgroupManagerMock.EXPECT().CgroupV2Path().Return(cgroupPathValue).Once()
 						config.Config.Cgroup = cgroupManagerMock
 					})
@@ -253,6 +260,23 @@ var _ = Describe("Disk Failure", func() {
 					})
 
 					It("should not pass -cgroup-path flag", func() {
+						Expect(err).ShouldNot(HaveOccurred())
+
+						cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
+							"-process", strconv.Itoa(proc.Pid),
+							"-path", "/",
+							"-probability", "100",
+						})
+					})
+				})
+
+				Context("with a stale cgroupv2 path (directory no longer exists)", func() {
+					BeforeEach(func() {
+						cgroupManagerMock.EXPECT().CgroupV2Path().Return("/nonexistent/cgroup/path").Once()
+						config.Config.Cgroup = cgroupManagerMock
+					})
+
+					It("should fall back to PID-based filter without -cgroup-path", func() {
 						Expect(err).ShouldNot(HaveOccurred())
 
 						cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
