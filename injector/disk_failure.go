@@ -8,8 +8,10 @@ package injector
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/command"
@@ -29,6 +31,9 @@ type DiskFailureInjectorConfig struct {
 	CmdFactory        command.Factory
 	ProcessManager    process.Manager
 	BPFConfigInformer ebpf.ConfigInformer
+	// ProcRoot is the root of the proc filesystem used to resolve container paths
+	// (default "/proc"). Override in tests to avoid host-dependent /proc reads.
+	ProcRoot string
 }
 
 const EBPFDiskFailureCmd = "bpf-disk-failure"
@@ -71,13 +76,25 @@ func (i *DiskFailureInjector) Inject() error {
 		return fmt.Errorf("the disk failure needs a kernel supporting eBPF programs: %w", err)
 	}
 
-	if !i.config.BPFConfigInformer.GetMapTypes().HavePerfEventArrayMapType {
+	mapTypes := i.config.BPFConfigInformer.GetMapTypes()
+
+	if !mapTypes.HavePerfEventArrayMapType {
 		return fmt.Errorf("the disk failure needs the perf event array map type, but the current kernel does not support this type of map")
 	}
 
+	if !mapTypes.HaveCgroupArrayMapType {
+		return fmt.Errorf("the disk failure needs the cgroup array map type, but the current kernel does not support this type of map")
+	}
+
 	pid := 0
+	cgroupPath := ""
+
 	if i.config.Disruption.Level == types.DisruptionLevelPod {
 		pid = int(i.config.TargetContainer.PID())
+
+		if i.config.Cgroup != nil {
+			cgroupPath = i.config.Cgroup.CgroupV2Path()
+		}
 	}
 
 	exitCode := 0
@@ -88,6 +105,41 @@ func (i *DiskFailureInjector) Inject() error {
 
 	for _, path := range i.spec.Paths {
 		args := []string{"-process", strconv.Itoa(pid)}
+
+		if cgroupPath != "" {
+			args = append(args, "-cgroup-path", cgroupPath)
+		}
+
+		// Resolve the filter directory's inode so the eBPF program can handle relative
+		// paths (e.g. "cd /mnt/data && cat disk-read-file"). We stat the directory inside
+		// the target container's filesystem via <procRoot>/<pid>/root/<dir>.
+		if pid != 0 && path != "" {
+			procRoot := i.config.ProcRoot
+			if procRoot == "" {
+				procRoot = "/proc"
+			}
+
+			// Always pass the parent directory inode for the basename-prefix check
+			// (e.g. "cwd=/parent && openat(AT_FDCWD, 'dir/file')").
+			parentPath := filepath.Dir(path)
+			containerParentPath := fmt.Sprintf("%s/%d/root%s", procRoot, pid, parentPath)
+
+			var stParent syscall.Stat_t
+			if err := syscall.Stat(containerParentPath, &stParent); err == nil {
+				args = append(args, "-filter-dir-inode", strconv.FormatUint(stParent.Ino, 10))
+				args = append(args, "-filter-dir-dev", strconv.FormatUint(uint64(devToKernel(&stParent)), 10))
+			}
+
+			// When path is itself a directory, also pass its own inode for the exact-CWD
+			// check (e.g. "cwd=/mnt/data && openat(AT_FDCWD, 'file')").
+			containerPath := fmt.Sprintf("%s/%d/root%s", procRoot, pid, path)
+
+			var stPath syscall.Stat_t
+			if err := syscall.Stat(containerPath, &stPath); err == nil && (stPath.Mode&syscall.S_IFMT) == syscall.S_IFDIR {
+				args = append(args, "-filter-dir-inode2", strconv.FormatUint(stPath.Ino, 10))
+				args = append(args, "-filter-dir-dev2", strconv.FormatUint(uint64(devToKernel(&stPath)), 10))
+			}
+		}
 
 		if path != "" {
 			args = append(args, "-path", path)

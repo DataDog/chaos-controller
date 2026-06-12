@@ -30,6 +30,10 @@ type Manager interface {
 	IsCgroupV2() bool
 	// RelativePath returns the controller relative path
 	RelativePath(controller string) string
+	// CgroupV2Path returns the absolute cgroupv2 unified hierarchy path for the cgroup,
+	// or empty string on cgroupv1. Used to populate BPF_MAP_TYPE_CGROUP_ARRAY for
+	// bpf_current_task_under_cgroup() ancestor checking (covers kubectl exec sub-cgroups).
+	CgroupV2Path() string
 }
 
 type instCGroupManager interface {
@@ -130,4 +134,13 @@ func (m manager) IsCgroupV2() bool {
 // RelativePath returns the cgroup relative path (without the mount path)
 func (m manager) RelativePath(controller string) string {
 	return strings.TrimPrefix(m.cgroups.Path(controller), m.mountPath)
+}
+
+// CgroupV2Path returns the absolute cgroupv2 unified hierarchy path, or "" on cgroupv1.
+func (m manager) CgroupV2Path() string {
+	if !m.isV2 {
+		return ""
+	}
+
+	return m.cgroups.Path("")
 }

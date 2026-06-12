@@ -25,6 +25,51 @@ func (_m *ManagerMock) EXPECT() *ManagerMock_Expecter {
 	return &ManagerMock_Expecter{mock: &_m.Mock}
 }
 
+// CgroupV2Path provides a mock function with no fields
+func (_m *ManagerMock) CgroupV2Path() string {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for CgroupV2Path")
+	}
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// ManagerMock_CgroupV2Path_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CgroupV2Path'
+type ManagerMock_CgroupV2Path_Call struct {
+	*mock.Call
+}
+
+// CgroupV2Path is a helper method to define mock.On call
+func (_e *ManagerMock_Expecter) CgroupV2Path() *ManagerMock_CgroupV2Path_Call {
+	return &ManagerMock_CgroupV2Path_Call{Call: _e.mock.On("CgroupV2Path")}
+}
+
+func (_c *ManagerMock_CgroupV2Path_Call) Run(run func()) *ManagerMock_CgroupV2Path_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *ManagerMock_CgroupV2Path_Call) Return(_a0 string) *ManagerMock_CgroupV2Path_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *ManagerMock_CgroupV2Path_Call) RunAndReturn(run func() string) *ManagerMock_CgroupV2Path_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // IsCgroupV2 provides a mock function with no fields
 func (_m *ManagerMock) IsCgroupV2() bool {
 	ret := _m.Called()
