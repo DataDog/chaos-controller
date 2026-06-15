@@ -8,7 +8,10 @@
 
 package ebpf
 
-// SysOpenat is the kprobe target for disk-failure disruption.
-// __x64_sys_openat is tagged ALLOW_ERROR_INJECTION, which is required for
-// bpf_override_return to override the syscall return value.
-const SysOpenat = "__x64_sys_openat"
+// SysOpenat is unused on x86_64 (fmod_ret attachment uses the SEC annotation).
+const SysOpenat = ""
+
+// UseKprobe is false on x86_64: kprobes are [FTRACE]-based and bpf_override_return
+// silently fails. Use fmod_ret + AttachGeneric instead.
+const UseKprobe = false
+

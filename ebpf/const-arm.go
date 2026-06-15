@@ -8,7 +8,10 @@
 
 package ebpf
 
-// SysOpenat is the kprobe target for disk-failure disruption.
-// __arm64_sys_openat is tagged ALLOW_ERROR_INJECTION, which is required for
-// bpf_override_return to override the syscall return value.
+// SysOpenat is the kprobe target on ARM64. Kprobes on __arm64_sys_openat use
+// the traditional int3 mechanism (not [FTRACE]), so bpf_override_return works.
 const SysOpenat = "__arm64_sys_openat"
+
+// UseKprobe tells main.go to attach via AttachKprobe instead of AttachGeneric.
+const UseKprobe = true
+

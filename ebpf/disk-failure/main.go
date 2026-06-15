@@ -86,9 +86,17 @@ func main() {
 	prog, err := bpfModule.GetProgram("injection_disk_failure")
 	must(err)
 
-	// Attach the kprobe to the arch-specific openat syscall wrapper.
-	// The arch wrapper is tagged ALLOW_ERROR_INJECTION so bpf_override_return works.
-	_, err = prog.AttachKprobe(ebpf.SysOpenat)
+	// Attach the BPF program using the appropriate mechanism for this architecture:
+	// - x86_64: fmod_ret via AttachGeneric. Kprobes on __x64_sys_openat are
+	//   [FTRACE]-based and bpf_override_return silently fails through ftrace.
+	//   fmod_ret fires correctly via the ftrace trampoline.
+	// - ARM64: kprobe via AttachKprobe. Kprobes on __arm64_sys_openat use the
+	//   traditional int3 mechanism (not [FTRACE]), so bpf_override_return works.
+	if ebpf.UseKprobe {
+		_, err = prog.AttachKprobe(ebpf.SysOpenat)
+	} else {
+		_, err = prog.AttachGeneric()
+	}
 	must(err)
 
 	// Create the ring buffer to store events

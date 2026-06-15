@@ -112,7 +112,7 @@ static int check_relative_path(int dirfd, const char *rel_path)
     bpf_probe_read_kernel(&dev, sizeof(dev), &sb_ptr->s_dev);
 
     char rel_buf[62] = {};
-    bpf_probe_read(rel_buf, sizeof(rel_buf) - 1, rel_path);
+    bpf_probe_read_user(rel_buf, sizeof(rel_buf) - 1, rel_path);
 
     // Check 1: parent inode + basename prefix.
     if (filter_dir_inode != 0 && ino == filter_dir_inode &&
@@ -156,7 +156,18 @@ static __always_inline int do_probability_check()
     return 0;
 }
 
-SEC("kprobe/sys_openat")
+// On x86_64, kprobes on __x64_sys_openat are ftrace-based ([FTRACE] in
+// /sys/kernel/debug/kprobes/list), which causes bpf_override_return to fail
+// silently. Use fmod_ret instead: it fires via the ftrace trampoline and its
+// return value directly overrides the kernel function's return.
+//
+// On ARM64, kprobes on __arm64_sys_openat are NOT ftrace-based, so the
+// traditional kprobe + bpf_override_return approach works correctly.
+#if defined(__TARGET_ARCH_x86)
+SEC("fmod_ret/__x64_sys_openat")
+#elif defined(__TARGET_ARCH_arm64)
+SEC("kprobe/__arm64_sys_openat")
+#endif
 int injection_disk_failure(struct pt_regs *ctx)
 {
     struct data_t data = {};
@@ -192,13 +203,22 @@ int injection_disk_failure(struct pt_regs *ctx)
 // Exclude this part of code if the following variables are not defined.
 // It allows the go program to compile without error.
 #if defined(__TARGET_ARCH_arm64) || defined(__TARGET_ARCH_x86)
-    // __x64_sys_openat / __arm64_sys_openat wrap the inner syscall args in a
-    // pt_regs struct passed as PARM1. Read dirfd and path from the inner regs.
+# if defined(__TARGET_ARCH_x86)
+    // fmod_ret on x86: ctx IS the struct pt_regs* argument of __x64_sys_openat
+    // (the saved user-space register state). No inner regs indirection needed.
+    int dirfd = (int)(long)PT_REGS_PARM1_CORE(ctx);
+    char *path = (char *)PT_REGS_PARM2_CORE(ctx);
+    char cmp_path_name[62];
+    bpf_probe_read_user(&cmp_path_name, sizeof(cmp_path_name), path);
+# elif defined(__TARGET_ARCH_arm64)
+    // kprobe on arm64: ctx is the CPU pt_regs at function entry. The first
+    // argument to __arm64_sys_openat (the saved user pt_regs) is in PARM1.
     struct pt_regs *inner_regs = (struct pt_regs *)PT_REGS_PARM1(ctx);
     int dirfd = (int)(long)PT_REGS_PARM1_CORE(inner_regs);
     char *path = (char *)PT_REGS_PARM2_CORE(inner_regs);
     char cmp_path_name[62];
     bpf_probe_read(&cmp_path_name, sizeof(cmp_path_name), path);
+# endif
 
     if (cmp_path_name[0] == '/') {
         // Absolute path: compare raw path argument against filter prefix directly.
@@ -230,14 +250,14 @@ int injection_disk_failure(struct pt_regs *ctx)
     // Add the event to the ring buffer
     bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &data, 100);
 
-    // Override return of process with the configured error code.
-    // bpf_override_return requires CONFIG_BPF_KPROBE_OVERRIDE=y and the probed
-    // function must have ALLOW_ERROR_INJECTION in kernel source.
-    bpf_override_return(ctx, -exit_code);
-    // Confirmation trace visible via /sys/kernel/debug/tracing/trace_pipe.
-    // If this line appears in the trace but the target process can still open the
-    // file, bpf_override_return is silently failing (ALLOW_ERROR_INJECTION missing).
     printt("disk-failure: disrupted tgid=%d rc=-%d\n", tgid, (int)exit_code);
 
+#if defined(__TARGET_ARCH_x86)
+    // fmod_ret: return non-zero to override the function's return value directly.
+    return -(int)exit_code;
+#elif defined(__TARGET_ARCH_arm64)
+    // kprobe: use bpf_override_return to inject the error code.
+    bpf_override_return(ctx, -exit_code);
     return 0;
+#endif
 }
