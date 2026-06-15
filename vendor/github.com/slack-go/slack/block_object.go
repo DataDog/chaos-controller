@@ -11,7 +11,6 @@ import (
 
 // BlockObject defines an interface that all block object types should
 // implement.
-// @TODO: Is this interface needed?
 
 // blockObject object types
 const (
@@ -47,7 +46,7 @@ func (b *BlockObjects) UnmarshalJSON(data []byte) error {
 	}
 
 	for _, r := range raw {
-		var obj map[string]interface{}
+		var obj map[string]any
 		err := json.Unmarshal(r, &obj)
 		if err != nil {
 			return err
@@ -90,7 +89,7 @@ func (b *BlockObjects) UnmarshalJSON(data []byte) error {
 // Ideally would have a better way to identify the block objects for
 // type casting at time of unmarshalling, should be adapted if possible
 // to accomplish in a more reliable manner.
-func getBlockObjectType(obj map[string]interface{}) string {
+func getBlockObjectType(obj map[string]any) string {
 	if t, ok := obj["type"].(string); ok {
 		return t
 	}
