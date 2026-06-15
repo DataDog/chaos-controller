@@ -85,7 +85,7 @@ FROM gcr.io/distroless/python3-debian13:latest
 ARG TARGETARCH
 
 # binaries used by the chaos-injector, ran as commmands
-COPY --from=binaries /usr/bin/uname /usr/bin/df /usr/bin/ls /usr/bin/test /usr/bin/
+COPY --from=binaries /usr/bin/uname /usr/bin/cat /usr/bin/df /usr/bin/ls /usr/bin/test /usr/bin/
 COPY --from=binaries /usr/sbin/iptables /usr/sbin/
 COPY --from=binaries /usr/sbin/tc /sbin/tc
 COPY --from=binaries /usr/bin/bpftool-${TARGETARCH} /usr/bin/bpftool
