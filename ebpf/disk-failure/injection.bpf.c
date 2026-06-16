@@ -81,38 +81,69 @@ static __always_inline int check_basename_prefix(const char *rel_buf)
     return 1;
 }
 
-// check_relative_path returns 1 if a relative openat (dirfd == AT_FDCWD) should
-// be disrupted by matching the process CWD inode against filter_dir_inode(2).
-// Using inodes works inside containers because Kubernetes volumes are bind-mounted:
-// the host inode and the in-container inode are identical.
+// check_relative_path returns 1 if a relative openat should be disrupted.
+// Handles both AT_FDCWD (match against CWD inode) and explicit dirfd (match
+// against the inode of the directory the fd points to). Using inodes works
+// inside containers because Kubernetes volumes are bind-mounted: the host inode
+// and the in-container inode are identical.
 static int check_relative_path(int dirfd, const char *rel_path)
 {
-    if (dirfd != AT_FDCWD) return 0;
     if (filter_dir_inode == 0 && filter_dir_inode2 == 0) return 0;
 
-    struct task_struct *task = (struct task_struct *)bpf_get_current_task();
-    struct fs_struct *fs_ptr;
-    bpf_probe_read_kernel(&fs_ptr, sizeof(fs_ptr), &task->fs);
-    struct path pwd;
-    bpf_probe_read_kernel(&pwd, sizeof(pwd), &fs_ptr->pwd);
-    struct inode *inode_ptr;
-    bpf_probe_read_kernel(&inode_ptr, sizeof(inode_ptr), &pwd.dentry->d_inode);
     u64 ino = 0;
-    bpf_probe_read_kernel(&ino, sizeof(ino), &inode_ptr->i_ino);
-    struct super_block *sb_ptr = NULL;
-    bpf_probe_read_kernel(&sb_ptr, sizeof(sb_ptr), &inode_ptr->i_sb);
     u32 dev = 0;
-    bpf_probe_read_kernel(&dev, sizeof(dev), &sb_ptr->s_dev);
+
+    if (dirfd == AT_FDCWD) {
+        struct task_struct *task = (struct task_struct *)bpf_get_current_task();
+        struct fs_struct *fs_ptr;
+        bpf_probe_read_kernel(&fs_ptr, sizeof(fs_ptr), &task->fs);
+        struct path pwd;
+        bpf_probe_read_kernel(&pwd, sizeof(pwd), &fs_ptr->pwd);
+        struct inode *inode_ptr;
+        bpf_probe_read_kernel(&inode_ptr, sizeof(inode_ptr), &pwd.dentry->d_inode);
+        bpf_probe_read_kernel(&ino, sizeof(ino), &inode_ptr->i_ino);
+        struct super_block *sb_ptr = NULL;
+        bpf_probe_read_kernel(&sb_ptr, sizeof(sb_ptr), &inode_ptr->i_sb);
+        bpf_probe_read_kernel(&dev, sizeof(dev), &sb_ptr->s_dev);
+    } else if (dirfd >= 0) {
+        // Look up the inode of the directory referenced by the explicit dirfd.
+        u32 ufd = (u32)dirfd;
+        if (ufd >= 1024) return 0;
+
+        struct task_struct *task = (struct task_struct *)bpf_get_current_task();
+        struct files_struct *files_ptr;
+        bpf_probe_read_kernel(&files_ptr, sizeof(files_ptr), &task->files);
+        if (!files_ptr) return 0;
+        struct fdtable *fdt_ptr;
+        bpf_probe_read_kernel(&fdt_ptr, sizeof(fdt_ptr), &files_ptr->fdt);
+        if (!fdt_ptr) return 0;
+        struct file **fd_arr;
+        bpf_probe_read_kernel(&fd_arr, sizeof(fd_arr), &fdt_ptr->fd);
+        if (!fd_arr) return 0;
+        struct file *f = NULL;
+        bpf_probe_read_kernel(&f, sizeof(f), (void *)((__u64)fd_arr + (__u64)ufd * sizeof(struct file *)));
+        if (!f) return 0;
+        struct inode *inode_ptr;
+        bpf_probe_read_kernel(&inode_ptr, sizeof(inode_ptr), &f->f_inode);
+        if (!inode_ptr) return 0;
+        bpf_probe_read_kernel(&ino, sizeof(ino), &inode_ptr->i_ino);
+        struct super_block *sb_ptr = NULL;
+        bpf_probe_read_kernel(&sb_ptr, sizeof(sb_ptr), &inode_ptr->i_sb);
+        if (!sb_ptr) return 0;
+        bpf_probe_read_kernel(&dev, sizeof(dev), &sb_ptr->s_dev);
+    } else {
+        return 0;
+    }
 
     char rel_buf[62] = {};
     bpf_probe_read_user(rel_buf, sizeof(rel_buf) - 1, rel_path);
 
-    // Check 1: CWD == parent of filter_path AND rel_path starts with its basename.
+    // Check 1: dir == parent of filter_path AND rel_path starts with its basename.
     if (filter_dir_inode != 0 && ino == filter_dir_inode &&
         (filter_dir_dev == 0 || dev == filter_dir_dev) &&
         check_basename_prefix(rel_buf)) return 1;
 
-    // Check 2: CWD == filter_path itself (directory target) AND rel_path doesn't escape.
+    // Check 2: dir == filter_path itself (directory target) AND rel_path doesn't escape.
     if (filter_dir_inode2 != 0 && ino == filter_dir_inode2 &&
         (filter_dir_dev2 == 0 || dev == filter_dir_dev2) &&
         !(rel_buf[0] == '.' && rel_buf[1] == '.')) return 1;
