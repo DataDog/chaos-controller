@@ -189,7 +189,7 @@ int injection_disk_failure(struct pt_regs *ctx)
     // Read openat arguments from inner pt_regs. Both __arm64_sys_openat and
     // __x64_sys_openat wrap syscall args in a (const struct pt_regs *) passed
     // as their only argument, so PARM1(ctx) is the inner regs pointer.
-    struct pt_regs *inner_regs = (struct pt_regs *)PT_REGS_PARM1(ctx);
+    struct pt_regs *inner_regs = (struct pt_regs *)(unsigned long)PT_REGS_PARM1_CORE(ctx);
     int dirfd = (int)(long)PT_REGS_PARM1_CORE(inner_regs);
     const char *path = (const char *)PT_REGS_PARM2_CORE(inner_regs);
 
