@@ -88,17 +88,10 @@ static __always_inline int do_probability_check()
     return 0;
 }
 
-// On x86_64, kprobes on __x64_sys_openat are ftrace-based ([FTRACE] in
-// /sys/kernel/debug/kprobes/list), which causes bpf_override_return to fail
-// silently. Use fmod_ret instead: it fires via the ftrace trampoline and its
-// return value directly overrides the kernel function's return.
-//
-// On ARM64, kprobes on __arm64_sys_openat are NOT ftrace-based, so the
-// traditional kprobe + bpf_override_return approach works correctly.
-#if defined(__TARGET_ARCH_x86)
-SEC("fmod_ret/__x64_sys_openat")
-#elif defined(__TARGET_ARCH_arm64)
+#if defined(__TARGET_ARCH_arm64)
 SEC("kprobe/__arm64_sys_openat")
+#else
+SEC("kprobe/__x64_sys_openat")
 #endif
 int injection_disk_failure(struct pt_regs *ctx)
 {
@@ -150,12 +143,6 @@ int injection_disk_failure(struct pt_regs *ctx)
 
     printt("disk-failure: disrupted tgid=%d rc=-%d\n", tgid, (int)exit_code);
 
-#if defined(__TARGET_ARCH_x86)
-    // fmod_ret: return non-zero to override the function's return value directly.
-    return -(int)exit_code;
-#elif defined(__TARGET_ARCH_arm64)
-    // kprobe: use bpf_override_return to inject the error code.
     bpf_override_return(ctx, -exit_code);
     return 0;
-#endif
 }
