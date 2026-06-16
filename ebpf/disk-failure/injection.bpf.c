@@ -58,6 +58,67 @@ struct {
     __type(value, u32);
 } events SEC(".maps");
 
+// AT_FDCWD sentinel: openat resolves relative paths against CWD only when
+// this value is passed as dirfd.
+#ifndef AT_FDCWD
+#define AT_FDCWD -100
+#endif
+
+// check_basename_prefix returns 1 if rel_buf starts with the basename of filter_path.
+static __always_inline int check_basename_prefix(const char *rel_buf)
+{
+    int last_slash = 0;
+    for (int i = 0; i < 60; i++) {
+        if (filter_path[i] == '\0') break;
+        if (filter_path[i] == '/') last_slash = i;
+    }
+    for (int i = 0; i < 60; i++) {
+        int fi = last_slash + 1 + i;
+        if (fi >= 61) break;
+        if (filter_path[fi & 0x3f] == '\0') break;
+        if (rel_buf[i] != filter_path[fi & 0x3f]) return 0;
+    }
+    return 1;
+}
+
+// check_relative_path returns 1 if a relative openat (dirfd == AT_FDCWD) should
+// be disrupted by matching the process CWD inode against filter_dir_inode(2).
+// Using inodes works inside containers because Kubernetes volumes are bind-mounted:
+// the host inode and the in-container inode are identical.
+static int check_relative_path(int dirfd, const char *rel_path)
+{
+    if (dirfd != AT_FDCWD) return 0;
+    if (filter_dir_inode == 0 && filter_dir_inode2 == 0) return 0;
+
+    struct task_struct *task = (struct task_struct *)bpf_get_current_task();
+    struct fs_struct *fs_ptr;
+    bpf_probe_read_kernel(&fs_ptr, sizeof(fs_ptr), &task->fs);
+    struct path pwd;
+    bpf_probe_read_kernel(&pwd, sizeof(pwd), &fs_ptr->pwd);
+    struct inode *inode_ptr;
+    bpf_probe_read_kernel(&inode_ptr, sizeof(inode_ptr), &pwd.dentry->d_inode);
+    u64 ino = 0;
+    bpf_probe_read_kernel(&ino, sizeof(ino), &inode_ptr->i_ino);
+    struct super_block *sb_ptr = NULL;
+    bpf_probe_read_kernel(&sb_ptr, sizeof(sb_ptr), &inode_ptr->i_sb);
+    u32 dev = 0;
+    bpf_probe_read_kernel(&dev, sizeof(dev), &sb_ptr->s_dev);
+
+    char rel_buf[62] = {};
+    bpf_probe_read_user(rel_buf, sizeof(rel_buf) - 1, rel_path);
+
+    // Check 1: CWD == parent of filter_path AND rel_path starts with its basename.
+    if (filter_dir_inode != 0 && ino == filter_dir_inode &&
+        (filter_dir_dev == 0 || dev == filter_dir_dev) &&
+        check_basename_prefix(rel_buf)) return 1;
+
+    // Check 2: CWD == filter_path itself (directory target) AND rel_path doesn't escape.
+    if (filter_dir_inode2 != 0 && ino == filter_dir_inode2 &&
+        (filter_dir_dev2 == 0 || dev == filter_dir_dev2) &&
+        !(rel_buf[0] == '.' && rel_buf[1] == '.')) return 1;
+
+    return 0;
+}
 
 // do_filter_by_process returns 1 if the current process should be excluded (filtered out),
 // 0 if it should be disrupted.
@@ -125,8 +186,28 @@ int injection_disk_failure(struct pt_regs *ctx)
         return 0;
     }
 
-    // TODO: path filtering temporarily removed to verify that bpf_override_return
-    // works on the target ARM64 kernels before re-adding argument parsing.
+    // Read openat arguments from inner pt_regs. Both __arm64_sys_openat and
+    // __x64_sys_openat wrap syscall args in a (const struct pt_regs *) passed
+    // as their only argument, so PARM1(ctx) is the inner regs pointer.
+    struct pt_regs *inner_regs = (struct pt_regs *)PT_REGS_PARM1(ctx);
+    int dirfd = (int)(long)PT_REGS_PARM1_CORE(inner_regs);
+    const char *path = (const char *)PT_REGS_PARM2_CORE(inner_regs);
+
+    char cmp_path_name[62];
+    bpf_probe_read_user(cmp_path_name, sizeof(cmp_path_name), path);
+
+    if (cmp_path_name[0] == '/') {
+        char cmp_expected_path[62];
+        bpf_probe_read(cmp_expected_path, sizeof(cmp_expected_path), (const void *)filter_path);
+        int filter_len = (int)(sizeof(filter_path) / sizeof(filter_path[0])) - 1;
+        if (filter_len > 62) return 0;
+        for (int i = 0; i < filter_len; ++i) {
+            if (cmp_expected_path[i] == '\0') break;
+            if (cmp_path_name[i] != cmp_expected_path[i]) return 0;
+        }
+    } else {
+        if (!check_relative_path(dirfd, path)) return 0;
+    }
 
     if (do_probability_check()) return 0;
 
