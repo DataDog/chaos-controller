@@ -89,9 +89,9 @@ static __always_inline int do_probability_check()
 }
 
 #if defined(__TARGET_ARCH_arm64)
-SEC("kprobe/__arm64_sys_openat")
+SEC("fmod_ret/__arm64_sys_openat")
 #else
-SEC("kprobe/__x64_sys_openat")
+SEC("fmod_ret/__x64_sys_openat")
 #endif
 int injection_disk_failure(struct pt_regs *ctx)
 {
@@ -143,6 +143,5 @@ int injection_disk_failure(struct pt_regs *ctx)
 
     printt("disk-failure: disrupted tgid=%d rc=-%d\n", tgid, (int)exit_code);
 
-    bpf_override_return(ctx, -exit_code);
-    return 0;
+    return -(int)exit_code;
 }

@@ -19,7 +19,6 @@ import (
 	"syscall"
 	"unsafe"
 
-	"github.com/DataDog/chaos-controller/ebpf"
 	"github.com/DataDog/chaos-controller/log"
 	bpf "github.com/aquasecurity/libbpfgo"
 	"go.uber.org/zap"
@@ -86,7 +85,7 @@ func main() {
 	prog, err := bpfModule.GetProgram("injection_disk_failure")
 	must(err)
 
-	_, err = prog.AttachKprobe(ebpf.SysOpenat())
+	_, err = prog.AttachGeneric()
 	must(err)
 
 	// Create the ring buffer to store events
