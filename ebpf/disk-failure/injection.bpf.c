@@ -184,7 +184,7 @@ static int check_relative_path(int dirfd, const char *rel_path)
     }
 
     char rel_buf[62] = {};
-    bpf_probe_read_user(rel_buf, sizeof(rel_buf) - 1, rel_path);
+    bpf_probe_read(rel_buf, sizeof(rel_buf) - 1, rel_path);
 
     // Track when our dirfd's inode matches the filter inode (regardless of basename)
     // to distinguish "wrong directory" from "right directory but wrong filename".
@@ -361,7 +361,7 @@ int injection_disk_failure(struct pt_regs *ctx)
     const char *path = (const char *)PT_REGS_PARM2_CORE(inner_regs);
 
     char cmp_path_name[62];
-    bpf_probe_read_user(cmp_path_name, sizeof(cmp_path_name), path);
+    bpf_probe_read(cmp_path_name, sizeof(cmp_path_name), path);
 
     if (cmp_path_name[0] == '/') {
         char cmp_expected_path[62];
