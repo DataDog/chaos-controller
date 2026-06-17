@@ -41,20 +41,26 @@ struct {
 // 3: rel path, inode matched (disrupted); 4: rel path, inode missed;
 // 5: rel path, dirfd inode == filter_dir_inode but basename mismatch;
 // 6: rel path, fdtable lookup returned null fd (silent drop).
+// 7: cgroup filter returned 1 (in cgroup);
+// 8: cgroup filter returned 0 (not in cgroup — PID fallback applied);
+// 9: cgroup filter returned error (negative — PID fallback applied).
 struct {
     __uint(type, BPF_MAP_TYPE_ARRAY);
-    __uint(max_entries, 8);
+    __uint(max_entries, 12);
     __type(key, u32);
     __type(value, u64);
 } debug_counters SEC(".maps");
 
-#define DBG_ABS_HIT       0
-#define DBG_ABS_MISS      1
-#define DBG_REL_NO_FILTER 2
-#define DBG_REL_HIT       3
-#define DBG_REL_MISS      4
-#define DBG_REL_INO_MATCH 5
-#define DBG_REL_NULL_FD   6
+#define DBG_ABS_HIT        0
+#define DBG_ABS_MISS       1
+#define DBG_REL_NO_FILTER  2
+#define DBG_REL_HIT        3
+#define DBG_REL_MISS       4
+#define DBG_REL_INO_MATCH  5
+#define DBG_REL_NULL_FD    6
+#define DBG_CGROUP_HIT     7
+#define DBG_CGROUP_MISS    8
+#define DBG_CGROUP_ERR     9
 
 static __always_inline void dbg_inc(u32 idx)
 {
@@ -203,7 +209,24 @@ static int check_relative_path(int dirfd, const char *rel_path)
 static __always_inline int do_filter_by_process(u32 tgid, u32 ppid)
 {
     if (use_cgroup_filter) {
-        return bpf_current_task_under_cgroup(&target_cgroup, 0) != 1 ? 1 : 0;
+        int in_cgroup = bpf_current_task_under_cgroup(&target_cgroup, 0);
+        if (in_cgroup == 1) {
+            dbg_inc(DBG_CGROUP_HIT);
+            return 0;  // in cgroup → disrupt
+        }
+        // cgroup filter returned 0 (not in cgroup) or negative (error).
+        // Fall back to PID filter so we still catch processes that are direct
+        // children of the container init (e.g. dd run from container's PID 1
+        // shell) when bpf_current_task_under_cgroup fails on this kernel.
+        if (in_cgroup < 0) {
+            dbg_inc(DBG_CGROUP_ERR);
+        } else {
+            dbg_inc(DBG_CGROUP_MISS);
+        }
+        if (target_pid != 0 && (ppid == target_pid || tgid == target_pid)) {
+            return 0;  // PID fallback matched → disrupt
+        }
+        return 1;  // exclude
     } else if (target_pid != 0) {
         return (ppid != target_pid && tgid != target_pid) ? 1 : 0;
     }

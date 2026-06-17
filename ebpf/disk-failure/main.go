@@ -230,7 +230,7 @@ func logDebugCounters(bpfModule *bpf.Module, log *zap.SugaredLogger) {
 		return
 	}
 
-	names := []string{"abs_hit", "abs_miss", "rel_no_filter", "rel_hit", "rel_miss", "rel_ino_match", "rel_null_fd"}
+	names := []string{"abs_hit", "abs_miss", "rel_no_filter", "rel_hit", "rel_miss", "rel_ino_match", "rel_null_fd", "cgroup_hit", "cgroup_miss", "cgroup_err"}
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
