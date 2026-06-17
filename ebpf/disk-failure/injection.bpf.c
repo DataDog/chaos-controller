@@ -88,7 +88,10 @@ static __always_inline int check_basename_prefix(const char *rel_buf)
 // and the in-container inode are identical.
 static int check_relative_path(int dirfd, const char *rel_path)
 {
-    if (filter_dir_inode == 0 && filter_dir_inode2 == 0) return 0;
+    if (filter_dir_inode == 0 && filter_dir_inode2 == 0) {
+        printt("disk-failure: relpath no-inode-filter dirfd=%d\n", dirfd, 0LL);
+        return 0;
+    }
 
     u64 ino = 0;
     u32 dev = 0;
@@ -138,6 +141,10 @@ static int check_relative_path(int dirfd, const char *rel_path)
     char rel_buf[62] = {};
     bpf_probe_read_user(rel_buf, sizeof(rel_buf) - 1, rel_path);
 
+    // Debug: log inode found vs expected so we can diagnose mismatches.
+    printt("disk-failure: relpath fd=%d found_ino=%llu\n", dirfd, ino);
+    printt("disk-failure: filter_ino=%llu filter_ino2=%llu\n", filter_dir_inode, filter_dir_inode2);
+
     // Check 1: dir == parent of filter_path AND rel_path starts with its basename.
     if (filter_dir_inode != 0 && ino == filter_dir_inode &&
         (filter_dir_dev == 0 || dev == filter_dir_dev) &&
@@ -148,6 +155,7 @@ static int check_relative_path(int dirfd, const char *rel_path)
         (filter_dir_dev2 == 0 || dev == filter_dir_dev2) &&
         !(rel_buf[0] == '.' && rel_buf[1] == '.')) return 1;
 
+    printt("disk-failure: relpath miss ino=%llu dev=%u\n", ino, dev);
     return 0;
 }
 
@@ -232,9 +240,14 @@ int injection_disk_failure(struct pt_regs *ctx)
         bpf_probe_read(cmp_expected_path, sizeof(cmp_expected_path), (const void *)filter_path);
         int filter_len = (int)(sizeof(filter_path) / sizeof(filter_path[0])) - 1;
         if (filter_len > 62) return 0;
+        int abs_match = 1;
         for (int i = 0; i < filter_len; ++i) {
             if (cmp_expected_path[i] == '\0') break;
-            if (cmp_path_name[i] != cmp_expected_path[i]) return 0;
+            if (cmp_path_name[i] != cmp_expected_path[i]) { abs_match = 0; break; }
+        }
+        if (!abs_match) {
+            printt("disk-failure: abs miss path=%s\n", cmp_path_name, 0LL);
+            return 0;
         }
     } else {
         if (!check_relative_path(dirfd, path)) return 0;
