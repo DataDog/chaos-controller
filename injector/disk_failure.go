@@ -125,34 +125,47 @@ func (i *DiskFailureInjector) Inject() error {
 			args = append(args, "-cgroup-path", cgroupPath)
 		}
 
-		// Resolve the filter directory's inode so the eBPF program can handle relative
-		// paths (e.g. "cd /mnt/data && cat disk-read-file"). We stat the directory inside
-		// the target container's filesystem via <procRoot>/<pid>/root/<dir>.
-		if pid != 0 && path != "" {
+		if pid != 0 {
 			procRoot := i.config.ProcRoot
 			if procRoot == "" {
 				procRoot = "/proc"
 			}
 
-			// Always pass the parent directory inode for the basename-prefix check
-			// (e.g. "cwd=/parent && openat(AT_FDCWD, 'dir/file')").
-			parentPath := filepath.Dir(path)
-			containerParentPath := fmt.Sprintf("%s/%d/root%s", procRoot, pid, parentPath)
-
-			var stParent syscall.Stat_t
-			if err := syscall.Stat(containerParentPath, &stParent); err == nil {
-				args = append(args, "-filter-dir-inode", strconv.FormatUint(stParent.Ino, 10))
-				args = append(args, "-filter-dir-dev", strconv.FormatUint(uint64(devToKernel(&stParent)), 10))
+			// Pass the network namespace inode so the BPF program can reliably
+			// identify all container processes — including those started via
+			// kubectl exec, which are not descendants of the container init.
+			netnsPath := fmt.Sprintf("%s/%d/ns/net", procRoot, pid)
+			var netnsStat syscall.Stat_t
+			if err := syscall.Stat(netnsPath, &netnsStat); err == nil {
+				args = append(args, "-netns-ino", strconv.FormatUint(netnsStat.Ino, 10))
+			} else {
+				i.config.Log.Warnw("could not stat netns, netns-based filtering disabled", "netnsPath", netnsPath, "err", err)
 			}
 
-			// When path is itself a directory, also pass its own inode for the exact-CWD
-			// check (e.g. "cwd=/mnt/data && openat(AT_FDCWD, 'file')").
-			containerPath := fmt.Sprintf("%s/%d/root%s", procRoot, pid, path)
+			// Resolve the filter directory's inode so the eBPF program can handle relative
+			// paths (e.g. "cd /mnt/data && cat disk-read-file"). We stat the directory inside
+			// the target container's filesystem via <procRoot>/<pid>/root/<dir>.
+			if path != "" {
+				// Always pass the parent directory inode for the basename-prefix check
+				// (e.g. "cwd=/parent && openat(AT_FDCWD, 'dir/file')").
+				parentPath := filepath.Dir(path)
+				containerParentPath := fmt.Sprintf("%s/%d/root%s", procRoot, pid, parentPath)
 
-			var stPath syscall.Stat_t
-			if err := syscall.Stat(containerPath, &stPath); err == nil && (stPath.Mode&syscall.S_IFMT) == syscall.S_IFDIR {
-				args = append(args, "-filter-dir-inode2", strconv.FormatUint(stPath.Ino, 10))
-				args = append(args, "-filter-dir-dev2", strconv.FormatUint(uint64(devToKernel(&stPath)), 10))
+				var stParent syscall.Stat_t
+				if err := syscall.Stat(containerParentPath, &stParent); err == nil {
+					args = append(args, "-filter-dir-inode", strconv.FormatUint(stParent.Ino, 10))
+					args = append(args, "-filter-dir-dev", strconv.FormatUint(uint64(devToKernel(&stParent)), 10))
+				}
+
+				// When path is itself a directory, also pass its own inode for the exact-CWD
+				// check (e.g. "cwd=/mnt/data && openat(AT_FDCWD, 'file')").
+				containerPath := fmt.Sprintf("%s/%d/root%s", procRoot, pid, path)
+
+				var stPath syscall.Stat_t
+				if err := syscall.Stat(containerPath, &stPath); err == nil && (stPath.Mode&syscall.S_IFMT) == syscall.S_IFDIR {
+					args = append(args, "-filter-dir-inode2", strconv.FormatUint(stPath.Ino, 10))
+					args = append(args, "-filter-dir-dev2", strconv.FormatUint(uint64(devToKernel(&stPath)), 10))
+				}
 			}
 		}
 

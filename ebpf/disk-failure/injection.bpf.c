@@ -9,6 +9,11 @@
 const volatile pid_t target_pid = 0;
 const volatile pid_t exclude_pid;
 const volatile int use_cgroup_filter = 0;
+// Network namespace inode of the target container.
+// All processes in a container — including those started via kubectl exec —
+// share the same netns, making this the most reliable container filter when
+// bpf_current_task_under_cgroup() fails (e.g. on this cluster ~99.8% miss rate).
+const volatile u64 target_netns_ino = 0;
 const volatile char filter_path[61];
 // Inode of filter_path's parent directory. When non-zero, enables filtering of
 // relative openat calls by comparing the process CWD inode against this value.
@@ -42,8 +47,10 @@ struct {
 // 5: rel path, dirfd inode == filter_dir_inode but basename mismatch;
 // 6: rel path, fdtable lookup returned null fd (silent drop).
 // 7: cgroup filter returned 1 (in cgroup);
-// 8: cgroup filter returned 0 (not in cgroup — PID fallback applied);
-// 9: cgroup filter returned error (negative — PID fallback applied).
+// 8: cgroup filter returned 0 (not in cgroup);
+// 9: cgroup filter returned error (negative);
+// 10: netns inode matched (disrupted via netns fallback);
+// 11: netns inode not matched.
 struct {
     __uint(type, BPF_MAP_TYPE_ARRAY);
     __uint(max_entries, 12);
@@ -61,6 +68,8 @@ struct {
 #define DBG_CGROUP_HIT     7
 #define DBG_CGROUP_MISS    8
 #define DBG_CGROUP_ERR     9
+#define DBG_NETNS_HIT      10
+#define DBG_NETNS_MISS     11
 
 static __always_inline void dbg_inc(u32 idx)
 {
@@ -203,6 +212,32 @@ static int check_relative_path(int dirfd, const char *rel_path)
     return 0;
 }
 
+// is_in_target_netns checks whether the current task's network namespace inode
+// matches target_netns_ino. All processes in a container — including those
+// started via kubectl exec — share the same netns, so this catches exec sessions
+// that are not descendants of the container init in the host process tree.
+static __always_inline int is_in_target_netns(void)
+{
+    if (target_netns_ino == 0)
+        return 0;
+
+    struct task_struct *task = (struct task_struct *)bpf_get_current_task();
+    struct nsproxy *nsproxy = NULL;
+    bpf_probe_read_kernel(&nsproxy, sizeof(nsproxy), &task->nsproxy);
+    if (!nsproxy)
+        return 0;
+
+    struct net *net = NULL;
+    bpf_probe_read_kernel(&net, sizeof(net), &nsproxy->net_ns);
+    if (!net)
+        return 0;
+
+    unsigned int ino = 0;
+    bpf_probe_read_kernel(&ino, sizeof(ino), &net->ns.inum);
+
+    return (ino == (unsigned int)target_netns_ino) ? 1 : 0;
+}
+
 // is_in_target_tree walks up to 10 levels of the process ancestry chain.
 // Returns 1 if the current process or any ancestor has TGID == target.
 // This covers processes spawned via kubectl exec where the hierarchy is:
@@ -230,6 +265,12 @@ static __always_inline int is_in_target_tree(pid_t target)
 
 // do_filter_by_process returns 1 if the current process should be excluded (filtered out),
 // 0 if it should be disrupted.
+// Strategy (in order):
+//   1. cgroup FD check — fast O(1), handles all processes in the container's cgroup tree.
+//   2. netns inode check — catches kubectl exec sessions: they share the container's
+//      network namespace but are NOT descendants of the container init in the host PID tree.
+//   3. process ancestry walk — last-resort for environments where both cgroup and netns
+//      filters are unavailable.
 static __always_inline int do_filter_by_process(void)
 {
     if (use_cgroup_filter) {
@@ -238,14 +279,18 @@ static __always_inline int do_filter_by_process(void)
             dbg_inc(DBG_CGROUP_HIT);
             return 0;  // in cgroup → disrupt
         }
-        // cgroup check failed — walk the full process ancestry tree so we catch
-        // processes spawned via kubectl exec (exec_agent → shell → dd) and not
-        // just direct children of container init.
         if (in_cgroup < 0) {
             dbg_inc(DBG_CGROUP_ERR);
         } else {
             dbg_inc(DBG_CGROUP_MISS);
         }
+        // Fallback 1: netns inode — reliable for kubectl exec and all container processes.
+        if (is_in_target_netns()) {
+            dbg_inc(DBG_NETNS_HIT);
+            return 0;
+        }
+        dbg_inc(DBG_NETNS_MISS);
+        // Fallback 2: ancestry walk — catches container workload processes.
         if (is_in_target_tree(target_pid))
             return 0;
         return 1;  // exclude

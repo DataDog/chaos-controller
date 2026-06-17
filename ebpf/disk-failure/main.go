@@ -27,6 +27,7 @@ import (
 
 var nPid = flag.Uint64("process", 0, "Process to disrupt")
 var nCgroupPath = flag.String("cgroup-path", "", "Cgroupv2 directory path for ancestor-based filtering (covers kubectl exec sub-cgroups)")
+var nNetnsIno = flag.Uint64("netns-ino", 0, "Network namespace inode of the target container; catches kubectl exec sessions that are not PID-tree descendants of container init")
 var nFilterDirInode = flag.Uint64("filter-dir-inode", 0, "Inode of filter path parent directory; enables relative-path disruption (e.g. after cd+cat)")
 var nFilterDirDev = flag.Uint64("filter-dir-dev", 0, "Device ID of filter path parent directory; disambiguates same-inode numbers across different mounts")
 var nFilterDirInode2 = flag.Uint64("filter-dir-inode2", 0, "Inode of filter path itself when it is a directory; enables exact-CWD match for relative opens")
@@ -142,6 +143,11 @@ func initGlobalVariables(bpfModule *bpf.Module) {
 		must(err)
 	}
 
+	netnsIno := *nNetnsIno
+	if err := bpfModule.InitGlobalVariable("target_netns_ino", netnsIno); err != nil {
+		must(err)
+	}
+
 	// Filter directory inode for relative-path disruption.
 	filterDirInode := *nFilterDirInode
 	if err := bpfModule.InitGlobalVariable("filter_dir_inode", filterDirInode); err != nil {
@@ -230,7 +236,7 @@ func logDebugCounters(bpfModule *bpf.Module, log *zap.SugaredLogger) {
 		return
 	}
 
-	names := []string{"abs_hit", "abs_miss", "rel_no_filter", "rel_hit", "rel_miss", "rel_ino_match", "rel_null_fd", "cgroup_hit", "cgroup_miss", "cgroup_err"}
+	names := []string{"abs_hit", "abs_miss", "rel_no_filter", "rel_hit", "rel_miss", "rel_ino_match", "rel_null_fd", "cgroup_hit", "cgroup_miss", "cgroup_err", "netns_hit", "netns_miss"}
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
