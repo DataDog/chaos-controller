@@ -37,8 +37,10 @@ struct {
 
 // Debug counters read periodically by the Go loader to diagnose path filter
 // behaviour without relying on tracefs (which is often blocked by node policy).
-// Index 0: abs path matched; 1: abs path missed; 2: rel path, no inode filter;
-// 3: rel path, inode matched; 4: rel path, inode missed.
+// 0: abs path matched; 1: abs path missed; 2: rel path, no inode filter;
+// 3: rel path, inode matched (disrupted); 4: rel path, inode missed;
+// 5: rel path, dirfd inode == filter_dir_inode but basename mismatch;
+// 6: rel path, fdtable lookup returned null fd (silent drop).
 struct {
     __uint(type, BPF_MAP_TYPE_ARRAY);
     __uint(max_entries, 8);
@@ -51,6 +53,8 @@ struct {
 #define DBG_REL_NO_FILTER 2
 #define DBG_REL_HIT       3
 #define DBG_REL_MISS      4
+#define DBG_REL_INO_MATCH 5
+#define DBG_REL_NULL_FD   6
 
 static __always_inline void dbg_inc(u32 idx)
 {
@@ -148,7 +152,10 @@ static int check_relative_path(int dirfd, const char *rel_path)
         if (!fd_arr) return 0;
         struct file *f = NULL;
         bpf_probe_read_kernel(&f, sizeof(f), (void *)((__u64)fd_arr + (__u64)ufd * sizeof(struct file *)));
-        if (!f) return 0;
+        if (!f) {
+            dbg_inc(DBG_REL_NULL_FD);
+            return 0;
+        }
         struct inode *inode_ptr;
         bpf_probe_read_kernel(&inode_ptr, sizeof(inode_ptr), &f->f_inode);
         if (!inode_ptr) return 0;
@@ -163,6 +170,12 @@ static int check_relative_path(int dirfd, const char *rel_path)
 
     char rel_buf[62] = {};
     bpf_probe_read_user(rel_buf, sizeof(rel_buf) - 1, rel_path);
+
+    // Track when our dirfd's inode matches the filter inode (regardless of basename)
+    // to distinguish "wrong directory" from "right directory but wrong filename".
+    if ((filter_dir_inode != 0 && ino == filter_dir_inode) ||
+        (filter_dir_inode2 != 0 && ino == filter_dir_inode2))
+        dbg_inc(DBG_REL_INO_MATCH);
 
     // Check 1: dir == parent of filter_path AND rel_path starts with its basename.
     if (filter_dir_inode != 0 && ino == filter_dir_inode &&
