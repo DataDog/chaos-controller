@@ -35,6 +35,29 @@ struct {
     __type(value, u32);
 } target_cgroup SEC(".maps");
 
+// Debug counters read periodically by the Go loader to diagnose path filter
+// behaviour without relying on tracefs (which is often blocked by node policy).
+// Index 0: abs path matched; 1: abs path missed; 2: rel path, no inode filter;
+// 3: rel path, inode matched; 4: rel path, inode missed.
+struct {
+    __uint(type, BPF_MAP_TYPE_ARRAY);
+    __uint(max_entries, 8);
+    __type(key, u32);
+    __type(value, u64);
+} debug_counters SEC(".maps");
+
+#define DBG_ABS_HIT       0
+#define DBG_ABS_MISS      1
+#define DBG_REL_NO_FILTER 2
+#define DBG_REL_HIT       3
+#define DBG_REL_MISS      4
+
+static __always_inline void dbg_inc(u32 idx)
+{
+    u64 *val = bpf_map_lookup_elem(&debug_counters, &idx);
+    if (val) __sync_fetch_and_add(val, 1);
+}
+
 const volatile pid_t exit_code = ENOENT;
 const volatile int probability = 100;
 
@@ -89,7 +112,7 @@ static __always_inline int check_basename_prefix(const char *rel_buf)
 static int check_relative_path(int dirfd, const char *rel_path)
 {
     if (filter_dir_inode == 0 && filter_dir_inode2 == 0) {
-        printt("disk-failure: relpath no-inode-filter dirfd=%d\n", dirfd, 0LL);
+        dbg_inc(DBG_REL_NO_FILTER);
         return 0;
     }
 
@@ -141,21 +164,23 @@ static int check_relative_path(int dirfd, const char *rel_path)
     char rel_buf[62] = {};
     bpf_probe_read_user(rel_buf, sizeof(rel_buf) - 1, rel_path);
 
-    // Debug: log inode found vs expected so we can diagnose mismatches.
-    printt("disk-failure: relpath fd=%d found_ino=%llu\n", dirfd, ino);
-    printt("disk-failure: filter_ino=%llu filter_ino2=%llu\n", filter_dir_inode, filter_dir_inode2);
-
     // Check 1: dir == parent of filter_path AND rel_path starts with its basename.
     if (filter_dir_inode != 0 && ino == filter_dir_inode &&
         (filter_dir_dev == 0 || dev == filter_dir_dev) &&
-        check_basename_prefix(rel_buf)) return 1;
+        check_basename_prefix(rel_buf)) {
+        dbg_inc(DBG_REL_HIT);
+        return 1;
+    }
 
     // Check 2: dir == filter_path itself (directory target) AND rel_path doesn't escape.
     if (filter_dir_inode2 != 0 && ino == filter_dir_inode2 &&
         (filter_dir_dev2 == 0 || dev == filter_dir_dev2) &&
-        !(rel_buf[0] == '.' && rel_buf[1] == '.')) return 1;
+        !(rel_buf[0] == '.' && rel_buf[1] == '.')) {
+        dbg_inc(DBG_REL_HIT);
+        return 1;
+    }
 
-    printt("disk-failure: relpath miss ino=%llu dev=%u\n", ino, dev);
+    dbg_inc(DBG_REL_MISS);
     return 0;
 }
 
@@ -246,9 +271,10 @@ int injection_disk_failure(struct pt_regs *ctx)
             if (cmp_path_name[i] != cmp_expected_path[i]) { abs_match = 0; break; }
         }
         if (!abs_match) {
-            printt("disk-failure: abs miss path=%s\n", cmp_path_name, 0LL);
+            dbg_inc(DBG_ABS_MISS);
             return 0;
         }
+        dbg_inc(DBG_ABS_HIT);
     } else {
         if (!check_relative_path(dirfd, path)) return 0;
     }

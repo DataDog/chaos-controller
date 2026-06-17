@@ -17,6 +17,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 	"unsafe"
 
 	"github.com/DataDog/chaos-controller/log"
@@ -80,6 +81,10 @@ func main() {
 	// rootfs has a valid target path. TracePipeListen() uses a hardcoded non-existent
 	// path, so we read trace_pipe directly here instead.
 	go listenTracePipe(logger)
+
+	// Log debug_counters map every 10 s so path filter behaviour is visible in
+	// kubectl logs even when tracefs is unavailable (e.g. blocked by node policy).
+	go logDebugCounters(bpfModule, logger)
 
 	// Load the BPF program
 	prog, err := bpfModule.GetProgram("injection_disk_failure")
@@ -212,6 +217,35 @@ func listenTracePipe(log *zap.SugaredLogger) {
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		log.Infow("bpf trace", "line", scanner.Text())
+	}
+}
+
+// logDebugCounters reads the debug_counters BPF map every 10 s and logs the
+// values so path filter behaviour is observable via kubectl logs even when
+// tracefs is unavailable (blocked by node security policy).
+func logDebugCounters(bpfModule *bpf.Module, log *zap.SugaredLogger) {
+	m, err := bpfModule.GetMap("debug_counters")
+	if err != nil {
+		log.Warnw("debug_counters map unavailable", "err", err)
+		return
+	}
+
+	names := []string{"abs_hit", "abs_miss", "rel_no_filter", "rel_hit", "rel_miss"}
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		for idx, name := range names {
+			key := uint32(idx)
+			val, err := m.GetValue(unsafe.Pointer(&key))
+			if err != nil {
+				continue
+			}
+			count := binary.LittleEndian.Uint64(val)
+			if count > 0 {
+				log.Infow("path filter counter", "counter", name, "count", count)
+			}
+		}
 	}
 }
 
