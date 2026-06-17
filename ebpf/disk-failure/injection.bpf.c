@@ -203,10 +203,34 @@ static int check_relative_path(int dirfd, const char *rel_path)
     return 0;
 }
 
+// is_in_target_tree walks up to 10 levels of the process ancestry chain.
+// Returns 1 if the current process or any ancestor has TGID == target.
+// This covers processes spawned via kubectl exec where the hierarchy is:
+// container_init (target_pid) → exec_agent → shell → dd (3 levels deep).
+static __always_inline int is_in_target_tree(pid_t target)
+{
+    if (target == 0)
+        return 0;
+
+    struct task_struct *task = (struct task_struct *)bpf_get_current_task();
+
+    #pragma unroll
+    for (int i = 0; i < 10; i++) {
+        if (!task) return 0;
+        u32 cur_tgid = 0;
+        bpf_probe_read(&cur_tgid, sizeof(cur_tgid), &task->tgid);
+        if (cur_tgid == (u32)target) return 1;
+        if (cur_tgid <= 1) return 0;  // reached init or kernel thread
+        struct task_struct *parent = NULL;
+        bpf_probe_read(&parent, sizeof(parent), &task->real_parent);
+        task = parent;
+    }
+    return 0;
+}
+
 // do_filter_by_process returns 1 if the current process should be excluded (filtered out),
 // 0 if it should be disrupted.
-// tgid is the kernel TGID (== userspace PID from getpid()); ppid is the parent's TGID.
-static __always_inline int do_filter_by_process(u32 tgid, u32 ppid)
+static __always_inline int do_filter_by_process(void)
 {
     if (use_cgroup_filter) {
         int in_cgroup = bpf_current_task_under_cgroup(&target_cgroup, 0);
@@ -214,21 +238,19 @@ static __always_inline int do_filter_by_process(u32 tgid, u32 ppid)
             dbg_inc(DBG_CGROUP_HIT);
             return 0;  // in cgroup → disrupt
         }
-        // cgroup filter returned 0 (not in cgroup) or negative (error).
-        // Fall back to PID filter so we still catch processes that are direct
-        // children of the container init (e.g. dd run from container's PID 1
-        // shell) when bpf_current_task_under_cgroup fails on this kernel.
+        // cgroup check failed — walk the full process ancestry tree so we catch
+        // processes spawned via kubectl exec (exec_agent → shell → dd) and not
+        // just direct children of container init.
         if (in_cgroup < 0) {
             dbg_inc(DBG_CGROUP_ERR);
         } else {
             dbg_inc(DBG_CGROUP_MISS);
         }
-        if (target_pid != 0 && (ppid == target_pid || tgid == target_pid)) {
-            return 0;  // PID fallback matched → disrupt
-        }
+        if (is_in_target_tree(target_pid))
+            return 0;
         return 1;  // exclude
     } else if (target_pid != 0) {
-        return (ppid != target_pid && tgid != target_pid) ? 1 : 0;
+        return is_in_target_tree(target_pid) ? 0 : 1;
     }
     return 0;
 }
@@ -280,7 +302,7 @@ int injection_disk_failure(struct pt_regs *ctx)
         bpf_probe_read(&ppid, sizeof(ppid), &real_parent->tgid);
     }
 
-    if (do_filter_by_process(tgid, ppid)) return 0;
+    if (do_filter_by_process()) return 0;
 
     if (ppid == exclude_pid || tgid == exclude_pid) {
         return 0;
