@@ -7,7 +7,6 @@ package injector_test
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 
 	"github.com/DataDog/chaos-controller/api"
@@ -27,7 +26,6 @@ var _ = Describe("Disk Failure", func() {
 		config                DiskFailureInjectorConfig
 		err                   error
 		level                 types.DisruptionLevel
-		proc                  *os.Process
 		inj                   Injector
 		spec                  v1beta1.DiskFailureSpec
 		cmdFactoryMock        *command.FactoryMock
@@ -35,11 +33,13 @@ var _ = Describe("Disk Failure", func() {
 		BPFConfigInformerMock *ebpf.ConfigInformerMock
 	)
 
-	const PID = 1
+	const (
+		PID           = 42
+		PidNsInum     = uint64(12345)
+		HostPidNsInum = uint64(99999)
+	)
 
 	BeforeEach(func() {
-		proc = &os.Process{Pid: PID}
-
 		containerMock = container.NewContainerMock(GinkgoT())
 
 		BPFConfigInformerMock = ebpf.NewConfigInformerMock(GinkgoT())
@@ -58,6 +58,19 @@ var _ = Describe("Disk Failure", func() {
 		config = DiskFailureInjectorConfig{
 			BPFConfigInformer: BPFConfigInformerMock,
 			CmdFactory:        cmdFactoryMock,
+			// Returns a distinct inode for the host (pid 1) vs the container,
+			// so tests can distinguish normal pod-level from host-namespace sharing.
+			PidNsInumReader: func(pid int) (uint64, error) {
+				if pid == 1 {
+					return HostPidNsInum, nil
+				}
+
+				return PidNsInum, nil
+			},
+			// Default: container is in a dedicated namespace (no sharing).
+			PidNsSharedChecker: func(_ int, _ uint64) (bool, error) {
+				return false, nil
+			},
 			Config: Config{
 				Log:         log,
 				MetricsSink: ms,
@@ -134,6 +147,55 @@ var _ = Describe("Disk Failure", func() {
 					Expect(err).To(MatchError("the disk failure needs the perf event array map type, but the current kernel does not support this type of map"))
 				})
 			})
+
+			When("the PID namespace inode reader returns an error", func() {
+				BeforeEach(func() {
+					config.Disruption.Level = types.DisruptionLevelPod
+					containerMock.EXPECT().PID().Return(PID).Once()
+					config.PidNsInumReader = func(pid int) (uint64, error) {
+						return 0, fmt.Errorf("stat failed")
+					}
+				})
+
+				It("should return an error", func() {
+					Expect(err).Should(HaveOccurred())
+					Expect(err).To(MatchError(ContainSubstring("unable to resolve PID namespace inode")))
+				})
+			})
+
+			When("the container shares the host PID namespace", func() {
+				BeforeEach(func() {
+					config.Disruption.Level = types.DisruptionLevelPod
+					containerMock.EXPECT().PID().Return(PID).Once()
+					// Both container and host resolve to the same inode, simulating hostPID: true.
+					config.PidNsInumReader = func(pid int) (uint64, error) {
+						return HostPidNsInum, nil
+					}
+				})
+
+				It("should return an error", func() {
+					Expect(err).Should(HaveOccurred())
+					Expect(err).To(MatchError(ContainSubstring("pod-level disk failure is not supported for containers sharing the host PID namespace")))
+				})
+			})
+
+			When("the pod uses shareProcessNamespace", func() {
+				BeforeEach(func() {
+					config.Disruption.Level = types.DisruptionLevelPod
+					containerMock.EXPECT().PID().Return(PID).Once()
+					// Simulate shareProcessNamespace: true — namespace differs from the host
+					// but is shared by multiple containers. The BPF filter would match all
+					// processes in the shared namespace, not just the targeted container.
+					config.PidNsSharedChecker = func(_ int, _ uint64) (bool, error) {
+						return true, nil
+					}
+				})
+
+				It("should return an error", func() {
+					Expect(err).Should(HaveOccurred())
+					Expect(err).To(MatchError(ContainSubstring("pod-level disk failure is not supported for containers using shareProcessNamespace")))
+				})
+			})
 		})
 
 		Describe("success cases", func() {
@@ -148,7 +210,7 @@ var _ = Describe("Disk Failure", func() {
 					Expect(err).ShouldNot(HaveOccurred())
 
 					cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
-						"-process", strconv.Itoa(proc.Pid),
+						"-pid-ns-inum", strconv.FormatUint(PidNsInum, 10),
 						"-path", "/",
 						"-probability", "100",
 					})
@@ -163,12 +225,12 @@ var _ = Describe("Disk Failure", func() {
 						Expect(err).ShouldNot(HaveOccurred())
 
 						cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
-							"-process", strconv.Itoa(proc.Pid),
+							"-pid-ns-inum", strconv.FormatUint(PidNsInum, 10),
 							"-path", "/test",
 							"-probability", "100",
 						})
 						cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
-							"-process", strconv.Itoa(proc.Pid),
+							"-pid-ns-inum", strconv.FormatUint(PidNsInum, 10),
 							"-path", "/toto",
 							"-probability", "100",
 						})
@@ -184,7 +246,7 @@ var _ = Describe("Disk Failure", func() {
 						Expect(err).ShouldNot(HaveOccurred())
 
 						cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
-							"-process", strconv.Itoa(proc.Pid),
+							"-pid-ns-inum", strconv.FormatUint(PidNsInum, 10),
 							"-path", "/",
 							"-exit-code", "13",
 							"-probability", "100",
@@ -201,7 +263,7 @@ var _ = Describe("Disk Failure", func() {
 						Expect(err).ShouldNot(HaveOccurred())
 
 						cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
-							"-process", strconv.Itoa(proc.Pid),
+							"-pid-ns-inum", strconv.FormatUint(PidNsInum, 10),
 							"-path", "/",
 							"-probability", "100",
 						})
@@ -217,7 +279,7 @@ var _ = Describe("Disk Failure", func() {
 						Expect(err).ShouldNot(HaveOccurred())
 
 						cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
-							"-process", strconv.Itoa(proc.Pid),
+							"-pid-ns-inum", strconv.FormatUint(PidNsInum, 10),
 							"-path", "/",
 							"-probability", "50",
 						})
@@ -235,7 +297,7 @@ var _ = Describe("Disk Failure", func() {
 
 					containerMock.AssertNumberOfCalls(GinkgoT(), "PID", 0)
 					cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
-						"-process", strconv.Itoa(0),
+						"-pid-ns-inum", "0",
 						"-path", "/",
 						"-probability", "100",
 					})
@@ -250,7 +312,7 @@ var _ = Describe("Disk Failure", func() {
 						Expect(err).ShouldNot(HaveOccurred())
 
 						cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
-							"-process", strconv.Itoa(0),
+							"-pid-ns-inum", "0",
 							"-path", "/",
 							"-exit-code", "17",
 							"-probability", "100",
@@ -267,7 +329,7 @@ var _ = Describe("Disk Failure", func() {
 						Expect(err).ShouldNot(HaveOccurred())
 
 						cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
-							"-process", strconv.Itoa(0),
+							"-pid-ns-inum", "0",
 							"-path", "/",
 							"-probability", "100",
 						})
@@ -288,7 +350,7 @@ var _ = Describe("Disk Failure", func() {
 
 						// Verify that the command was still created
 						cmdFactoryMock.AssertCalled(GinkgoT(), "NewCmd", mock.Anything, EBPFDiskFailureCmd, []string{
-							"-process", strconv.Itoa(0),
+							"-pid-ns-inum", "0",
 							"-path", "/",
 							"-probability", "100",
 						})

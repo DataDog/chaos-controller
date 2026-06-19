@@ -360,7 +360,7 @@ var _ = Describe("ConfigInformer", func() {
 						Description: "Essential eBPF infrastructure",
 						Enabled:     true,
 					},
-					"CONFIG_BPF_KPROBE_OVERRIDE": ebpf.KernelOption{
+					"CONFIG_FUNCTION_ERROR_INJECTION": ebpf.KernelOption{
 						Description: "Essential eBPF infrastructure",
 						Enabled:     true,
 					},
@@ -377,7 +377,7 @@ var _ = Describe("ConfigInformer", func() {
 	"CONFIG_BPF_SYSCALL": "n",
 	"CONFIG_HAVE_EBPF_JIT": "n",
 	"CONFIG_BPF_JIT": "n",
-	"CONFIG_BPF_KPROBE_OVERRIDE": "n",
+	"CONFIG_FUNCTION_ERROR_INJECTION": "n",
 	"CONFIG_NET_CLS_ACT": "n"
   }
 }
@@ -399,7 +399,7 @@ var _ = Describe("ConfigInformer", func() {
 						Description: "Essential eBPF infrastructure",
 						Enabled:     false,
 					},
-					"CONFIG_BPF_KPROBE_OVERRIDE": ebpf.KernelOption{
+					"CONFIG_FUNCTION_ERROR_INJECTION": ebpf.KernelOption{
 						Description: "Essential eBPF infrastructure",
 						Enabled:     false,
 					},
@@ -578,7 +578,7 @@ var _ = Describe("ConfigInformer", func() {
 				"CONFIG_BPF_SYSCALL": "y",
 				"CONFIG_HAVE_EBPF_JIT": "y",
 				"CONFIG_BPF_JIT": "y",
-				"CONFIG_BPF_KPROBE_OVERRIDE": "y",
+				"CONFIG_FUNCTION_ERROR_INJECTION": "y",
 				"CONFIG_NET_CLS_ACT": "n"
 			}
 			}
@@ -595,7 +595,7 @@ var _ = Describe("ConfigInformer", func() {
 				"CONFIG_BPF_SYSCALL": "n",
 				"CONFIG_HAVE_EBPF_JIT": "n",
 				"CONFIG_BPF_JIT": "n",
-				"CONFIG_BPF_KPROBE_OVERRIDE": "n",
+				"CONFIG_FUNCTION_ERROR_INJECTION": "n",
 				"CONFIG_NET_CLS_ACT": "n"
 			}
 			}
@@ -605,7 +605,7 @@ var _ = Describe("ConfigInformer", func() {
 						"CONFIG_BPF_SYSCALL",
 						"CONFIG_HAVE_EBPF_JIT",
 						"CONFIG_BPF_JIT",
-						"CONFIG_BPF_KPROBE_OVERRIDE",
+						"CONFIG_FUNCTION_ERROR_INJECTION",
 						"CONFIG_NET_CLS_ACT",
 					},
 				),

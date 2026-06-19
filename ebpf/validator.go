@@ -269,9 +269,14 @@ func (v configInformer) GetRequiredSystemConfig() KernelParams {
 			Description: coreInfraDescription,
 			Enabled:     config.ConfigHaveEbpfJit.Enabled(),
 		},
-		"CONFIG_BPF_KPROBE_OVERRIDE": KernelOption{
+		// fmod_ret programs (used by the disk failure injector) can only attach
+		// to error-injectable functions — the kernel must be built with
+		// CONFIG_FUNCTION_ERROR_INJECTION. This replaces the old
+		// CONFIG_BPF_KPROBE_OVERRIDE requirement that was needed by the previous
+		// kprobe + bpf_override_return approach.
+		"CONFIG_FUNCTION_ERROR_INJECTION": KernelOption{
 			Description: coreInfraDescription,
-			Enabled:     config.ConfigBpfKprobeOverride.Enabled(),
+			Enabled:     config.ConfigFunctionErrorInjection.Enabled(),
 		},
 		"CONFIG_NET_CLS_ACT": KernelOption{
 			Description: coreInfraDescription,
