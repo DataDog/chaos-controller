@@ -60,10 +60,14 @@ var _ = Describe("Failure", func() {
 		// spec
 		read := 1024
 		write := 4096
+		readIOPS := 50
+		writeIOPS := 75
 		spec = v1beta1.DiskPressureSpec{
 			Throttling: v1beta1.DiskPressureThrottlingSpec{
 				ReadBytesPerSec:  &read,
 				WriteBytesPerSec: &write,
+				ReadIOPSPerSec:   &readIOPS,
+				WriteIOPSPerSec:  &writeIOPS,
 			},
 		}
 	})
@@ -91,6 +95,8 @@ var _ = Describe("Failure", func() {
 			It("should throttle disk from cgroup", func() {
 				cgroupManager.AssertCalled(GinkgoT(), "Write", "blkio", "blkio.throttle.read_bps_device", "8:0 1024")
 				cgroupManager.AssertCalled(GinkgoT(), "Write", "blkio", "blkio.throttle.write_bps_device", "8:0 4096")
+				cgroupManager.AssertCalled(GinkgoT(), "Write", "blkio", "blkio.throttle.read_iops_device", "8:0 50")
+				cgroupManager.AssertCalled(GinkgoT(), "Write", "blkio", "blkio.throttle.write_iops_device", "8:0 75")
 			})
 		})
 
@@ -102,6 +108,8 @@ var _ = Describe("Failure", func() {
 			It("should throttle disk from cgroup", func() {
 				cgroupManager.AssertCalled(GinkgoT(), "Write", "blkio", "io.max", "8:0 rbps=1024")
 				cgroupManager.AssertCalled(GinkgoT(), "Write", "blkio", "io.max", "8:0 wbps=4096")
+				cgroupManager.AssertCalled(GinkgoT(), "Write", "blkio", "io.max", "8:0 riops=50")
+				cgroupManager.AssertCalled(GinkgoT(), "Write", "blkio", "io.max", "8:0 wiops=75")
 			})
 		})
 	})
@@ -119,6 +127,8 @@ var _ = Describe("Failure", func() {
 			It("should remove throttle from cgroup", func() {
 				cgroupManager.AssertCalled(GinkgoT(), "Write", "blkio", "blkio.throttle.read_bps_device", "8:0 0")
 				cgroupManager.AssertCalled(GinkgoT(), "Write", "blkio", "blkio.throttle.write_bps_device", "8:0 0")
+				cgroupManager.AssertCalled(GinkgoT(), "Write", "blkio", "blkio.throttle.read_iops_device", "8:0 0")
+				cgroupManager.AssertCalled(GinkgoT(), "Write", "blkio", "blkio.throttle.write_iops_device", "8:0 0")
 			})
 		})
 
@@ -130,6 +140,8 @@ var _ = Describe("Failure", func() {
 			It("should throttle disk from cgroup", func() {
 				cgroupManager.AssertCalled(GinkgoT(), "Write", "blkio", "io.max", "8:0 rbps=max")
 				cgroupManager.AssertCalled(GinkgoT(), "Write", "blkio", "io.max", "8:0 wbps=max")
+				cgroupManager.AssertCalled(GinkgoT(), "Write", "blkio", "io.max", "8:0 riops=max")
+				cgroupManager.AssertCalled(GinkgoT(), "Write", "blkio", "io.max", "8:0 wiops=max")
 			})
 		})
 	})

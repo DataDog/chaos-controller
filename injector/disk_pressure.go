@@ -35,8 +35,10 @@ type DiskPressureInjectorConfig struct {
 type diskPressureThrottleMode int
 
 const (
-	diskPressureThrottleModeRead diskPressureThrottleMode = iota
-	diskPressureThrottleModeWrite
+	diskPressureThrottleModeReadBps diskPressureThrottleMode = iota
+	diskPressureThrottleModeWriteBps
+	diskPressureThrottleModeReadIops
+	diskPressureThrottleModeWriteIops
 )
 
 const diskPressureBlkioControllerName = "blkio"
@@ -94,22 +96,40 @@ func (i *diskPressureInjector) GetDisruptionKind() types.DisruptionKindName {
 }
 
 func (i *diskPressureInjector) Inject() error {
-	// add read throttle
+	// add read bytes-per-second throttle
 	if i.spec.Throttling.ReadBytesPerSec != nil {
-		if err := i.config.Cgroup.Write(diskPressureBlkioControllerName, i.getThrottleFilename(diskPressureThrottleModeRead), i.formatThrottle(*i.spec.Throttling.ReadBytesPerSec, diskPressureThrottleModeRead)); err != nil {
+		if err := i.config.Cgroup.Write(diskPressureBlkioControllerName, i.getThrottleFilename(diskPressureThrottleModeReadBps), i.formatThrottle(*i.spec.Throttling.ReadBytesPerSec, diskPressureThrottleModeReadBps)); err != nil {
 			return fmt.Errorf("error throttling disk read: %w", err)
 		}
 
 		i.config.Log.Infow("read throttling injected", tags.DeviceKey, i.config.Informer.Source(), tags.BpsKey, *i.spec.Throttling.ReadBytesPerSec)
 	}
 
-	// add write throttle
+	// add write bytes-per-second throttle
 	if i.spec.Throttling.WriteBytesPerSec != nil {
-		if err := i.config.Cgroup.Write(diskPressureBlkioControllerName, i.getThrottleFilename(diskPressureThrottleModeWrite), i.formatThrottle(*i.spec.Throttling.WriteBytesPerSec, diskPressureThrottleModeWrite)); err != nil {
+		if err := i.config.Cgroup.Write(diskPressureBlkioControllerName, i.getThrottleFilename(diskPressureThrottleModeWriteBps), i.formatThrottle(*i.spec.Throttling.WriteBytesPerSec, diskPressureThrottleModeWriteBps)); err != nil {
 			return fmt.Errorf("error throttling disk write: %w", err)
 		}
 
 		i.config.Log.Infow("write throttling injected", tags.DeviceKey, i.config.Informer.Source(), tags.BpsKey, *i.spec.Throttling.WriteBytesPerSec)
+	}
+
+	// add read iops throttle
+	if i.spec.Throttling.ReadIOPSPerSec != nil {
+		if err := i.config.Cgroup.Write(diskPressureBlkioControllerName, i.getThrottleFilename(diskPressureThrottleModeReadIops), i.formatThrottle(*i.spec.Throttling.ReadIOPSPerSec, diskPressureThrottleModeReadIops)); err != nil {
+			return fmt.Errorf("error throttling disk read iops: %w", err)
+		}
+
+		i.config.Log.Infow("read iops throttling injected", tags.DeviceKey, i.config.Informer.Source(), tags.IopsKey, *i.spec.Throttling.ReadIOPSPerSec)
+	}
+
+	// add write iops throttle
+	if i.spec.Throttling.WriteIOPSPerSec != nil {
+		if err := i.config.Cgroup.Write(diskPressureBlkioControllerName, i.getThrottleFilename(diskPressureThrottleModeWriteIops), i.formatThrottle(*i.spec.Throttling.WriteIOPSPerSec, diskPressureThrottleModeWriteIops)); err != nil {
+			return fmt.Errorf("error throttling disk write iops: %w", err)
+		}
+
+		i.config.Log.Infow("write iops throttling injected", tags.DeviceKey, i.config.Informer.Source(), tags.IopsKey, *i.spec.Throttling.WriteIOPSPerSec)
 	}
 
 	return nil
@@ -120,18 +140,32 @@ func (i *diskPressureInjector) UpdateConfig(config Config) {
 }
 
 func (i *diskPressureInjector) Clean() error {
-	// clean read throttle
+	// clean read bytes-per-second throttle
 	i.config.Log.Infow("cleaning disk read throttle", tags.DeviceKey, i.config.Informer.Source())
 
-	if err := i.config.Cgroup.Write(diskPressureBlkioControllerName, i.getThrottleFilename(diskPressureThrottleModeRead), i.formatThrottle(0, diskPressureThrottleModeRead)); err != nil {
+	if err := i.config.Cgroup.Write(diskPressureBlkioControllerName, i.getThrottleFilename(diskPressureThrottleModeReadBps), i.formatThrottle(0, diskPressureThrottleModeReadBps)); err != nil {
 		return fmt.Errorf("error cleaning read disk throttle: %w", err)
 	}
 
-	// clean write throttle
+	// clean write bytes-per-second throttle
 	i.config.Log.Infow("cleaning disk write throttle", tags.DeviceKey, i.config.Informer.Source())
 
-	if err := i.config.Cgroup.Write(diskPressureBlkioControllerName, i.getThrottleFilename(diskPressureThrottleModeWrite), i.formatThrottle(0, diskPressureThrottleModeWrite)); err != nil {
+	if err := i.config.Cgroup.Write(diskPressureBlkioControllerName, i.getThrottleFilename(diskPressureThrottleModeWriteBps), i.formatThrottle(0, diskPressureThrottleModeWriteBps)); err != nil {
 		return fmt.Errorf("error cleaning write disk throttle: %w", err)
+	}
+
+	// clean read iops throttle
+	i.config.Log.Infow("cleaning disk read iops throttle", tags.DeviceKey, i.config.Informer.Source())
+
+	if err := i.config.Cgroup.Write(diskPressureBlkioControllerName, i.getThrottleFilename(diskPressureThrottleModeReadIops), i.formatThrottle(0, diskPressureThrottleModeReadIops)); err != nil {
+		return fmt.Errorf("error cleaning read disk iops throttle: %w", err)
+	}
+
+	// clean write iops throttle
+	i.config.Log.Infow("cleaning disk write iops throttle", tags.DeviceKey, i.config.Informer.Source())
+
+	if err := i.config.Cgroup.Write(diskPressureBlkioControllerName, i.getThrottleFilename(diskPressureThrottleModeWriteIops), i.formatThrottle(0, diskPressureThrottleModeWriteIops)); err != nil {
+		return fmt.Errorf("error cleaning write disk iops throttle: %w", err)
 	}
 
 	return nil
@@ -153,18 +187,22 @@ func (i *diskPressureInjector) formatThrottle(throttle int, mode diskPressureThr
 		}
 
 		// the file can be used to configure both read and write throttling (both iops and bps too)
-		// to set that value, it is now a key/value pair (rbps for read throttling, wbps for write throttling)
+		// to set that value, it is now a key/value pair (rbps/wbps for bandwidth, riops/wiops for iops)
 		switch mode {
-		case diskPressureThrottleModeRead:
+		case diskPressureThrottleModeReadBps:
 			return fmt.Sprintf("%d:0 rbps=%s", i.config.Informer.Major(), sThrottle)
-		case diskPressureThrottleModeWrite:
+		case diskPressureThrottleModeWriteBps:
 			return fmt.Sprintf("%d:0 wbps=%s", i.config.Informer.Major(), sThrottle)
+		case diskPressureThrottleModeReadIops:
+			return fmt.Sprintf("%d:0 riops=%s", i.config.Informer.Major(), sThrottle)
+		case diskPressureThrottleModeWriteIops:
+			return fmt.Sprintf("%d:0 wiops=%s", i.config.Informer.Major(), sThrottle)
 		default:
 			return "" // should never be used
 		}
 	}
 
-	// cgroups v1 throttling format is much simple and only takes the bps value
+	// cgroups v1 throttling format is much simple and only takes the value
 	// example: 252:0 1024
 	return fmt.Sprintf("%d:0 %d", i.config.Informer.Major(), throttle)
 }
@@ -181,13 +219,17 @@ func (i *diskPressureInjector) getThrottleFilename(mode diskPressureThrottleMode
 	// cgroups v1 uses separate files for both the mode and the unit
 	// - read and bps
 	// - write and bps
-	// - read and iops (unused here)
-	// - write and iops (unused here)
+	// - read and iops
+	// - write and iops
 	switch mode {
-	case diskPressureThrottleModeRead:
+	case diskPressureThrottleModeReadBps:
 		return "blkio.throttle.read_bps_device"
-	case diskPressureThrottleModeWrite:
+	case diskPressureThrottleModeWriteBps:
 		return "blkio.throttle.write_bps_device"
+	case diskPressureThrottleModeReadIops:
+		return "blkio.throttle.read_iops_device"
+	case diskPressureThrottleModeWriteIops:
+		return "blkio.throttle.write_iops_device"
 	}
 
 	return "" // should never be used

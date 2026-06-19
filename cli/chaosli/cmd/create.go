@@ -372,6 +372,16 @@ func getDiskPressure() *v1beta1.DiskPressureSpec {
 		spec.Throttling.WriteBytesPerSec = &writeBPS
 	}
 
+	if confirmOption("Would you like to apply read iops throttling?", "This applies read-based IO operations throttling (check the docs)") {
+		readIOPS, _ := strconv.Atoi(getInput("Specify the target amount of throttling, in io operations per second.", "check the docs", survey.WithValidator(integerValidator)))
+		spec.Throttling.ReadIOPSPerSec = &readIOPS
+	}
+
+	if confirmOption("Would you like to apply write iops throttling?", "This applies write-based IO operations throttling (check the docs)") {
+		writeIOPS, _ := strconv.Atoi(getInput("Specify the target amount of throttling, in io operations per second.", "check the docs", survey.WithValidator(integerValidator)))
+		spec.Throttling.WriteIOPSPerSec = &writeIOPS
+	}
+
 	return spec
 }
 
