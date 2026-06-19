@@ -44,6 +44,7 @@ var _ = Describe("Disk Failure", func() {
 
 		BPFConfigInformerMock = ebpf.NewConfigInformerMock(GinkgoT())
 		BPFConfigInformerMock.EXPECT().ValidateRequiredSystemConfig().Return(nil).Maybe()
+		BPFConfigInformerMock.EXPECT().ValidateDiskFailureRequiredConfig().Return(nil).Maybe()
 		BPFConfigInformerMock.EXPECT().GetMapTypes().Return(ebpf.MapTypes{HavePerfEventArrayMapType: true}).Maybe()
 
 		cmd := command.NewCmdMock(GinkgoT())
@@ -110,10 +111,25 @@ var _ = Describe("Disk Failure", func() {
 				})
 			})
 
+			When("the ValidateDiskFailureRequiredConfig method of the eBPF config informer returns an error", func() {
+				BeforeEach(func() {
+					BPFConfigInformerMock = ebpf.NewConfigInformerMock(GinkgoT())
+					BPFConfigInformerMock.EXPECT().ValidateRequiredSystemConfig().Return(nil).Once()
+					BPFConfigInformerMock.EXPECT().ValidateDiskFailureRequiredConfig().Return(fmt.Errorf("CONFIG_FUNCTION_ERROR_INJECTION kernel parameter is required")).Once()
+					config.BPFConfigInformer = BPFConfigInformerMock
+				})
+
+				It("should return an error", func() {
+					Expect(err).Should(HaveOccurred())
+					Expect(err).To(MatchError("the disk failure injector requires fmod_ret kernel support: CONFIG_FUNCTION_ERROR_INJECTION kernel parameter is required"))
+				})
+			})
+
 			When("the bpf map type perf event array is not supported", func() {
 				BeforeEach(func() {
 					BPFConfigInformerMock = ebpf.NewConfigInformerMock(GinkgoT())
 					BPFConfigInformerMock.EXPECT().ValidateRequiredSystemConfig().Return(nil).Once()
+					BPFConfigInformerMock.EXPECT().ValidateDiskFailureRequiredConfig().Return(nil).Once()
 					BPFConfigInformerMock.EXPECT().GetMapTypes().Return(ebpf.MapTypes{
 						HaveHashMapType:                true,
 						HaveArrayMapType:               true,
@@ -346,6 +362,7 @@ var _ = Describe("Disk Failure", func() {
 
 						// Verify that validation still occurs in dry run mode since bpftool probe is read-only
 						BPFConfigInformerMock.AssertCalled(GinkgoT(), "ValidateRequiredSystemConfig")
+						BPFConfigInformerMock.AssertCalled(GinkgoT(), "ValidateDiskFailureRequiredConfig")
 						BPFConfigInformerMock.AssertCalled(GinkgoT(), "GetMapTypes")
 
 						// Verify that the command was still created

@@ -80,6 +80,10 @@ func (i *DiskFailureInjector) Inject() error {
 		return fmt.Errorf("the disk failure needs a kernel supporting eBPF programs: %w", err)
 	}
 
+	if err := i.config.BPFConfigInformer.ValidateDiskFailureRequiredConfig(); err != nil {
+		return fmt.Errorf("the disk failure injector requires fmod_ret kernel support: %w", err)
+	}
+
 	if !i.config.BPFConfigInformer.GetMapTypes().HavePerfEventArrayMapType {
 		return fmt.Errorf("the disk failure needs the perf event array map type, but the current kernel does not support this type of map")
 	}

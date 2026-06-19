@@ -33,6 +33,10 @@ type ConfigInformer interface {
 	// a 'KernelParams' struct.
 	GetRequiredSystemConfig() KernelParams
 
+	// ValidateDiskFailureRequiredConfig validates kernel parameters specific to the
+	// disk failure injector (fmod_ret hook, CONFIG_FUNCTION_ERROR_INJECTION).
+	ValidateDiskFailureRequiredConfig() error
+
 	// GetMapTypes retrieves information about available map types and returns them as a 'MapTypes' struct.
 	GetMapTypes() MapTypes
 
@@ -269,20 +273,27 @@ func (v configInformer) GetRequiredSystemConfig() KernelParams {
 			Description: coreInfraDescription,
 			Enabled:     config.ConfigHaveEbpfJit.Enabled(),
 		},
-		// fmod_ret programs (used by the disk failure injector) can only attach
-		// to error-injectable functions — the kernel must be built with
-		// CONFIG_FUNCTION_ERROR_INJECTION. This replaces the old
-		// CONFIG_BPF_KPROBE_OVERRIDE requirement that was needed by the previous
-		// kprobe + bpf_override_return approach.
-		"CONFIG_FUNCTION_ERROR_INJECTION": KernelOption{
-			Description: coreInfraDescription,
-			Enabled:     config.ConfigFunctionErrorInjection.Enabled(),
-		},
 		"CONFIG_NET_CLS_ACT": KernelOption{
 			Description: coreInfraDescription,
 			Enabled:     config.ConfigNetClsAct.Enabled(),
 		},
 	}
+}
+
+// ValidateDiskFailureRequiredConfig validates kernel parameters specific to the disk failure
+// injector. It must be called in addition to ValidateRequiredSystemConfig when injecting disk
+// failures, because fmod_ret programs require CONFIG_FUNCTION_ERROR_INJECTION which is not
+// needed by other eBPF program types (e.g. TC classifiers used by network disruptions).
+func (v configInformer) ValidateDiskFailureRequiredConfig() error {
+	if !v.IsKernelConfigAvailable() {
+		return fmt.Errorf("kernel config file not found")
+	}
+
+	if !v.features.ConfigFunctionErrorInjection.Enabled() {
+		return fmt.Errorf("CONFIG_FUNCTION_ERROR_INJECTION kernel parameter is required (needed for: fmod_ret programs used by disk failure injector)")
+	}
+
+	return nil
 }
 
 // GetMapTypes retrieves information about available map types from the system configuration features.
