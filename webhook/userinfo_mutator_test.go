@@ -145,6 +145,28 @@ var _ = Describe("UserInfoMutator", func() {
 				)
 			})
 
+			When("the object raw is malformed JSON", func() {
+				DescribeTable("it should return a decode error", func(kind string) {
+					// Arrange
+					request := admission.Request{
+						AdmissionRequest: v1.AdmissionRequest{
+							Kind:   metav1.GroupVersionKind{Kind: kind},
+							Object: runtime.RawExtension{Raw: []byte("not-valid-json{")},
+						},
+					}
+
+					// Act
+					response := userInfoMutator.Handle(context.TODO(), request)
+
+					// Assert
+					Expect(response.Allowed).To(BeFalse())
+					Expect(response.Result.Code).To(Equal(int32(http.StatusBadRequest)))
+				},
+					Entry("with a disruption kind", v1beta1.DisruptionKind),
+					Entry("with a disruption cron kind", v1beta1.DisruptionCronKind),
+				)
+			})
+
 			When("the decoder is nil", func() {
 				DescribeTable("it should return an error", func(kind string) {
 					// Arrange

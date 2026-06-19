@@ -22,7 +22,7 @@ var _ = Describe("Container", func() {
 	BeforeEach(func() {
 		// runtime
 		runtime = NewRuntimeMock(GinkgoT())
-		runtime.EXPECT().PID(mock.Anything).Return(uint32(666), nil)
+		runtime.EXPECT().PID(mock.Anything, mock.Anything).Return(uint32(666), nil)
 
 		// config
 		config = Config{

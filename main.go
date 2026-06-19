@@ -49,6 +49,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 
 	ctrl "sigs.k8s.io/controller-runtime"
+	ctrlcache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -132,6 +133,19 @@ func main() {
 			Port:    cfg.Controller.Webhook.Port,
 			CertDir: cfg.Controller.Webhook.CertDir,
 		}),
+		Cache: ctrlcache.Options{
+			DefaultTransform: ctrlcache.TransformStripManagedFields(),
+			// Restrict pod watch to the chaos namespace only. The controller only
+			// needs pod events for chaos pods (all in ChaosNamespace). Target pods
+			// in user namespaces are read via APIReader on the reconcile path.
+			ByObject: map[client.Object]ctrlcache.ByObject{
+				&corev1.Pod{}: {
+					Namespaces: map[string]ctrlcache.Config{
+						cfg.Injector.ChaosNamespace: {},
+					},
+				},
+			},
+		},
 	})
 	if err != nil {
 		logger.Fatalw("unable to start manager", tags.ErrorKey, err)
@@ -204,6 +218,7 @@ func main() {
 
 	chaosPodService, err := services.NewChaosPodService(services.ChaosPodServiceConfig{
 		Client:         mgr.GetClient(),
+		Reader:         mgr.GetAPIReader(),
 		ChaosNamespace: cfg.Injector.ChaosNamespace,
 		TargetSelector: targetSelector,
 		Injector: services.ChaosPodServiceInjectorConfig{
@@ -244,9 +259,8 @@ func main() {
 	}
 
 	informerClient := kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie())
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(informerClient, time.Hour*24, kubeinformers.WithNamespace(cfg.Injector.ChaosNamespace))
 
-	cont, err := disruptionReconciler.SetupWithManager(mgr, kubeInformerFactory)
+	cont, err := disruptionReconciler.SetupWithManager(mgr)
 	if err != nil {
 		logger.Fatalw("unable to create controller", tags.ControllerKey, chaosv1beta1.DisruptionKind, tags.ErrorKey, err)
 	}
@@ -257,6 +271,7 @@ func main() {
 		Reader:         mgr.GetAPIReader(),
 		Recorder:       disruptionReconciler.Recorder,
 		ChaosNamespace: cfg.Injector.ChaosNamespace,
+		CachePool:      watchers.NewNamespaceCachePool(ctrl.GetConfigOrDie()),
 	}
 	watcherFactory := watchers.NewWatcherFactory(watchersFactoryConfig)
 	disruptionReconciler.DisruptionsWatchersManager = watchers.NewDisruptionsWatchersManager(cont, watcherFactory, mgr.GetAPIReader())
@@ -286,8 +301,9 @@ func main() {
 
 	defer cancel()
 
-	stopCh := make(chan struct{})
-	kubeInformerFactory.Start(stopCh)
+	// Buffered so the send at mgr.Start failure doesn't block when rollout informers
+	// are disabled and nobody is reading the channel.
+	stopCh := make(chan struct{}, 1)
 
 	go disruptionReconciler.ReportMetrics(ctx)
 

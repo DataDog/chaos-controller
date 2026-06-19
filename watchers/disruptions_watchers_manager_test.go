@@ -25,17 +25,16 @@ import (
 
 var _ = Describe("Disruptions watchers manager", func() {
 	var (
-		chaosPodWatcherMock                                              *watchers.WatcherMock
-		cacheMock                                                        *mocks.CacheCacheMock
-		disruption                                                       *chaosv1beta1.Disruption
-		disruptionsWatchersManager                                       watchers.DisruptionsWatchersManager
-		disruptionTargetWatcherMock                                      *watchers.WatcherMock
-		err                                                              error
-		expectedDisruptionTargetWatcherName, expectedChaosPodWatcherName string
-		twoDisruptions                                                   []*chaosv1beta1.Disruption
-		watchersManagerMock                                              *watchers.ManagerMock
-		watcherFactoryMock                                               *watchers.FactoryMock
-		readerMock                                                       *mocks.ReaderMock
+		cacheMock                   *mocks.CacheCacheMock
+		disruption                  *chaosv1beta1.Disruption
+		disruptionsWatchersManager  watchers.DisruptionsWatchersManager
+		disruptionTargetWatcherMock *watchers.WatcherMock
+		err                         error
+		expectedDTWatcherName       string
+		twoDisruptions              []*chaosv1beta1.Disruption
+		watchersManagerMock         *watchers.ManagerMock
+		watcherFactoryMock          *watchers.FactoryMock
+		readerMock                  *mocks.ReaderMock
 	)
 
 	BeforeEach(func() {
@@ -86,10 +85,8 @@ var _ = Describe("Disruptions watchers manager", func() {
 				disSpecHash, err := disruption.Spec.HashNoCount()
 				Expect(err).ShouldNot(HaveOccurred())
 
-				expectedDisruptionTargetWatcherName = disSpecHash + string(watchers.DisruptionTargetWatcherName)
-				expectedChaosPodWatcherName = disSpecHash + string(watchers.ChaosPodWatcherName)
+				expectedDTWatcherName = disSpecHash + string(watchers.DisruptionTargetWatcherName)
 
-				chaosPodWatcherMock = watchers.NewWatcherMock(GinkgoT())
 				disruptionTargetWatcherMock = watchers.NewWatcherMock(GinkgoT())
 				watchersManagerMock = watchers.NewManagerMock(GinkgoT())
 			})
@@ -103,19 +100,14 @@ var _ = Describe("Disruptions watchers manager", func() {
 
 				BeforeEach(func() {
 					// Arrange / Assert
-					By("check once the presence of both watchers")
-					watchersManagerMock.EXPECT().GetWatcher(expectedDisruptionTargetWatcherName).Return(nil).Once()
-					watchersManagerMock.EXPECT().GetWatcher(expectedChaosPodWatcherName).Return(nil).Once()
+					By("check once the presence of the DisruptionTarget watcher")
+					watchersManagerMock.EXPECT().GetWatcher(expectedDTWatcherName).Return(nil).Once()
 
 					By("create the Disruption Target watcher")
-					watcherFactoryMock.EXPECT().NewDisruptionTargetWatcher(expectedDisruptionTargetWatcherName, true, disruption, cacheMock).Return(disruptionTargetWatcherMock, nil).Once()
+					watcherFactoryMock.EXPECT().NewDisruptionTargetWatcher(expectedDTWatcherName, true, disruption, cacheMock).Return(disruptionTargetWatcherMock, nil).Once()
 
-					By("create the Chaos Pod watcher")
-					watcherFactoryMock.EXPECT().NewChaosPodWatcher(expectedChaosPodWatcherName, disruption, cacheMock).Return(chaosPodWatcherMock, nil).Once()
-
-					By("adding both watchers into the watcherManager")
+					By("adding the watcher into the watcherManager")
 					watchersManagerMock.EXPECT().AddWatcher(disruptionTargetWatcherMock).Return(nil).Once()
-					watchersManagerMock.EXPECT().AddWatcher(chaosPodWatcherMock).Return(nil).Once()
 				})
 
 				It("should not return an error", func() {
@@ -127,9 +119,8 @@ var _ = Describe("Disruptions watchers manager", func() {
 						// Arrange / Assert
 						watchersManagerMock = watchers.NewManagerMock(GinkgoT())
 
-						By("check once the presence of both watchers")
-						watchersManagerMock.EXPECT().GetWatcher(expectedDisruptionTargetWatcherName).Return(disruptionTargetWatcherMock).Once()
-						watchersManagerMock.EXPECT().GetWatcher(expectedChaosPodWatcherName).Return(chaosPodWatcherMock).Once()
+						By("check once the presence of the DisruptionTarget watcher")
+						watchersManagerMock.EXPECT().GetWatcher(expectedDTWatcherName).Return(disruptionTargetWatcherMock).Once()
 
 						// Act
 						Expect(disruptionsWatchersManager.CreateAllWatchers(ctx, disruption, watchersManagerMock, cacheMock)).Should(Succeed())
@@ -151,11 +142,10 @@ var _ = Describe("Disruptions watchers manager", func() {
 					BeforeEach(func() {
 						// Arrange / Assert
 						watchersManagerMock.EXPECT().AddWatcher(mock.Anything).Return(nil).Maybe()
-						watchersManagerMock.EXPECT().GetWatcher(expectedDisruptionTargetWatcherName).Return(nil)
+						watchersManagerMock.EXPECT().GetWatcher(expectedDTWatcherName).Return(nil)
 
 						watcherFactoryMock = watchers.NewFactoryMock(GinkgoT())
-						watcherFactoryMock.EXPECT().NewDisruptionTargetWatcher(expectedDisruptionTargetWatcherName, true, disruption, cacheMock).Return(disruptionTargetWatcherMock, fmt.Errorf("NewDisruptionTargetWatcher error")).Once()
-						watcherFactoryMock.EXPECT().NewChaosPodWatcher(expectedChaosPodWatcherName, disruption, cacheMock).Return(disruptionTargetWatcherMock, nil).Maybe()
+						watcherFactoryMock.EXPECT().NewDisruptionTargetWatcher(expectedDTWatcherName, true, disruption, cacheMock).Return(disruptionTargetWatcherMock, fmt.Errorf("NewDisruptionTargetWatcher error")).Once()
 					})
 
 					It("should return an error", func() {
@@ -165,52 +155,18 @@ var _ = Describe("Disruptions watchers manager", func() {
 					})
 				})
 
-				When("the NewChaosPodWatcher method of the factory return an error", func() {
-					BeforeEach(func() {
-						// Arrange / Assert
-						watchersManagerMock.EXPECT().AddWatcher(mock.Anything).Return(nil).Maybe()
-						watchersManagerMock.EXPECT().AddWatcher(disruptionTargetWatcherMock).Return(nil).Maybe()
-
-						watcherFactoryMock = watchers.NewFactoryMock(GinkgoT())
-						watcherFactoryMock.EXPECT().NewDisruptionTargetWatcher(expectedDisruptionTargetWatcherName, true, disruption, cacheMock).Return(disruptionTargetWatcherMock, nil).Maybe()
-						watcherFactoryMock.EXPECT().NewChaosPodWatcher(expectedChaosPodWatcherName, disruption, cacheMock).Return(disruptionTargetWatcherMock, fmt.Errorf("NewChaosPodWatcher error message")).Once()
-					})
-
-					It("should return an error", func() {
-						Expect(err).To(HaveOccurred())
-						Expect(err).To(MatchError("NewChaosPodWatcher error message"))
-					})
-				})
-
 				When("the AddWatcher method of the watcherManager return an error with the disruptionTargetWatcher in parameter", func() {
 					BeforeEach(func() {
 						// Arrange / Assert
 						watchersManagerMock.EXPECT().AddWatcher(disruptionTargetWatcherMock).Return(fmt.Errorf("disruptionTargetWatcher message")).Once()
 						watchersManagerMock.EXPECT().AddWatcher(mock.Anything).Return(nil).Maybe()
 
-						watcherFactoryMock.EXPECT().NewDisruptionTargetWatcher(expectedDisruptionTargetWatcherName, true, disruption, cacheMock).Return(disruptionTargetWatcherMock, nil).Once()
-						watcherFactoryMock.EXPECT().NewChaosPodWatcher(expectedChaosPodWatcherName, disruption, cacheMock).Return(chaosPodWatcherMock, nil).Once().Maybe()
+						watcherFactoryMock.EXPECT().NewDisruptionTargetWatcher(expectedDTWatcherName, true, disruption, cacheMock).Return(disruptionTargetWatcherMock, nil).Once()
 					})
 
 					It("should return an error", func() {
 						Expect(err).To(HaveOccurred())
 						Expect(err).To(MatchError("failed to create watcher: disruptionTargetWatcher message"))
-					})
-				})
-
-				When("the AddWatcher method of the watcherManager return an error with the chaosPodWatcher in parameter", func() {
-					BeforeEach(func() {
-						// Arrange / Assert
-						watchersManagerMock.EXPECT().AddWatcher(chaosPodWatcherMock).Return(fmt.Errorf("chaosPodWatcher error"))
-						watchersManagerMock.EXPECT().AddWatcher(mock.Anything).Return(nil).Maybe()
-
-						watcherFactoryMock.EXPECT().NewDisruptionTargetWatcher(expectedDisruptionTargetWatcherName, true, disruption, cacheMock).Return(disruptionTargetWatcherMock, nil).Maybe()
-						watcherFactoryMock.EXPECT().NewChaosPodWatcher(expectedChaosPodWatcherName, disruption, cacheMock).Return(chaosPodWatcherMock, nil).Once()
-					})
-
-					It("should return an error", func() {
-						Expect(err).To(HaveOccurred())
-						Expect(err).To(MatchError("failed to create watcher: chaosPodWatcher error"))
 					})
 				})
 			})
@@ -257,13 +213,11 @@ var _ = Describe("Disruptions watchers manager", func() {
 				disSpecHash, err := disruption.Spec.HashNoCount()
 				Expect(err).ShouldNot(HaveOccurred())
 				expectedDTWatcher := disSpecHash + string(watchers.DisruptionTargetWatcherName)
-				expectedCPWatcher := disSpecHash + string(watchers.ChaosPodWatcherName)
 
 				By("seeding the cache via first CreateAllWatchers call with uid-v1")
-				oldManagerMock.EXPECT().GetWatcher(mock.Anything).Return(nil).Twice()
-				oldManagerMock.EXPECT().AddWatcher(mock.Anything).Return(nil).Twice()
+				oldManagerMock.EXPECT().GetWatcher(mock.Anything).Return(nil).Once()
+				oldManagerMock.EXPECT().AddWatcher(mock.Anything).Return(nil).Once()
 				watcherFactoryMock.EXPECT().NewDisruptionTargetWatcher(expectedDTWatcher, true, disruption, cacheMock).Return(watchers.NewWatcherMock(GinkgoT()), nil).Once()
-				watcherFactoryMock.EXPECT().NewChaosPodWatcher(expectedCPWatcher, disruption, cacheMock).Return(watchers.NewWatcherMock(GinkgoT()), nil).Once()
 				Expect(disruptionsWatchersManager.CreateAllWatchers(ctx, disruption, oldManagerMock, cacheMock)).To(Succeed())
 
 				By("building a recreated disruption with the same namespace/name but a new UID")
@@ -279,10 +233,9 @@ var _ = Describe("Disruptions watchers manager", func() {
 				oldManagerMock.EXPECT().RemoveAllWatchers().Once()
 
 				By("expecting fresh watchers to be created for the new disruption")
-				newManagerMock.EXPECT().GetWatcher(mock.Anything).Return(nil).Twice()
-				newManagerMock.EXPECT().AddWatcher(mock.Anything).Return(nil).Twice()
+				newManagerMock.EXPECT().GetWatcher(mock.Anything).Return(nil).Once()
+				newManagerMock.EXPECT().AddWatcher(mock.Anything).Return(nil).Once()
 				watcherFactoryMock.EXPECT().NewDisruptionTargetWatcher(expectedDTWatcher, true, recreatedDisruption, cacheMock).Return(watchers.NewWatcherMock(GinkgoT()), nil).Once()
-				watcherFactoryMock.EXPECT().NewChaosPodWatcher(expectedCPWatcher, recreatedDisruption, cacheMock).Return(watchers.NewWatcherMock(GinkgoT()), nil).Once()
 
 				Expect(disruptionsWatchersManager.CreateAllWatchers(ctx, recreatedDisruption, newManagerMock, cacheMock)).To(Succeed())
 			})
@@ -293,18 +246,15 @@ var _ = Describe("Disruptions watchers manager", func() {
 				disSpecHash, err := disruption.Spec.HashNoCount()
 				Expect(err).ShouldNot(HaveOccurred())
 				expectedDTWatcher := disSpecHash + string(watchers.DisruptionTargetWatcherName)
-				expectedCPWatcher := disSpecHash + string(watchers.ChaosPodWatcherName)
 
 				By("seeding the cache via first CreateAllWatchers call with uid-v1")
-				oldManagerMock.EXPECT().GetWatcher(mock.Anything).Return(nil).Twice()
-				oldManagerMock.EXPECT().AddWatcher(mock.Anything).Return(nil).Twice()
+				oldManagerMock.EXPECT().GetWatcher(mock.Anything).Return(nil).Once()
+				oldManagerMock.EXPECT().AddWatcher(mock.Anything).Return(nil).Once()
 				watcherFactoryMock.EXPECT().NewDisruptionTargetWatcher(expectedDTWatcher, true, disruption, cacheMock).Return(watchers.NewWatcherMock(GinkgoT()), nil).Once()
-				watcherFactoryMock.EXPECT().NewChaosPodWatcher(expectedCPWatcher, disruption, cacheMock).Return(watchers.NewWatcherMock(GinkgoT()), nil).Once()
 				Expect(disruptionsWatchersManager.CreateAllWatchers(ctx, disruption, oldManagerMock, cacheMock)).To(Succeed())
 
-				By("calling CreateAllWatchers again with the same UID — existing watchers already present")
+				By("calling CreateAllWatchers again with the same UID — existing watcher already present")
 				oldManagerMock.EXPECT().GetWatcher(expectedDTWatcher).Return(watchers.NewWatcherMock(GinkgoT())).Once()
-				oldManagerMock.EXPECT().GetWatcher(expectedCPWatcher).Return(watchers.NewWatcherMock(GinkgoT())).Once()
 				Expect(disruptionsWatchersManager.CreateAllWatchers(ctx, disruption, oldManagerMock, cacheMock)).To(Succeed())
 
 				By("not calling RemoveAllWatchers on the cached manager")
@@ -312,7 +262,6 @@ var _ = Describe("Disruptions watchers manager", func() {
 
 				By("not calling factory methods on the second pass")
 				watcherFactoryMock.AssertNumberOfCalls(GinkgoT(), "NewDisruptionTargetWatcher", 1)
-				watcherFactoryMock.AssertNumberOfCalls(GinkgoT(), "NewChaosPodWatcher", 1)
 			})
 		})
 	})
@@ -331,10 +280,8 @@ var _ = Describe("Disruptions watchers manager", func() {
 				disSpecHash, err := disruption.Spec.HashNoCount()
 				Expect(err).ShouldNot(HaveOccurred())
 
-				expectedDisruptionTargetWatcherName = disSpecHash + string(watchers.DisruptionTargetWatcherName)
-				expectedChaosPodWatcherName = disSpecHash + string(watchers.ChaosPodWatcherName)
+				expectedDTWatcherName = disSpecHash + string(watchers.DisruptionTargetWatcherName)
 
-				chaosPodWatcherMock = watchers.NewWatcherMock(GinkgoT())
 				disruptionTargetWatcherMock = watchers.NewWatcherMock(GinkgoT())
 
 				watchersManagerMock = watchers.NewManagerMock(GinkgoT())
@@ -342,8 +289,7 @@ var _ = Describe("Disruptions watchers manager", func() {
 				watchersManagerMock.EXPECT().GetWatcher(mock.Anything).Return(nil)
 
 				watcherFactoryMock = watchers.NewFactoryMock(GinkgoT())
-				watcherFactoryMock.EXPECT().NewChaosPodWatcher(expectedChaosPodWatcherName, disruption, cacheMock).Return(watchers.NewWatcherMock(GinkgoT()), nil)
-				watcherFactoryMock.EXPECT().NewDisruptionTargetWatcher(expectedDisruptionTargetWatcherName, mock.Anything, disruption, cacheMock).Return(watchers.NewWatcherMock(GinkgoT()), nil)
+				watcherFactoryMock.EXPECT().NewDisruptionTargetWatcher(expectedDTWatcherName, mock.Anything, disruption, cacheMock).Return(watchers.NewWatcherMock(GinkgoT()), nil)
 			})
 
 			JustBeforeEach(func(ctx SpecContext) {
@@ -405,16 +351,13 @@ var _ = Describe("Disruptions watchers manager", func() {
 				disSpecHash, err := disruption.Spec.HashNoCount()
 				Expect(err).ShouldNot(HaveOccurred())
 
-				expectedDisruptionTargetWatcherName = disSpecHash + string(watchers.DisruptionTargetWatcherName)
-				expectedChaosPodWatcherName = disSpecHash + string(watchers.ChaosPodWatcherName)
+				expectedDTWatcherName = disSpecHash + string(watchers.DisruptionTargetWatcherName)
 
-				chaosPodWatcherMock = watchers.NewWatcherMock(GinkgoT())
 				disruptionTargetWatcherMock = watchers.NewWatcherMock(GinkgoT())
 
 				watchersManagerMock.EXPECT().AddWatcher(mock.Anything).Return(nil)
 				watchersManagerMock.EXPECT().GetWatcher(mock.Anything).Return(nil)
-				watcherFactoryMock.EXPECT().NewChaosPodWatcher(expectedChaosPodWatcherName, disruption, cacheMock).Return(watchers.NewWatcherMock(GinkgoT()), nil)
-				watcherFactoryMock.EXPECT().NewDisruptionTargetWatcher(expectedDisruptionTargetWatcherName, mock.Anything, disruption, cacheMock).Return(watchers.NewWatcherMock(GinkgoT()), nil)
+				watcherFactoryMock.EXPECT().NewDisruptionTargetWatcher(expectedDTWatcherName, mock.Anything, disruption, cacheMock).Return(watchers.NewWatcherMock(GinkgoT()), nil)
 			}
 		})
 
@@ -509,13 +452,11 @@ var _ = Describe("Disruptions watchers manager", func() {
 				disSpecHash, err := disruption.Spec.HashNoCount()
 				Expect(err).ShouldNot(HaveOccurred())
 
-				expectedDisruptionTargetWatcherName = disSpecHash + string(watchers.DisruptionTargetWatcherName)
-				expectedChaosPodWatcherName = disSpecHash + string(watchers.ChaosPodWatcherName)
+				expectedDTWatcherName = disSpecHash + string(watchers.DisruptionTargetWatcherName)
 
 				watchersManagerMock.EXPECT().AddWatcher(mock.Anything).Return(nil)
 				watchersManagerMock.EXPECT().GetWatcher(mock.Anything).Return(nil)
-				watcherFactoryMock.EXPECT().NewChaosPodWatcher(expectedChaosPodWatcherName, disruption, cacheMock).Return(watchers.NewWatcherMock(GinkgoT()), nil)
-				watcherFactoryMock.EXPECT().NewDisruptionTargetWatcher(expectedDisruptionTargetWatcherName, mock.Anything, disruption, cacheMock).Return(watchers.NewWatcherMock(GinkgoT()), nil)
+				watcherFactoryMock.EXPECT().NewDisruptionTargetWatcher(expectedDTWatcherName, mock.Anything, disruption, cacheMock).Return(watchers.NewWatcherMock(GinkgoT()), nil)
 			}
 		})
 
@@ -574,16 +515,13 @@ var _ = Describe("Disruptions watchers manager", func() {
 					disSpecHash, err := disruption.Spec.HashNoCount()
 					Expect(err).ShouldNot(HaveOccurred())
 
-					expectedDisruptionTargetWatcherName = disSpecHash + string(watchers.DisruptionTargetWatcherName)
-					expectedChaosPodWatcherName = disSpecHash + string(watchers.ChaosPodWatcherName)
+					expectedDTWatcherName = disSpecHash + string(watchers.DisruptionTargetWatcherName)
 
-					chaosPodWatcherMock = watchers.NewWatcherMock(GinkgoT())
 					disruptionTargetWatcherMock = watchers.NewWatcherMock(GinkgoT())
 
 					watchersManagerMock.EXPECT().AddWatcher(mock.Anything).Return(nil)
 					watchersManagerMock.EXPECT().GetWatcher(mock.Anything).Return(nil)
-					watcherFactoryMock.EXPECT().NewChaosPodWatcher(expectedChaosPodWatcherName, disruption, cacheMock).Return(watchers.NewWatcherMock(GinkgoT()), nil)
-					watcherFactoryMock.EXPECT().NewDisruptionTargetWatcher(expectedDisruptionTargetWatcherName, mock.Anything, disruption, cacheMock).Return(watchers.NewWatcherMock(GinkgoT()), nil)
+					watcherFactoryMock.EXPECT().NewDisruptionTargetWatcher(expectedDTWatcherName, mock.Anything, disruption, cacheMock).Return(watchers.NewWatcherMock(GinkgoT()), nil)
 				}
 			})
 

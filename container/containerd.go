@@ -25,15 +25,15 @@ func newContainerdRuntime() (Runtime, error) {
 	return &containerdRuntime{client: c}, nil
 }
 
-func (c containerdRuntime) PID(id string) (uint32, error) {
+func (c containerdRuntime) PID(ctx context.Context, id string) (uint32, error) {
 	// load container structure
-	container, err := c.client.LoadContainer(context.Background(), id)
+	container, err := c.client.LoadContainer(ctx, id)
 	if err != nil {
 		return 0, fmt.Errorf("error while loading the given container: %w", err)
 	}
 
 	// retrieve container task (process)
-	task, err := container.Task(context.Background(), nil)
+	task, err := container.Task(ctx, nil)
 	if err != nil {
 		return 0, fmt.Errorf("error while loading the given container task: %w", err)
 	}
@@ -41,17 +41,17 @@ func (c containerdRuntime) PID(id string) (uint32, error) {
 	return task.Pid(), nil
 }
 
-func (c containerdRuntime) HostPath(id, path string) (string, error) {
+func (c containerdRuntime) HostPath(ctx context.Context, id, path string) (string, error) {
 	var hostPath string
 
 	// load container structure
-	container, err := c.client.LoadContainer(context.Background(), id)
+	container, err := c.client.LoadContainer(ctx, id)
 	if err != nil {
 		return "", fmt.Errorf("error while loading the given container: %w", err)
 	}
 
 	// get container spec
-	spec, err := container.Spec(context.Background())
+	spec, err := container.Spec(ctx)
 	if err != nil {
 		return "", fmt.Errorf("error getting container spec: %w", err)
 	}

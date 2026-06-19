@@ -182,7 +182,7 @@ ifeq (true,$(CI))
 DD_ENV = ci
 endif
 
-LIMA_CGROUPS=v1
+LIMA_CGROUPS?=v1
 ifeq (v2,$(CGROUPS))
 LIMA_CGROUPS=v2
 endif

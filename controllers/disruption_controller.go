@@ -35,7 +35,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -713,7 +712,7 @@ func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *ch
 	case chaostypes.DisruptionLevelPod:
 		pod := corev1.Pod{}
 
-		if err = r.Client.Get(ctx, types.NamespacedName{Namespace: instance.Namespace, Name: target}, &pod); err != nil {
+		if err = r.APIReader.Get(ctx, types.NamespacedName{Namespace: instance.Namespace, Name: target}, &pod); err != nil {
 			return fmt.Errorf("error getting target to inject: %w", err)
 		}
 
@@ -1090,7 +1089,7 @@ func (r *DisruptionReconciler) getSelectorMatchingTargets(instance *chaosv1beta1
 	// select either pods or nodes depending on the disruption level
 	switch instance.Spec.Level {
 	case chaostypes.DisruptionLevelPod:
-		pods, totalCount, err := r.TargetSelector.GetMatchingPodsOverTotalPods(r.Client, instance)
+		pods, totalCount, err := r.TargetSelector.GetMatchingPodsOverTotalPods(r.APIReader, instance)
 		if err != nil {
 			return nil, 0, fmt.Errorf("can't get pods matching the given label selector: %w", err)
 		}
@@ -1101,7 +1100,7 @@ func (r *DisruptionReconciler) getSelectorMatchingTargets(instance *chaosv1beta1
 
 		totalAvailableTargetsCount = totalCount
 	case chaostypes.DisruptionLevelNode:
-		nodes, totalCount, err := r.TargetSelector.GetMatchingNodesOverTotalNodes(r.Client, instance)
+		nodes, totalCount, err := r.TargetSelector.GetMatchingNodesOverTotalNodes(r.APIReader, instance)
 		if err != nil {
 			return nil, 0, fmt.Errorf("can't get nodes matching the given label selector: %w", err)
 		}
@@ -1190,7 +1189,7 @@ func (r *DisruptionReconciler) recordEventOnTarget(ctx context.Context, instance
 	case chaostypes.DisruptionLevelPod:
 		p := &corev1.Pod{}
 
-		if err := r.Client.Get(ctx, types.NamespacedName{Namespace: instance.Namespace, Name: target}, p); err != nil {
+		if err := r.APIReader.Get(ctx, types.NamespacedName{Namespace: instance.Namespace, Name: target}, p); err != nil {
 			r.log.Errorw("event failed to be registered on target", tagutil.ErrorKey, err, tagutil.TargetNameKey, target)
 		}
 
@@ -1198,7 +1197,7 @@ func (r *DisruptionReconciler) recordEventOnTarget(ctx context.Context, instance
 	case chaostypes.DisruptionLevelNode:
 		n := &corev1.Node{}
 
-		if err := r.Client.Get(ctx, types.NamespacedName{Name: target}, n); err != nil {
+		if err := r.APIReader.Get(ctx, types.NamespacedName{Name: target}, n); err != nil {
 			r.log.Errorw("event failed to be registered on target", tagutil.ErrorKey, err, tagutil.TargetNameKey, target)
 		}
 
@@ -1211,7 +1210,7 @@ func (r *DisruptionReconciler) recordEventOnTarget(ctx context.Context, instance
 }
 
 // SetupWithManager setups the current reconciler with the given manager
-func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager, kubeInformerFactory kubeinformers.SharedInformerFactory) (controller.Controller, error) {
+func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager) (controller.Controller, error) {
 	podToDisruption := func(ctx context.Context, d *corev1.Pod) []reconcile.Request {
 		// podtoDisruption is a function that maps pods to disruptions. it is meant to be used as an event handler on a pod informer
 		// this function should safely return an empty list of requests to reconcile if the object we receive is not actually a chaos pod
@@ -1232,12 +1231,38 @@ func (r *DisruptionReconciler) SetupWithManager(mgr ctrl.Manager, kubeInformerFa
 		return []reconcile.Request{{NamespacedName: types.NamespacedName{Name: name, Namespace: namespace}}}
 	}
 
-	return ctrl.NewControllerManagedBy(mgr).
+	cont, err := ctrl.NewControllerManagedBy(mgr).
 		For(&chaosv1beta1.Disruption{}).
 		WithOptions(controller.Options{RateLimiter: workqueue.NewTypedItemExponentialFailureRateLimiter[reconcile.Request](time.Second, time.Hour)}).
 		WatchesRawSource(source.Kind(mgr.GetCache(), &corev1.Pod{}, handler.TypedEnqueueRequestsFromMapFunc(podToDisruption))).
 		WithEventFilter(chaosEventsPredicate()).
 		Build(r)
+	if err != nil {
+		return nil, err
+	}
+
+	// Register a single shared chaos pod handler on the manager's pod informer.
+	// This replaces per-disruption ChaosPodWatcher caches: all chaos pod events are
+	// handled by one shared handler that dispatches by reading disruption labels from
+	// the pod at event time.
+	podInformer, err := mgr.GetCache().GetInformer(context.Background(), &corev1.Pod{})
+	if err != nil {
+		return nil, fmt.Errorf("SetupWithManager: failed to get pod informer: %w", err)
+	}
+
+	sharedHandler := watchers.NewSharedChaosPodHandler(
+		r.APIReader,
+		r.Recorder,
+		r.BaseLog,
+		watchers.NewWatcherMetricsAdapter(r.MetricsSink, r.BaseLog),
+		mgr.Elected(), // gate event/metric emission on leadership in HA deployments
+	)
+
+	if _, err := podInformer.AddEventHandler(sharedHandler); err != nil {
+		return nil, fmt.Errorf("SetupWithManager: failed to register shared chaos pod handler: %w", err)
+	}
+
+	return cont, nil
 }
 
 // chaosEventsPredicate determines if given event is a chaos related one or not
