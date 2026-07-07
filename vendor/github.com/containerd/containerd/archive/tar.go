@@ -31,8 +31,8 @@ import (
 
 	"github.com/moby/sys/userns"
 
-	"github.com/containerd/containerd/archive/tarheader"
-	"github.com/containerd/containerd/pkg/epoch"
+	"github.com/containerd/containerd/v2/archive/tarheader"
+	"github.com/containerd/containerd/v2/pkg/epoch"
 	"github.com/containerd/continuity/fs"
 	"github.com/containerd/log"
 )

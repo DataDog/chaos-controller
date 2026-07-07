@@ -30,7 +30,7 @@
 package sandbox
 
 import (
-	types "github.com/containerd/containerd/api/types"
+	types "github.com/containerd/containerd/v2/api/types"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	anypb "google.golang.org/protobuf/types/known/anypb"
