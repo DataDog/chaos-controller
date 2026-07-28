@@ -10,7 +10,7 @@ package events
 
 import (
 	context "context"
-	types "github.com/containerd/containerd/api/types"
+	types "github.com/containerd/containerd/v2/api/types"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
