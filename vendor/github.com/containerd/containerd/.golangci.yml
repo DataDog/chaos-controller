@@ -76,9 +76,9 @@ linters-settings:
     rules:
       main:
         deny:
-          - pkg: "github.com/containerd/containerd/log"
+          - pkg: "github.com/containerd/containerd/v2/log"
             desc: The containerd log package was migrated to a separate module. Use github.com/containerd/log instead.
-          - pkg: "github.com/containerd/containerd/platforms"
+          - pkg: "github.com/containerd/containerd/v2/platforms"
             desc: The containerd platforms package was migrated to a separate module. Use github.com/containerd/platforms instead.
   gosec:
     # The following issues surfaced when `gosec` linter
