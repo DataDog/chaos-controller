@@ -9,6 +9,7 @@ variables:
   CONTROLLER_IMAGE_NAME: chaos-controller
   INJECTOR_IMAGE_NAME: chaos-injector
   HANDLER_IMAGE_NAME: chaos-handler
+  DD_PKG_IMAGE: "registry.ddbuild.io/agent-delivery/dd-pkg:v0.9.4"
   SLACK_NOTIFIER_IMAGE: "registry.ddbuild.io/slack-notifier:v27627802-caa0581-sdm-gbi-focal@sha256:0b8ace5ad00b7be5e8430c5685c2a9b657a6e32f92c826102557146f0095adf5"
   # Increase CPU and memory resources to speed up the build
   KUBERNETES_CPU_REQUEST: "4"
@@ -53,7 +54,7 @@ check-lockfile:
   image: registry.ddbuild.io/docker-push:1.7.0
   tags: ["arch:amd64"]
 
-# login into Docker Hub -- allows to not get rate-limited on releases
+# Login to Docker Hub for base-image pulls, avoiding anonymous rate limits.
 .docker-hub-login: &docker-hub-login
   <<: *docker-runner
   before_script:
@@ -129,6 +130,7 @@ release-prod-ref:
     - if: $CI_COMMIT_TAG
       when: never
     - when: manual
+      allow_failure: false
   variables:
     TARGET_LABEL: "prod"
     TAG: "${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
@@ -151,41 +153,65 @@ release-prod-tag:
     TARGET_LABEL: "prod"
     TAG: "${CI_COMMIT_TAG}"
 
-## Docker Hub Release
+## Public registry release
 
-.release-docker-hub: &release-docker-hub
-  <<: *docker-hub-login
+.release-docker-hub:
   stage: release-public
+  image: $DD_PKG_IMAGE
   tags: ["arch:amd64"]
+  variables:
+    IMAGE_SUFFIX: ""
+    IMG_REGISTRIES: "dockerhub"
+    PUBLIC_IMAGES_PUBLISH_TIMEOUT: "1800"
   script:
-    - *install-make
-    - >
-      make docker-build-only-all \
-        CONTAINER_REGISTRY=docker.io/datadog \
-        CONTAINER_TAG=${TAG} \
-        CONTAINER_VERSION=${CI_COMMIT_SHA} \
-        CONTAINER_BUILD_EXTRA_ARGS="--platform=linux/amd64,linux/arm64 --label target=${TARGET_LABEL} --push" \
-        SIGN_IMAGE=false \
-        SKIP_GENERATE=true
-  dependencies:
-    - build:make
+    - |
+      set -euo pipefail
+      dd-pkg version
+      dd-pkg publish-image \
+        --sources "registry.ddbuild.io/${IMAGE_NAME}:${TAG}" \
+        --destinations "${IMAGE_NAME}${IMAGE_SUFFIX}:${TAG}" \
+        --registries "${IMG_REGISTRIES}" \
+        --timeout "${PUBLIC_IMAGES_PUBLISH_TIMEOUT}" \
+        --poll-interval 30
+  parallel:
+    matrix:
+      - IMAGE_NAME:
+          - chaos-controller
+          - chaos-injector
+          - chaos-handler
 
+# Branch publications reuse the matching internal tag from release-prod-ref.
 release-docker-hub-ref:
-  <<: *release-docker-hub
+  extends: .release-docker-hub
+  needs:
+    - job: release-prod-ref
   when: manual
   except:
     - tags
   variables:
-    TARGET_LABEL: "prod"
     TAG: "${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
 
 release-docker-hub-tag:
-  <<: *release-docker-hub
+  extends: .release-docker-hub
   when: always
   only:
     - tags
   variables:
     TAG: "${CI_COMMIT_TAG}"
+
+# Keep a separate dev-tier path for validating public-images and dd-pkg changes;
+# it also reuses the matching internal tag from release-prod-ref.
+release-docker-hub-dev:
+  extends: .release-docker-hub
+  needs:
+    - job: release-prod-ref
+  when: manual
+  except:
+    - tags
+  variables:
+    IMAGE_SUFFIX: "-dev"
+    IMG_REGISTRIES: "dev"
+    TAG: "${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
 
 # Slack Notify
 .slack-notifier-base:
