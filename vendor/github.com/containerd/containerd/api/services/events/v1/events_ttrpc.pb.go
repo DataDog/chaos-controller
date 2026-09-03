@@ -4,7 +4,7 @@ package events
 
 import (
 	context "context"
-	types "github.com/containerd/containerd/api/types"
+	types "github.com/containerd/containerd/v2/api/types"
 	ttrpc "github.com/containerd/ttrpc"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )

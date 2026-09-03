@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/containerd/containerd/api/types"
+	"github.com/containerd/containerd/v2/api/types"
 	"github.com/containerd/typeurl/v2"
 	imagespec "github.com/opencontainers/image-spec/specs-go/v1"
 )
