@@ -23,8 +23,8 @@ import (
 
 	"github.com/containerd/log"
 
-	deprecation "github.com/containerd/containerd/pkg/deprecation"
-	"github.com/containerd/containerd/plugin"
+	deprecation "github.com/containerd/containerd/v2/pkg/deprecation"
+	"github.com/containerd/containerd/v2/plugin"
 )
 
 type Service interface {
