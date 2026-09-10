@@ -168,7 +168,7 @@ release-prod-tag:
       set -euo pipefail
       dd-pkg version
       dd-pkg publish-image \
-        --sources "registry.ddbuild.io/${IMAGE_NAME}:${TAG}" \
+        --sources "registry.ddbuild.io/${IMAGE_NAME}:${CI_COMMIT_SHA}" \
         --destinations "${IMAGE_NAME}${IMAGE_SUFFIX}:${TAG}" \
         --registries "${IMG_REGISTRIES}" \
         --timeout "${PUBLIC_IMAGES_PUBLISH_TIMEOUT}" \
@@ -193,7 +193,9 @@ release-docker-hub-ref:
 
 release-docker-hub-tag:
   extends: .release-docker-hub
-  when: always
+  needs:
+    - job: release-prod-tag
+  when: on_success
   only:
     - tags
   variables:
@@ -210,7 +212,6 @@ release-docker-hub-dev:
     - tags
   variables:
     IMAGE_SUFFIX: "-dev"
-    IMG_REGISTRIES: "dev"
     TAG: "${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
 
 # Slack Notify
