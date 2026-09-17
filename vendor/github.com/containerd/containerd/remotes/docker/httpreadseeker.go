@@ -23,7 +23,7 @@ import (
 
 	"github.com/containerd/log"
 
-	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/containerd/v2/errdefs"
 )
 
 const maxRetry = 3

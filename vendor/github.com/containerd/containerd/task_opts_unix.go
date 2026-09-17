@@ -22,8 +22,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/containerd/containerd/api/types/runc/options"
-	"github.com/containerd/containerd/runtime/linux/runctypes"
+	"github.com/containerd/containerd/v2/api/types/runc/options"
+	"github.com/containerd/containerd/v2/runtime/linux/runctypes"
 )
 
 // WithNoNewKeyring causes tasks not to be created with a new keyring for secret storage.
