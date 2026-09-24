@@ -29,8 +29,8 @@ import (
 	"github.com/containerd/log"
 	"github.com/opencontainers/go-digest"
 
-	"github.com/containerd/containerd/content"
-	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/containerd/v2/content"
+	"github.com/containerd/containerd/v2/errdefs"
 )
 
 // writer represents a write transaction against the blob store.
