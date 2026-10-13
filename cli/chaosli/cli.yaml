@@ -1,0 +1,11 @@
+# Unless explicitly stated otherwise all files in this repository are licensed
+# under the Apache License Version 2.0.
+# This product includes software developed at Datadog (https://www.datadoghq.com/).
+# Copyright 2026 Datadog, Inc.
+
+# Dogbrew package metadata for chaosli. scripts/dogbrew/package.sh rewrites
+# the version at release time; do not edit it for a release.
+name: chaosli
+team: chaos-engineering
+description: chaosli is a command line tool for interacting with the chaos-controller
+version: 0.0.0-dev

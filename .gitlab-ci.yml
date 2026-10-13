@@ -4,12 +4,19 @@
 # Copyright 2026 Datadog, Inc.
 
 ---
+include:
+  - project: ddoghq/dogbrew-examples
+    file: /ci-templates/dogbrew.yml
+    ref: 1ff075cb04143a154d6ac7690aa0af14affe9a0d
+
 variables:
   CURRENT_CI_IMAGE: 0.5.1
   CONTROLLER_IMAGE_NAME: chaos-controller
   INJECTOR_IMAGE_NAME: chaos-injector
   HANDLER_IMAGE_NAME: chaos-handler
   DD_PKG_IMAGE: "registry.ddbuild.io/agent-delivery/dd-pkg:v0.9.4"
+  # keep in sync with BUILDGOVERSION in the Makefile
+  GO_IMAGE: registry.ddbuild.io/images/mirror/golang:1.26.2
   SLACK_NOTIFIER_IMAGE: "registry.ddbuild.io/slack-notifier:v27627802-caa0581-sdm-gbi-focal@sha256:0b8ace5ad00b7be5e8430c5685c2a9b657a6e32f92c826102557146f0095adf5"
   # Increase CPU and memory resources to speed up the build
   KUBERNETES_CPU_REQUEST: "4"
@@ -32,6 +39,7 @@ stages:
   - release-staging
   - release-prod
   - release-public
+  - release-dogbrew
   - notify
 
 check-lockfile:
@@ -213,6 +221,39 @@ release-docker-hub-dev:
   variables:
     IMAGE_SUFFIX: "-dev"
     TAG: "${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
+
+## Dogbrew release (internal `dogbrew install chaosli`)
+
+# needs: [] keeps these jobs off the image release path: a Dogbrew failure
+# never blocks or skips the release-*-tag jobs.
+build:chaosli-dogbrew:
+  stage: release-dogbrew
+  image: $GO_IMAGE
+  tags: ["arch:amd64"]
+  needs: []
+  rules:
+    - if: $CI_COMMIT_TAG
+  script:
+    - ./scripts/dogbrew/build.sh "${CI_COMMIT_TAG#v}"
+    - ./dist/dogbrew/chaosli-linux-amd64 version
+  artifacts:
+    paths:
+      - dist/dogbrew/chaosli-*
+    expire_in: 1 day
+
+publish:dogbrew:
+  extends: .dogbrew
+  stage: release-dogbrew
+  image: $GO_IMAGE
+  tags: ["arch:amd64"]
+  needs:
+    - job: build:chaosli-dogbrew
+      artifacts: true
+  rules:
+    - if: $CI_COMMIT_TAG
+  before_script:
+    - TARBALLS="$(./scripts/dogbrew/package.sh "${CI_COMMIT_TAG#v}")"
+    - export TARBALLS
 
 # Slack Notify
 .slack-notifier-base:
