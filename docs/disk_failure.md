@@ -23,6 +23,10 @@ The idea, is to simulate this behavior by catching this signal before the kernel
 
 The `diskFailure` disruption runs an eBPF program used to intercept system calls and inject errors. It is used to prevent certain processes from accessing certain files. It defines a target process and a filter path, and if the process is trying to open a file that matches the filter path, an -ENOENT error will be injected, preventing the process from opening the file.
 
+**Process targeting** is done by matching the target container's PID namespace inode (`/proc/<pid>/ns/pid`). Every process in a container shares the same PID namespace inode, so the entire process tree is targeted regardless of depth — not just the root process and its direct children. At node level, the PID namespace filter is disabled and all processes on the node are targeted.
+
+**Path targeting** intercepts both absolute paths (e.g. `/data/config`) and relative paths resolved via `AT_FDCWD` (e.g. `open("config.yaml", ...)`). Relative paths are resolved to their absolute equivalent by walking the task's working directory dentries, so the same prefix filter applies to both.
+
 The Linux kernel provides an eBPF framework that allows users to load and run custom programs within the kernel of the operating system.
 That means it can extend or even modify the way the kernel behaves. It is useful for observability, security, chaos, etc...
 With eBPF it is possible to catch openat syscall and override the result with a `-ENOENT` error code.
@@ -97,7 +101,7 @@ spec:
     probability: 100%
 ```
 
-* **Pod**: Intercept all `openat` system  calls of the main process of the containers and its children. Allow to filter by container name too:
+* **Pod**: Intercept all `openat` system calls for the entire process tree of the targeted containers (matched via PID namespace inode — grandchildren are targeted too). Containers that share the host PID namespace are rejected at injection time. Filtering by container name is supported:
 
 > Disrupt all containers
 
@@ -206,29 +210,21 @@ To know more about exit codes you can refer to this [page](https://linux.die.net
 * The source code of the eBPF disk failure program is [here](../ebpf/disk-failure)
 * Tested with Ubuntu 22.10, kernel 5.15, go 1.19
 * To know how to create an eBPF disruption you can refer to the following [documentation](ebpf_disruption.md)
-* :warning: It does not support linux kernel greater than 5.15.95
-* :warning: Be sure to have a kernel build with eBPF:
+* :warning: Be sure to have a kernel built with eBPF and `fmod_ret` support:
 
 ```shell
+# Core eBPF (required by all eBPF disruptions)
 CONFIG_BPF=y
-CONFIG_HAVE_EBPF_JIT=y
-CONFIG_ARCH_WANT_DEFAULT_BPF_JIT=y
 CONFIG_BPF_SYSCALL=y
 CONFIG_BPF_JIT=y
-CONFIG_BPF_JIT_ALWAYS_ON=y
-CONFIG_BPF_JIT_DEFAULT_ON=y
-CONFIG_BPF_UNPRIV_DEFAULT_OFF=y
-CONFIG_BPF_LSM=y
-CONFIG_CGROUP_BPF=y
-CONFIG_IPV6_SEG6_BPF=y
-CONFIG_NETFILTER_XT_MATCH_BPF=m
-CONFIG_BPFILTER=y
-CONFIG_BPFILTER_UMH=m
-CONFIG_NET_CLS_BPF=m
-CONFIG_NET_ACT_BPF=m
-CONFIG_BPF_STREAM_PARSER=y
-CONFIG_LWTUNNEL_BPF=y
-CONFIG_BPF_EVENTS=y
-CONFIG_BPF_KPROBE_OVERRIDE=y
-CONFIG_TEST_BPF=m
+CONFIG_HAVE_EBPF_JIT=y
+CONFIG_NET_CLS_ACT=y
+
+# Required specifically for disk failure (fmod_ret hook)
+# The eBPF program uses fmod_ret to intercept openat — this requires
+# error-injectable function support in the kernel.
+# CONFIG_BPF_KPROBE_OVERRIDE is no longer needed.
+CONFIG_FUNCTION_ERROR_INJECTION=y
 ```
+
+> **Note:** `CONFIG_FUNCTION_ERROR_INJECTION` replaces the previously documented `CONFIG_BPF_KPROBE_OVERRIDE` requirement. The disk failure injector now uses `fmod_ret` (a BTF-based return-value override hook) instead of the older `kprobe + bpf_override_return` approach. Kernels that satisfy the network disruption eBPF requirements but lack `CONFIG_FUNCTION_ERROR_INJECTION` will pass the common eBPF check but be rejected specifically when a disk failure injection is attempted.
