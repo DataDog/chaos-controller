@@ -18,6 +18,14 @@ semver='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\+[
 work_dir="$(mktemp -d)"
 trap 'rm -rf "${work_dir}"' EXIT
 
+# Dogbrew package metadata, identical in every tarball.
+cat > "${work_dir}/cli.yaml" <<EOF
+name: chaosli
+team: chaos-engineering
+description: chaosli is a command line tool for interacting with the chaos-controller
+version: ${version}
+EOF
+
 for platform in darwin-arm64 linux-amd64 linux-arm64; do
   binary="chaosli-${platform}"
   platform_dir="${work_dir}/${platform}"
@@ -25,7 +33,7 @@ for platform in darwin-arm64 linux-amd64 linux-arm64; do
 
   [[ -s "${dist_dir}/${binary}" ]] || { echo "error: missing or empty binary: ${dist_dir}/${binary}" >&2; exit 1; }
   mkdir -p "${platform_dir}"
-  sed "s/^version:.*/version: ${version}/" "${repo_root}/cli/chaosli/cli.yaml" > "${platform_dir}/cli.yaml"
+  cp "${work_dir}/cli.yaml" "${platform_dir}/cli.yaml"
   cp "${dist_dir}/${binary}" "${platform_dir}/${binary}"
   chmod +x "${platform_dir}/${binary}"
   tar -czf "${tarball}" -C "${platform_dir}" cli.yaml "${binary}"
