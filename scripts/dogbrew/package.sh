@@ -24,6 +24,7 @@ name: chaosli
 team: chaos-engineering
 description: chaosli is a command line tool for interacting with the chaos-controller
 version: ${version}
+slack_channel: https://dd.enterprise.slack.com/archives/CFFAL9PPU
 EOF
 
 for platform in darwin-arm64 linux-amd64 linux-arm64; do
