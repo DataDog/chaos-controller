@@ -17,32 +17,41 @@ const (
 
 // UserProfile contains all the information details of a given user
 type UserProfile struct {
-	FirstName              string                              `json:"first_name,omitempty"`
-	LastName               string                              `json:"last_name,omitempty"`
-	RealName               string                              `json:"real_name"`
-	RealNameNormalized     string                              `json:"real_name_normalized"`
-	DisplayName            string                              `json:"display_name"`
-	DisplayNameNormalized  string                              `json:"display_name_normalized"`
-	AvatarHash             string                              `json:"avatar_hash"`
-	Email                  string                              `json:"email,omitempty"`
-	Skype                  string                              `json:"skyp,omitempty"`
-	Phone                  string                              `json:"phone,omitempty"`
-	Image24                string                              `json:"image_24"`
-	Image32                string                              `json:"image_32"`
-	Image48                string                              `json:"image_48"`
-	Image72                string                              `json:"image_72"`
-	Image192               string                              `json:"image_192"`
-	Image512               string                              `json:"image_512"`
-	ImageOriginal          string                              `json:"image_original,omitempty"`
-	Title                  string                              `json:"title,omitempty"`
-	BotID                  string                              `json:"bot_id,omitempty"`
-	ApiAppID               string                              `json:"api_app_id,omitempty"`
-	StatusText             string                              `json:"status_text,omitempty"`
-	StatusEmoji            string                              `json:"status_emoji,omitempty"`
-	StatusEmojiDisplayInfo []UserProfileStatusEmojiDisplayInfo `json:"status_emoji_display_info,omitempty"`
-	StatusExpiration       int                                 `json:"status_expiration,omitempty"`
-	Team                   string                              `json:"team"`
-	Fields                 UserProfileCustomFields             `json:"fields,omitempty"`
+	FirstName               string                              `json:"first_name,omitempty"`
+	LastName                string                              `json:"last_name,omitempty"`
+	RealName                string                              `json:"real_name"`
+	RealNameNormalized      string                              `json:"real_name_normalized"`
+	DisplayName             string                              `json:"display_name"`
+	DisplayNameNormalized   string                              `json:"display_name_normalized"`
+	Pronouns                string                              `json:"pronouns,omitempty"`
+	AvatarHash              string                              `json:"avatar_hash"`
+	Email                   string                              `json:"email,omitempty"`
+	Skype                   string                              `json:"skype,omitempty"`
+	Phone                   string                              `json:"phone,omitempty"`
+	Image24                 string                              `json:"image_24"`
+	Image32                 string                              `json:"image_32"`
+	Image48                 string                              `json:"image_48"`
+	Image72                 string                              `json:"image_72"`
+	Image192                string                              `json:"image_192"`
+	Image512                string                              `json:"image_512"`
+	Image1024               string                              `json:"image_1024,omitempty"`
+	ImageOriginal           string                              `json:"image_original,omitempty"`
+	IsCustomImage           bool                                `json:"is_custom_image,omitempty"`
+	Title                   string                              `json:"title,omitempty"`
+	BotID                   string                              `json:"bot_id,omitempty"`
+	ApiAppID                string                              `json:"api_app_id,omitempty"`
+	AlwaysActive            bool                                `json:"always_active,omitempty"`
+	StatusText              string                              `json:"status_text,omitempty"`
+	StatusEmoji             string                              `json:"status_emoji,omitempty"`
+	StatusEmojiDisplayInfo  []UserProfileStatusEmojiDisplayInfo `json:"status_emoji_display_info,omitempty"`
+	StatusExpiration        int                                 `json:"status_expiration,omitempty"`
+	StatusTextCanonical     string                              `json:"status_text_canonical,omitempty"`
+	HuddleState             string                              `json:"huddle_state,omitempty"`
+	HuddleStateExpirationTS int                                 `json:"huddle_state_expiration_ts,omitempty"`
+	StartDate               string                              `json:"start_date,omitempty"`
+	GuestInvitedBy          string                              `json:"guest_invited_by,omitempty"`
+	Team                    string                              `json:"team"`
+	Fields                  UserProfileCustomFields             `json:"fields,omitempty"`
 }
 
 type UserProfileStatusEmojiDisplayInfo struct {
@@ -72,7 +81,7 @@ func (fields *UserProfileCustomFields) UnmarshalJSON(b []byte) error {
 // MarshalJSON is the implementation of the json.Marshaler interface.
 func (fields UserProfileCustomFields) MarshalJSON() ([]byte, error) {
 	if len(fields.fields) == 0 {
-		return []byte("[]"), nil
+		return []byte("{}"), nil
 	}
 	return json.Marshal(fields.fields)
 }
@@ -111,33 +120,37 @@ type UserProfileCustomField struct {
 
 // User contains all the information of a user
 type User struct {
-	ID                string         `json:"id"`
-	TeamID            string         `json:"team_id"`
-	Name              string         `json:"name"`
-	Deleted           bool           `json:"deleted"`
-	Color             string         `json:"color"`
-	RealName          string         `json:"real_name"`
-	TZ                string         `json:"tz,omitempty"`
-	TZLabel           string         `json:"tz_label"`
-	TZOffset          int            `json:"tz_offset"`
-	Profile           UserProfile    `json:"profile"`
-	IsBot             bool           `json:"is_bot"`
-	IsAdmin           bool           `json:"is_admin"`
-	IsOwner           bool           `json:"is_owner"`
-	IsPrimaryOwner    bool           `json:"is_primary_owner"`
-	IsRestricted      bool           `json:"is_restricted"`
-	IsUltraRestricted bool           `json:"is_ultra_restricted"`
-	IsStranger        bool           `json:"is_stranger"`
-	IsAppUser         bool           `json:"is_app_user"`
-	IsInvitedUser     bool           `json:"is_invited_user"`
-	IsEmailConfirmed  bool           `json:"is_email_confirmed"`
-	Has2FA            bool           `json:"has_2fa"`
-	TwoFactorType     *string        `json:"two_factor_type"`
-	HasFiles          bool           `json:"has_files"`
-	Presence          string         `json:"presence"`
-	Locale            string         `json:"locale"`
-	Updated           JSONTime       `json:"updated"`
-	Enterprise        EnterpriseUser `json:"enterprise_user,omitempty"`
+	ID                     string         `json:"id"`
+	TeamID                 string         `json:"team_id"`
+	Name                   string         `json:"name"`
+	Username               string         `json:"username,omitempty"`
+	Deleted                bool           `json:"deleted"`
+	Color                  string         `json:"color"`
+	RealName               string         `json:"real_name"`
+	TZ                     string         `json:"tz,omitempty"`
+	TZLabel                string         `json:"tz_label"`
+	TZOffset               int            `json:"tz_offset"`
+	Profile                UserProfile    `json:"profile"`
+	IsBot                  bool           `json:"is_bot"`
+	IsAdmin                bool           `json:"is_admin"`
+	IsOwner                bool           `json:"is_owner"`
+	IsPrimaryOwner         bool           `json:"is_primary_owner"`
+	IsRestricted           bool           `json:"is_restricted"`
+	IsUltraRestricted      bool           `json:"is_ultra_restricted"`
+	IsStranger             bool           `json:"is_stranger"`
+	IsAppUser              bool           `json:"is_app_user"`
+	IsConnectorBot         bool           `json:"is_connector_bot"`
+	IsWorkflowBot          bool           `json:"is_workflow_bot"`
+	IsInvitedUser          bool           `json:"is_invited_user"`
+	IsEmailConfirmed       bool           `json:"is_email_confirmed"`
+	Has2FA                 *bool          `json:"has_2fa,omitempty"`
+	TwoFactorType          *string        `json:"two_factor_type"`
+	HasFiles               bool           `json:"has_files"`
+	Presence               string         `json:"presence"`
+	Locale                 string         `json:"locale"`
+	Updated                JSONTime       `json:"updated"`
+	WhoCanShareContactCard string         `json:"who_can_share_contact_card,omitempty"`
+	Enterprise             EnterpriseUser `json:"enterprise_user,omitempty"`
 }
 
 // UserPresence contains details about a user online status
@@ -169,13 +182,14 @@ type UserIdentity struct {
 }
 
 // EnterpriseUser is present when a user is part of Slack Enterprise Grid
-// https://api.slack.com/types/user#enterprise_grid_user_objects
+// https://docs.slack.dev/reference/objects/user-object/#fields
 type EnterpriseUser struct {
 	ID             string   `json:"id"`
 	EnterpriseID   string   `json:"enterprise_id"`
 	EnterpriseName string   `json:"enterprise_name"`
 	IsAdmin        bool     `json:"is_admin"`
 	IsOwner        bool     `json:"is_owner"`
+	IsPrimaryOwner bool     `json:"is_primary_owner"`
 	Teams          []string `json:"teams"`
 }
 
@@ -248,19 +262,40 @@ func (api *Client) GetUserPresenceContext(ctx context.Context, user string) (*Us
 	return &response.UserPresence, nil
 }
 
+type getUserInfoParams struct {
+	includeLocale bool
+}
+
+// GetUserInfoOption is an option for GetUserInfo.
+type GetUserInfoOption func(*getUserInfoParams)
+
+// GetUserInfoOptionIncludeLocale sets whether users.info returns the user's locale.
+// GetUserInfo sends include_locale=true unless this sets it to false.
+func GetUserInfoOptionIncludeLocale(includeLocale bool) GetUserInfoOption {
+	return func(params *getUserInfoParams) {
+		params.includeLocale = includeLocale
+	}
+}
+
 // GetUserInfo will retrieve the complete user information.
 // For more information see the GetUserInfoContext documentation.
-func (api *Client) GetUserInfo(user string) (*User, error) {
-	return api.GetUserInfoContext(context.Background(), user)
+func (api *Client) GetUserInfo(user string, options ...GetUserInfoOption) (*User, error) {
+	return api.GetUserInfoContext(context.Background(), user, options...)
 }
 
 // GetUserInfoContext will retrieve the complete user information with a custom context.
-// Slack API docs: https://api.slack.com/methods/users.info
-func (api *Client) GetUserInfoContext(ctx context.Context, user string) (*User, error) {
+//
+// Slack API docs: https://docs.slack.dev/reference/methods/users.info
+func (api *Client) GetUserInfoContext(ctx context.Context, user string, options ...GetUserInfoOption) (*User, error) {
+	params := getUserInfoParams{includeLocale: true}
+	for _, opt := range options {
+		opt(&params)
+	}
+
 	values := url.Values{
 		"token":          {api.token},
 		"user":           {user},
-		"include_locale": {strconv.FormatBool(true)},
+		"include_locale": {strconv.FormatBool(params.includeLocale)},
 	}
 
 	response, err := api.userRequest(ctx, "users.info", values)
@@ -309,6 +344,14 @@ func GetUsersOptionPresence(n bool) GetUsersOption {
 	}
 }
 
+// GetUsersOptionIncludeLocale sets whether users.list returns each user's locale.
+// GetUsers sends include_locale=true unless this sets it to false.
+func GetUsersOptionIncludeLocale(includeLocale bool) GetUsersOption {
+	return func(p *UserPagination) {
+		p.includeLocale = includeLocale
+	}
+}
+
 // GetUsersOptionTeamID include team Id
 func GetUsersOptionTeamID(teamId string) GetUsersOption {
 	return func(p *UserPagination) {
@@ -316,10 +359,18 @@ func GetUsersOptionTeamID(teamId string) GetUsersOption {
 	}
 }
 
+// GetUsersOptionCursor set the cursor to the next page of results
+func GetUsersOptionCursor(cursor string) GetUsersOption {
+	return func(p *UserPagination) {
+		p.Cursor = cursor
+	}
+}
+
 func newUserPagination(c *Client, options ...GetUsersOption) (up UserPagination) {
 	up = UserPagination{
-		c:     c,
-		limit: 200, // per slack api documentation.
+		c:             c,
+		limit:         200, // per slack api documentation.
+		includeLocale: true,
 	}
 
 	for _, opt := range options {
@@ -331,12 +382,14 @@ func newUserPagination(c *Client, options ...GetUsersOption) (up UserPagination)
 
 // UserPagination allows for paginating over the users
 type UserPagination struct {
-	Users        []User
-	limit        int
-	presence     bool
-	teamId       string
-	previousResp *ResponseMetadata
-	c            *Client
+	Users         []User
+	Cursor        string
+	limit         int
+	presence      bool
+	includeLocale bool
+	teamId        string
+	complete      bool
+	c             *Client
 }
 
 // Done checks if the pagination has completed
@@ -358,19 +411,17 @@ func (t UserPagination) Next(ctx context.Context) (_ UserPagination, err error) 
 		resp *userResponseFull
 	)
 
-	if t.c == nil || (t.previousResp != nil && t.previousResp.Cursor == "") {
+	if t.c == nil || t.complete {
 		return t, errPaginationComplete
 	}
-
-	t.previousResp = t.previousResp.initialize()
 
 	values := url.Values{
 		"limit":          {strconv.Itoa(t.limit)},
 		"presence":       {strconv.FormatBool(t.presence)},
 		"token":          {t.c.token},
-		"cursor":         {t.previousResp.Cursor},
+		"cursor":         {t.Cursor},
 		"team_id":        {t.teamId},
-		"include_locale": {strconv.FormatBool(true)},
+		"include_locale": {strconv.FormatBool(t.includeLocale)},
 	}
 
 	if resp, err = t.c.userRequest(ctx, "users.list", values); err != nil {
@@ -379,7 +430,8 @@ func (t UserPagination) Next(ctx context.Context) (_ UserPagination, err error) 
 
 	t.c.Debugf("GetUsersContext: got %d users; metadata %v", len(resp.Members), resp.Metadata)
 	t.Users = resp.Members
-	t.previousResp = &resp.Metadata
+	t.Cursor = resp.Metadata.Cursor
+	t.complete = t.Cursor == ""
 
 	return t, nil
 }
@@ -585,6 +637,54 @@ func (api *Client) SetUserRealNameContextWithUser(ctx context.Context, user, rea
 	return response.Err()
 }
 
+// SetUserProfile sets the profile for the provided user.
+// For more information see the SetUserProfileContext documentation.
+func (api *Client) SetUserProfile(user string, profile *UserProfile) error {
+	return api.SetUserProfileContext(context.Background(), user, profile)
+}
+
+// SetUserProfileContext sets the profile for the provided user with a custom context.
+//
+// The profile parameter is serialized as-is. Fields present in the JSON (including
+// zero-value fields without an omitempty tag, such as RealName and DisplayName) will
+// be updated by Slack. To avoid unintended changes, retrieve the current profile with
+// GetUserProfile, modify the desired fields, and pass the result.
+//
+// For setting individual fields, prefer the targeted methods: SetUserRealName,
+// SetUserCustomStatus, SetUserCustomFields.
+//
+// If a workspace admin has mapped custom profile fields to standard fields (e.g.
+// title), the custom field takes precedence. Update the custom field via
+// SetUserCustomFields instead.
+//
+// The user parameter is required when setting another user's profile (admin only,
+// paid plans). Pass an empty string to modify the authenticated user's own profile.
+//
+// Slack API docs: https://docs.slack.dev/reference/methods/users.profile.set/
+func (api *Client) SetUserProfileContext(ctx context.Context, user string, profile *UserProfile) error {
+	profileJSON, err := json.Marshal(profile)
+	if err != nil {
+		return err
+	}
+
+	values := url.Values{
+		"token":   {api.token},
+		"profile": {string(profileJSON)},
+	}
+
+	// optional field. It should not be set if empty
+	if user != "" {
+		values["user"] = []string{user}
+	}
+
+	response := &userResponseFull{}
+	if err = api.postMethod(ctx, "users.profile.set", values, response); err != nil {
+		return err
+	}
+
+	return response.Err()
+}
+
 // SetUserCustomFields sets Custom Profile fields on the provided users account.
 // For more information see the SetUserCustomFieldsContext documentation.
 func (api *Client) SetUserCustomFields(userID string, customFields map[string]UserProfileCustomField) error {
@@ -628,7 +728,7 @@ func (api *Client) SetUserCustomFieldsContext(ctx context.Context, userID string
 	}
 
 	response := &userResponseFull{}
-	if err := postForm(ctx, api.httpclient, APIURL+"users.profile.set", values, response, api); err != nil {
+	if _, err := postForm(ctx, api.httpclient, APIURL+"users.profile.set", values, response, api); err != nil {
 		return err
 	}
 
@@ -661,16 +761,16 @@ func (api *Client) SetUserCustomStatusWithUser(user, statusText, statusEmoji str
 //
 // Slack API docs: https://api.slack.com/methods/users.profile.set
 func (api *Client) SetUserCustomStatusContextWithUser(ctx context.Context, user, statusText, statusEmoji string, statusExpiration int64) error {
-	// XXX(theckman): this anonymous struct is for making requests to the Slack
-	// API for setting and unsetting a User's Custom Status/Emoji. To change
-	// these values we must provide a JSON document as the profile POST field.
+	// This anonymous struct is for making requests to the Slack API for setting and
+	// unsetting a User's Custom Status/Emoji. To change these values we must provide a
+	// JSON document as the profile POST field.
 	//
-	// We use an anonymous struct over UserProfile because to unset the values
-	// on the User's profile we cannot use the `json:"omitempty"` tag. This is
-	// because an empty string ("") is what's used to unset the values. Check
-	// out the API docs for more details:
+	// We use an anonymous struct over UserProfile because to unset the values on the
+	// User's profile we cannot use the `json:"omitempty"` tag. This is because an empty
+	// string ("") is what's used to unset the values. Check out the API docs for more
+	// details:
 	//
-	// - https://api.slack.com/docs/presence-and-status#custom_status
+	// - https://docs.slack.dev/apis/web-api/user-presence-and-status/#custom-status
 	profile, err := json.Marshal(
 		&struct {
 			StatusText       string `json:"status_text"`
