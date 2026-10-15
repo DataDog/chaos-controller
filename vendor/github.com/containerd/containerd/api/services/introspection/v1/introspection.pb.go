@@ -22,7 +22,7 @@
 package introspection
 
 import (
-	types "github.com/containerd/containerd/api/types"
+	types "github.com/containerd/containerd/v2/api/types"
 	status "google.golang.org/genproto/googleapis/rpc/status"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
