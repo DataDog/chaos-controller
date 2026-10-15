@@ -9,7 +9,7 @@ import (
 	"context"
 	"fmt"
 
-	containerdlib "github.com/containerd/containerd"
+	containerdlib "github.com/containerd/containerd/v2"
 )
 
 type containerdRuntime struct {

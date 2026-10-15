@@ -17,7 +17,7 @@
 // Package events defines the event pushing and subscription service.
 package events
 
-import types "github.com/containerd/containerd/api/types"
+import types "github.com/containerd/containerd/v2/api/types"
 
 // Deprecated: Use [types.Envelope].
 type Envelope = types.Envelope
