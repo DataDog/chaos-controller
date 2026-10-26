@@ -1,0 +1,3 @@
+variables:
+  SLACK_NOTIFIER_IMAGE: registry.ddbuild.io/slack-notifier:$SLACK_NOTIFIER_NOBLE_TAG
+  SLACK_NOTIFIER_NOBLE_TAG: v146002689-ab6722e-sdm-gbi-noble@sha256:64ebd7f5cf918ed6a97117400b0c81b84d812b5f4f95710945768ec7f7c723fb
