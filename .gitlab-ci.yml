@@ -4,13 +4,15 @@
 # Copyright 2026 Datadog, Inc.
 
 ---
+include:
+  - local: /.gitlab/slack-notifier.engraver_versions.yaml  # SLACK_NOTIFIER_IMAGE, bumped by Campaigner (EENG-7274)
+
 variables:
   CURRENT_CI_IMAGE: 0.5.1
   CONTROLLER_IMAGE_NAME: chaos-controller
   INJECTOR_IMAGE_NAME: chaos-injector
   HANDLER_IMAGE_NAME: chaos-handler
   DD_PKG_IMAGE: "registry.ddbuild.io/agent-delivery/dd-pkg:v0.9.4"
-  SLACK_NOTIFIER_IMAGE: "registry.ddbuild.io/slack-notifier:v143950606-3639816-sdm-gbi-noble@sha256:29f990ce735597cbe3a00b6846ddc6723ecc82f6e8c8772cf99b5e662d7759d1"
   # Increase CPU and memory resources to speed up the build
   KUBERNETES_CPU_REQUEST: "4"
   KUBERNETES_CPU_LIMIT: "4"
