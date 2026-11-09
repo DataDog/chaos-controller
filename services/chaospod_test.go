@@ -1726,6 +1726,111 @@ var _ = Describe("Chaos Pod Service", func() {
 					Expect(diskFullMountPath(pods[0])).To(Equal("/mnt/host/var/lib/kubelet/pods"))
 				})
 			})
+			Context("with a mount path that only shares a string prefix with the target path", func() {
+				BeforeEach(func() {
+					targetPod := corev1.Pod{
+						ObjectMeta: metav1.ObjectMeta{Name: DefaultTargetName, Namespace: DefaultNamespace},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{{
+								Name:         "app",
+								VolumeMounts: []corev1.VolumeMount{{Name: "data-vol", MountPath: "/data"}},
+							}},
+							Volumes: []corev1.Volume{{
+								Name: "data-vol",
+								VolumeSource: corev1.VolumeSource{
+									PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: "my-pvc"},
+								},
+							}},
+						},
+					}
+					pvc := corev1.PersistentVolumeClaim{
+						ObjectMeta: metav1.ObjectMeta{Name: "my-pvc", Namespace: DefaultNamespace},
+						Spec:       corev1.PersistentVolumeClaimSpec{VolumeName: "my-pv"},
+					}
+					pv := corev1.PersistentVolume{
+						ObjectMeta: metav1.ObjectMeta{Name: "my-pv"},
+						Spec: corev1.PersistentVolumeSpec{
+							PersistentVolumeSource: corev1.PersistentVolumeSource{
+								HostPath: &corev1.HostPathVolumeSource{Path: "/var/lib/rancher/k3s/storage/pvc-abc"},
+							},
+						},
+					}
+					fc := fake.NewClientBuilder().WithObjects(&targetPod, &pvc, &pv).Build()
+					chaosPodServiceConfig.Client = fc
+					chaosPodServiceConfig.Reader = fc
+				})
+
+				DescribeTable("it does not select the prefix-sharing mount as the writable volume",
+					func(path string) {
+						disruption := builderstest.NewDisruptionBuilder().
+							WithLevel(chaostypes.DisruptionLevelPod).
+							WithDiskFull(&chaosv1beta1.DiskFullSpec{Path: path, Capacity: "95%"}).
+							WithNamespace(DefaultNamespace).
+							Build()
+
+						pods, err := generateDiskFullPods(&disruption)
+						Expect(err).ShouldNot(HaveOccurred())
+						Expect(pods).To(HaveLen(1))
+						// /database and /data2 are not inside the /data mount, so no volume
+						// matches and the resolution falls back to the kubelet pods directory
+						Expect(diskFullHostPath(pods[0])).To(Equal("/var/lib/kubelet/pods"))
+					},
+					Entry("target path /database vs mount /data", "/database"),
+					Entry("target path /data2 vs mount /data", "/data2"),
+				)
+			})
+
+			Context("with a mount path that is a path-boundary ancestor of the target path", func() {
+				BeforeEach(func() {
+					targetPod := corev1.Pod{
+						ObjectMeta: metav1.ObjectMeta{Name: DefaultTargetName, Namespace: DefaultNamespace},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{{
+								Name:         "app",
+								VolumeMounts: []corev1.VolumeMount{{Name: "data-vol", MountPath: "/data"}},
+							}},
+							Volumes: []corev1.Volume{{
+								Name: "data-vol",
+								VolumeSource: corev1.VolumeSource{
+									PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: "my-pvc"},
+								},
+							}},
+						},
+					}
+					pvc := corev1.PersistentVolumeClaim{
+						ObjectMeta: metav1.ObjectMeta{Name: "my-pvc", Namespace: DefaultNamespace},
+						Spec:       corev1.PersistentVolumeClaimSpec{VolumeName: "my-pv"},
+					}
+					pv := corev1.PersistentVolume{
+						ObjectMeta: metav1.ObjectMeta{Name: "my-pv"},
+						Spec: corev1.PersistentVolumeSpec{
+							PersistentVolumeSource: corev1.PersistentVolumeSource{
+								HostPath: &corev1.HostPathVolumeSource{Path: "/var/lib/rancher/k3s/storage/pvc-abc"},
+							},
+						},
+					}
+					fc := fake.NewClientBuilder().WithObjects(&targetPod, &pvc, &pv).Build()
+					chaosPodServiceConfig.Client = fc
+					chaosPodServiceConfig.Reader = fc
+				})
+
+				DescribeTable("it selects the mount as the writable volume",
+					func(path, expectedHostPath string) {
+						disruption := builderstest.NewDisruptionBuilder().
+							WithLevel(chaostypes.DisruptionLevelPod).
+							WithDiskFull(&chaosv1beta1.DiskFullSpec{Path: path, Capacity: "95%"}).
+							WithNamespace(DefaultNamespace).
+							Build()
+
+						pods, err := generateDiskFullPods(&disruption)
+						Expect(err).ShouldNot(HaveOccurred())
+						Expect(pods).To(HaveLen(1))
+						Expect(diskFullHostPath(pods[0])).To(Equal(expectedHostPath))
+					},
+					Entry("target path exactly /data", "/data", "/var/lib/rancher/k3s/storage/pvc-abc"),
+					Entry("target path /data/logs under mount /data", "/data/logs", "/var/lib/rancher/k3s/storage/pvc-abc"),
+				)
+			})
 		})
 	})
 })

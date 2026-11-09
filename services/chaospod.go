@@ -790,14 +790,19 @@ func (m *chaosPodService) resolvePVCHostPath(ctx context.Context, namespace, pvc
 }
 
 // diskFullVolumeAtPath returns the name of the volume in pod whose mount path is the deepest
-// prefix of containerPath. Returns "" if no match is found.
+// path-boundary prefix of containerPath (exact match or followed by a "/"), so that a mount at
+// /data is not selected for /database. Returns "" if no match is found.
 func diskFullVolumeAtPath(pod *corev1.Pod, containerPath string) string {
 	bestLen := 0
 	best := ""
 
 	for _, container := range pod.Spec.Containers {
 		for _, mount := range container.VolumeMounts {
-			if strings.HasPrefix(containerPath, mount.MountPath) && len(mount.MountPath) > bestLen {
+			if !volumeMountContainsPath(mount.MountPath, containerPath) {
+				continue
+			}
+
+			if len(mount.MountPath) > bestLen {
 				bestLen = len(mount.MountPath)
 				best = mount.Name
 			}
@@ -805,6 +810,18 @@ func diskFullVolumeAtPath(pod *corev1.Pod, containerPath string) string {
 	}
 
 	return best
+}
+
+// volumeMountContainsPath reports whether mountPath is an ancestor of (or equal to) containerPath,
+// respecting path boundaries: /data matches /data and /data/logs but not /database or /data2.
+func volumeMountContainsPath(mountPath, containerPath string) bool {
+	if mountPath == containerPath {
+		return true
+	}
+
+	trimmed := strings.TrimSuffix(mountPath, "/")
+
+	return strings.HasPrefix(containerPath, trimmed+"/")
 }
 
 func (m *chaosPodService) removeFinalizerForChaosPod(ctx context.Context, chaosPod *corev1.Pod) error {
