@@ -17,6 +17,7 @@ import (
 	chaosapi "github.com/DataDog/chaos-controller/api"
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/env"
+	"github.com/DataDog/chaos-controller/fallocate"
 	. "github.com/DataDog/chaos-controller/injector"
 	"github.com/DataDog/chaos-controller/types"
 )
@@ -174,6 +175,116 @@ var _ = Describe("DiskFull", func() {
 				ballastPath := filepath.Join(tmpDir, ".chaos-diskfull-test-namespace-test-disruption-test-node")
 				_, statErr := os.Stat(ballastPath)
 				Expect(os.IsNotExist(statErr)).To(BeTrue())
+			})
+		})
+
+		Context("adversarial: floor does not clamp when remaining is exactly the floor", func() {
+			// remaining=1Mi is legal (webhook floor is strictly < 1Mi) and must fill
+			// exactly (available-1Mi) bytes with no extra clamping by the runtime floor.
+			// To stay host-safe we compute the *expected* fill from statfs and only
+			// assert the ballast size, not the post-fill statfs of the whole FS.
+			BeforeEach(func() {
+				spec.Capacity = ""
+				spec.Remaining = "1Mi"
+			})
+
+			It("should create a ballast sized to available-1Mi", func() {
+				var stat syscall.Statfs_t
+				Expect(syscall.Statfs(tmpDir, &stat)).To(Succeed())
+
+				availableBytes := stat.Bavail * uint64(stat.Bsize)
+				if availableBytes <= 1024*1024 {
+					Skip("tmpdir filesystem has <=1Mi available; floor-skip path would trigger instead")
+				}
+
+				// Guard against allocating an unreasonable amount on a developer
+				// machine: only run the fill on filesystems with modest free space.
+				if availableBytes > 2*1024*1024*1024 {
+					Skip("tmpdir filesystem has >2Gi free; refusing to fill down to 1Mi on a shared host filesystem")
+				}
+
+				err := inj.Inject()
+				Expect(err).ToNot(HaveOccurred())
+
+				ballastPath := filepath.Join(tmpDir, ".chaos-diskfull-test-namespace-test-disruption-test-node")
+				info, statErr := os.Stat(ballastPath)
+				Expect(statErr).ToNot(HaveOccurred())
+				// fill = available - 1Mi (floor equals remaining here, no double-clamp)
+				Expect(info.Size()).To(BeNumerically("~", availableBytes-1024*1024, 4096))
+			})
+		})
+
+		Context("adversarial: AllowNoFloor with remaining 0 does not clamp", func() {
+			// With unsafeMode the floor is skipped entirely: remaining=0 must fill
+			// the entire available space. Again size-asserted only on small FSes.
+			BeforeEach(func() {
+				spec.Capacity = ""
+				spec.Remaining = "0"
+				config.AllowNoFloor = true
+			})
+
+			It("should create a ballast sized to the full available space", func() {
+				var stat syscall.Statfs_t
+				Expect(syscall.Statfs(tmpDir, &stat)).To(Succeed())
+
+				availableBytes := stat.Bavail * uint64(stat.Bsize)
+				if availableBytes <= 1024*1024 {
+					Skip("tmpdir filesystem has <=1Mi available; nothing meaningful to fill")
+				}
+
+				if availableBytes > 2*1024*1024*1024 {
+					Skip("tmpdir filesystem has >2Gi free; refusing to fill entirely on a shared host filesystem")
+				}
+
+				err := inj.Inject()
+				Expect(err).ToNot(HaveOccurred())
+
+				ballastPath := filepath.Join(tmpDir, ".chaos-diskfull-test-namespace-test-disruption-test-node")
+				info, statErr := os.Stat(ballastPath)
+				Expect(statErr).ToNot(HaveOccurred())
+				// fill = available - 0 = available (no floor applied)
+				Expect(info.Size()).To(BeNumerically("~", availableBytes, 4096))
+			})
+		})
+
+		Context("adversarial: runtime skip when volume already past target", func() {
+			BeforeEach(func() {
+				// Fill the tmpdir with a tiny preexisting file, then use a capacity
+				// target that the current usage already exceeds — injection must
+				// skip cleanly without touching the disk further.
+				spec.Capacity = "1%"
+				spec.Remaining = ""
+			})
+
+			It("should skip injection without creating a ballast file when used >= 1%", func() {
+				var stat syscall.Statfs_t
+				Expect(syscall.Statfs(tmpDir, &stat)).To(Succeed())
+
+				totalBytes := stat.Blocks * uint64(stat.Bsize)
+				availableBytes := stat.Bavail * uint64(stat.Bsize)
+				usedBytes := totalBytes - min(availableBytes, totalBytes)
+
+				// On a filesystem whose real usage is below 1% (pristine tmpfs),
+				// create a small preexisting file to push usage over the target.
+				ballast := filepath.Join(tmpDir, ".preexisting-fill")
+				if usedBytes*100 < totalBytes {
+					needed := totalBytes/100 - usedBytes + 1024*1024
+					f, err := os.Create(ballast)
+					Expect(err).ToNot(HaveOccurred())
+					defer f.Close()
+					Expect(fallocate.Fallocate(f, 0, int64(needed))).To(Succeed())
+				}
+
+				err := inj.Inject()
+				Expect(err).ToNot(HaveOccurred())
+
+				chaosBallast := filepath.Join(tmpDir, ".chaos-diskfull-test-namespace-test-disruption-test-node")
+				_, statErr := os.Stat(chaosBallast)
+				Expect(os.IsNotExist(statErr)).To(BeTrue())
+
+				if _, err := os.Stat(ballast); err == nil {
+					Expect(os.Remove(ballast)).To(Succeed())
+				}
 			})
 		})
 	})

@@ -1270,6 +1270,53 @@ var _ = Describe("Disruption Webhook", func() {
 				Expect(caught).To(BeFalse())
 			})
 		})
+
+		When("remaining is exactly the 1Mi floor", func() {
+			It("should not trigger the safety net (floor is exclusive below 1Mi)", func() {
+				d := makeDiskFullDisruption(DiskFullSpec{Path: "/data", Remaining: "1Mi"}, nil)
+				caught, _ := safetyNetDiskFullMinFreeSpace(d)
+				Expect(caught).To(BeFalse())
+			})
+		})
+
+		When("remaining is fractional below 1Mi", func() {
+			It("should trigger the safety net", func() {
+				d := makeDiskFullDisruption(DiskFullSpec{Path: "/data", Remaining: "0.5Mi"}, nil)
+				caught, msg := safetyNetDiskFullMinFreeSpace(d)
+				Expect(caught).To(BeTrue())
+				Expect(msg).To(ContainSubstring("allowDiskFullNoFloor"))
+			})
+		})
+
+		When("capacity is 99% without unsafe mode", func() {
+			It("should not trigger the safety net", func() {
+				d := makeDiskFullDisruption(DiskFullSpec{Path: "/data", Capacity: "99%"}, nil)
+				caught, _ := safetyNetDiskFullMinFreeSpace(d)
+				Expect(caught).To(BeFalse())
+			})
+		})
+
+		When("capacity is an invalid percentage that would fail ParseQuantity-like parsing", func() {
+			It("should not trigger the safety net and let Validate report the invalid spec", func() {
+				// "abc%" fails strconv.Atoi in the safety net (err != nil), so the net
+				// must not catch it — Validate() is responsible for rejecting it.
+				d := makeDiskFullDisruption(DiskFullSpec{Path: "/data", Capacity: "abc%"}, nil)
+				caught, _ := safetyNetDiskFullMinFreeSpace(d)
+				Expect(caught).To(BeFalse())
+				Expect(d.Spec.DiskFull.Validate()).To(HaveOccurred())
+			})
+		})
+
+		When("remaining is an invalid quantity", func() {
+			It("should not trigger the safety net and let Validate report the invalid spec", func() {
+				// "not-a-quantity" fails resource.ParseQuantity (err != nil), so the net
+				// must not catch it — Validate() is responsible for rejecting it.
+				d := makeDiskFullDisruption(DiskFullSpec{Path: "/data", Remaining: "not-a-quantity"}, nil)
+				caught, _ := safetyNetDiskFullMinFreeSpace(d)
+				Expect(caught).To(BeFalse())
+				Expect(d.Spec.DiskFull.Validate()).To(HaveOccurred())
+			})
+		})
 	})
 })
 

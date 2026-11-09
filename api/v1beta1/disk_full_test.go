@@ -7,8 +7,11 @@ package v1beta1_test
 
 import (
 	. "github.com/DataDog/chaos-controller/api/v1beta1"
+	chaostypes "github.com/DataDog/chaos-controller/types"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 var _ = Describe("DiskFullSpec", func() {
@@ -51,6 +54,12 @@ var _ = Describe("DiskFullSpec", func() {
 				DiskFullSpec{
 					Path:      "/data",
 					Remaining: "0",
+				},
+			),
+			Entry("with remaining in Ki below the webhook floor (still valid at spec level)",
+				DiskFullSpec{
+					Path:      "/data",
+					Remaining: "512Ki",
 				},
 			),
 		)
@@ -133,6 +142,41 @@ var _ = Describe("DiskFullSpec", func() {
 				},
 				[]string{"remaining must not be negative"},
 			),
+			Entry("with path as root",
+				DiskFullSpec{
+					Path:     "/",
+					Capacity: "95%",
+				},
+				[]string{"path '/' is not allowed"},
+			),
+			Entry("with path traversal '..'",
+				DiskFullSpec{
+					Path:     "..",
+					Capacity: "95%",
+				},
+				[]string{"path must not contain '..'"},
+			),
+			Entry("with sneaky traversal inside path",
+				DiskFullSpec{
+					Path:     "/data/../../etc",
+					Capacity: "95%",
+				},
+				[]string{"path must not contain '..'"},
+			),
+			Entry("with capacity 999% passing the CRD regex but rejected by Validate",
+				DiskFullSpec{
+					Path:     "/data",
+					Capacity: "999%",
+				},
+				[]string{"capacity percentage must be between 1 and 100"},
+			),
+			Entry("with fractional capacity",
+				DiskFullSpec{
+					Path:     "/data",
+					Capacity: "95.5%",
+				},
+				[]string{"capacity percentage must be an integer"},
+			),
 			Entry("with empty path and no capacity/remaining",
 				DiskFullSpec{
 					Path: "",
@@ -194,5 +238,46 @@ var _ = Describe("DiskFullSpec", func() {
 			Expect(explanation[1]).To(ContainSubstring("ENOSPC"))
 		})
 
+	})
+})
+
+var _ = Describe("DiskFullSpec scope rules", func() {
+	makeDiskFullDisruptionSpec := func(level chaostypes.DisruptionLevel, containers []string) DisruptionSpec {
+		spec := DisruptionSpec{
+			Level:    level,
+			Count:    &intstr.IntOrString{IntVal: 1},
+			Selector: labels.Set{"app": "demo"},
+			DiskFull: &DiskFullSpec{Path: "/data", Capacity: "95%"},
+		}
+		if containers != nil {
+			spec.Containers = containers
+		}
+		return spec
+	}
+
+	When("Call the 'ValidateSelectorsOptional(false)' method (webhook path)", func() {
+		It("rejects disk full at node level", func() {
+			err := makeDiskFullDisruptionSpec(chaostypes.DisruptionLevelNode, nil).ValidateSelectorsOptional(false)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("disk full disruptions can only be applied at the pod level"))
+		})
+
+		It("accepts disk full at pod level", func() {
+			Expect(makeDiskFullDisruptionSpec(chaostypes.DisruptionLevelPod, nil).ValidateSelectorsOptional(false)).To(Succeed())
+		})
+
+		It("rejects container scoping on disk full", func() {
+			err := makeDiskFullDisruptionSpec(chaostypes.DisruptionLevelPod, []string{"app"}).ValidateSelectorsOptional(false)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("disk full disruptions apply to the entire volume"))
+		})
+
+		It("rejects disk full combined with node failure kind", func() {
+			spec := makeDiskFullDisruptionSpec(chaostypes.DisruptionLevelPod, nil)
+			spec.NodeFailure = &NodeFailureSpec{}
+			err := spec.ValidateSelectorsOptional(false)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("not compatible with other"))
+		})
 	})
 })
