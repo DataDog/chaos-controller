@@ -91,10 +91,7 @@ func (b *DisruptionBuilder) WithDisruptionKind(kind types.DisruptionKindName) *D
 				}
 			case types.DisruptionKindDiskFull:
 				if b.Spec.DiskFull == nil {
-					b.Spec.DiskFull = &v1beta1.DiskFullSpec{
-						Path:     "/data",
-						Capacity: "95%",
-					}
+					b.Spec.DiskFull = &v1beta1.DiskFullSpec{}
 				}
 			}
 		})
