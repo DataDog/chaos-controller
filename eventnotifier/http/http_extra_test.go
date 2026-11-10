@@ -46,9 +46,28 @@ var _ = Describe("splitHeaders", func() {
 		Expect(err.Error()).To(ContainSubstring("invalid headers"))
 	})
 
-	It("returns error for header with too many colons", func() {
-		_, err := splitHeaders([]string{"a:b:c"})
+	It("accepts values containing colons by splitting on the first colon", func() {
+		result, err := splitHeaders([]string{"a:b:c"})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(result).To(HaveKeyWithValue("a", "b:c"))
+	})
+
+	It("trims optional whitespace around the value", func() {
+		result, err := splitHeaders([]string{"Referer: https://example.test/ "})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(result).To(HaveKeyWithValue("Referer", "https://example.test/"))
+	})
+
+	It("returns error for header with an empty name", func() {
+		_, err := splitHeaders([]string{":value"})
 		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("invalid headers"))
+	})
+
+	It("returns error for header with an invalid field name", func() {
+		_, err := splitHeaders([]string{"bad name:x"})
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("invalid headers"))
 	})
 
 	It("returns empty map for nil input", func() {
