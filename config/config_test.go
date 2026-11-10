@@ -194,5 +194,21 @@ var _ = Describe("Config", func() {
 				Expect(v.Controller.Notifiers.Common.ClusterName).To(Equal("provided-by-command-flag-cluster-name"))
 			})
 		})
+
+		Context("with http notifier url flags", func() {
+			It("succeed with each url in its own field", func() {
+				v, err := config.New(nil, logger, []string{
+					"--notifiers-http-disruption-url", "http://disruption.example.com/webhook",
+					"--notifiers-http-disruptioncron-url", "http://disruptioncron.example.com/webhook",
+				})
+				Expect(err).ToNot(HaveOccurred())
+
+				By("setting the disruption url from the disruption url flag")
+				Expect(v.Controller.Notifiers.HTTP.Disruption.URL).To(Equal("http://disruption.example.com/webhook"))
+
+				By("setting the disruption cron url from the disruptioncron url flag")
+				Expect(v.Controller.Notifiers.HTTP.DisruptionCron.URL).To(Equal("http://disruptioncron.example.com/webhook"))
+			})
+		})
 	})
 })

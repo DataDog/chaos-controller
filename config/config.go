@@ -282,7 +282,7 @@ func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osAr
 		return cfg, err
 	}
 
-	mainFS.StringVar(&cfg.Controller.Notifiers.HTTP.Disruption.URL, "notifiers-http-disruptioncron-url", "", "URL to send disruption cron notifications using the HTTP notifier(defaulted to \"\")")
+	mainFS.StringVar(&cfg.Controller.Notifiers.HTTP.DisruptionCron.URL, "notifiers-http-disruptioncron-url", "", "URL to send disruption cron notifications using the HTTP notifier(defaulted to \"\")")
 
 	if err := viper.BindPFlag("controller.notifiers.http.disruptioncron.url", mainFS.Lookup("notifiers-http-disruptioncron-url")); err != nil {
 		return cfg, err
