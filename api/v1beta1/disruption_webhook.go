@@ -636,6 +636,30 @@ func safetyNetCountNotTooLarge(ctx context.Context, r *Disruption) (bool, string
 		}
 
 		totalCount += len(nodes.Items)
+
+		nodes = &metav1.PartialObjectMetadataList{}
+		nodes.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("NodeList"))
+
+		listOptions := &client.ListOptions{
+			LabelSelector: labels.SelectorFromValidatedSet(r.Spec.Selector),
+			Limit:         listPageSize,
+		}
+
+		// we grab the number of targets in the cluster
+		if err := apiReader.List(ctx, nodes, listOptions); err != nil {
+			return false, "", fmt.Errorf("error listing target nodes: %w", err)
+		}
+
+		for nodes.Continue != "" {
+			targetCount += len(nodes.Items)
+			listOptions.Continue = nodes.Continue
+
+			if err := apiReader.List(ctx, nodes, listOptions); err != nil {
+				return false, "", fmt.Errorf("error listing target nodes: %w", err)
+			}
+		}
+
+		targetCount += len(nodes.Items)
 	}
 
 	userCountVal := 0.0
