@@ -73,6 +73,48 @@ var _ = Describe("DisruptionTargetHandler notifier sink", func() {
 	})
 })
 
+var _ = Describe("DisruptionTargetHandler getEventsFromCurrentDisruption", func() {
+	var handler DisruptionTargetHandler
+
+	BeforeEach(func() {
+		handler = DisruptionTargetHandler{
+			log: zaptest.NewLogger(GinkgoT()).Sugar(),
+		}
+	})
+
+	When("the target sent events both during and before the disruption", func() {
+		It("keeps every event sent during the disruption window", func() {
+			start := time.Now().Add(-time.Minute)
+
+			handler.reader = fakeEventsClient(
+				targetEvent("during", time.Now()),
+				targetEvent("before", start.Add(-time.Hour)),
+			)
+
+			events, err := handler.getEventsFromCurrentDisruption("Pod",
+				metav1.ObjectMeta{Name: "target", Namespace: "ns"}, start)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(events).To(HaveLen(1))
+			Expect(events[0].Name).To(Equal("during"))
+		})
+	})
+
+	When("the target sent only events before the disruption started", func() {
+		It("returns no events", func() {
+			start := time.Now().Add(-time.Minute)
+
+			handler.reader = fakeEventsClient(
+				targetEvent("before", start.Add(-time.Hour)),
+			)
+
+			events, err := handler.getEventsFromCurrentDisruption("Pod",
+				metav1.ObjectMeta{Name: "target", Namespace: "ns"}, start)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(events).To(BeEmpty())
+		})
+	})
+})
+
 func healthyPod() *corev1.Pod {
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{Name: "target-pod", Namespace: "ns"},
@@ -127,4 +169,18 @@ func fakeEventsClient(events ...client.Object) client.Reader {
 			return []string{o.(*corev1.Event).InvolvedObject.Name}
 		}).
 		WithObjects(events...).Build()
+}
+
+func targetEvent(name string, ts time.Time) *corev1.Event {
+	return &corev1.Event{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "ns"},
+		InvolvedObject: corev1.ObjectReference{
+			Kind:      "Pod",
+			Name:      "target",
+			Namespace: "ns",
+		},
+		Type:          corev1.EventTypeWarning,
+		Reason:        "BackOff",
+		LastTimestamp: metav1.NewTime(ts),
+	}
 }
