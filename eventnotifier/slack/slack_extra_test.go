@@ -9,10 +9,13 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/eventnotifier/types"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -55,6 +58,51 @@ var _ = Describe("Slack New", func() {
 		})
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("seemingly empty"))
+	})
+})
+
+var _ = Describe("Slack buildSlackBlocks", func() {
+	It("includes targets, dry run and duration fields for a disruption", func() {
+		notifier := &Notifier{}
+
+		blocks := notifier.buildSlackBlocks(&v1beta1.Disruption{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "disruption-name",
+				Namespace: "namespace-name",
+			},
+			Spec: v1beta1.DisruptionSpec{
+				DryRun:   true,
+				Duration: v1beta1.DisruptionDuration((5 * time.Minute).String()),
+			},
+		}, types.NotificationInfo, nil)
+
+		texts := make([]string, 0, len(blocks))
+		for _, block := range blocks {
+			texts = append(texts, block.Text)
+		}
+		joined := strings.Join(texts, "|")
+
+		Expect(joined).To(ContainSubstring("*Targets:*"))
+		Expect(joined).To(ContainSubstring("*DryRun:*\ntrue"))
+		Expect(joined).To(ContainSubstring("*Duration:*\n5m0s"))
+	})
+
+	It("keeps disruption blocks within the slack section fields limit when a purpose is defined", func() {
+		// a slack section block accepts at most 10 fields; the author field is appended
+		// when sending the message, so buildSlackBlocks must return at most 9 fields
+		notifier := &Notifier{}
+
+		blocks := notifier.buildSlackBlocks(&v1beta1.Disruption{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "disruption-name",
+				Namespace: "namespace-name",
+			},
+			Spec: v1beta1.DisruptionSpec{
+				Duration: v1beta1.DisruptionDuration((5 * time.Minute).String()),
+			},
+		}, types.NotificationInfo, &v1beta1.Reporting{Purpose: "some-purpose"})
+
+		Expect(blocks).To(HaveLen(9))
 	})
 })
 

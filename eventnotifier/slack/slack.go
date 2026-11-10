@@ -306,9 +306,11 @@ func (n *Notifier) buildSlackBlocks(object client.Object, notifType types.Notifi
 
 	d, ok := object.(*v1beta1.Disruption)
 	if ok {
-		slack.NewTextBlockObject("mrkdwn", "*Targets:*\n"+fmt.Sprint(len(d.Status.TargetInjections)), false, false)
-		slack.NewTextBlockObject("mrkdwn", "*DryRun:*\n"+strconv.FormatBool(d.Spec.DryRun), false, false)
-		slack.NewTextBlockObject("mrkdwn", "*Duration:*\n"+d.Spec.Duration.Duration().String(), false, false)
+		textBlocks = append(textBlocks,
+			slack.NewTextBlockObject("mrkdwn", "*Targets:*\n"+fmt.Sprint(len(d.Status.TargetInjections)), false, false),
+			slack.NewTextBlockObject("mrkdwn", "*DryRun:*\n"+strconv.FormatBool(d.Spec.DryRun), false, false),
+			slack.NewTextBlockObject("mrkdwn", "*Duration:*\n"+d.Spec.Duration.Duration().String(), false, false),
+		)
 	}
 
 	// Whenever a purpose is defined, we expect it to be available into all notifications sent messages
