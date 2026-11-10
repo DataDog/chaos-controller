@@ -17,12 +17,10 @@ limitations under the License.
 package cache
 
 import (
-	"context"
 	"fmt"
 	"maps"
 	"net/http"
 	"slices"
-	"sort"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -37,6 +35,7 @@ import (
 	toolscache "k8s.io/client-go/tools/cache"
 	"k8s.io/utils/ptr"
 
+	"sigs.k8s.io/controller-runtime/pkg/cache/cacheapi"
 	"sigs.k8s.io/controller-runtime/pkg/cache/internal"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -47,17 +46,15 @@ var (
 )
 
 // InformerGetOptions defines the behavior of how informers are retrieved.
-type InformerGetOptions internal.GetOptions
+type InformerGetOptions = cacheapi.InformerGetOptions
 
 // InformerGetOption defines an option that alters the behavior of how informers are retrieved.
-type InformerGetOption func(*InformerGetOptions)
+type InformerGetOption = cacheapi.InformerGetOption
 
 // BlockUntilSynced determines whether a get request for an informer should block
 // until the informer's cache has synced.
 func BlockUntilSynced(shouldBlock bool) InformerGetOption {
-	return func(opts *InformerGetOptions) {
-		opts.BlockUntilSynced = &shouldBlock
-	}
+	return cacheapi.BlockUntilSynced(shouldBlock)
 }
 
 // Cache knows how to load Kubernetes objects, fetch informers to request
@@ -74,63 +71,10 @@ type Cache interface {
 // Informers knows how to create or fetch informers for different
 // group-version-kinds, and add indices to those informers.  It's safe to call
 // GetInformer from multiple threads.
-type Informers interface {
-	// GetInformer fetches or constructs an informer for the given object that corresponds to a single
-	// API kind and resource.
-	GetInformer(ctx context.Context, obj client.Object, opts ...InformerGetOption) (Informer, error)
-
-	// GetInformerForKind is similar to GetInformer, except that it takes a group-version-kind, instead
-	// of the underlying object.
-	GetInformerForKind(ctx context.Context, gvk schema.GroupVersionKind, opts ...InformerGetOption) (Informer, error)
-
-	// RemoveInformer removes an informer entry and stops it if it was running.
-	RemoveInformer(ctx context.Context, obj client.Object) error
-
-	// Start runs all the informers known to this cache until the context is closed.
-	// It blocks.
-	Start(ctx context.Context) error
-
-	// WaitForCacheSync waits for all the caches to sync. Returns false if it could not sync a cache.
-	WaitForCacheSync(ctx context.Context) bool
-
-	// FieldIndexer adds indices to the managed informers.
-	client.FieldIndexer
-}
+type Informers = cacheapi.Informers
 
 // Informer allows you to interact with the underlying informer.
-type Informer interface {
-	// AddEventHandler adds an event handler to the shared informer using the shared informer's resync
-	// period. Events to a single handler are delivered sequentially, but there is no coordination
-	// between different handlers.
-	// It returns a registration handle for the handler that can be used to remove
-	// the handler again and an error if the handler cannot be added.
-	AddEventHandler(handler toolscache.ResourceEventHandler) (toolscache.ResourceEventHandlerRegistration, error)
-
-	// AddEventHandlerWithResyncPeriod adds an event handler to the shared informer using the
-	// specified resync period. Events to a single handler are delivered sequentially, but there is
-	// no coordination between different handlers.
-	// It returns a registration handle for the handler that can be used to remove
-	// the handler again and an error if the handler cannot be added.
-	AddEventHandlerWithResyncPeriod(handler toolscache.ResourceEventHandler, resyncPeriod time.Duration) (toolscache.ResourceEventHandlerRegistration, error)
-
-	// AddEventHandlerWithOptions is a variant of AddEventHandlerWithResyncPeriod where
-	// all optional parameters are passed in as a struct.
-	AddEventHandlerWithOptions(handler toolscache.ResourceEventHandler, options toolscache.HandlerOptions) (toolscache.ResourceEventHandlerRegistration, error)
-
-	// RemoveEventHandler removes a previously added event handler given by
-	// its registration handle.
-	// This function is guaranteed to be idempotent and thread-safe.
-	RemoveEventHandler(handle toolscache.ResourceEventHandlerRegistration) error
-
-	// AddIndexers adds indexers to this store. It is valid to add indexers
-	// after an informer was started.
-	AddIndexers(indexers toolscache.Indexers) error
-
-	// HasSynced return true if the informers underlying store has synced.
-	HasSynced() bool
-	// IsStopped returns true if the informer has been stopped.
-	IsStopped() bool
-}
+type Informer = cacheapi.Informer
 
 // AllNamespaces should be used as the map key to deliminate namespace settings
 // that apply to all namespaces that themselves do not have explicit settings.
@@ -657,7 +601,8 @@ func defaultConfig(toDefault, defaultFrom Config) Config {
 
 func namespaceAllSelector(namespaces []string) []fields.Selector {
 	selectors := make([]fields.Selector, 0, len(namespaces)-1)
-	sort.Strings(namespaces)
+	slices.Sort(namespaces)
+
 	for _, namespace := range namespaces {
 		if namespace != metav1.NamespaceAll {
 			selectors = append(selectors, fields.OneTermNotEqualSelector("metadata.namespace", namespace))

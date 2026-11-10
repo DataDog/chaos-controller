@@ -2,37 +2,35 @@ package slack
 
 import (
 	"context"
+	"errors"
 	"net/url"
 	"strconv"
 	"time"
 )
 
 const (
-	DEFAULT_STARS_USER  = ""
-	DEFAULT_STARS_COUNT = 100
-	DEFAULT_STARS_PAGE  = 1
+	DEFAULT_STARS_USER = ""
 )
 
 type StarsParameters struct {
-	User  string
-	Count int
-	Page  int
+	User   string
+	Cursor string
+	Limit  int
+	TeamID string
 }
 
 type StarredItem Item
 
 type listResponseFull struct {
-	Items  []Item `json:"items"`
-	Paging `json:"paging"`
+	Items []Item `json:"items"`
 	SlackResponse
+	ResponseMetadata `json:"response_metadata"`
 }
 
 // NewStarsParameters initialises StarsParameters with default values
 func NewStarsParameters() StarsParameters {
 	return StarsParameters{
-		User:  DEFAULT_STARS_USER,
-		Count: DEFAULT_STARS_COUNT,
-		Page:  DEFAULT_STARS_PAGE,
+		User: DEFAULT_STARS_USER,
 	}
 }
 
@@ -100,37 +98,40 @@ func (api *Client) RemoveStarContext(ctx context.Context, channel string, item I
 
 // ListStars returns information about the stars a user added.
 // For more information see the ListStarsContext documentation.
-func (api *Client) ListStars(params StarsParameters) ([]Item, *Paging, error) {
+func (api *Client) ListStars(params StarsParameters) ([]Item, string, error) {
 	return api.ListStarsContext(context.Background(), params)
 }
 
 // ListStarsContext returns information about the stars a user added with a custom context.
 // Slack API docs: https://api.slack.com/methods/stars.list
-func (api *Client) ListStarsContext(ctx context.Context, params StarsParameters) ([]Item, *Paging, error) {
+func (api *Client) ListStarsContext(ctx context.Context, params StarsParameters) ([]Item, string, error) {
 	values := url.Values{
 		"token": {api.token},
 	}
 	if params.User != DEFAULT_STARS_USER {
 		values.Add("user", params.User)
 	}
-	if params.Count != DEFAULT_STARS_COUNT {
-		values.Add("count", strconv.Itoa(params.Count))
+	if params.Cursor != "" {
+		values.Add("cursor", params.Cursor)
 	}
-	if params.Page != DEFAULT_STARS_PAGE {
-		values.Add("page", strconv.Itoa(params.Page))
+	if params.Limit != 0 {
+		values.Add("limit", strconv.Itoa(params.Limit))
+	}
+	if params.TeamID != "" {
+		values.Add("team_id", params.TeamID)
 	}
 
 	response := &listResponseFull{}
 	err := api.postMethod(ctx, "stars.list", values, response)
 	if err != nil {
-		return nil, nil, err
+		return nil, "", err
 	}
 
 	if err := response.Err(); err != nil {
-		return nil, nil, err
+		return nil, "", err
 	}
 
-	return response.Items, &response.Paging, nil
+	return response.Items, response.ResponseMetadata.Cursor, nil
 }
 
 // GetStarred returns a list of StarredItem items.
@@ -139,31 +140,31 @@ func (api *Client) ListStarsContext(ctx context.Context, params StarsParameters)
 // be looking at according to what is in the Type:
 //
 //	for _, item := range items {
-//	    switch c.Type {
-//	    case "file_comment":
-//	        log.Println(c.Comment)
-//	    case "file":
-//	        ...
+//		switch c.Type {
+//		case "file_comment":
+//			log.Println(c.Comment)
+//		case "file":
+//			...
 //	}
 //
 // This function still exists to maintain backwards compatibility.
 // I exposed it as returning []StarredItem, so it shall stay as StarredItem.
-func (api *Client) GetStarred(params StarsParameters) ([]StarredItem, *Paging, error) {
+func (api *Client) GetStarred(params StarsParameters) ([]StarredItem, string, error) {
 	return api.GetStarredContext(context.Background(), params)
 }
 
 // GetStarredContext returns a list of StarredItem items with a custom context
 // For more details see GetStarred
-func (api *Client) GetStarredContext(ctx context.Context, params StarsParameters) ([]StarredItem, *Paging, error) {
-	items, paging, err := api.ListStarsContext(ctx, params)
+func (api *Client) GetStarredContext(ctx context.Context, params StarsParameters) ([]StarredItem, string, error) {
+	items, nextCursor, err := api.ListStarsContext(ctx, params)
 	if err != nil {
-		return nil, nil, err
+		return nil, "", err
 	}
 	starredItems := make([]StarredItem, len(items))
 	for i, item := range items {
 		starredItems[i] = StarredItem(item)
 	}
-	return starredItems, paging, nil
+	return starredItems, nextCursor, nil
 }
 
 type listResponsePaginated struct {
@@ -195,7 +196,7 @@ func (api *Client) ListAllStarsContext(ctx context.Context) (results []Item, err
 		p, err = p.next(ctx)
 		if err == nil {
 			results = append(results, p.Items...)
-		} else if rateLimitedError, ok := err.(*RateLimitedError); ok {
+		} else if rateLimitedError, ok := errors.AsType[*RateLimitedError](err); ok {
 			select {
 			case <-ctx.Done():
 				err = ctx.Err()
@@ -228,7 +229,7 @@ func newStarPagination(c *Client, options ...ListStarsOption) (sip StarredItemPa
 
 // done checks if the pagination has completed
 func (StarredItemPagination) done(err error) bool {
-	return err == errPaginationComplete
+	return errors.Is(err, errPaginationComplete)
 }
 
 // done checks if pagination failed.
@@ -242,23 +243,24 @@ func (t StarredItemPagination) failure(err error) error {
 
 // next gets the next list of starred items based on the cursor value
 func (t StarredItemPagination) next(ctx context.Context) (_ StarredItemPagination, err error) {
-	var (
-		resp *listResponsePaginated
-	)
+	var resp listResponsePaginated
 
 	if t.c == nil || (t.previousResp != nil && t.previousResp.Cursor == "") {
 		return t, errPaginationComplete
 	}
 
-	t.previousResp = t.previousResp.initialize()
+	previousResp := t.previousResp.initialize()
 
 	values := url.Values{
 		"limit":  {strconv.Itoa(t.limit)},
 		"token":  {t.c.token},
-		"cursor": {t.previousResp.Cursor},
+		"cursor": {previousResp.Cursor},
 	}
 
 	if err = t.c.postMethod(ctx, "stars.list", values, &resp); err != nil {
+		return t, err
+	}
+	if err = resp.Err(); err != nil {
 		return t, err
 	}
 

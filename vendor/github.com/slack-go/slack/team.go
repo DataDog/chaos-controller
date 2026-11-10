@@ -6,22 +6,31 @@ import (
 	"strconv"
 )
 
-const (
-	DEFAULT_LOGINS_COUNT = 100
-	DEFAULT_LOGINS_PAGE  = 1
-)
-
 type TeamResponse struct {
 	Team TeamInfo `json:"team"`
 	SlackResponse
 }
 
 type TeamInfo struct {
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	Domain      string                 `json:"domain"`
-	EmailDomain string                 `json:"email_domain"`
-	Icon        map[string]interface{} `json:"icon"`
+	ID          string         `json:"id"`
+	Name        string         `json:"name"`
+	Domain      string         `json:"domain"`
+	EmailDomain string         `json:"email_domain"`
+	Icon        map[string]any `json:"icon"`
+
+	// SlackbotAvailability is advisory workspace availability, not individual eligibility.
+	SlackbotAvailability string `json:"slackbot_availability,omitempty"`
+}
+
+type getTeamInfoParams struct{ includeSlackbotAvailability *bool }
+
+// GetTeamInfoOption configures current or other team information requests.
+type GetTeamInfoOption func(*getTeamInfoParams)
+
+// GetTeamInfoOptionIncludeSlackbotAvailability requests advisory Slackbot availability.
+// Slack omits this field for external teams and when the option is false or absent.
+func GetTeamInfoOptionIncludeSlackbotAvailability(include bool) GetTeamInfoOption {
+	return func(params *getTeamInfoParams) { params.includeSlackbotAvailability = &include }
 }
 
 type TeamProfileResponse struct {
@@ -46,8 +55,8 @@ type TeamProfileField struct {
 
 type LoginResponse struct {
 	Logins []Login `json:"logins"`
-	Paging `json:"paging"`
 	SlackResponse
+	ResponseMetadata `json:"response_metadata"`
 }
 
 type Login struct {
@@ -75,16 +84,14 @@ type BillingActive struct {
 // AccessLogParameters contains all the parameters necessary (including the optional ones) for a GetAccessLogs() request
 type AccessLogParameters struct {
 	TeamID string
-	Count  int
-	Page   int
+	Cursor string
+	Limit  int
+	Before int
 }
 
 // NewAccessLogParameters provides an instance of AccessLogParameters with all the sane default values set
 func NewAccessLogParameters() AccessLogParameters {
-	return AccessLogParameters{
-		Count: DEFAULT_LOGINS_COUNT,
-		Page:  DEFAULT_LOGINS_PAGE,
-	}
+	return AccessLogParameters{}
 }
 
 func (api *Client) teamRequest(ctx context.Context, path string, values url.Values) (*TeamResponse, error) {
@@ -127,20 +134,28 @@ func (api *Client) teamProfileRequest(ctx context.Context, path string, values u
 
 // GetTeamInfo gets the Team Information of the user.
 // For more information see the GetTeamInfoContext documentation.
-func (api *Client) GetTeamInfo() (*TeamInfo, error) {
-	return api.GetTeamInfoContext(context.Background())
+func (api *Client) GetTeamInfo(options ...GetTeamInfoOption) (*TeamInfo, error) {
+	return api.GetTeamInfoContext(context.Background(), options...)
 }
 
 // GetOtherTeamInfoContext gets Team information for any team with a custom context.
-// Slack API docs: https://api.slack.com/methods/team.info
-func (api *Client) GetOtherTeamInfoContext(ctx context.Context, team string) (*TeamInfo, error) {
-	if team == "" {
-		return api.GetTeamInfoContext(ctx)
+// Slack API docs: https://docs.slack.dev/reference/methods/team.info
+func (api *Client) GetOtherTeamInfoContext(ctx context.Context, team string, options ...GetTeamInfoOption) (*TeamInfo, error) {
+	params := getTeamInfoParams{}
+	for _, option := range options {
+		if option != nil {
+			option(&params)
+		}
 	}
 	values := url.Values{
 		"token": {api.token},
 	}
-	values.Add("team", team)
+	if team != "" {
+		values.Set("team", team)
+	}
+	if params.includeSlackbotAvailability != nil {
+		values.Set("include_slackbot_availability", strconv.FormatBool(*params.includeSlackbotAvailability))
+	}
 	response, err := api.teamRequest(ctx, "team.info", values)
 	if err != nil {
 		return nil, err
@@ -150,22 +165,14 @@ func (api *Client) GetOtherTeamInfoContext(ctx context.Context, team string) (*T
 
 // GetOtherTeamInfo gets Team information for any team.
 // For more information see the GetOtherTeamInfoContext documentation.
-func (api *Client) GetOtherTeamInfo(team string) (*TeamInfo, error) {
-	return api.GetOtherTeamInfoContext(context.Background(), team)
+func (api *Client) GetOtherTeamInfo(team string, options ...GetTeamInfoOption) (*TeamInfo, error) {
+	return api.GetOtherTeamInfoContext(context.Background(), team, options...)
 }
 
 // GetTeamInfoContext gets the Team Information of the user with a custom context.
-// Slack API docs: https://api.slack.com/methods/team.info
-func (api *Client) GetTeamInfoContext(ctx context.Context) (*TeamInfo, error) {
-	values := url.Values{
-		"token": {api.token},
-	}
-
-	response, err := api.teamRequest(ctx, "team.info", values)
-	if err != nil {
-		return nil, err
-	}
-	return &response.Team, nil
+// Slack API docs: https://docs.slack.dev/reference/methods/team.info
+func (api *Client) GetTeamInfoContext(ctx context.Context, options ...GetTeamInfoOption) (*TeamInfo, error) {
+	return api.GetOtherTeamInfoContext(ctx, "", options...)
 }
 
 // GetTeamProfile gets the Team Profile settings of the user.
@@ -193,31 +200,34 @@ func (api *Client) GetTeamProfileContext(ctx context.Context, teamID ...string) 
 
 // GetAccessLogs retrieves a page of logins according to the parameters given.
 // For more information see the GetAccessLogsContext documentation.
-func (api *Client) GetAccessLogs(params AccessLogParameters) ([]Login, *Paging, error) {
+func (api *Client) GetAccessLogs(params AccessLogParameters) ([]Login, string, error) {
 	return api.GetAccessLogsContext(context.Background(), params)
 }
 
 // GetAccessLogsContext retrieves a page of logins according to the parameters given with a custom context.
 // Slack API docs: https://api.slack.com/methods/team.accessLogs
-func (api *Client) GetAccessLogsContext(ctx context.Context, params AccessLogParameters) ([]Login, *Paging, error) {
+func (api *Client) GetAccessLogsContext(ctx context.Context, params AccessLogParameters) ([]Login, string, error) {
 	values := url.Values{
 		"token": {api.token},
 	}
 	if params.TeamID != "" {
 		values.Add("team_id", params.TeamID)
 	}
-	if params.Count != DEFAULT_LOGINS_COUNT {
-		values.Add("count", strconv.Itoa(params.Count))
+	if params.Cursor != "" {
+		values.Add("cursor", params.Cursor)
 	}
-	if params.Page != DEFAULT_LOGINS_PAGE {
-		values.Add("page", strconv.Itoa(params.Page))
+	if params.Limit != 0 {
+		values.Add("limit", strconv.Itoa(params.Limit))
+	}
+	if params.Before != 0 {
+		values.Add("before", strconv.Itoa(params.Before))
 	}
 
 	response, err := api.accessLogsRequest(ctx, "team.accessLogs", values)
 	if err != nil {
-		return nil, nil, err
+		return nil, "", err
 	}
-	return response.Logins, &response.Paging, nil
+	return response.Logins, response.ResponseMetadata.Cursor, nil
 }
 
 type GetBillableInfoParams struct {

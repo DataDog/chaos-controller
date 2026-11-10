@@ -8,9 +8,10 @@
 package mocks
 
 import (
-	context "context"
-
+	cacheapi "sigs.k8s.io/controller-runtime/pkg/cache/cacheapi"
 	client "sigs.k8s.io/controller-runtime/pkg/client"
+
+	context "context"
 
 	mock "github.com/stretchr/testify/mock"
 
@@ -31,7 +32,7 @@ func (_m *ReaderMock) EXPECT() *ReaderMock_Expecter {
 }
 
 // Get provides a mock function with given fields: ctx, key, obj, opts
-func (_m *ReaderMock) Get(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
+func (_m *ReaderMock) Get(ctx context.Context, key types.NamespacedName, obj cacheapi.Object, opts ...client.GetOption) error {
 	_va := make([]interface{}, len(opts))
 	for _i := range opts {
 		_va[_i] = opts[_i]
@@ -46,7 +47,7 @@ func (_m *ReaderMock) Get(ctx context.Context, key types.NamespacedName, obj cli
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, types.NamespacedName, client.Object, ...client.GetOption) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, types.NamespacedName, cacheapi.Object, ...client.GetOption) error); ok {
 		r0 = rf(ctx, key, obj, opts...)
 	} else {
 		r0 = ret.Error(0)
@@ -63,14 +64,14 @@ type ReaderMock_Get_Call struct {
 // Get is a helper method to define mock.On call
 //   - ctx context.Context
 //   - key types.NamespacedName
-//   - obj client.Object
+//   - obj cacheapi.Object
 //   - opts ...client.GetOption
 func (_e *ReaderMock_Expecter) Get(ctx interface{}, key interface{}, obj interface{}, opts ...interface{}) *ReaderMock_Get_Call {
 	return &ReaderMock_Get_Call{Call: _e.mock.On("Get",
 		append([]interface{}{ctx, key, obj}, opts...)...)}
 }
 
-func (_c *ReaderMock_Get_Call) Run(run func(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption)) *ReaderMock_Get_Call {
+func (_c *ReaderMock_Get_Call) Run(run func(ctx context.Context, key types.NamespacedName, obj cacheapi.Object, opts ...client.GetOption)) *ReaderMock_Get_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		variadicArgs := make([]client.GetOption, len(args)-3)
 		for i, a := range args[3:] {
@@ -78,7 +79,7 @@ func (_c *ReaderMock_Get_Call) Run(run func(ctx context.Context, key types.Names
 				variadicArgs[i] = a.(client.GetOption)
 			}
 		}
-		run(args[0].(context.Context), args[1].(types.NamespacedName), args[2].(client.Object), variadicArgs...)
+		run(args[0].(context.Context), args[1].(types.NamespacedName), args[2].(cacheapi.Object), variadicArgs...)
 	})
 	return _c
 }
@@ -88,7 +89,7 @@ func (_c *ReaderMock_Get_Call) Return(_a0 error) *ReaderMock_Get_Call {
 	return _c
 }
 
-func (_c *ReaderMock_Get_Call) RunAndReturn(run func(context.Context, types.NamespacedName, client.Object, ...client.GetOption) error) *ReaderMock_Get_Call {
+func (_c *ReaderMock_Get_Call) RunAndReturn(run func(context.Context, types.NamespacedName, cacheapi.Object, ...client.GetOption) error) *ReaderMock_Get_Call {
 	_c.Call.Return(run)
 	return _c
 }

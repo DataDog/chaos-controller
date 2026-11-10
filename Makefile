@@ -8,7 +8,7 @@ GOARCH = $(shell go env GOARCH)
 
 # change also github actions go build version "GO_VERSION:" if you change the version below
 # https://github.com/DataDog/chaos-controller/blob/main/.github/workflows/ci.yml#L13
-BUILDGOVERSION = 1.26.2
+BUILDGOVERSION = 1.27.3
 
 # GOBIN can be provided (gitlab), defined (custom user setup), or empty/guessed (default go setup)
 GOBIN ?= $(shell go env GOBIN)
@@ -87,7 +87,7 @@ GOLANGCI_LINT_INSTALLED_VERSION = $(shell ($(LOCALBIN)/golangci-lint --version 2
 CONTROLLER_GEN_VERSION = v0.19.0
 CONTROLLER_GEN_INSTALLED_VERSION = $(shell ($(LOCALBIN)/controller-gen --version 2>/dev/null || echo "") | awk '{ print $$2 }')
 
-MOCKERY_VERSION = 2.53.5
+MOCKERY_VERSION = 2.53.8
 MOCKERY_ARCH = $(GOARCH)
 ifeq (amd64,$(GOARCH))
 MOCKERY_ARCH = x86_64
@@ -141,10 +141,10 @@ HELM_SHA256                        = $(HELM_SHA256_$(GOOS)_$(GOARCH))
 
 # mockery v$(MOCKERY_VERSION)
 # Source: https://github.com/vektra/mockery/releases/download/v$(MOCKERY_VERSION)/checksum.txt
-MOCKERY_SHA256_darwin_amd64        = e079356a96abea6001d889ab89e7408c66b33657c12f97d4becd751cec0ab10c
-MOCKERY_SHA256_darwin_arm64        = b1792e65417a9670db4125c53b770e4c5974cf7aafb45db6a47bcb90ff7d24b0
-MOCKERY_SHA256_linux_amd64         = 1f2028be64f20cb28983cf8a80fd4a7b036b8a9e389d443c295e531e77025641
-MOCKERY_SHA256_linux_arm64         = c9bb64143068ef9f876ecaf4b2850ea57f909c16412cb6fc562857b3569bb125
+MOCKERY_SHA256_darwin_amd64        = 060e2cc2169b348ee20948b07e2c19047cb4d88febec2ef2b80b31f873c9c4ca
+MOCKERY_SHA256_darwin_arm64        = 5d4f5d07f351badd9a569281d362300b3775354814bc0c621dd0cdc4313f5f6b
+MOCKERY_SHA256_linux_amd64         = 6d697a28d39ed2af55f3a80c6136babbe84e272849f377d8e2dde14c56e18f3d
+MOCKERY_SHA256_linux_arm64         = c5e6bb68b91506d558a5f92e819585714fdebb914b0262a420c935f356e513cc
 MOCKERY_SHA256                     = $(MOCKERY_SHA256_$(GOOS)_$(GOARCH))
 
 # yamlfmt v0.9.0

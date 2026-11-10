@@ -3,15 +3,12 @@ package slack
 import (
 	"encoding/json"
 	"errors"
+	"unicode/utf8"
 )
 
 // Block Objects are also known as Composition Objects
 //
 // For more information: https://api.slack.com/reference/messaging/composition-objects
-
-// BlockObject defines an interface that all block object types should
-// implement.
-// @TODO: Is this interface needed?
 
 // blockObject object types
 const (
@@ -25,10 +22,6 @@ const (
 )
 
 type MessageObjectType string
-
-type blockObject interface {
-	validateType() MessageObjectType
-}
 
 type BlockObjects struct {
 	TextObjects         []*TextBlockObject
@@ -47,7 +40,7 @@ func (b *BlockObjects) UnmarshalJSON(data []byte) error {
 	}
 
 	for _, r := range raw {
-		var obj map[string]interface{}
+		var obj map[string]any
 		err := json.Unmarshal(r, &obj)
 		if err != nil {
 			return err
@@ -57,29 +50,29 @@ func (b *BlockObjects) UnmarshalJSON(data []byte) error {
 
 		switch blockObjectType {
 		case PlainTextType, MarkdownType:
-			object, err := unmarshalBlockObject(r, &TextBlockObject{})
-			if err != nil {
+			object := &TextBlockObject{}
+			if err := json.Unmarshal(r, object); err != nil {
 				return err
 			}
-			b.TextObjects = append(b.TextObjects, object.(*TextBlockObject))
+			b.TextObjects = append(b.TextObjects, object)
 		case motConfirmation:
-			object, err := unmarshalBlockObject(r, &ConfirmationBlockObject{})
-			if err != nil {
+			object := &ConfirmationBlockObject{}
+			if err := json.Unmarshal(r, object); err != nil {
 				return err
 			}
-			b.ConfirmationObjects = append(b.ConfirmationObjects, object.(*ConfirmationBlockObject))
+			b.ConfirmationObjects = append(b.ConfirmationObjects, object)
 		case motOption:
-			object, err := unmarshalBlockObject(r, &OptionBlockObject{})
-			if err != nil {
+			object := &OptionBlockObject{}
+			if err := json.Unmarshal(r, object); err != nil {
 				return err
 			}
-			b.OptionObjects = append(b.OptionObjects, object.(*OptionBlockObject))
+			b.OptionObjects = append(b.OptionObjects, object)
 		case motOptionGroup:
-			object, err := unmarshalBlockObject(r, &OptionGroupBlockObject{})
-			if err != nil {
+			object := &OptionGroupBlockObject{}
+			if err := json.Unmarshal(r, object); err != nil {
 				return err
 			}
-			b.OptionGroupObjects = append(b.OptionGroupObjects, object.(*OptionGroupBlockObject))
+			b.OptionGroupObjects = append(b.OptionGroupObjects, object)
 
 		}
 	}
@@ -90,30 +83,22 @@ func (b *BlockObjects) UnmarshalJSON(data []byte) error {
 // Ideally would have a better way to identify the block objects for
 // type casting at time of unmarshalling, should be adapted if possible
 // to accomplish in a more reliable manner.
-func getBlockObjectType(obj map[string]interface{}) string {
+func getBlockObjectType(obj map[string]any) string {
 	if t, ok := obj["type"].(string); ok {
 		return t
 	}
-	if _, ok := obj["confirm"].(string); ok {
+	if _, ok := obj["confirm"]; ok {
 		return "confirm"
 	}
-	if _, ok := obj["options"].(string); ok {
+	if _, ok := obj["options"]; ok {
 		return "option_group"
 	}
-	if _, ok := obj["text"].(string); ok {
+	if _, ok := obj["text"]; ok {
 		if _, ok := obj["value"].(string); ok {
 			return "option"
 		}
 	}
 	return ""
-}
-
-func unmarshalBlockObject(r json.RawMessage, object blockObject) (blockObject, error) {
-	err := json.Unmarshal(r, object)
-	if err != nil {
-		return nil, err
-	}
-	return object, nil
 }
 
 // TextBlockObject defines a text element object to be used with blocks
@@ -126,12 +111,7 @@ type TextBlockObject struct {
 	Verbatim bool   `json:"verbatim,omitempty"`
 }
 
-// validateType enforces block objects for element and block parameters
-func (s TextBlockObject) validateType() MessageObjectType {
-	return MessageObjectType(s.Type)
-}
-
-// validateType enforces block objects for element and block parameters
+// MixedElementType identifies text objects as context elements.
 func (s TextBlockObject) MixedElementType() MixedElementType {
 	return MixedElementText
 }
@@ -152,7 +132,7 @@ func (s TextBlockObject) Validate() error {
 	}
 
 	// https://api.slack.com/reference/block-kit/composition-objects#text__fields
-	if len(s.Text) > 3000 {
+	if utf8.RuneCountInString(s.Text) > 3000 {
 		return errors.New("text cannot be longer than 3000 characters")
 	}
 
@@ -207,11 +187,6 @@ type ConfirmationBlockObject struct {
 	Style   Style            `json:"style,omitempty"`
 }
 
-// validateType enforces block objects for element and block parameters
-func (s ConfirmationBlockObject) validateType() MessageObjectType {
-	return motConfirmation
-}
-
 // WithStyle add styling to confirmation object
 func (s *ConfirmationBlockObject) WithStyle(style Style) *ConfirmationBlockObject {
 	s.Style = style
@@ -247,11 +222,6 @@ func NewOptionBlockObject(value string, text, description *TextBlockObject) *Opt
 	}
 }
 
-// validateType enforces block objects for element and block parameters
-func (s OptionBlockObject) validateType() MessageObjectType {
-	return motOption
-}
-
 // OptionGroupBlockObject Provides a way to group options in a select menu.
 //
 // More Information: https://api.slack.com/reference/messaging/composition-objects#option-group
@@ -260,15 +230,29 @@ type OptionGroupBlockObject struct {
 	Options []*OptionBlockObject `json:"options"`
 }
 
-// validateType enforces block objects for element and block parameters
-func (s OptionGroupBlockObject) validateType() MessageObjectType {
-	return motOptionGroup
-}
-
 // NewOptionGroupBlockElement returns an instance of a new option group block element
 func NewOptionGroupBlockElement(label *TextBlockObject, options ...*OptionBlockObject) *OptionGroupBlockObject {
 	return &OptionGroupBlockObject{
 		Label:   label,
 		Options: options,
+	}
+}
+
+// SlackIconObject defines a built-in Slack icon for use in a card block's
+// slack_icon field. It is mutually exclusive with the card block's icon field,
+// as both render in the same location.
+//
+// More Information: https://docs.slack.dev/reference/block-kit/composition-objects/slack-icon-object/
+type SlackIconObject struct {
+	Type string `json:"type"`
+	Name string `json:"name"`
+}
+
+// NewSlackIconObject returns an instance of a new Slack icon object. The name
+// must be one of the icon names supported by Slack.
+func NewSlackIconObject(name string) *SlackIconObject {
+	return &SlackIconObject{
+		Type: "icon",
+		Name: name,
 	}
 }
