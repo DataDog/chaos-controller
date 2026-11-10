@@ -321,6 +321,68 @@ var _ = Describe("Helpers", func() {
 			})
 		})
 
+		Context("with dynamic targeting and already targeted pods", func() {
+			BeforeEach(func() {
+				disruption.Namespace = "foo"
+				disruption.Status.TargetInjections = chaosv1beta1.TargetInjections{
+					"failedPod": {
+						types.DisruptionKindNetworkDisruption: {},
+					},
+				}
+			})
+
+			It("should keep already targeted pods which are not running anymore", func() {
+				k8SClientMock.EXPECT().List(mock.Anything, mock.AnythingOfType("*v1.PodList"), mock.Anything).
+					Run(func(ctx context.Context, list client.ObjectList, opts ...client.ListOption) {
+						if podList, ok := list.(*corev1.PodList); ok {
+							podList.Items = mixedStatusPods
+						}
+					}).Return(nil)
+
+				r, _, err := targetSelector.GetMatchingPodsOverTotalPods(k8SClientMock, disruption)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r.Items).To(HaveLen(3)) // the two running pods plus the already targeted failed pod
+				Expect(r.Items).To(ContainElement(*failedPod))
+			})
+
+			It("should still exclude not running pods which are not already targeted", func() {
+				disruption.Status.TargetInjections = chaosv1beta1.TargetInjections{
+					"anotherTarget": {
+						types.DisruptionKindNetworkDisruption: {},
+					},
+				}
+
+				k8SClientMock.EXPECT().List(mock.Anything, mock.AnythingOfType("*v1.PodList"), mock.Anything).
+					Run(func(ctx context.Context, list client.ObjectList, opts ...client.ListOption) {
+						if podList, ok := list.(*corev1.PodList); ok {
+							podList.Items = mixedStatusPods
+						}
+					}).Return(nil)
+
+				r, _, err := targetSelector.GetMatchingPodsOverTotalPods(k8SClientMock, disruption)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r.Items).To(HaveLen(2)) // only the running pods
+			})
+
+			It("should still exclude not running already targeted pods when static targeting is enabled", func() {
+				disruption.Spec.StaticTargeting = true
+
+				k8SClientMock.EXPECT().List(mock.Anything, mock.AnythingOfType("*v1.PodList"), mock.Anything).
+					Run(func(ctx context.Context, list client.ObjectList, opts ...client.ListOption) {
+						if podList, ok := list.(*corev1.PodList); ok {
+							podList.Items = mixedStatusPods
+						}
+					}).Return(nil)
+
+				r, _, err := targetSelector.GetMatchingPodsOverTotalPods(k8SClientMock, disruption)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r.Items).To(HaveLen(2)) // only the running pods, static targeting does not keep dead targets
+			})
+		})
+
 		Context("with controller safeguards enabled", func() {
 			BeforeEach(func() {
 				targetSelector = targetselector.NewRunningTargetSelector(true, "runningNode")
@@ -417,6 +479,68 @@ var _ = Describe("Helpers", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(r.Items).To(HaveLen(len(justRunningNodes)))
 				Expect(r.Items[0].Name).To(Equal("runningNode"))
+			})
+		})
+
+		Context("with dynamic targeting and already targeted nodes", func() {
+			BeforeEach(func() {
+				disruption.Spec.Selector = map[string]string{"app": "bar"}
+				disruption.Status.TargetInjections = chaosv1beta1.TargetInjections{
+					"failedNode": {
+						types.DisruptionKindNodeFailure: {},
+					},
+				}
+			})
+
+			It("should keep already targeted nodes which are not ready anymore", func() {
+				k8SClientMock.EXPECT().List(mock.Anything, mock.AnythingOfType("*v1.NodeList"), mock.Anything).
+					Run(func(ctx context.Context, list client.ObjectList, opts ...client.ListOption) {
+						if nodeList, ok := list.(*corev1.NodeList); ok {
+							nodeList.Items = []corev1.Node{*runningNode, *failedNode}
+						}
+					}).Return(nil)
+
+				r, _, err := targetSelector.GetMatchingNodesOverTotalNodes(k8SClientMock, disruption)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r.Items).To(HaveLen(2)) // the ready node plus the already targeted not ready node
+				Expect(r.Items).To(ContainElement(*failedNode))
+			})
+
+			It("should still exclude not ready nodes which are not already targeted", func() {
+				disruption.Status.TargetInjections = chaosv1beta1.TargetInjections{
+					"anotherTarget": {
+						types.DisruptionKindNodeFailure: {},
+					},
+				}
+
+				k8SClientMock.EXPECT().List(mock.Anything, mock.AnythingOfType("*v1.NodeList"), mock.Anything).
+					Run(func(ctx context.Context, list client.ObjectList, opts ...client.ListOption) {
+						if nodeList, ok := list.(*corev1.NodeList); ok {
+							nodeList.Items = []corev1.Node{*runningNode, *failedNode}
+						}
+					}).Return(nil)
+
+				r, _, err := targetSelector.GetMatchingNodesOverTotalNodes(k8SClientMock, disruption)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r.Items).To(HaveLen(1)) // only the ready node
+			})
+
+			It("should still exclude not ready already targeted nodes when static targeting is enabled", func() {
+				disruption.Spec.StaticTargeting = true
+
+				k8SClientMock.EXPECT().List(mock.Anything, mock.AnythingOfType("*v1.NodeList"), mock.Anything).
+					Run(func(ctx context.Context, list client.ObjectList, opts ...client.ListOption) {
+						if nodeList, ok := list.(*corev1.NodeList); ok {
+							nodeList.Items = []corev1.Node{*runningNode, *failedNode}
+						}
+					}).Return(nil)
+
+				r, _, err := targetSelector.GetMatchingNodesOverTotalNodes(k8SClientMock, disruption)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(r.Items).To(HaveLen(1)) // only the ready node
 			})
 		})
 
