@@ -814,6 +814,125 @@ var _ = Describe("Failure", func() {
 		})
 	})
 
+	Describe("inj.Inject with a named service target port", func() {
+		var servicesWatcher, podsWatcher *watch.FakeWatcher
+
+		BeforeEach(func() {
+			spec.Services = []v1beta1.NetworkDisruptionServiceSpec{
+				{
+					Name:      "foo",
+					Namespace: "bar",
+				},
+			}
+
+			// the service targets its port by name ("http"), resolved by the
+			// container port of the endpoint pod
+			fakeService.Spec.Ports = []corev1.ServicePort{
+				{
+					Name:       "test-port-name",
+					Port:       80,
+					TargetPort: intstr.FromString("http"),
+					Protocol:   corev1.ProtocolTCP,
+				},
+			}
+			fakeEndpoint.Spec.Containers = []corev1.Container{
+				{
+					Name: "app",
+					Ports: []corev1.ContainerPort{
+						{
+							Name:          "http",
+							ContainerPort: 8080,
+							Protocol:      corev1.ProtocolTCP,
+						},
+					},
+				},
+			}
+
+			podsWatcher = watch.NewFakeWithChanSize(1, false)
+			servicesWatcher = watch.NewFakeWithChanSize(1, false)
+
+			k8sClient.PrependWatchReactor("pods", testing.DefaultWatchReactor(podsWatcher, nil))
+			k8sClient.PrependWatchReactor("services", testing.DefaultWatchReactor(servicesWatcher, nil))
+
+			servicesWatcher.Add(fakeService)
+			podsWatcher.Add(fakeEndpoint)
+		})
+
+		JustBeforeEach(func() {
+			err = inj.Inject()
+		})
+
+		It("should add a filter on the resolved container port", func() {
+			WatchersAreEmpty(servicesWatcher, podsWatcher)
+
+			tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(podIP), 0, 8080, network.TCP, network.ConnStateUndefined, "1:4")
+			// port 0 would disrupt every port of the endpoint
+			tc.AssertNotCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(podIP), 0, 0, network.TCP, network.ConnStateUndefined, "1:4")
+		})
+
+		AfterEach(func() {
+			Expect(inj.Clean()).To(Succeed())
+		})
+	})
+
+	Describe("inj.Inject with an unresolvable named service target port", func() {
+		var servicesWatcher, podsWatcher *watch.FakeWatcher
+
+		BeforeEach(func() {
+			spec.Services = []v1beta1.NetworkDisruptionServiceSpec{
+				{
+					Name:      "foo",
+					Namespace: "bar",
+				},
+			}
+
+			fakeService.Spec.Ports = []corev1.ServicePort{
+				{
+					Name:       "test-port-name",
+					Port:       80,
+					TargetPort: intstr.FromString("unknown-port"),
+					Protocol:   corev1.ProtocolTCP,
+				},
+			}
+			fakeEndpoint.Spec.Containers = []corev1.Container{
+				{
+					Name: "app",
+					Ports: []corev1.ContainerPort{
+						{
+							Name:          "http",
+							ContainerPort: 8080,
+							Protocol:      corev1.ProtocolTCP,
+						},
+					},
+				},
+			}
+
+			podsWatcher = watch.NewFakeWithChanSize(1, false)
+			servicesWatcher = watch.NewFakeWithChanSize(1, false)
+
+			k8sClient.PrependWatchReactor("pods", testing.DefaultWatchReactor(podsWatcher, nil))
+			k8sClient.PrependWatchReactor("services", testing.DefaultWatchReactor(servicesWatcher, nil))
+
+			servicesWatcher.Add(fakeService)
+			podsWatcher.Add(fakeEndpoint)
+		})
+
+		JustBeforeEach(func() {
+			err = inj.Inject()
+		})
+
+		It("should not add any filter on the endpoint", func() {
+			WatchersAreEmpty(servicesWatcher, podsWatcher)
+
+			// no port 0 filter may be added: it would disrupt every port of the endpoint
+			tc.AssertNotCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(podIP), 0, 0, network.TCP, network.ConnStateUndefined, "1:4")
+		})
+
+		AfterEach(func() {
+			Expect(inj.Clean()).To(Succeed())
+		})
+	})
+
 	Describe("inj.Clean", func() {
 		JustBeforeEach(func() {
 			Expect(inj.Clean()).To(Succeed())
