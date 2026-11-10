@@ -84,6 +84,16 @@ func (c *cpuStressInjector) Inject() error {
 }
 
 func (c *cpuStressInjector) Clean() error {
+	c.config.Log.Info("cleaning cpu stress")
+
+	// exiters is nil when no stress is running: the injector was never injected,
+	// the injection failed or the stress has already been cleaned
+	if c.exiters == nil {
+		c.config.Log.Info("no cpu stress to stop")
+
+		return nil
+	}
+
 	stressCount := cap(c.exiters)
 	c.config.Log.Infow("Stopping all cpu stresses", tags.StressCountKey, stressCount)
 
