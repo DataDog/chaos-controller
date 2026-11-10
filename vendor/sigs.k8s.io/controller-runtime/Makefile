@@ -1,18 +1,16 @@
-#!/usr/bin/env bash
-
-#  Copyright 2020 The Kubernetes Authors.
+# Copyright 2020 The Kubernetes Authors.
 #
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  you may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-#      http://www.apache.org/licenses/LICENSE-2.0
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 # If you update this file, please follow
 # https://suva.sh/posts/well-documented-makefiles
@@ -27,7 +25,7 @@ SHELL:=/usr/bin/env bash
 #
 # Go.
 #
-GO_VERSION ?= 1.24.0
+GO_VERSION ?= 1.26.0
 
 # Use GOPROXY environment variable if set
 GOPROXY := $(shell go env GOPROXY)
@@ -69,18 +67,14 @@ help:  ## Display this help
 ## --------------------------------------
 
 .PHONY: test
-test: test-tools ## Run the script check-everything.sh which will check all.
+test: ## Run the script check-everything.sh which will check all.
 	TRACE=1 ./hack/check-everything.sh
-
-.PHONY: test-tools
-test-tools: ## tests the tools codebase (setup-envtest)
-	cd tools/setup-envtest && go test ./...
 
 ## --------------------------------------
 ## Binaries
 ## --------------------------------------
 
-GO_APIDIFF_VER := v0.8.2
+GO_APIDIFF_VER := v0.8.3
 GO_APIDIFF_BIN := go-apidiff
 GO_APIDIFF := $(abspath $(TOOLS_BIN_DIR)/$(GO_APIDIFF_BIN)-$(GO_APIDIFF_VER))
 GO_APIDIFF_PKG := github.com/joelanford/go-apidiff
@@ -88,7 +82,7 @@ GO_APIDIFF_PKG := github.com/joelanford/go-apidiff
 $(GO_APIDIFF): # Build go-apidiff from tools folder.
 	GOBIN=$(TOOLS_BIN_DIR) $(GO_INSTALL) $(GO_APIDIFF_PKG) $(GO_APIDIFF_BIN) $(GO_APIDIFF_VER)
 
-CONTROLLER_GEN_VER := v0.17.1
+CONTROLLER_GEN_VER := v0.20.0
 CONTROLLER_GEN_BIN := controller-gen
 CONTROLLER_GEN := $(abspath $(TOOLS_BIN_DIR)/$(CONTROLLER_GEN_BIN)-$(CONTROLLER_GEN_VER))
 CONTROLLER_GEN_PKG := sigs.k8s.io/controller-tools/cmd/controller-gen
@@ -201,6 +195,10 @@ verify-modules: modules $(GO_MOD_CHECK) ## Verify go modules are up to date
 		echo "go module files are out of date, please run 'make modules'"; exit 1; \
 	fi
 	$(GO_MOD_CHECK) $(GO_MOD_CHECK_IGNORE)
+
+.PHONY: verify-boilerplate
+verify-boilerplate:
+	./hack/verify-boilerplate.sh
 
 APIDIFF_OLD_COMMIT ?= $(shell git rev-parse origin/main)
 

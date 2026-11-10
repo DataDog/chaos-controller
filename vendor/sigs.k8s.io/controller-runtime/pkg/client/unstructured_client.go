@@ -21,12 +21,12 @@ import (
 	"fmt"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/util/apply"
 )
 
 var _ Reader = &unstructuredClient{}
-var _ Writer = &unstructuredClient{}
 
 type unstructuredClient struct {
 	resources  *clientRestResources
@@ -93,26 +93,23 @@ func (uc *unstructuredClient) Update(ctx context.Context, obj Object, opts ...Up
 }
 
 // Delete implements client.Client.
-func (uc *unstructuredClient) Delete(ctx context.Context, obj Object, opts ...DeleteOption) error {
-	if _, ok := obj.(runtime.Unstructured); !ok {
-		return fmt.Errorf("unstructured client did not understand object: %T", obj)
-	}
-
+func (uc *unstructuredClient) Delete(ctx context.Context, obj Object, opts ...DeleteOption) (*unstructured.Unstructured, error) {
 	o, err := uc.resources.getObjMeta(obj)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	deleteOpts := DeleteOptions{}
 	deleteOpts.ApplyOptions(opts)
 
-	return o.Delete().
+	response := &unstructured.Unstructured{}
+	return response, o.Delete().
 		NamespaceIfScoped(o.namespace, o.isNamespaced()).
 		Resource(o.resource()).
 		Name(o.name).
 		Body(deleteOpts.AsDeleteOptions()).
 		Do(ctx).
-		Error()
+		Into(response)
 }
 
 // DeleteAllOf implements client.Client.
@@ -385,4 +382,36 @@ func (uc *unstructuredClient) PatchSubResource(ctx context.Context, obj Object, 
 
 	u.GetObjectKind().SetGroupVersionKind(gvk)
 	return result
+}
+
+func (uc *unstructuredClient) ApplySubResource(ctx context.Context, obj runtime.ApplyConfiguration, subResource string, opts ...SubResourceApplyOption) error {
+	unstructuredApplyConfig, ok := obj.(*unstructuredApplyConfiguration)
+	if !ok {
+		return fmt.Errorf("bug: unstructured client got an applyconfiguration that was not %T but %T", &unstructuredApplyConfiguration{}, obj)
+	}
+	o, err := uc.resources.getObjMeta(unstructuredApplyConfig.Unstructured)
+	if err != nil {
+		return err
+	}
+
+	applyOpts := &SubResourceApplyOptions{}
+	applyOpts.ApplyOpts(opts)
+
+	body := obj
+	if applyOpts.SubResourceBody != nil {
+		body = applyOpts.SubResourceBody
+	}
+	req, err := apply.NewRequest(o, body)
+	if err != nil {
+		return fmt.Errorf("failed to create apply request: %w", err)
+	}
+
+	return req.
+		NamespaceIfScoped(o.namespace, o.isNamespaced()).
+		Resource(o.resource()).
+		Name(o.name).
+		SubResource(subResource).
+		VersionedParams(applyOpts.AsPatchOptions(), uc.paramCodec).
+		Do(ctx).
+		Into(unstructuredApplyConfig.Unstructured)
 }

@@ -30,7 +30,6 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/client-go/util/workqueue"
-	"k8s.io/utils/ptr"
 
 	"sigs.k8s.io/controller-runtime/pkg/controller/priorityqueue"
 	ctrlmetrics "sigs.k8s.io/controller-runtime/pkg/internal/controller/metrics"
@@ -38,6 +37,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
+
+// errReconciliationTimeout is the error used as the cause when the ReconciliationTimeout guardrail fires.
+// This allows us to distinguish wrapper timeouts from user-initiated context cancellations.
+var errReconciliationTimeout = errors.New("reconciliation timeout")
 
 // Options are the arguments for creating a new Controller.
 type Options[request comparable] struct {
@@ -55,6 +58,7 @@ type Options[request comparable] struct {
 	NewQueue func(controllerName string, rateLimiter workqueue.TypedRateLimiter[request]) workqueue.TypedRateLimitingInterface[request]
 
 	// MaxConcurrentReconciles is the maximum number of concurrent Reconciles which can be run. Defaults to 1.
+	// See controller.TypedOptions.MaxConcurrentReconciles for full documentation.
 	MaxConcurrentReconciles int
 
 	// CacheSyncTimeout refers to the time limit set on waiting for cache to sync
@@ -93,7 +97,8 @@ type Controller[request comparable] struct {
 	// Name is used to uniquely identify a Controller in tracing, logging and monitoring.  Name is required.
 	Name string
 
-	// MaxConcurrentReconciles is the maximum number of concurrent Reconciles which can be run. Defaults to 1.
+	// MaxConcurrentReconciles is the number of worker goroutines spawned to process work queue items.
+	// See controller.TypedOptions.MaxConcurrentReconciles for full documentation.
 	MaxConcurrentReconciles int
 
 	// Reconciler is a function that can be called at any time with the Name / Namespace of an object and
@@ -207,13 +212,26 @@ func (c *Controller[request]) Reconcile(ctx context.Context, req request) (_ rec
 		}
 	}()
 
+	var timeoutCause error
 	if c.ReconciliationTimeout > 0 {
+		timeoutCause = errReconciliationTimeout
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, c.ReconciliationTimeout)
+		ctx, cancel = context.WithTimeoutCause(ctx, c.ReconciliationTimeout, timeoutCause)
 		defer cancel()
 	}
 
-	return c.Do.Reconcile(ctx, req)
+	res, err := c.Do.Reconcile(ctx, req)
+
+	// Check if the reconciliation timed out due to our wrapper timeout guardrail.
+	// We check ctx.Err() == context.DeadlineExceeded first to ensure the context was actually
+	// cancelled due to a deadline (not parent cancellation or other reasons), then verify it was
+	// our specific timeout cause. This prevents false positives from parent context cancellations
+	// or other timeout scenarios.
+	if timeoutCause != nil && ctx.Err() == context.DeadlineExceeded && errors.Is(context.Cause(ctx), timeoutCause) {
+		ctrlmetrics.ReconcileTimeouts.WithLabelValues(c.Name).Inc()
+	}
+
+	return res, err
 }
 
 // Watch implements controller.Controller.
@@ -261,6 +279,7 @@ func (c *Controller[request]) Start(ctx context.Context) error {
 	// but lock outside to get proper handling of the queue shutdown
 	c.mu.Lock()
 	if c.Started {
+		c.mu.Unlock()
 		return errors.New("controller was started more than once. This is likely to be caused by being added to a manager multiple times")
 	}
 
@@ -437,6 +456,7 @@ func (c *Controller[request]) initMetrics() {
 	ctrlmetrics.ReconcileErrors.WithLabelValues(c.Name).Add(0)
 	ctrlmetrics.TerminalReconcileErrors.WithLabelValues(c.Name).Add(0)
 	ctrlmetrics.ReconcilePanics.WithLabelValues(c.Name).Add(0)
+	ctrlmetrics.ReconcileTimeouts.WithLabelValues(c.Name).Add(0)
 	ctrlmetrics.WorkerCount.WithLabelValues(c.Name).Set(float64(c.MaxConcurrentReconciles))
 	ctrlmetrics.ActiveWorkers.WithLabelValues(c.Name).Set(0)
 }
@@ -459,17 +479,20 @@ func (c *Controller[request]) reconcileHandler(ctx context.Context, req request,
 	// resource to be synced.
 	log.V(5).Info("Reconciling")
 	result, err := c.Reconcile(ctx, req)
+	if result.Priority != nil {
+		priority = *result.Priority
+	}
 	switch {
 	case err != nil:
 		if errors.Is(err, reconcile.TerminalError(nil)) {
 			ctrlmetrics.TerminalReconcileErrors.WithLabelValues(c.Name).Inc()
 		} else {
-			c.Queue.AddWithOpts(priorityqueue.AddOpts{RateLimited: true, Priority: ptr.To(priority)}, req)
+			c.Queue.AddWithOpts(priorityqueue.AddOpts{RateLimited: true, Priority: new(priority)}, req)
 		}
 		ctrlmetrics.ReconcileErrors.WithLabelValues(c.Name).Inc()
 		ctrlmetrics.ReconcileTotal.WithLabelValues(c.Name, labelError).Inc()
-		if !result.IsZero() {
-			log.Info("Warning: Reconciler returned both a non-zero result and a non-nil error. The result will always be ignored if the error is non-nil and the non-nil error causes requeuing with exponential backoff. For more details, see: https://pkg.go.dev/sigs.k8s.io/controller-runtime/pkg/reconcile#Reconciler")
+		if result.RequeueAfter > 0 || result.Requeue { //nolint: staticcheck // We have to handle Requeue until it is removed
+			log.Info("Warning: Reconciler returned both a result with either RequeueAfter or Requeue set and a non-nil error. RequeueAfter and Requeue will always be ignored if the error is non-nil. For more details, see: https://pkg.go.dev/sigs.k8s.io/controller-runtime/pkg/reconcile#Reconciler")
 		}
 		log.Error(err, "Reconciler error")
 	case result.RequeueAfter > 0:
@@ -479,11 +502,11 @@ func (c *Controller[request]) reconcileHandler(ctx context.Context, req request,
 		// We need to drive to stable reconcile loops before queuing due
 		// to result.RequestAfter
 		c.Queue.Forget(req)
-		c.Queue.AddWithOpts(priorityqueue.AddOpts{After: result.RequeueAfter, Priority: ptr.To(priority)}, req)
+		c.Queue.AddWithOpts(priorityqueue.AddOpts{After: result.RequeueAfter, Priority: new(priority)}, req)
 		ctrlmetrics.ReconcileTotal.WithLabelValues(c.Name, labelRequeueAfter).Inc()
 	case result.Requeue: //nolint: staticcheck // We have to handle it until it is removed
 		log.V(5).Info("Reconcile done, requeueing")
-		c.Queue.AddWithOpts(priorityqueue.AddOpts{RateLimited: true, Priority: ptr.To(priority)}, req)
+		c.Queue.AddWithOpts(priorityqueue.AddOpts{RateLimited: true, Priority: new(priority)}, req)
 		ctrlmetrics.ReconcileTotal.WithLabelValues(c.Name, labelRequeue).Inc()
 	default:
 		log.V(5).Info("Reconcile successful")

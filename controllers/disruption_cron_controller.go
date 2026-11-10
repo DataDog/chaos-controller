@@ -93,7 +93,7 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			requeueAfter := r.FinalizerDeletionDelay
 			r.log.Infow(fmt.Sprintf("requeuing to remove finalizer after %s", requeueAfter))
 
-			return ctrl.Result{Requeue: true, RequeueAfter: requeueAfter}, nil
+			return ctrl.Result{RequeueAfter: requeueAfter}, nil
 		}
 
 		return ctrl.Result{}, nil

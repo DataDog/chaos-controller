@@ -35,11 +35,18 @@ type File struct {
 	Filetype          string `json:"filetype"`
 	PrettyType        string `json:"pretty_type"`
 	User              string `json:"user"`
+	UserTeam          string `json:"user_team,omitempty"`
+	AltTxt            string `json:"alt_txt,omitempty"`
 
-	Mode         string `json:"mode"`
-	Editable     bool   `json:"editable"`
-	IsExternal   bool   `json:"is_external"`
-	ExternalType string `json:"external_type"`
+	Mode         string  `json:"mode"`
+	Editable     bool    `json:"editable"`
+	IsExternal   bool    `json:"is_external"`
+	ExternalType string  `json:"external_type"`
+	ExternalID   string  `json:"external_id,omitempty"`
+	ExternalURL  *string `json:"external_url,omitempty"`
+
+	AppID                      string `json:"app_id,omitempty"`
+	AppProvidesFileWorkObjects *bool  `json:"app_provides_file_work_objects,omitempty"`
 
 	Size int `json:"size"`
 
@@ -60,15 +67,43 @@ type File struct {
 	Thumb480    string `json:"thumb_480"`
 	Thumb480W   int    `json:"thumb_480_w"`
 	Thumb480H   int    `json:"thumb_480_h"`
+	Thumb480Gif string `json:"thumb_480_gif,omitempty"`
 	Thumb720    string `json:"thumb_720"`
 	Thumb720W   int    `json:"thumb_720_w"`
 	Thumb720H   int    `json:"thumb_720_h"`
+	Thumb800    string `json:"thumb_800,omitempty"`
+	Thumb800W   int    `json:"thumb_800_w,omitempty"`
+	Thumb800H   int    `json:"thumb_800_h,omitempty"`
+	ThumbTiny   string `json:"thumb_tiny,omitempty"`
+	ThumbPDF    string `json:"thumb_pdf,omitempty"`
+	ThumbPDFH   int    `json:"thumb_pdf_h,omitempty"`
+	ThumbPDFW   int    `json:"thumb_pdf_w,omitempty"`
 	Thumb960    string `json:"thumb_960"`
 	Thumb960W   int    `json:"thumb_960_w"`
 	Thumb960H   int    `json:"thumb_960_h"`
 	Thumb1024   string `json:"thumb_1024"`
 	Thumb1024W  int    `json:"thumb_1024_w"`
 	Thumb1024H  int    `json:"thumb_1024_h"`
+	Deanimate   string `json:"deanimate,omitempty"`
+
+	ThumbVideo          string `json:"thumb_video"`
+	ThumbVideoW         int    `json:"thumb_video_w"`
+	ThumbVideoH         int    `json:"thumb_video_h"`
+	ThumbVideoTimestamp string `json:"thumb_video_ts"`
+
+	DurationMs       int    `json:"duration_ms"`
+	HLS              string `json:"hls"`
+	HLSEmbed         string `json:"hls_embed"`
+	HLSPreview       string `json:"hls_preview"`
+	MediaDisplayType string `json:"media_display_type"`
+	MP4              string `json:"mp4"`
+	MP4Low           string `json:"mp4_low"`
+	VTT              string `json:"vtt"`
+
+	AAC                            string             `json:"aac,omitempty"`
+	AudioWaveSamples               []int              `json:"audio_wave_samples,omitempty"`
+	IsTranscriptionRegionSupported *bool              `json:"is_transcription_region_supported,omitempty"`
+	Transcription                  *FileTranscription `json:"transcription,omitempty"`
 
 	Permalink       string `json:"permalink"`
 	PermalinkPublic string `json:"permalink_public"`
@@ -89,12 +124,67 @@ type File struct {
 	NumStars        int      `json:"num_stars"`
 	IsStarred       bool     `json:"is_starred"`
 	Shares          Share    `json:"shares"`
+	HasMoreShares   *bool    `json:"has_more_shares,omitempty"`
+	FileAccess      string   `json:"file_access,omitempty"`
+
+	Access                             string           `json:"access,omitempty"`
+	DMMPDMUsersWithFileAccess          []FileUserAccess `json:"dm_mpdm_users_with_file_access,omitempty"`
+	PrivateChannelsWithFileAccessCount *int             `json:"private_channels_with_file_access_count,omitempty"`
+	TeamsSharedWith                    []string         `json:"teams_shared_with,omitempty"`
+	IsRestrictedSharingEnabled         *bool            `json:"is_restricted_sharing_enabled,omitempty"`
+	OrgOrWorkspaceAccess               string           `json:"org_or_workspace_access,omitempty"`
+	// Canvas responses can supply last_read in milliseconds; preserve the raw value.
+	LastRead *int64 `json:"last_read,omitempty"`
 
 	Subject string              `json:"subject"`
 	To      []EmailFileUserInfo `json:"to"`
 	From    []EmailFileUserInfo `json:"from"`
 	Cc      []EmailFileUserInfo `json:"cc"`
 	Headers EmailHeaders        `json:"headers"`
+
+	PlainText          string `json:"plain_text"`
+	PreviewPlainText   string `json:"preview_plain_text"`
+	PreviewIsTruncated *bool  `json:"preview_is_truncated,omitempty"`
+
+	URLStaticPreview              string    `json:"url_static_preview,omitempty"`
+	QuipThreadID                  string    `json:"quip_thread_id,omitempty"`
+	Updated                       *JSONTime `json:"updated,omitempty"`
+	UpdateNotification            *JSONTime `json:"update_notification,omitempty"`
+	CanvasCreatorID               string    `json:"canvas_creator_id,omitempty"`
+	CanvasReadTime                *float64  `json:"canvas_readtime,omitempty"`
+	CanvasPrintingEnabled         *bool     `json:"canvas_printing_enabled,omitempty"`
+	TeamPrefVersionHistoryEnabled *bool     `json:"team_pref_version_history_enabled,omitempty"`
+	ExcludedFromSlackAI           *bool     `json:"excluded_from_slack_ai,omitempty"`
+	IsAISuggested                 *bool     `json:"is_ai_suggested,omitempty"`
+	ShowBadge                     *bool     `json:"show_badge,omitempty"`
+	TitleBlocks                   *Blocks   `json:"title_blocks,omitempty"`
+	// A pointer preserves an explicitly empty editor list.
+	Editors *[]string `json:"editors,omitempty"`
+
+	ListMetadata       *ListMetadata `json:"list_metadata,omitempty"`
+	ListLimits         *ListLimits   `json:"list_limits,omitempty"`
+	ListCSVDownloadURL string        `json:"list_csv_download_url,omitempty"`
+	LastEditor         *string       `json:"last_editor,omitempty"`
+	EditTimestamp      *JSONTime     `json:"edit_timestamp,omitempty"`
+}
+
+// FileUserAccess is a user's access to a file through a DM or group DM.
+type FileUserAccess struct {
+	UserID string `json:"user_id"`
+	Access string `json:"access"`
+}
+
+// FileTranscription contains a file's transcription status and preview.
+type FileTranscription struct {
+	Status  string                    `json:"status,omitempty"`
+	Locale  string                    `json:"locale,omitempty"`
+	Preview *FileTranscriptionPreview `json:"preview,omitempty"`
+}
+
+// FileTranscriptionPreview is the available text of a file transcription.
+type FileTranscriptionPreview struct {
+	Content string `json:"content,omitempty"`
+	HasMore *bool  `json:"has_more,omitempty"`
 }
 
 type EmailFileUserInfo struct {
@@ -126,24 +216,6 @@ type ShareFileInfo struct {
 	TeamID          string   `json:"team_id"`
 }
 
-// FileUploadParameters contains all the parameters necessary (including the optional ones) for an UploadFile() request.
-//
-// There are three ways to upload a file. You can either set Content if file is small, set Reader if file is large,
-// or provide a local file path in File to upload it from your filesystem.
-//
-// Note that when using the Reader option, you *must* specify the Filename, otherwise the Slack API isn't happy.
-type FileUploadParameters struct {
-	File            string
-	Content         string
-	Reader          io.Reader
-	Filetype        string
-	Filename        string
-	Title           string
-	InitialComment  string
-	Channels        []string
-	ThreadTimestamp string
-}
-
 // GetFilesParameters contains all the parameters necessary (including the optional ones) for a GetFiles() request
 type GetFilesParameters struct {
 	User          string
@@ -167,7 +239,7 @@ type ListFilesParameters struct {
 	Cursor  string
 }
 
-type UploadFileV2Parameters struct {
+type UploadFileParameters struct {
 	File            string
 	FileSize        int
 	Content         string
@@ -177,6 +249,7 @@ type UploadFileV2Parameters struct {
 	InitialComment  string
 	Blocks          Blocks
 	Channel         string
+	Channels        []string
 	ThreadTimestamp string
 	AltTxt          string
 	SnippetType     string
@@ -212,6 +285,7 @@ type CompleteUploadExternalParameters struct {
 	Files           []FileSummary
 	Blocks          Blocks
 	Channel         string
+	Channels        []string
 	InitialComment  string
 	ThreadTimestamp string
 }
@@ -279,6 +353,11 @@ func (api *Client) GetFileInfoContext(ctx context.Context, fileID string, count,
 }
 
 // GetFile retrieves a given file from its private download URL.
+//
+// The request carries the token, so GetFile accepts only https URLs on slack.com or
+// slack-gov.com (and their subdomains) and URLs on the host set with OptionAPIURL. It
+// returns an error for any other URL. A remote or external file (File.IsExternal) has
+// a url_private outside Slack: fetch it without the Slack client.
 func (api *Client) GetFile(downloadURL string, writer io.Writer) error {
 	return api.GetFileContext(context.Background(), downloadURL, writer)
 }
@@ -286,7 +365,7 @@ func (api *Client) GetFile(downloadURL string, writer io.Writer) error {
 // GetFileContext retrieves a given file from its private download URL with a custom context.
 // For more details, see GetFile documentation.
 func (api *Client) GetFileContext(ctx context.Context, downloadURL string, writer io.Writer) error {
-	return downloadFile(ctx, api.httpclient, api.token, downloadURL, writer, api)
+	return downloadFile(ctx, api.httpclient, api.token, api.endpoint, downloadURL, writer, api)
 }
 
 // GetFiles retrieves all files according to the parameters given.
@@ -325,6 +404,7 @@ func (api *Client) GetFilesContext(ctx context.Context, params GetFilesParameter
 	if params.Page != DEFAULT_FILES_PAGE {
 		values.Add("page", strconv.Itoa(params.Page))
 	}
+	//nolint:staticcheck // S1002: keep the explicit comparison against the constant.
 	if params.ShowHidden != DEFAULT_FILES_SHOW_HIDDEN {
 		values.Add("show_files_hidden_by_limit", strconv.FormatBool(params.ShowHidden))
 	}
@@ -336,14 +416,17 @@ func (api *Client) GetFilesContext(ctx context.Context, params GetFilesParameter
 	return response.Files, &response.Paging, nil
 }
 
-// ListFiles retrieves all files according to the parameters given. Uses cursor based pagination.
-// For more details, see ListFilesContext documentation.
+// ListFiles retrieves a page of files using cursor-based pagination.
+// For pagination caveats, see [Client.ListFilesContext].
 func (api *Client) ListFiles(params ListFilesParameters) ([]File, *ListFilesParameters, error) {
 	return api.ListFilesContext(context.Background(), params)
 }
 
-// ListFilesContext retrieves all files according to the parameters given with a custom context.
-// Slack API docs: https://api.slack.com/methods/files.list
+// ListFilesContext retrieves a page of files with a custom context.
+// Its cursor and limit parameters are not documented in Slack's files.list reference.
+// [Client.GetFilesContext] uses the documented count/page parameters.
+//
+// Slack API docs: https://docs.slack.dev/reference/methods/files.list
 func (api *Client) ListFilesContext(ctx context.Context, params ListFilesParameters) ([]File, *ListFilesParameters, error) {
 	values := url.Values{
 		"token": {api.token},
@@ -357,6 +440,9 @@ func (api *Client) ListFilesContext(ctx context.Context, params ListFilesParamet
 	}
 	if params.TeamID != "" {
 		values.Add("team_id", params.TeamID)
+	}
+	if params.Types != "" {
+		values.Add("types", params.Types)
 	}
 	if params.Limit != DEFAULT_FILES_COUNT {
 		values.Add("limit", strconv.Itoa(params.Limit))
@@ -375,84 +461,24 @@ func (api *Client) ListFilesContext(ctx context.Context, params ListFilesParamet
 	return response.Files, &params, nil
 }
 
-// UploadFile uploads a file.
-//
-// Deprecated: Use [Client.UploadFileV2] instead.
-//
-// Per Slack Changelog, specifically [https://api.slack.com/changelog#entry-march_2025_1](this entry),
-// this will stop functioning on November 12, 2025.
-//
-// For more details, see: https://api.slack.com/methods/files.upload#markdown
-func (api *Client) UploadFile(params FileUploadParameters) (file *File, err error) {
-	return api.UploadFileContext(context.Background(), params)
-}
-
-// UploadFileContext uploads a file and setting a custom context.
-//
-// Deprecated: Use [Client.UploadFileV2Context] instead.
-//
-// Per Slack Changelog, specifically [https://api.slack.com/changelog#entry-march_2025_1](this entry),
-// this will stop functioning on November 12, 2025.
-//
-// For more details, see: https://api.slack.com/methods/files.upload#markdown
-func (api *Client) UploadFileContext(ctx context.Context, params FileUploadParameters) (file *File, err error) {
-	// Test if user token is valid. This helps because client.Do doesn't like this for some reason. XXX: More
-	// investigation needed, but for now this will do.
-	_, err = api.AuthTestContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-	response := &fileResponseFull{}
-	values := url.Values{}
-	if params.Filetype != "" {
-		values.Add("filetype", params.Filetype)
-	}
-	if params.Filename != "" {
-		values.Add("filename", params.Filename)
-	}
-	if params.Title != "" {
-		values.Add("title", params.Title)
-	}
-	if params.InitialComment != "" {
-		values.Add("initial_comment", params.InitialComment)
-	}
-	if params.ThreadTimestamp != "" {
-		values.Add("thread_ts", params.ThreadTimestamp)
-	}
-	if len(params.Channels) != 0 {
-		values.Add("channels", strings.Join(params.Channels, ","))
-	}
-	if params.Content != "" {
-		values.Add("content", params.Content)
-		values.Add("token", api.token)
-		err = api.postMethod(ctx, "files.upload", values, response)
-	} else if params.File != "" {
-		err = postLocalWithMultipartResponse(ctx, api.httpclient, api.endpoint+"files.upload", params.File, "file", api.token, values, response, api)
-	} else if params.Reader != nil {
-		if params.Filename == "" {
-			return nil, fmt.Errorf("files.upload: FileUploadParameters.Filename is mandatory when using FileUploadParameters.Reader")
-		}
-		err = postWithMultipartResponse(ctx, api.httpclient, api.endpoint+"files.upload", params.Filename, "file", api.token, values, params.Reader, response, api)
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &response.File, response.Err()
-}
-
 // DeleteFileComment deletes a file's comment.
 // For more details, see DeleteFileCommentContext documentation.
-func (api *Client) DeleteFileComment(commentID, fileID string) error {
+func (api *Client) DeleteFileComment(fileID, commentID string) error {
 	return api.DeleteFileCommentContext(context.Background(), fileID, commentID)
 }
 
 // DeleteFileCommentContext deletes a file's comment with a custom context.
-// Slack API docs: https://api.slack.com/methods/files.comments.delete
+//
+// Slack API docs: https://docs.slack.dev/reference/methods/files.comments.delete
 func (api *Client) DeleteFileCommentContext(ctx context.Context, fileID, commentID string) (err error) {
 	if fileID == "" || commentID == "" {
 		return ErrParametersMissing
+	}
+	// DeleteFileComment took (commentID, fileID) until it changed to match this
+	// function. Comment IDs start with "Fc", so reject the old order instead of
+	// sending swapped IDs.
+	if strings.HasPrefix(fileID, "Fc") && !strings.HasPrefix(commentID, "Fc") {
+		return fmt.Errorf("files.comments.delete: %q looks like a comment ID; the arguments are (fileID, commentID)", fileID)
 	}
 
 	values := url.Values{
@@ -556,20 +582,26 @@ func (api *Client) GetUploadURLExternalContext(ctx context.Context, params GetUp
 
 // UploadToURL uploads the file to the provided URL using post method
 // This is not a Slack API method, but a helper function to upload files to the URL
+//
+// The request carries the token, so the URL must pass the same check as in GetFile.
 func (api *Client) UploadToURL(ctx context.Context, params UploadToURLParameters) (err error) {
+	if err := ensureURLMayReceiveToken(api.endpoint, params.UploadURL); err != nil {
+		return err
+	}
 	values := url.Values{}
-	if params.Content != "" {
+	switch {
+	case params.Content != "":
 		contentReader := strings.NewReader(params.Content)
 		err = postWithMultipartResponse(ctx, api.httpclient, params.UploadURL, params.Filename, "file", api.token, values, contentReader, nil, api)
-	} else if params.File != "" {
+	case params.File != "":
 		err = postLocalWithMultipartResponse(ctx, api.httpclient, params.UploadURL, params.File, "file", api.token, values, nil, api)
-	} else if params.Reader != nil {
+	case params.Reader != nil:
 		err = postWithMultipartResponse(ctx, api.httpclient, params.UploadURL, params.Filename, "file", api.token, values, params.Reader, nil, api)
 	}
 	return err
 }
 
-// CompleteUploadExternalContext once files are uploaded, this completes the upload and shares it to the specified channel
+// CompleteUploadExternalContext once files are uploaded, this completes the upload and shares it to the specified channels
 // Slack API docs: https://api.slack.com/methods/files.completeUploadExternal
 func (api *Client) CompleteUploadExternalContext(ctx context.Context, params CompleteUploadExternalParameters) (file *CompleteUploadExternalResponse, err error) {
 	filesBytes, err := json.Marshal(params.Files)
@@ -584,6 +616,9 @@ func (api *Client) CompleteUploadExternalContext(ctx context.Context, params Com
 
 	if params.Channel != "" {
 		values.Add("channel_id", params.Channel)
+	}
+	if len(params.Channels) > 0 {
+		values.Add("channels", strings.Join(params.Channels, ","))
 	}
 	if params.InitialComment != "" {
 		values.Add("initial_comment", params.InitialComment)
@@ -609,19 +644,19 @@ func (api *Client) CompleteUploadExternalContext(ctx context.Context, params Com
 	return response, nil
 }
 
-// UploadFileV2 uploads file to a given slack channel using 3 steps.
-// For more details, see UploadFileV2Context documentation.
-func (api *Client) UploadFileV2(params UploadFileV2Parameters) (*FileSummary, error) {
-	return api.UploadFileV2Context(context.Background(), params)
+// UploadFile uploads file to a given slack channel using 3 steps.
+// For more details, see UploadFileContext documentation.
+func (api *Client) UploadFile(params UploadFileParameters) (*FileSummary, error) {
+	return api.UploadFileContext(context.Background(), params)
 }
 
-// UploadFileV2Context uploads file to a given slack channel using 3 steps -
+// UploadFileContext uploads file to a given slack channel using 3 steps -
 //  1. Get an upload URL using files.getUploadURLExternal API
 //  2. Send the file as a post to the URL provided by slack
-//  3. Complete the upload and share it to the specified channel using files.completeUploadExternal
+//  3. Complete the upload and share it to the specified channels using files.completeUploadExternal
 //
 // Slack Docs: https://api.slack.com/messaging/files#uploading_files
-func (api *Client) UploadFileV2Context(ctx context.Context, params UploadFileV2Parameters) (file *FileSummary, err error) {
+func (api *Client) UploadFileContext(ctx context.Context, params UploadFileParameters) (file *FileSummary, err error) {
 	if params.Filename == "" {
 		return nil, fmt.Errorf("file.upload.v2: filename cannot be empty")
 	}
@@ -636,7 +671,7 @@ func (api *Client) UploadFileV2Context(ctx context.Context, params UploadFileV2P
 		SnippetType: params.SnippetType,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("GetUploadURLExternal: %w", err)
 	}
 
 	err = api.UploadToURL(ctx, UploadToURLParameters{
@@ -647,7 +682,7 @@ func (api *Client) UploadFileV2Context(ctx context.Context, params UploadFileV2P
 		Filename:  params.Filename,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("UploadToURL: %w", err)
 	}
 
 	c, err := api.CompleteUploadExternalContext(ctx, CompleteUploadExternalParameters{
@@ -656,12 +691,13 @@ func (api *Client) UploadFileV2Context(ctx context.Context, params UploadFileV2P
 			Title: params.Title,
 		}},
 		Channel:         params.Channel,
+		Channels:        params.Channels,
 		InitialComment:  params.InitialComment,
 		ThreadTimestamp: params.ThreadTimestamp,
 		Blocks:          params.Blocks,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("CompleteUploadExternal: %w", err)
 	}
 	if len(c.Files) != 1 {
 		return nil, fmt.Errorf("file.upload.v2: something went wrong; received %d files instead of 1", len(c.Files))

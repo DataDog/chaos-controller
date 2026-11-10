@@ -35,7 +35,7 @@ var log = logf.RuntimeLog.WithName("source").WithName("EventHandler")
 var _ cache.ResourceEventHandler = &EventHandler[client.Object, any]{}
 
 // NewEventHandler creates a new EventHandler.
-func NewEventHandler[object client.Object, request comparable](
+func NewEventHandler[object any, request comparable](
 	ctx context.Context,
 	queue workqueue.TypedRateLimitingInterface[request],
 	handler handler.TypedEventHandler[object, request],
@@ -49,7 +49,7 @@ func NewEventHandler[object client.Object, request comparable](
 }
 
 // EventHandler adapts a handler.EventHandler interface to a cache.ResourceEventHandler interface.
-type EventHandler[object client.Object, request comparable] struct {
+type EventHandler[object any, request comparable] struct {
 	// ctx stores the context that created the event handler
 	// that is used to propagate cancellation signals to each handler function.
 	ctx context.Context
@@ -60,7 +60,7 @@ type EventHandler[object client.Object, request comparable] struct {
 }
 
 // OnAdd creates CreateEvent and calls Create on EventHandler.
-func (e *EventHandler[object, request]) OnAdd(obj interface{}, isInInitialList bool) {
+func (e *EventHandler[object, request]) OnAdd(obj any, isInInitialList bool) {
 	c := event.TypedCreateEvent[object]{
 		IsInInitialList: isInInitialList,
 	}
@@ -87,7 +87,7 @@ func (e *EventHandler[object, request]) OnAdd(obj interface{}, isInInitialList b
 }
 
 // OnUpdate creates UpdateEvent and calls Update on EventHandler.
-func (e *EventHandler[object, request]) OnUpdate(oldObj, newObj interface{}) {
+func (e *EventHandler[object, request]) OnUpdate(oldObj, newObj any) {
 	u := event.TypedUpdateEvent[object]{}
 
 	if o, ok := oldObj.(object); ok {
@@ -120,7 +120,7 @@ func (e *EventHandler[object, request]) OnUpdate(oldObj, newObj interface{}) {
 }
 
 // OnDelete creates DeleteEvent and calls Delete on EventHandler.
-func (e *EventHandler[object, request]) OnDelete(obj interface{}) {
+func (e *EventHandler[object, request]) OnDelete(obj any) {
 	d := event.TypedDeleteEvent[object]{}
 
 	// Deal with tombstone events by pulling the object out.  Tombstone events wrap the object in a

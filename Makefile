@@ -8,7 +8,7 @@ GOARCH = $(shell go env GOARCH)
 
 # change also github actions go build version "GO_VERSION:" if you change the version below
 # https://github.com/DataDog/chaos-controller/blob/main/.github/workflows/ci.yml#L13
-BUILDGOVERSION = 1.26.2
+BUILDGOVERSION = 1.27.3
 
 # GOBIN can be provided (gitlab), defined (custom user setup), or empty/guessed (default go setup)
 GOBIN ?= $(shell go env GOBIN)
@@ -81,13 +81,13 @@ HELM_VERSION = v3.19.0
 HELM_INSTALLED_VERSION = $(shell ($(LOCALBIN)/helm version --template="{{ .Version }}" 2>/dev/null || echo "") | awk '{ print $$1 }')
 
 # TODO: reenable depguard in .golangci.yml after upgrading golangci-lint again
-GOLANGCI_LINT_VERSION = 2.11.3
+GOLANGCI_LINT_VERSION = 2.15.0
 GOLANGCI_LINT_INSTALLED_VERSION = $(shell ($(LOCALBIN)/golangci-lint --version 2>/dev/null || echo "") | sed -E 's/.*version ([^ ]+).*/\1/')
 
 CONTROLLER_GEN_VERSION = v0.19.0
 CONTROLLER_GEN_INSTALLED_VERSION = $(shell ($(LOCALBIN)/controller-gen --version 2>/dev/null || echo "") | awk '{ print $$2 }')
 
-MOCKERY_VERSION = 2.53.5
+MOCKERY_VERSION = 2.53.8
 MOCKERY_ARCH = $(GOARCH)
 ifeq (amd64,$(GOARCH))
 MOCKERY_ARCH = x86_64
@@ -125,10 +125,10 @@ PROTOC_GEN_GO_GRPC_INSTALLED_VERSION = $(shell $(LOCALBIN)/protoc-gen-go-grpc --
 
 # golangci-lint v$(GOLANGCI_LINT_VERSION)
 # Source: https://github.com/golangci/golangci-lint/releases/download/v$(GOLANGCI_LINT_VERSION)/golangci-lint-$(GOLANGCI_LINT_VERSION)-checksums.txt
-GOLANGCI_LINT_SHA256_darwin_amd64  = f93bda1f2cc981fd1326464020494be62f387bbf262706e1b3b644e5afacc440
-GOLANGCI_LINT_SHA256_darwin_arm64  = 30ee39979c516b9d1adca289a3f93429d130c4c0fda5e57d637850894221f6cc
-GOLANGCI_LINT_SHA256_linux_amd64   = 87bb8cddbcc825d5778b64e8a91b46c0526b247f4e2f2904dea74ec7450475d1
-GOLANGCI_LINT_SHA256_linux_arm64   = ee3d95f301359e7d578e6d99c8ad5aeadbabc5a13009a30b2b0df11c8058afe9
+GOLANGCI_LINT_SHA256_darwin_amd64  = 767b899a28285e88ded2823d5dcc4bc5ef681173eb2d80f029a7b17ee4ece3b8
+GOLANGCI_LINT_SHA256_darwin_arm64  = d1e409481a8ca846c4bc97e781eb5cb1bd5c23353a0b3977a1cbda1b1b6447d5
+GOLANGCI_LINT_SHA256_linux_amd64   = 9b7fe6a6bf6334b98decf8d86b11415ea7889afdabdd1959fdce23af2a9ebcea
+GOLANGCI_LINT_SHA256_linux_arm64   = b4d8f17068b35ee6060cc2f69a16fb48740d706fbba81661c318649c114a6998
 GOLANGCI_LINT_SHA256               = $(GOLANGCI_LINT_SHA256_$(GOOS)_$(GOARCH))
 
 # helm v$(HELM_VERSION)
@@ -141,10 +141,10 @@ HELM_SHA256                        = $(HELM_SHA256_$(GOOS)_$(GOARCH))
 
 # mockery v$(MOCKERY_VERSION)
 # Source: https://github.com/vektra/mockery/releases/download/v$(MOCKERY_VERSION)/checksum.txt
-MOCKERY_SHA256_darwin_amd64        = e079356a96abea6001d889ab89e7408c66b33657c12f97d4becd751cec0ab10c
-MOCKERY_SHA256_darwin_arm64        = b1792e65417a9670db4125c53b770e4c5974cf7aafb45db6a47bcb90ff7d24b0
-MOCKERY_SHA256_linux_amd64         = 1f2028be64f20cb28983cf8a80fd4a7b036b8a9e389d443c295e531e77025641
-MOCKERY_SHA256_linux_arm64         = c9bb64143068ef9f876ecaf4b2850ea57f909c16412cb6fc562857b3569bb125
+MOCKERY_SHA256_darwin_amd64        = 060e2cc2169b348ee20948b07e2c19047cb4d88febec2ef2b80b31f873c9c4ca
+MOCKERY_SHA256_darwin_arm64        = 5d4f5d07f351badd9a569281d362300b3775354814bc0c621dd0cdc4313f5f6b
+MOCKERY_SHA256_linux_amd64         = 6d697a28d39ed2af55f3a80c6136babbe84e272849f377d8e2dde14c56e18f3d
+MOCKERY_SHA256_linux_arm64         = c5e6bb68b91506d558a5f92e819585714fdebb914b0262a420c935f356e513cc
 MOCKERY_SHA256                     = $(MOCKERY_SHA256_$(GOOS)_$(GOARCH))
 
 # yamlfmt v0.9.0

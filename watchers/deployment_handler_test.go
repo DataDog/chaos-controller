@@ -38,6 +38,10 @@ func (f *fakeSubResourceWriter) Update(_ context.Context, _ client.Object, _ ...
 	return f.updateErr
 }
 
+func (f *fakeSubResourceWriter) Apply(_ context.Context, _ runtime.ApplyConfiguration, _ ...client.SubResourceApplyOption) error {
+	return nil
+}
+
 func (f *fakeSubResourceWriter) Patch(_ context.Context, _ client.Object, _ client.Patch, _ ...client.SubResourcePatchOption) error {
 	return nil
 }
