@@ -407,6 +407,21 @@ var _ = Describe("Disruption", func() {
 			defaultCreationTimestamp.Add(time.Minute*5)),
 	)
 
+	DescribeTable("DisruptionCount", func(spec DisruptionSpec, expectedCount int) {
+		// Action && Assert
+		Expect(spec.DisruptionCount()).To(Equal(expectedCount))
+	},
+		Entry("should return 1 for a DNS-only disruption",
+			DisruptionSpec{DNS: &DNSDisruptionSpec{}},
+			1),
+		Entry("should return 2 for a DNS and network disruption",
+			DisruptionSpec{DNS: &DNSDisruptionSpec{}, Network: &NetworkDisruptionSpec{}},
+			2),
+		Entry("should return 1 for a network disruption",
+			DisruptionSpec{Network: &NetworkDisruptionSpec{}},
+			1),
+	)
+
 	DescribeTable("TerminationStatus", func(disruptionBuilder *builderstest.DisruptionBuilder, pods builderstest.PodsBuilder, expectedTerminationStatus TerminationStatus) {
 		// Arrange
 		disruption := disruptionBuilder.Build()

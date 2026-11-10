@@ -916,49 +916,7 @@ func ReadUnmarshal(path string) (*Disruption, error) {
 
 // DisruptionCount get the number of disruption types per disruption
 func (s DisruptionSpec) DisruptionCount() int {
-	count := 0
-
-	if s.CPUPressure != nil {
-		count++
-	}
-
-	if s.MemoryPressure != nil {
-		count++
-	}
-
-	if s.ContainerFailure != nil {
-		count++
-	}
-
-	if s.DiskPressure != nil {
-		count++
-	}
-
-	if s.GRPC != nil {
-		count++
-	}
-
-	if s.Network != nil {
-		count++
-	}
-
-	if s.NodeFailure != nil {
-		count++
-	}
-
-	if s.PodReplacement != nil {
-		count++
-	}
-
-	if s.DiskFailure != nil {
-		count++
-	}
-
-	if s.DiskFull != nil {
-		count++
-	}
-
-	return count
+	return len(s.KindNames())
 }
 
 // Explain returns a string explanation of this disruption spec
