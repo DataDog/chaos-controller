@@ -110,6 +110,17 @@ func (i *GRPCDisruptionInjector) Inject() error {
 			tags.GrpcServerAddrKey, i.serverAddr,
 			tags.ErrorKey, err,
 		)
+
+		// report the failure instead of the (nil) result of conn.Close. The server
+		// may still have applied the disruption before the RPC failed, so the state
+		// stays Injected and Clean still resets it.
+		if closeErr := conn.Close(); closeErr != nil {
+			i.config.Log.Errorw("could not close grpc connection",
+				tags.ErrorKey, closeErr,
+			)
+		}
+
+		return fmt.Errorf("error sending grpc disruption to grpc server: %w", err)
 	}
 
 	return conn.Close()
