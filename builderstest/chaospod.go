@@ -6,6 +6,7 @@
 package builderstest_test
 
 import (
+	"path/filepath"
 	"time"
 
 	"github.com/DataDog/chaos-controller/env"
@@ -170,6 +171,30 @@ func (b *ChaosPodBuilder) WithPullSecrets(imagePullSecrets []v1.LocalObjectRefer
 		b.modifiers,
 		func() {
 			b.Spec.ImagePullSecrets = imagePullSecrets
+		})
+
+	return b
+}
+
+// WithDiskFullMount adds the writable shadow mount for disk-full disruptions.
+func (b *ChaosPodBuilder) WithDiskFullMount(diskFullPath string) *ChaosPodBuilder {
+	b.modifiers = append(
+		b.modifiers,
+		func() {
+			hostPathDirectory := v1.HostPathDirectory
+			b.Spec.Volumes = append(b.Spec.Volumes, v1.Volume{
+				Name: "disk-full-target",
+				VolumeSource: v1.VolumeSource{
+					HostPath: &v1.HostPathVolumeSource{
+						Path: diskFullPath,
+						Type: &hostPathDirectory,
+					},
+				},
+			})
+			b.Spec.Containers[0].VolumeMounts = append(b.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
+				Name:      "disk-full-target",
+				MountPath: filepath.Join("/mnt/host", diskFullPath),
+			})
 		})
 
 	return b

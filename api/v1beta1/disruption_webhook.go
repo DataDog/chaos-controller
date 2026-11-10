@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -511,6 +513,14 @@ func (d *Disruption) initialSafetyNets(ctx context.Context) ([]string, error) {
 				responses = append(responses, "the specified path for the disk failure disruption targeting a node must not be \"/\"")
 			}
 		}
+
+		if d.Spec.DiskFull != nil {
+			if caught, response := safetyNetDiskFullMinFreeSpace(d); caught {
+				logger.Debugw("the specified disk full disruption breaches the minimum free space safety floor", tagutil.SafetyNetCatchKey, "DiskFull")
+
+				responses = append(responses, response)
+			}
+		}
 	}
 
 	if !allowNodeFailure && d.Spec.NodeFailure != nil {
@@ -747,6 +757,31 @@ func safetyNetAttemptsNodeRootDiskFailure(r *Disruption) bool {
 	}
 
 	return false
+}
+
+// safetyNetDiskFullMinFreeSpace checks that the disk full disruption does not breach the 1Mi minimum free space floor.
+// When unsafeMode.allowDiskFullNoFloor is set, all floor checks are bypassed — the operator opted in knowingly.
+func safetyNetDiskFullMinFreeSpace(r *Disruption) (bool, string) {
+	if r.Spec.Unsafemode != nil && r.Spec.Unsafemode.AllowDiskFullNoFloor {
+		return false, ""
+	}
+
+	if r.Spec.DiskFull.Capacity != "" {
+		if pct, err := strconv.Atoi(strings.TrimSuffix(r.Spec.DiskFull.Capacity, "%")); err == nil && pct >= 100 {
+			return true, "disk full disruption with 100% capacity will leave 0 bytes free; " +
+				"use a lower capacity percentage or set unsafeMode.allowDiskFullNoFloor=true to override"
+		}
+	}
+
+	if r.Spec.DiskFull.Remaining != "" {
+		qty, err := resource.ParseQuantity(r.Spec.DiskFull.Remaining)
+		if err == nil && qty.Value() < 1024*1024 {
+			return true, fmt.Sprintf("disk full disruption remaining space %s is below the 1Mi safety floor; "+
+				"set unsafeMode.allowDiskFullNoFloor=true to override", r.Spec.DiskFull.Remaining)
+		}
+	}
+
+	return false, ""
 }
 
 // checkForDisabledDisruptions returns an error if `r` specifies any of the disruption kinds in setupWebhookConfig.DisabledDisruptions

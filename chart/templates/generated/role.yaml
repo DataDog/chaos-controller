@@ -17,6 +17,8 @@ rules:
       - ""
     resources:
       - nodes
+      - persistentvolumeclaims
+      - persistentvolumes
       - services
     verbs:
       - get
