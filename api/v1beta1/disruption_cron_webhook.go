@@ -179,9 +179,11 @@ func (d *DisruptionCron) ValidateUpdate(_ context.Context, oldDisruptionCronObj,
 	}
 
 	// If a DisruptionCron is already more frequent than the minimum frequency, we don't want to
-	// block updates on other parts of the spec or status. But if the schedule is being updated,
-	// we do want to enforce that it happens more often than the minimum frequency
-	if oldDisruptionCronObj.Spec.Schedule != newDisruptionCronObj.Spec.Schedule {
+	// block updates on other parts of the spec or status. But if the schedule or the disruption
+	// template duration is being updated, we do want to enforce that the time between disruptions
+	// still respects the minimum frequency, since the undisrupted interval depends on both
+	if oldDisruptionCronObj.Spec.Schedule != newDisruptionCronObj.Spec.Schedule ||
+		oldDisruptionCronObj.Spec.DisruptionTemplate.Duration != newDisruptionCronObj.Spec.DisruptionTemplate.Duration {
 		if err := newDisruptionCronObj.validateMinimumFrequency(minimumCronFrequency); err != nil {
 			return nil, err
 		}
