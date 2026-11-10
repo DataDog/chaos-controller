@@ -517,6 +517,8 @@ var _ = Describe("NetworkDisruptionSpec", func() {
 			},
 			Entry("custom method", HTTPPaths{DefaultHTTPPathFilter}, HTTPMethods{http.MethodPut}),
 			Entry("custom path", HTTPPaths{"/test"}, HTTPMethods{}),
+			Entry("multiple custom paths", HTTPPaths{"/a", "/b"}, HTTPMethods{}),
+			Entry("multiple custom paths with a sub-path", HTTPPaths{"/a", "/b/c"}, HTTPMethods{}),
 			Entry("custom path and method", HTTPPaths{"/test"}, HTTPMethods{http.MethodDelete}),
 			Entry("all custom methods", HTTPPaths{DefaultHTTPPathFilter}, HTTPMethods{
 				http.MethodPost,
