@@ -33,7 +33,7 @@ var diskFullCmd = &cobra.Command{
 			Remaining: remaining,
 		}
 
-		for _, config := range configs {
+		for i, config := range configs {
 			inj, err := injector.NewDiskFullInjector(spec, injector.DiskFullInjectorConfig{Config: config, AllowNoFloor: allowNoFloor})
 			if err != nil {
 				if errors.Is(errors.Unwrap(err), os.ErrNotExist) || strings.Contains(err.Error(), "No such file or directory") {
@@ -50,7 +50,7 @@ var diskFullCmd = &cobra.Command{
 				continue
 			}
 
-			injectors = append(injectors, inj)
+			injectors = append(injectors, targetInjector{config: i, Injector: inj})
 		}
 	},
 }

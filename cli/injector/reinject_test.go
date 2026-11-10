@@ -35,7 +35,7 @@ func TestRefreshConfigsRecordsRestartedContainer(t *testing.T) {
 	injectorMock.EXPECT().UpdateConfig(mock.Anything).Once()
 
 	configs = []injector.Config{{TargetContainer: containerMock(t, "original")}}
-	injectors = []injector.Injector{injectorMock}
+	injectors = []targetInjector{{config: 0, Injector: injectorMock}}
 	disruptionArgs.TargetContainers = map[string]string{"app": "containerd://restarted"}
 
 	err := refreshConfigs(

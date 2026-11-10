@@ -55,7 +55,7 @@ func TestOnInitFailedInjectionKeepsHandlerBlocked(t *testing.T) {
 		return errors.New("native regression: injection failed")
 	}).Once()
 	inj.EXPECT().TargetName().Return("target").Once()
-	injectors = []injector.Injector{inj}
+	injectors = []targetInjector{{config: 0, Injector: inj}}
 
 	injectAndWait(&cobra.Command{Use: chaostypes.DisruptionKindNetworkDisruption}, nil)
 

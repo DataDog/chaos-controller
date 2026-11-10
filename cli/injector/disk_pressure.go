@@ -60,7 +60,7 @@ var diskPressureCmd = &cobra.Command{
 		}
 
 		// create injectors
-		for _, config := range configs {
+		for i, config := range configs {
 			inj, err := injector.NewDiskPressureInjector(spec, injector.DiskPressureInjectorConfig{Config: config})
 			if err != nil {
 				if errors.Is(errors.Unwrap(err), os.ErrNotExist) || strings.Contains(err.Error(), "No such file or directory") {
@@ -77,7 +77,7 @@ var diskPressureCmd = &cobra.Command{
 				continue
 			}
 
-			injectors = append(injectors, inj)
+			injectors = append(injectors, targetInjector{config: i, Injector: inj})
 		}
 	},
 }
