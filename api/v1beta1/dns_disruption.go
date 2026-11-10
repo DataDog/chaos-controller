@@ -7,6 +7,7 @@ package v1beta1
 
 import (
 	"fmt"
+	"math"
 	"net"
 	"strconv"
 	"strings"
@@ -236,8 +237,13 @@ func (s *DNSDisruptionSpec) validateRecordValue(index int, recordType, value str
 				return fmt.Errorf("spec.dns.records[%d].record.value: MX record must be in format 'priority hostname' (e.g., '10 mail.example.com')", index)
 			}
 
-			if _, err := strconv.Atoi(parts[0]); err != nil {
+			priority, err := strconv.Atoi(parts[0])
+			if err != nil {
 				return fmt.Errorf("spec.dns.records[%d].record.value: MX priority must be a number", index)
+			}
+
+			if priority < 0 || priority > math.MaxUint16 {
+				return fmt.Errorf("spec.dns.records[%d].record.value: MX priority must be between 0 and 65535", index)
 			}
 		}
 
@@ -258,10 +264,15 @@ func (s *DNSDisruptionSpec) validateRecordValue(index int, recordType, value str
 			if len(parts) != 4 {
 				return fmt.Errorf("spec.dns.records[%d].record.value: SRV record must be in format 'priority weight port target' (e.g., '10 60 5060 sipserver.example.com')", index)
 			}
-			// Validate priority, weight, and port are numbers
+			// Validate priority, weight, and port are unsigned 16-bit integers (they are cast to uint16 by the DNS responder)
 			for i, field := range []string{"priority", "weight", "port"} {
-				if _, err := strconv.Atoi(parts[i]); err != nil {
+				number, err := strconv.Atoi(parts[i])
+				if err != nil {
 					return fmt.Errorf("spec.dns.records[%d].record.value: SRV %s must be a number", index, field)
+				}
+
+				if number < 0 || number > math.MaxUint16 {
+					return fmt.Errorf("spec.dns.records[%d].record.value: SRV %s must be between 0 and 65535", index, field)
 				}
 			}
 		}
