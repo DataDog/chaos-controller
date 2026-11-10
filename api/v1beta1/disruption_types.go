@@ -553,7 +553,6 @@ type DisruptionPulse struct {
 }
 
 func init() {
-	SchemeBuilder.Register(&Disruption{}, &DisruptionList{})
 }
 
 func (s *DisruptionSpec) UnmarshalJSON(data []byte) error {

@@ -46,7 +46,6 @@ func (f *fakeSubResourceWriter) Patch(_ context.Context, _ client.Object, _ clie
 	return nil
 }
 
-
 func makeDeployment(name, ns string, containers []corev1.Container) *appsv1.Deployment {
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},

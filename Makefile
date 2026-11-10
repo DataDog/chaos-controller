@@ -81,7 +81,7 @@ HELM_VERSION = v3.19.0
 HELM_INSTALLED_VERSION = $(shell ($(LOCALBIN)/helm version --template="{{ .Version }}" 2>/dev/null || echo "") | awk '{ print $$1 }')
 
 # TODO: reenable depguard in .golangci.yml after upgrading golangci-lint again
-GOLANGCI_LINT_VERSION = 2.11.3
+GOLANGCI_LINT_VERSION = 2.15.0
 GOLANGCI_LINT_INSTALLED_VERSION = $(shell ($(LOCALBIN)/golangci-lint --version 2>/dev/null || echo "") | sed -E 's/.*version ([^ ]+).*/\1/')
 
 CONTROLLER_GEN_VERSION = v0.19.0
@@ -125,10 +125,10 @@ PROTOC_GEN_GO_GRPC_INSTALLED_VERSION = $(shell $(LOCALBIN)/protoc-gen-go-grpc --
 
 # golangci-lint v$(GOLANGCI_LINT_VERSION)
 # Source: https://github.com/golangci/golangci-lint/releases/download/v$(GOLANGCI_LINT_VERSION)/golangci-lint-$(GOLANGCI_LINT_VERSION)-checksums.txt
-GOLANGCI_LINT_SHA256_darwin_amd64  = f93bda1f2cc981fd1326464020494be62f387bbf262706e1b3b644e5afacc440
-GOLANGCI_LINT_SHA256_darwin_arm64  = 30ee39979c516b9d1adca289a3f93429d130c4c0fda5e57d637850894221f6cc
-GOLANGCI_LINT_SHA256_linux_amd64   = 87bb8cddbcc825d5778b64e8a91b46c0526b247f4e2f2904dea74ec7450475d1
-GOLANGCI_LINT_SHA256_linux_arm64   = ee3d95f301359e7d578e6d99c8ad5aeadbabc5a13009a30b2b0df11c8058afe9
+GOLANGCI_LINT_SHA256_darwin_amd64  = 767b899a28285e88ded2823d5dcc4bc5ef681173eb2d80f029a7b17ee4ece3b8
+GOLANGCI_LINT_SHA256_darwin_arm64  = d1e409481a8ca846c4bc97e781eb5cb1bd5c23353a0b3977a1cbda1b1b6447d5
+GOLANGCI_LINT_SHA256_linux_amd64   = 9b7fe6a6bf6334b98decf8d86b11415ea7889afdabdd1959fdce23af2a9ebcea
+GOLANGCI_LINT_SHA256_linux_arm64   = b4d8f17068b35ee6060cc2f69a16fb48740d706fbba81661c318649c114a6998
 GOLANGCI_LINT_SHA256               = $(GOLANGCI_LINT_SHA256_$(GOOS)_$(GOARCH))
 
 # helm v$(HELM_VERSION)

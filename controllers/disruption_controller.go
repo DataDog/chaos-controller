@@ -329,7 +329,6 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 					r.log.Infow(fmt.Sprintf("disruption has not been fully cleaned yet, re-queuing in %v", requeueAfter))
 
 					return ctrl.Result{
-						Requeue:      true,
 						RequeueAfter: requeueAfter,
 					}, r.Client.Update(ctx, instance)
 				}
@@ -347,11 +346,11 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				requeueAfter := r.FinalizerDeletionDelay
 				r.log.Infow(fmt.Sprintf("all chaos pods are cleaned up; requeuing to remove finalizer after %s", requeueAfter))
 
-				return ctrl.Result{Requeue: true, RequeueAfter: requeueAfter}, nil
+				return ctrl.Result{RequeueAfter: requeueAfter}, nil
 			}
 
 			// requeue until we can remove the finalizer
-			return ctrl.Result{Requeue: true}, nil
+			return ctrl.Result{RequeueAfter: r.FinalizerDeletionDelay}, nil
 		}
 	} else {
 		if r.DeleteOnly {
@@ -361,7 +360,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				r.log.Errorw("error deleting disruption while in deleteOnly", tagutil.ErrorKey, err)
 			}
 
-			return ctrl.Result{Requeue: true}, nil
+			return ctrl.Result{RequeueAfter: time.Second * 15}, nil
 		}
 
 		// initialize all safety nets for future use
@@ -397,7 +396,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				r.log.Errorw("error deleting disruption after its duration expired", tagutil.ErrorKey, err)
 			}
 
-			return ctrl.Result{Requeue: true}, err
+			return ctrl.Result{RequeueAfter: time.Second * 15}, err
 		} else if instance.RemainingDuration() <= 0 {
 			if err := r.updateInjectionStatus(ctx, instance); err != nil {
 				return ctrl.Result{}, fmt.Errorf("error updating disruption injection status: %w", err)
@@ -410,12 +409,11 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				r.log.Debugw("requeuing disruption to check for its expiration", tagutil.RequeueDelayKey, requeueDelay.String())
 
 				return ctrl.Result{
-					Requeue:      true,
 					RequeueAfter: requeueDelay,
 				}, nil
 			}
 
-			return ctrl.Result{Requeue: false}, nil
+			return ctrl.Result{}, nil
 		}
 
 		// check if we have reached trigger.createPods. If not, skip the rest of reconciliation.
@@ -459,7 +457,6 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			r.log.Infow("disruption is not fully injected yet, requeuing", tagutil.InjectionStatusKey, instance.Status.InjectionStatus)
 
 			return ctrl.Result{
-				Requeue:      true,
 				RequeueAfter: requeueAfter,
 			}, nil
 		}
@@ -469,7 +466,6 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		r.log.Infow("requeuing disruption to check once expired", tagutil.RequeueDelayKey, disruptionEndAt)
 
 		return ctrl.Result{
-				Requeue:      true,
 				RequeueAfter: disruptionEndAt,
 			},
 			r.Client.Update(ctx, instance)

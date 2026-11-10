@@ -109,7 +109,6 @@ var _ admission.Defaulter[*Disruption] = &Disruption{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type
 func (d *Disruption) Default(_ context.Context, disruptionObj *Disruption) error {
-
 	disruptionObj.Spec.SetDefaults()
 
 	return nil
@@ -121,7 +120,6 @@ var _ admission.Validator[*Disruption] = &Disruption{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (d *Disruption) ValidateCreate(ctx context.Context, disruptionObj *Disruption) (_ admission.Warnings, err error) {
-
 	// Use the object from parameter instead of r
 	log := logger.With(
 		tagutil.DisruptionNameKey, disruptionObj.Name,
@@ -296,7 +294,6 @@ func (d *Disruption) ValidateCreate(ctx context.Context, disruptionObj *Disrupti
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (d *Disruption) ValidateUpdate(_ context.Context, oldDisruption, newDisruptionObj *Disruption) (_ admission.Warnings, err error) {
-
 	log := logger.With(
 		tagutil.DisruptionNameKey, newDisruptionObj.Name,
 		tagutil.DisruptionNamespaceKey, newDisruptionObj.Namespace,
@@ -399,7 +396,6 @@ You first need to remove those chaos pods (and potentially their finalizers) to 
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
 func (d *Disruption) ValidateDelete(_ context.Context, disruptionObj *Disruption) (admission.Warnings, error) {
-
 	// Use the object from parameter
 	if mErr := metricsSink.MetricValidationDeleted(disruptionObj.getMetricsTags()); mErr != nil {
 		logger.Errorw("error sending a metric", tagutil.ErrorKey, mErr)

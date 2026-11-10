@@ -75,7 +75,6 @@ var _ admission.Defaulter[*DisruptionCron] = &DisruptionCron{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type
 func (d *DisruptionCron) Default(_ context.Context, disruptionCronObj *DisruptionCron) error {
-
 	log := disruptionCronWebhookLogger.With(
 		tagutil.DisruptionCronNameKey, disruptionCronObj.Name,
 		tagutil.DisruptionCronNamespaceKey, disruptionCronObj.Namespace,
@@ -101,7 +100,6 @@ var _ admission.Validator[*DisruptionCron] = &DisruptionCron{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (d *DisruptionCron) ValidateCreate(_ context.Context, disruptionCronObj *DisruptionCron) (warnings admission.Warnings, err error) {
-
 	log := disruptionCronWebhookLogger.With(
 		tagutil.DisruptionCronNameKey, disruptionCronObj.Name,
 		tagutil.DisruptionCronNamespaceKey, disruptionCronObj.Namespace,
@@ -151,7 +149,6 @@ func (d *DisruptionCron) ValidateCreate(_ context.Context, disruptionCronObj *Di
 }
 
 func (d *DisruptionCron) ValidateUpdate(_ context.Context, oldDisruptionCronObj, newDisruptionCronObj *DisruptionCron) (warnings admission.Warnings, err error) {
-
 	log := disruptionCronWebhookLogger.With(
 		tagutil.DisruptionCronNameKey, newDisruptionCronObj.Name,
 		tagutil.DisruptionCronNamespaceKey, newDisruptionCronObj.Namespace,
@@ -201,7 +198,6 @@ func (d *DisruptionCron) ValidateUpdate(_ context.Context, oldDisruptionCronObj,
 }
 
 func (d *DisruptionCron) ValidateDelete(_ context.Context, disruptionCronObj *DisruptionCron) (warnings admission.Warnings, err error) {
-
 	log := disruptionCronWebhookLogger.With(
 		tagutil.DisruptionCronNameKey, disruptionCronObj.Name,
 		tagutil.DisruptionCronNamespaceKey, disruptionCronObj.Namespace,
