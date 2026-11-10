@@ -147,6 +147,10 @@ type NetworkDisruptionCloudServiceSpec struct {
 }
 
 func (p HTTPPath) validate() error {
+	if p == "" {
+		return fmt.Errorf("the paths specification at the network disruption level is not valid; should not be empty")
+	}
+
 	if len(p) > MaxNetworkPathCharacters {
 		return fmt.Errorf("the paths specification at the network disruption level is not valid; should not exceed %d characters", MaxNetworkPathCharacters)
 	}
@@ -155,7 +159,7 @@ func (p HTTPPath) validate() error {
 		return fmt.Errorf("the paths specification at the network disruption level is not valid; should not contains spaces")
 	}
 
-	if string(p[0]) != DefaultHTTPPathFilter {
+	if p[0] != DefaultHTTPPathFilter[0] {
 		return fmt.Errorf("the paths specification at the network disruption level is not valid; should start with a /")
 	}
 
