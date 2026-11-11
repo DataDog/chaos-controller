@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -760,6 +761,16 @@ func NetworkDisruptionServiceSpecFromString(services []string) ([]NetworkDisrupt
 }
 
 func (h NetworkDisruptionHostSpec) Validate() error {
+	ip := net.ParseIP(h.Host)
+	if ip == nil && strings.Contains(h.Host, "/") {
+		if _, subnet, err := net.ParseCIDR(h.Host); err == nil {
+			ip = subnet.IP
+		}
+	}
+	if ip != nil && ip.To4() == nil {
+		return fmt.Errorf("IPv6 network hosts are not supported: %s", h.Host)
+	}
+
 	if h.Flow != "" {
 		if h.Host == "" && h.Port == 0 {
 			return errors.New("host or port fields must be set when the flow field is set")
