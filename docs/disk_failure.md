@@ -23,6 +23,8 @@ The idea, is to simulate this behavior by catching this signal before the kernel
 
 The `diskFailure` disruption runs an eBPF program used to intercept system calls and inject errors. It is used to prevent certain processes from accessing certain files. It defines a target process and a filter path, and if the process is trying to open a file that matches the filter path, an -ENOENT error will be injected, preventing the process from opening the file.
 
+When `openat` or `openat.exitCode` is omitted, the injector explicitly requests `ENOENT` (Linux errno 2).
+
 The Linux kernel provides an eBPF framework that allows users to load and run custom programs within the kernel of the operating system.
 That means it can extend or even modify the way the kernel behaves. It is useful for observability, security, chaos, etc...
 With eBPF it is possible to catch openat syscall and override the result with a `-ENOENT` error code.
