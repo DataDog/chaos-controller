@@ -664,25 +664,23 @@ func AdvancedSelectorsToRequirements(advancedSelectors []metav1.LabelSelectorReq
 
 // validateGlobalDisruptionScope applies rules for disruption global scope, leaving selectors optional
 func (s DisruptionSpec) validateGlobalDisruptionScope(requireSelectors bool) (retErr error) {
-	if requireSelectors {
-		// Rule: at least one kind of selector is set
-		if s.Selector.AsSelector().Empty() && len(s.AdvancedSelector) == 0 {
-			retErr = multierror.Append(retErr, errors.New("either selector or advancedSelector field must be set"))
-		}
+	// Rule: at least one kind of selector is set when selectors are required
+	if requireSelectors && s.Selector.AsSelector().Empty() && len(s.AdvancedSelector) == 0 {
+		retErr = multierror.Append(retErr, errors.New("either selector or advancedSelector field must be set"))
+	}
 
-		// Rule: selectors must be valid
-		if !s.Selector.AsSelector().Empty() {
-			_, err := labels.ParseToRequirements(s.Selector.AsSelector().String())
-			if err != nil {
-				retErr = multierror.Append(retErr, err)
-			}
+	// Rule: supplied selectors must be valid even when they are optional
+	if !s.Selector.AsSelector().Empty() {
+		_, err := labels.ParseToRequirements(s.Selector.AsSelector().String())
+		if err != nil {
+			retErr = multierror.Append(retErr, err)
 		}
+	}
 
-		if len(s.AdvancedSelector) > 0 {
-			_, err := AdvancedSelectorsToRequirements(s.AdvancedSelector)
-			if err != nil {
-				retErr = multierror.Append(retErr, err)
-			}
+	if len(s.AdvancedSelector) > 0 {
+		_, err := AdvancedSelectorsToRequirements(s.AdvancedSelector)
+		if err != nil {
+			retErr = multierror.Append(retErr, err)
 		}
 	}
 
