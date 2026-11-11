@@ -384,7 +384,7 @@ func (d DisruptionTargetHandler) buildPodEventsToSend(oldPod corev1.Pod, newPod 
 
 			lastState, lastReason := getContainerState(oldContainer)
 
-			if lastState != newState {
+			if lastState != newState || lastReason != newReason {
 				d.log.Infow("container state change detected on target",
 					tags.TargetNameKey, fmt.Sprintf("%s/%s", newPod.Namespace, newPod.Name),
 					tags.ContainerKey, container.Name,
