@@ -1122,6 +1122,10 @@ func (s DisruptionSpec) Explain() []string {
 		explanation = append(explanation, s.GRPC.Explain()...)
 	}
 
+	if s.DNS != nil {
+		explanation = append(explanation, s.DNS.Explain()...)
+	}
+
 	return explanation
 }
 
