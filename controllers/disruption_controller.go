@@ -1375,6 +1375,23 @@ func (r *DisruptionReconciler) ReportMetrics(ctx context.Context) {
 	}
 }
 
+// chaosPodUnfinished tells whether the given chaos pod still disrupts, or is about to disrupt, its target.
+// A pod whose containers have not started yet has no container statuses: it is unfinished unless it already
+// succeeded. Otherwise it is unfinished while any container is not terminated, or terminated with a non-zero code.
+func chaosPodUnfinished(chaosPod corev1.Pod) bool {
+	if len(chaosPod.Status.ContainerStatuses) == 0 {
+		return chaosPod.Status.Phase != corev1.PodSucceeded
+	}
+
+	for _, containerStatus := range chaosPod.Status.ContainerStatuses {
+		if containerStatus.State.Terminated == nil || containerStatus.State.Terminated.ExitCode != 0 {
+			return true
+		}
+	}
+
+	return false
+}
+
 // getEligibleTargets returns targets which can be targeted by the given instance from the given targets pool
 // it skips ignored targets and targets being already targeted by another disruption
 func (r *DisruptionReconciler) getEligibleTargets(ctx context.Context, instance *chaosv1beta1.Disruption, potentialTargets []string) (eligibleTargets chaosv1beta1.TargetInjections, err error) {
@@ -1437,16 +1454,13 @@ func (r *DisruptionReconciler) getEligibleTargets(ctx context.Context, instance 
 		// skip targets already targeted by a chaos pod from another disruption with the same kind if any
 		anyChaosPodsRunning := false
 
-		if len(chaosPods) != 0 {
-			// chaosPods might all be in a Completed state. If any of these injectors aren't terminated, or terminated in an unready state, we set alreadyDisrupted
-			// because if all chaosPods for this target _are_ Completed, then this target is not already injected, and the current instance can proceed
-			for _, chaosPod := range chaosPods {
-				for _, containerStatuses := range chaosPod.Status.ContainerStatuses {
-					if containerStatuses.State.Terminated == nil || containerStatuses.State.Terminated.ExitCode != 0 {
-						anyChaosPodsRunning = true
-						break
-					}
-				}
+		// chaosPods might all be in a Completed state. If any of these injectors aren't terminated, or terminated in an unready state, we set alreadyDisrupted
+		// because if all chaosPods for this target _are_ Completed, then this target is not already injected, and the current instance can proceed
+		for _, chaosPod := range chaosPods {
+			if chaosPodUnfinished(chaosPod) {
+				anyChaosPodsRunning = true
+
+				break
 			}
 		}
 
