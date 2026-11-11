@@ -50,6 +50,7 @@ var rootCmd = &cobra.Command{
 	Use:               "chaos-injector",
 	Short:             "Datadog chaos failures injection application",
 	Run:               nil,
+	PersistentPreRun:  initConfig,
 	PersistentPostRun: cleanAndExit,
 }
 
@@ -122,7 +123,6 @@ func init() {
 	cobra.OnInitialize(initLogger)
 	cobra.OnInitialize(initMetricsSink)
 	cobra.OnInitialize(initExitSignalsHandler)
-	cobra.OnInitialize(initConfig)
 }
 
 func main() {
@@ -206,7 +206,7 @@ func initManagers(pid uint32) (netns.Manager, cgroup.Manager, error) {
 }
 
 // initConfig initializes the injector config and main components from the given flags
-func initConfig() {
+func initConfig(cmd *cobra.Command, _ []string) {
 	pids := []uint32{}
 	ctns := []container.Container{}
 
@@ -230,14 +230,7 @@ func initConfig() {
 	disruptionArgs.Level = chaostypes.DisruptionLevel(disruptionLevelRaw)
 
 	// check if we're running pod-replacement command which doesn't need containers
-	isPodReplacement := false
-
-	for _, arg := range os.Args {
-		if arg == chaostypes.DisruptionKindPodReplacement {
-			isPodReplacement = true
-			break
-		}
-	}
+	isPodReplacement := cmd.Name() == string(chaostypes.DisruptionKindPodReplacement)
 
 	switch disruptionArgs.Level {
 	case chaostypes.DisruptionLevelPod:
