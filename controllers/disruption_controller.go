@@ -1461,14 +1461,14 @@ func (r *DisruptionReconciler) getEligibleTargets(ctx context.Context, instance 
 
 		// skip targets already targeted by a chaos pod from another disruption with the same kind if any
 		anyChaosPodsRunning := false
+		targetDisruptedByKinds := map[chaostypes.DisruptionKindName]string{}
 
 		// chaosPods might all be in a Completed state. If any of these injectors aren't terminated, or terminated in an unready state, we set alreadyDisrupted
 		// because if all chaosPods for this target _are_ Completed, then this target is not already injected, and the current instance can proceed
 		for _, chaosPod := range chaosPods {
 			if chaosPodUnfinished(chaosPod) {
 				anyChaosPodsRunning = true
-
-				break
+				targetDisruptedByKinds[chaostypes.DisruptionKindName(chaosPod.Labels[chaostypes.DisruptionKindLabel])] = chaosPod.Name
 			}
 		}
 
@@ -1481,11 +1481,6 @@ NB: you can specify "spec.allowDisruptedTargets: true" to allow a new disruption
 				)
 
 				continue
-			}
-
-			targetDisruptedByKinds := map[chaostypes.DisruptionKindName]string{}
-			for _, chaosPod := range chaosPods {
-				targetDisruptedByKinds[chaostypes.DisruptionKindName(chaosPod.Labels[chaostypes.DisruptionKindLabel])] = chaosPod.Name
 			}
 
 			intersectionOfKinds := []string{}
