@@ -837,38 +837,22 @@ func (s NetworkDisruptionServiceSpec) ExtractAffectedPortsInServicePorts(k8sServ
 		return k8sService.Spec.Ports, nil
 	}
 
-	servicePortsDic := map[string]v1.ServicePort{}
 	goodPorts, notFoundPorts := []v1.ServicePort{}, []NetworkDisruptionServicePortSpec{}
-
-	// Convert service ports from found k8s service to a dictionary in order to facilitate the filtering of the ports
-	for _, port := range k8sService.Spec.Ports {
-		servicePortsDic[fmt.Sprintf("port-%d", port.Port)] = port
-		if port.Name != "" {
-			servicePortsDic[fmt.Sprintf("name-%s", port.Name)] = port
-		}
-	}
-
 	for _, allowedPort := range s.Ports {
-		if allowedPort.Port != 0 {
-			servicePort, ok := servicePortsDic[fmt.Sprintf("port-%d", allowedPort.Port)]
+		if allowedPort.Port == 0 && allowedPort.Name == "" {
+			continue
+		}
 
-			if !ok || (allowedPort.Name != "" && allowedPort.Name != servicePort.Name) {
-				notFoundPorts = append(notFoundPorts, allowedPort)
-
+		found := false
+		for _, port := range k8sService.Spec.Ports {
+			if (allowedPort.Port != 0 && port.Port != int32(allowedPort.Port)) || (allowedPort.Name != "" && port.Name != allowedPort.Name) {
 				continue
 			}
-
-			goodPorts = append(goodPorts, servicePort)
-		} else if allowedPort.Name != "" {
-			servicePort, ok := servicePortsDic[fmt.Sprintf("name-%s", allowedPort.Name)]
-
-			if !ok || servicePort.Port == int32(allowedPort.Port) {
-				notFoundPorts = append(notFoundPorts, allowedPort)
-
-				continue
-			}
-
-			goodPorts = append(goodPorts, servicePort)
+			goodPorts = append(goodPorts, port)
+			found = true
+		}
+		if !found {
+			notFoundPorts = append(notFoundPorts, allowedPort)
 		}
 	}
 
