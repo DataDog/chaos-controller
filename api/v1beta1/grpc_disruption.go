@@ -71,17 +71,7 @@ func (s GRPCDisruptionSpec) Validate() (retErr error) {
 
 	for _, alteration := range s.Endpoints {
 		if alteration.QueryPercent == 0 {
-			if count, ok := unquantifiedAlts[alteration.TargetEndpoint]; ok {
-				unquantifiedAlts[alteration.TargetEndpoint] = count + 1
-
-				pctClaimed := 100 - queryPctByEndpoint[alteration.TargetEndpoint]
-
-				if pctClaimed < count+1 {
-					retErr = multierror.Append(retErr, fmt.Errorf("alterations must have at least 1%% chance of occurring; %s will never return some alterations because alterations exceed 100%% of possible queries", alteration.TargetEndpoint))
-				}
-			} else {
-				unquantifiedAlts[alteration.TargetEndpoint] = 1
-			}
+			unquantifiedAlts[alteration.TargetEndpoint]++
 		} else {
 			// check that endpoint is not already configured such that the sum of the queryPercents total to more than 100%
 			if totalQueryPercent, ok := queryPctByEndpoint[alteration.TargetEndpoint]; ok {
@@ -98,6 +88,12 @@ func (s GRPCDisruptionSpec) Validate() (retErr error) {
 		// check that exactly one of ErrorToReturn or OverrideToReturn is configured
 		if (alteration.ErrorToReturn == "" && alteration.OverrideToReturn == "") || (alteration.ErrorToReturn != "" && alteration.OverrideToReturn != "") {
 			retErr = multierror.Append(retErr, fmt.Errorf("the gRPC disruption must have exactly one of ErrorToReturn or OverrideToReturn specified for endpoint %s", alteration.TargetEndpoint))
+		}
+	}
+
+	for endpoint, count := range unquantifiedAlts {
+		if 100-queryPctByEndpoint[endpoint] < count {
+			retErr = multierror.Append(retErr, fmt.Errorf("alterations must have at least 1%% chance of occurring; %s will never return some alterations because alterations exceed 100%% of possible queries", endpoint))
 		}
 	}
 
