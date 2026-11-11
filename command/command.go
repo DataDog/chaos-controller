@@ -160,6 +160,9 @@ func (w *backgroundCmd) Start() error {
 			close(w.done)
 			return fmt.Errorf("an error occurred during startup of exec command: %w", err)
 		}
+
+		// Forward the consumed successful completion to the exit monitor.
+		chErr <- nil
 	}
 
 	w.pid = w.PID()
