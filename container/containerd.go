@@ -8,6 +8,7 @@ package container
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 
 	containerdlib "github.com/containerd/containerd/v2/client"
 )
@@ -56,13 +57,23 @@ func (c containerdRuntime) HostPath(ctx context.Context, id, path string) (strin
 		return "", fmt.Errorf("error getting container spec: %w", err)
 	}
 
-	// search for the given mount path
+	// Resolve the deepest mount containing the target path.
+	path = filepath.Clean(path)
+	bestMountLen := -1
+
 	for _, mount := range spec.Mounts {
-		if mount.Destination != path {
+		mountPath := filepath.Clean(mount.Destination)
+		if len(mountPath) < bestMountLen || !mountPathContainsPath(mountPath, path) {
 			continue
 		}
 
-		hostPath = mount.Source
+		bestMountLen = len(mountPath)
+		hostPath = ""
+
+		// a mount without a host source (such as tmpfs) has no host path below it
+		if mount.Source != "" {
+			hostPath = filepath.Join(mount.Source, path[len(mountPath):])
+		}
 	}
 
 	// ignore if no matching path found
