@@ -64,7 +64,7 @@ var _ = Describe("Disruptions watchers manager", func() {
 		controllerMock := mocks.NewRuntimeControllerMock[reconcile.Request](GinkgoT())
 
 		// Act
-		disruptionsWatchersManager = watchers.NewDisruptionsWatchersManager(controllerMock, watcherFactoryMock, readerMock)
+		disruptionsWatchersManager = watchers.NewDisruptionsWatchersManager(controllerMock, watcherFactoryMock, readerMock, true)
 
 		// Assert
 		By("return a DisruptionsWatchersManager")

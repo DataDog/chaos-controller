@@ -273,7 +273,7 @@ func main() {
 		CachePool:      watchers.NewNamespaceCachePool(ctrl.GetConfigOrDie()),
 	}
 	watcherFactory := watchers.NewWatcherFactory(watchersFactoryConfig)
-	disruptionReconciler.DisruptionsWatchersManager = watchers.NewDisruptionsWatchersManager(cont, watcherFactory, mgr.GetAPIReader())
+	disruptionReconciler.DisruptionsWatchersManager = watchers.NewDisruptionsWatchersManager(cont, watcherFactory, mgr.GetAPIReader(), cfg.Controller.EnableObserver)
 
 	ctx, cancel := context.WithCancel(context.Background())
 
