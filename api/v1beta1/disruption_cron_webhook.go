@@ -139,7 +139,7 @@ func (d *DisruptionCron) ValidateCreate(_ context.Context, disruptionCronObj *Di
 		return nil, err
 	}
 
-	if mErr := metricsSink.MetricValidationCreated(metricTags); mErr != nil {
+	if mErr := disruptionCronMetricsSink.MetricValidationCreated(metricTags); mErr != nil {
 		log.Errorw("error sending a metric", tagutil.ErrorKey, mErr)
 	}
 
@@ -193,7 +193,7 @@ func (d *DisruptionCron) ValidateUpdate(_ context.Context, oldDisruptionCronObj,
 		}
 	}
 
-	if mErr := metricsSink.MetricValidationUpdated(metricTags); mErr != nil {
+	if mErr := disruptionCronMetricsSink.MetricValidationUpdated(metricTags); mErr != nil {
 		log.Errorw("error sending a metric", tagutil.ErrorKey, mErr)
 	}
 
@@ -214,7 +214,7 @@ func (d *DisruptionCron) ValidateDelete(_ context.Context, disruptionCronObj *Di
 	// During the validation of the deletion the timestamp does not exist so we need to set it before emitting the event
 	disruptionCronObj.DeletionTimestamp = &metav1.Time{Time: time.Now()}
 
-	if mErr := metricsSink.MetricValidationDeleted(disruptionCronObj.getMetricsTags()); mErr != nil {
+	if mErr := disruptionCronMetricsSink.MetricValidationDeleted(disruptionCronObj.getMetricsTags()); mErr != nil {
 		log.Errorw("error sending a metric", tagutil.ErrorKey, mErr)
 	}
 
