@@ -251,18 +251,24 @@ var _ = Describe("watcher", func() {
 		})
 
 		Context("with an non empty context tuple", func() {
+			var cacheStarted chan struct{}
+
 			BeforeEach(func() {
 				handlerMock = mocks.NewResourceEventHandlerMock(GinkgoT())
 				informerMock = mocks.NewCacheInformerMock(GinkgoT())
 				cacheMock = mocks.NewCacheCacheMock(GinkgoT())
 				informerMock.EXPECT().AddEventHandler(handlerMock).Return(informerMock, nil)
 				cacheMock.On("GetInformer", mock.Anything, mock.Anything).Return(informerMock, nil)
-				cacheMock.On("Start", mock.Anything).Return(nil)
+				cacheStarted = make(chan struct{})
+				cacheMock.On("Start", mock.Anything).Run(func(mock.Arguments) { close(cacheStarted) }).Return(nil)
 			})
 
 			JustBeforeEach(func() {
 				// Arrange
 				Expect(watcher.Start()).Should(Succeed())
+				// Start runs the cache in its own goroutine: wait for it so the
+				// Start expectation is met before cleanup asserts it
+				Eventually(cacheStarted).Should(BeClosed())
 
 				// Act
 				result, err = watcher.GetContextTuple()
