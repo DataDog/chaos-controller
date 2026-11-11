@@ -755,6 +755,10 @@ func (m *chaosPodService) resolvePodVolumeHostPath(ctx context.Context, namespac
 			return m.resolvePVCHostPath(ctx, namespace, vol.PersistentVolumeClaim.ClaimName)
 		}
 
+		if vol.HostPath != nil {
+			return vol.HostPath.Path, nil
+		}
+
 		// emptyDir, ConfigMap, Secret, projected — kubelet manages these under its pods directory
 		return "/var/lib/kubelet/pods", nil
 	}
