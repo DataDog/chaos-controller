@@ -320,9 +320,8 @@ var _ = Describe("Chaos Pod Service", func() {
 						{
 							Name: "injector",
 							State: v1.ContainerState{
-								Terminated: &v1.ContainerStateTerminated{
-									Reason:   "ContainerStatusUnknown",
-									ExitCode: 137,
+								Waiting: &v1.ContainerStateWaiting{
+									Reason: "CreateContainerError",
 								},
 							},
 							Started: &falseStarted,
