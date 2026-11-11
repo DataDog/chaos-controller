@@ -71,5 +71,6 @@ func main() {
 
 	if err := rootCmd.Execute(); err != nil {
 		logger.Errorw("error executing command", tags.ErrorKey, err)
+		os.Exit(1)
 	}
 }
