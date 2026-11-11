@@ -6,6 +6,7 @@
 package datadog
 
 import (
+	"os"
 	"strconv"
 
 	"github.com/DataDog/chaos-controller/o11y/tracer/types"
@@ -36,9 +37,22 @@ func New() Sink {
 // GetLoggableTraceContext returns a Datadog-friendly trace context for logs
 // It allows to connect logs with corresponding traces and spans.
 func (Sink) GetLoggableTraceContext(span trace.Span) []interface{} {
+	spanContext := span.SpanContext()
+	traceID := spanContext.TraceID().String()
+	log128Bit := true
+	if configured, err := strconv.ParseBool(os.Getenv("DD_TRACE_128_BIT_TRACEID_LOGGING_ENABLED")); err == nil {
+		log128Bit = configured
+	}
+
+	// Match the SDK formatter: full hexadecimal IDs when enabled and present,
+	// otherwise the lower 64 bits in decimal. Span IDs always stay decimal.
+	if !log128Bit || traceID[:16] == "0000000000000000" {
+		traceID = convertTraceID(traceID)
+	}
+
 	stringLogContext := []string{
-		"dd.trace_id", convertTraceID(span.SpanContext().TraceID().String()),
-		"dd.span_id", convertTraceID(span.SpanContext().SpanID().String()),
+		"dd.trace_id", traceID,
+		"dd.span_id", convertTraceID(spanContext.SpanID().String()),
 	}
 
 	interfaceLogContext := make([]interface{}, len(stringLogContext))
