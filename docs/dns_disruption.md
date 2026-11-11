@@ -312,7 +312,7 @@ record:
 ```
 
 ### TXT Records (Text)
-Text records for arbitrary data (SPF, DKIM, domain verification, etc.).
+Text records for arbitrary data (SPF, DKIM, domain verification, etc.). Values longer than 255 bytes are split into multiple DNS character-strings within the same TXT record. Concatenating those strings recovers the original value, including literal backslashes.
 
 **Format**: Any string value
 
