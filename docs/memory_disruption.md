@@ -195,6 +195,8 @@ When `rampDuration` is specified, memory is consumed gradually rather than all a
 
 The ramp divides the total allocation into equal-sized chunks allocated at 1-second intervals. For example, with `targetPercent: "80%"` and `rampDuration: 10m`, the injector allocates 1/600th of the target amount every second over 10 minutes.
 
+Allocation chunks use whole memory pages. Small allocations use fewer steps, spaced over the ramp period, so each step allocates at least one page. The total allocation is rounded up by less than one page, rather than rounding each fractional-page chunk separately.
+
 ## Manually confirming memory pressure
 
 In a memory disruption, the injector process is moved to the target memory cgroup but the injector container keeps its own PID namespace. Tools running inside the target container won't see the injector process, but the memory usage increase will be visible in cgroup accounting.

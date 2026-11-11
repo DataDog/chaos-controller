@@ -7,6 +7,7 @@ package injector
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -124,16 +125,20 @@ func (m *memoryStressInjector) stress(targetBytes int64, ready chan<- struct{}) 
 			steps = 1
 		}
 
-		stepDelay = m.rampDuration / time.Duration(steps)
 	} else {
 		steps = 1
-		stepDelay = 0
 	}
 
-	chunkSize := int(targetBytes / int64(steps))
-	if chunkSize <= 0 {
-		chunkSize = int(targetBytes)
-		steps = 1
+	// Allocate whole pages so per-step mmap rounding cannot exceed the total target.
+	pageSize := int64(os.Getpagesize())
+	pages := (targetBytes + pageSize - 1) / pageSize
+	pagesPerStep := (pages + int64(steps) - 1) / int64(steps)
+	chunkSize := int(pagesPerStep * pageSize)
+	steps = int((pages + pagesPerStep - 1) / pagesPerStep)
+	targetBytes = pages * pageSize
+
+	if m.rampDuration > 0 {
+		stepDelay = m.rampDuration / time.Duration(steps)
 	}
 
 	m.config.Log.Infow("memory allocation plan", tags.StepsKey, steps, tags.ChunkSizeKey, chunkSize, tags.StepDelayKey, stepDelay)
