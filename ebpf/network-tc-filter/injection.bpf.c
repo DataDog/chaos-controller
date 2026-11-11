@@ -114,15 +114,16 @@ int cls_classifier_methods(struct __sk_buff *skb)
     if (!read_conn_tuple_skb(skb, &skb_info))
         return 0;
 
-    if (skb->len - skb_info.data_off < DEFAULT_HTTP_BUFFER_SIZE) {
-        printt("http buffer reach the limit");
+    if (skb->len <= skb_info.data_off) {
         return 0;
     }
 
-    char p[DEFAULT_HTTP_BUFFER_SIZE];
+    char p[DEFAULT_HTTP_BUFFER_SIZE] = {};
 
     #pragma unroll
     for (int i = 0; i < DEFAULT_HTTP_BUFFER_SIZE; i++) {
+        if (skb_info.data_off + i >= skb->len)
+            break;
         p[i] = load_byte(skb, skb_info.data_off + i);
     }
 
@@ -149,14 +150,15 @@ int cls_classifier_paths(struct __sk_buff *skb)
     if (!read_conn_tuple_skb(skb, &skb_info))
         return 0;
 
-    if (skb->len - skb_info.data_off < LARGE_HTTP_BUFFER_SIZE) {
-        printt("http buffer reach the limit");
+    if (skb->len <= skb_info.data_off) {
         return 0;
     }
 
-    char p[LARGE_HTTP_BUFFER_SIZE];
+    char p[LARGE_HTTP_BUFFER_SIZE] = {};
 
     for (int i = 0; i < LARGE_HTTP_BUFFER_SIZE; i++) {
+        if (skb_info.data_off + i >= skb->len)
+            break;
         p[i] = load_byte(skb, skb_info.data_off + i);
     }
 
