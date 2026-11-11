@@ -182,7 +182,7 @@ func (n *Notifier) notifyForDisruptionCron(ctx context.Context, disruptionCron *
 		}
 	}
 
-	if nil != disruptionCron.Spec.Reporting && disruptionCron.Spec.Reporting.SlackChannel != "" {
+	if nil != disruptionCron.Spec.Reporting && disruptionCron.Spec.Reporting.SlackChannel != "" && disruptionCron.Spec.Reporting.MinNotificationType.Allows(notifType) {
 		if err := n.sendMessageToChannel(disruptionCron.Spec.Reporting.SlackChannel, slackMsg); err != nil {
 			logger.Warnw("slack notifier: couldn't send a message to the channel from the reporting",
 				tags.SlackChannelKey, disruptionCron.Spec.Reporting.SlackChannel,
