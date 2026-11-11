@@ -56,6 +56,10 @@ func (s *NotifierSink) Create(event *corev1.Event) (*corev1.Event, error) {
 		return event, nil
 	}
 
+	if event.InvolvedObject.UID != "" && obj.GetUID() != event.InvolvedObject.UID {
+		return event, nil
+	}
+
 	notificationType, err := s.getNotificationType(event)
 	if err != nil {
 		s.logger.Warnw("notifier: not a notifiable event")
