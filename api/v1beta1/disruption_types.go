@@ -791,7 +791,7 @@ func (s DisruptionSpec) validateGlobalDisruptionScope(requireSelectors bool) (re
 	// Rule: pulse compatibility
 	if s.Pulse != nil {
 		if s.Pulse.ActiveDuration.Duration() > 0 || s.Pulse.DormantDuration.Duration() > 0 {
-			if s.NodeFailure != nil || s.PodReplacement != nil || s.ContainerFailure != nil || s.DiskFull != nil {
+			if s.NodeFailure != nil || s.PodReplacement != nil || s.ContainerFailure != nil || s.DiskFull != nil || s.DiskFailure != nil {
 				retErr = multierror.Append(retErr, errors.New("pulse is only compatible with network, cpu pressure, memory pressure, disk pressure, dns, and grpc disruptions"))
 			}
 		}

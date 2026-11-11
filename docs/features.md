@@ -65,6 +65,8 @@ and thus also injection, could occur after the `notBefore` timestamp.
 
 The `Disruption` spec takes a `pulse` field. It activates the pulsing mode of the disruptions of type `cpu_pressure`, `disk_pressure`, `grpc_disruption` or `network_disruption`. A "pulsing" disruption is one that alternates between an active injected state, and an inactive dormant state. Previously, one would need to manage the Disruption lifecycle by continually re-creating and deleting a Disruption to achieve the same effect.
 
+Disk failure does not support active/dormant pulsing; use separate disruptions for separate injection windows.
+
 It is composed of three subfields: `initialDelay`, `dormantDuration` and `activeDuration`, which take a string, which is meant to conform to
 golang's time.Duration's [string format, e.g., "45s", "15m30s", "4h30m".](https://pkg.go.dev/time#ParseDuration) and **have to be greater than 500 milliseconds**.
 
