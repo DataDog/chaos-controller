@@ -41,6 +41,10 @@ func GetPercentagePerAlteration(endpointSpecList []*pb.AlterationSpec) (map[Alte
 	pctClaimed := 0
 
 	for _, altSpec := range endpointSpecList {
+		if altSpec.QueryPercent < 0 {
+			return nil, status.Error(codes.InvalidArgument, "queryPercent must not be negative")
+		}
+
 		if altSpec.ErrorToReturn == "" && altSpec.OverrideToReturn == "" {
 			return nil, status.Error(codes.InvalidArgument, "cannot map alteration to assigned query percentage without specifying either ErrorToReturn or OverrideToReturn for a target endpoint")
 		}
