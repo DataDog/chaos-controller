@@ -155,17 +155,21 @@ func (i *diskPressureInjector) Clean() error {
 	}
 
 	// clean read iops throttle
-	i.config.Log.Infow("cleaning disk read iops throttle", tags.DeviceKey, i.config.Informer.Source())
+	if i.spec.Throttling.ReadIOPSPerSec != nil {
+		i.config.Log.Infow("cleaning disk read iops throttle", tags.DeviceKey, i.config.Informer.Source())
 
-	if err := i.config.Cgroup.Write(diskPressureBlkioControllerName, i.getThrottleFilename(diskPressureThrottleModeReadIops), i.formatThrottle(0, diskPressureThrottleModeReadIops)); err != nil {
-		return fmt.Errorf("error cleaning read disk iops throttle: %w", err)
+		if err := i.config.Cgroup.Write(diskPressureBlkioControllerName, i.getThrottleFilename(diskPressureThrottleModeReadIops), i.formatThrottle(0, diskPressureThrottleModeReadIops)); err != nil {
+			return fmt.Errorf("error cleaning read disk iops throttle: %w", err)
+		}
 	}
 
 	// clean write iops throttle
-	i.config.Log.Infow("cleaning disk write iops throttle", tags.DeviceKey, i.config.Informer.Source())
+	if i.spec.Throttling.WriteIOPSPerSec != nil {
+		i.config.Log.Infow("cleaning disk write iops throttle", tags.DeviceKey, i.config.Informer.Source())
 
-	if err := i.config.Cgroup.Write(diskPressureBlkioControllerName, i.getThrottleFilename(diskPressureThrottleModeWriteIops), i.formatThrottle(0, diskPressureThrottleModeWriteIops)); err != nil {
-		return fmt.Errorf("error cleaning write disk iops throttle: %w", err)
+		if err := i.config.Cgroup.Write(diskPressureBlkioControllerName, i.getThrottleFilename(diskPressureThrottleModeWriteIops), i.formatThrottle(0, diskPressureThrottleModeWriteIops)); err != nil {
+			return fmt.Errorf("error cleaning write disk iops throttle: %w", err)
+		}
 	}
 
 	return nil
