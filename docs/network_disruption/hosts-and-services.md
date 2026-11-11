@@ -480,7 +480,7 @@ network:
 
 **Percentage-based selection for Kubernetes services:**
 
-The `percentage` field also works with `network.services` to target only a subset of service endpoints:
+The `percentage` field also works with `network.services` to target only a subset of service endpoints. Selection is recomputed from the current endpoint set when pods are added, receive IP addresses, or are removed:
 
 ```yaml
 network:
