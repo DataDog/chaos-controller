@@ -40,12 +40,12 @@ var diskPressureCmd = &cobra.Command{
 		}
 
 		var writeIOPSPerSecP *int
-		if writeIOPSPerSec != 0 {
+		if cmd.Flags().Changed("write-iops-per-sec") {
 			writeIOPSPerSecP = &writeIOPSPerSec
 		}
 
 		var readIOPSPerSecP *int
-		if readIOPSPerSec != 0 {
+		if cmd.Flags().Changed("read-iops-per-sec") {
 			readIOPSPerSecP = &readIOPSPerSec
 		}
 
