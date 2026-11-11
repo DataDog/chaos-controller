@@ -213,14 +213,17 @@ var _ = Describe("Tc", func() {
 		})
 	})
 
-	Describe("AddFlowerFilter", func() {
+	Describe("AddFWFilter", func() {
+		BeforeEach(func() {
+			handle = "0x00020002"
+		})
 		JustBeforeEach(func() {
-			Expect(tcRunner.AddFlowerFilter(ifaces, parent, handle, flowid)).Should(Succeed())
+			Expect(tcRunner.AddFWFilter(ifaces, parent, handle, flowid)).Should(Succeed())
 		})
 
 		Context("add a cgroup filter", func() {
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", []string{"filter", "add", "dev", "lo", "protocol", "ip", "root", "flower", "flowid", "1:2"})
+				tcExecuter.AssertCalled(GinkgoT(), "Run", []string{"filter", "add", "dev", "lo", "protocol", "ip", "root", "handle", "0x00020002", "fw", "flowid", "1:2"})
 			})
 		})
 	})

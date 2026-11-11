@@ -137,7 +137,7 @@ To this fourth band, another `prio` qdisc with handle `2:` attached. This qdisc 
     <img src="../../docs/img/network_prio/pod/3-1.png" height=280 width=650 />
 </kbd></p>
 
-For the disruption itself, the `chaos-controller` marks all packets leaving the (process associated with the) target pod with `classid` `2:2`. A filter on handle `2:` checks for this field and enqueues packets matching this criteria to prio class `2:2`. This class contains a qdisc applying the configured network disruption (in this case a netem delay) to all enqueued packets.
+For the disruption itself, the `chaos-controller` marks packets leaving the targeted container with `0x00020002`. An `fw` filter attached to qdisc `2:` matches that packet mark and enqueues matching packets to prio class `2:2`. Unmarked packets, including traffic from untargeted containers sharing the network namespace, stay in the undisrupted band. Class `2:2` contains the qdisc applying the configured network disruption.
 
 #### (Step 3) Divert traffic
 

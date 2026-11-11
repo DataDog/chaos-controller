@@ -94,7 +94,7 @@ var _ = Describe("Failure", func() {
 		tc.EXPECT().AddNetem(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 		tc.EXPECT().AddPrio(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 		tc.EXPECT().AddFilter(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(0, nil).Maybe()
-		tc.EXPECT().AddFlowerFilter(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+		tc.EXPECT().AddFWFilter(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 		tc.EXPECT().AddOutputLimit(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 		tc.EXPECT().DeleteFilter(mock.Anything, mock.Anything).Return(nil).Maybe()
 		tc.EXPECT().ClearQdisc(mock.Anything).Return(nil).Maybe()
@@ -296,7 +296,7 @@ var _ = Describe("Failure", func() {
 		})
 
 		It("should add an fw filter to classify packets according to their classid set by iptables mark", func() {
-			tc.AssertCalled(GinkgoT(), "AddFlowerFilter", []string{"lo", "eth0", "eth1"}, "2:0", "0x00020002", "2:2")
+			tc.AssertCalled(GinkgoT(), "AddFWFilter", []string{"lo", "eth0", "eth1"}, "2:0", "0x00020002", "2:2")
 		})
 
 		It("should apply disruptions to main interfaces 2nd band", func() {
@@ -722,7 +722,7 @@ var _ = Describe("Failure", func() {
 					tc.AssertCalled(GinkgoT(), "AddPrio", interfaces, "3:2", "4:", uint32(2), mock.Anything)
 
 					By("adding an fw filter to classify packets according to their classid set by iptables mark")
-					tc.AssertCalled(GinkgoT(), "AddFlowerFilter", interfaces, "4:0", "0x00020002", "4:2")
+					tc.AssertCalled(GinkgoT(), "AddFWFilter", interfaces, "4:0", "0x00020002", "4:2")
 
 					By("adding an BPF filter to classify packets according to their method")
 					tc.AssertCalled(GinkgoT(), "AddBPFFilter", interfaces, "2:0", "/usr/local/bin/bpf-network-tc-filter.bpf.o", "2:2", "classifier_methods")
