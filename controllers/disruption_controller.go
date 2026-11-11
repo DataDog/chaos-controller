@@ -403,7 +403,7 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			}
 
 			if r.ExpiredDisruptionGCDelay != nil {
-				requeueDelay := *r.ExpiredDisruptionGCDelay
+				requeueDelay := max(time.Nanosecond, *r.ExpiredDisruptionGCDelay+instance.RemainingDuration())
 
 				r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionDurationOver, requeueDelay.String(), "")
 				r.log.Debugw("requeuing disruption to check for its expiration", tagutil.RequeueDelayKey, requeueDelay.String())
