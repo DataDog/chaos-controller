@@ -9,6 +9,8 @@ DisruptionCron facilitates chaos engineering by automating and scheduling chaos 
 ## Usage
 To schedule a disruption in a cluster, run `kubectl apply -f <disruption_cron_file>.yaml`. To halt the scheduled disruptions, use `kubectl delete -f <disruption_cron_file>.yaml`.
 
+Transient errors while listing existing child Disruptions are retried instead of stopping scheduled reconciliation.
+
 ## Example
 The following DisruptionCron manifest example triggers node failure disruptions every 15 minutes:
 ```yaml
