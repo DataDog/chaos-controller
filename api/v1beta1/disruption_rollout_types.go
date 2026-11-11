@@ -17,6 +17,7 @@ func init() {
 // DisruptionRollout is the Schema for the disruptionrollout API
 // +kubebuilder:resource:shortName=diroll
 // +kubebuilder:subresource:status
+// +kubebuilder:validation:XValidation:rule="size(self.metadata.name) <= 44",message="disruption rollout name must be no more than 44 characters so that its disruption name fits in 63 characters"
 type DisruptionRollout struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
