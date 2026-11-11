@@ -109,6 +109,7 @@ spec:
 - When `deleteStorage` is true (default), all PVCs referenced by the target pod are deleted
 - This simulates complete storage loss scenarios where data needs to be recreated or restored
 - Use `deleteStorage: false` when you want to preserve data and test pod rescheduling without data loss
+- An explicit `false` is preserved through API updates and injector arguments; omitting the field still defaults to `true`
 
 ### Pod Targeting
 

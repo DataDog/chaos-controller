@@ -15,7 +15,8 @@ import (
 type PodReplacementSpec struct {
 	// DeleteStorage determines if PVCs associated with the target pod should be deleted
 	// +kubebuilder:default=true
-	DeleteStorage bool `json:"deleteStorage,omitempty"`
+	// +optional
+	DeleteStorage bool `json:"deleteStorage"`
 	// ForceDelete forces deletion of stuck pods by setting grace period to 0
 	ForceDelete bool `json:"forceDelete,omitempty"`
 	// GracePeriodSeconds specifies the grace period for pod deletion in seconds
