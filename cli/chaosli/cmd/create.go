@@ -789,11 +789,10 @@ func percentageValidator(val interface{}) error {
 			return nil
 		}
 
-		input := intstr.Parse(str)
-		value, _, _ := v1beta1.GetIntOrPercentValueSafely(&input)
+		value, err := strconv.Atoi(str)
 
-		if value < 0 || value > 100 {
-			return fmt.Errorf("input must be a valid percentage value, between 0-100: got %s", str)
+		if err != nil || value < 0 || value > 100 {
+			return fmt.Errorf("input must be an integer between 0 and 100: got %s", str)
 		}
 	} else {
 		return fmt.Errorf("expected a string response, rather than type %v", reflect.TypeOf(val).Name())
