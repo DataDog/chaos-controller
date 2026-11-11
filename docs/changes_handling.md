@@ -28,7 +28,7 @@ In order to have an up to date state of the filtered on services / pods destinat
 
 ### TC Filters Technicalities
 
-To delete tc filters, we need to keep in memory the priority (or preference) of each tc filter created, by assigning a priority when adding a tc filter:
+To delete tc filters, we need to keep in memory the priority (or preference) of each tc filter created, by assigning a priority when adding a tc filter. A headless service endpoint can require both a TCP and a UDP filter; both priorities are retained and removed on every affected interface when the endpoint disappears:
 
 `tc filter add dev eth0 protocol ip priority 49155 parent 1:0 flower ip_proto tcp dst_ip 10.98.115.140/32 dst_port 8080 flowid 1:4`
 
