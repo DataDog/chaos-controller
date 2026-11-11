@@ -7,6 +7,7 @@ package v1beta1
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 
@@ -94,8 +95,13 @@ func validateRemaining(remaining string) error {
 		return fmt.Errorf("remaining must be a valid Kubernetes resource quantity (e.g., 50Mi, 1Gi), got %q: %w", remaining, err)
 	}
 
-	if qty.Value() < 0 {
+	if qty.Sign() < 0 {
 		return fmt.Errorf("remaining must not be negative, got %q", remaining)
+	}
+
+	// Value() wraps quantities beyond int64, which the injector and safety net would then misread
+	if qty.CmpInt64(math.MaxInt64) > 0 {
+		return fmt.Errorf("remaining must not exceed %d bytes, got %q", int64(math.MaxInt64), remaining)
 	}
 
 	return nil
