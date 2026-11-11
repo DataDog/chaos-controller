@@ -30,11 +30,15 @@ type netlinkAdapter struct{}
 func (a netlinkAdapter) listRoutes() ([]netlink.Route, error) {
 	allRoutes := []netlink.Route{}
 
-	// get the netlink handler
-	handler, err := netlink.NewHandle()
+	// get a route netlink handler: listing rules and routes needs no other
+	// family, and asking for every supported one fails on kernels without
+	// xfrm netlink (CONFIG_XFRM_USER) with "protocol not supported"
+	handler, err := netlink.NewHandle(unix.NETLINK_ROUTE)
 	if err != nil {
 		return nil, err
 	}
+
+	defer handler.Close()
 
 	// list routing rules for IPv4
 	rules, err := handler.RuleList(unix.AF_INET)
