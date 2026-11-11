@@ -202,6 +202,12 @@ func (d DisruptionTargetHandler) getEventsFromCurrentDisruption(kind string, obj
 		"involvedObject.name": objectMeta.Name,
 	}
 
+	// a recreated pod reuses its name, so pod events are matched by UID too;
+	// the kubelet records node events with the node name as their UID
+	if kind != "Node" {
+		fieldSelector["involvedObject.uid"] = string(objectMeta.UID)
+	}
+
 	err := d.reader.List(context.Background(), eventList, &client.ListOptions{
 		FieldSelector: fieldSelector.AsSelector(),
 		Namespace:     objectMeta.GetNamespace(),
