@@ -77,4 +77,8 @@ type DisruptionRolloutStatus struct {
 	// Time when the target resource was previously missing.
 	// +nullable
 	TargetResourcePreviouslyMissing *metav1.Time `json:"targetResourcePreviouslyMissing,omitempty"`
+
+	// Target whose absence is timed by TargetResourcePreviouslyMissing.
+	// +nullable
+	MissingTargetResource *TargetResourceSpec `json:"missingTargetResource,omitempty"`
 }

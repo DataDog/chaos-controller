@@ -807,6 +807,23 @@ spec:
                     The key is the name of the InitContainer, and the value is its MD5 hash.
                   nullable: true
                   type: object
+                missingTargetResource:
+                  description: Target whose absence is timed by TargetResourcePreviouslyMissing.
+                  nullable: true
+                  properties:
+                    kind:
+                      description: 'Kind specifies the type of the long-lived resource. Allowed values: "deployment", "statefulset".'
+                      enum:
+                        - deployment
+                        - statefulset
+                      type: string
+                    name:
+                      description: Name specifies the name of the specific instance of the long-lived resource to be targeted.
+                      type: string
+                  required:
+                    - kind
+                    - name
+                  type: object
                 targetResourcePreviouslyMissing:
                   description: Time when the target resource was previously missing.
                   format: date-time

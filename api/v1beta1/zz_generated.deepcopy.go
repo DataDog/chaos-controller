@@ -368,6 +368,11 @@ func (in *DisruptionCronStatus) DeepCopyInto(out *DisruptionCronStatus) {
 		in, out := &in.TargetResourcePreviouslyMissing, &out.TargetResourcePreviouslyMissing
 		*out = (*in).DeepCopy()
 	}
+	if in.MissingTargetResource != nil {
+		in, out := &in.MissingTargetResource, &out.MissingTargetResource
+		*out = new(TargetResourceSpec)
+		**out = **in
+	}
 	if in.History != nil {
 		in, out := &in.History, &out.History
 		*out = make([]DisruptionCronTrigger, len(*in))
@@ -576,6 +581,11 @@ func (in *DisruptionRolloutStatus) DeepCopyInto(out *DisruptionRolloutStatus) {
 	if in.TargetResourcePreviouslyMissing != nil {
 		in, out := &in.TargetResourcePreviouslyMissing, &out.TargetResourcePreviouslyMissing
 		*out = (*in).DeepCopy()
+	}
+	if in.MissingTargetResource != nil {
+		in, out := &in.MissingTargetResource, &out.MissingTargetResource
+		*out = new(TargetResourceSpec)
+		**out = **in
 	}
 }
 

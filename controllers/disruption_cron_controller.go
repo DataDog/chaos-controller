@@ -265,7 +265,9 @@ func (r *DisruptionCronReconciler) updateTargetResourcePreviouslyMissing(ctx con
 	if !targetResourceExists {
 		r.log.Warnw("target does not exist, this schedule will be deleted if that continues", tagutil.ErrorKey, err)
 
-		if instance.Status.TargetResourcePreviouslyMissing == nil {
+		if instance.Status.TargetResourcePreviouslyMissing == nil ||
+			instance.Status.MissingTargetResource == nil ||
+			*instance.Status.MissingTargetResource != instance.Spec.TargetResource {
 			r.log.Warnw("target is missing for the first time, updating status")
 			r.recordEventOnDisruptionCron(instance, chaosv1beta1.EventDisruptionCronTargetMissing,
 				fmt.Sprintf("%s cannot be found, if this persists for %s, we will delete the disruption cron.", instance.Spec.TargetResource.String(), r.TargetResourceMissingThreshold.String()))
@@ -301,6 +303,7 @@ func (r *DisruptionCronReconciler) updateTargetResourcePreviouslyMissing(ctx con
 // It updates the status of the DisruptionCron instance.
 func (r *DisruptionCronReconciler) handleTargetResourceFirstMissing(ctx context.Context, instance *chaosv1beta1.DisruptionCron) error {
 	instance.Status.TargetResourcePreviouslyMissing = &metav1.Time{Time: time.Now()}
+	instance.Status.MissingTargetResource = instance.Spec.TargetResource.DeepCopy()
 	if err := r.Client.Status().Update(ctx, instance); err != nil {
 		return fmt.Errorf("failed to update status: %w", err)
 	}
@@ -324,6 +327,7 @@ func (r *DisruptionCronReconciler) handleTargetResourceMissingPastExpiration(ctx
 // It updates the status of the DisruptionCron instance.
 func (r *DisruptionCronReconciler) handleTargetResourceNowPresent(ctx context.Context, instance *chaosv1beta1.DisruptionCron) error {
 	instance.Status.TargetResourcePreviouslyMissing = nil
+	instance.Status.MissingTargetResource = nil
 	if err := r.Client.Status().Update(ctx, instance); err != nil {
 		return fmt.Errorf("failed to update status: %w", err)
 	}

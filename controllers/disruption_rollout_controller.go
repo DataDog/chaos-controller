@@ -210,7 +210,9 @@ func (r *DisruptionRolloutReconciler) updateTargetResourcePreviouslyMissing(ctx 
 	if !targetResourceExists {
 		r.log.Warnw("target does not exist, this disruption rollout will be deleted if that continues", tagutil.ErrorKey, err)
 
-		if instance.Status.TargetResourcePreviouslyMissing == nil {
+		if instance.Status.TargetResourcePreviouslyMissing == nil ||
+			instance.Status.MissingTargetResource == nil ||
+			*instance.Status.MissingTargetResource != instance.Spec.TargetResource {
 			r.log.Warnw("target is missing for the first time, updating status")
 
 			return targetResourceExists, disruptionRolloutDeleted, r.handleTargetResourceFirstMissing(ctx, instance)
@@ -240,6 +242,7 @@ func (r *DisruptionRolloutReconciler) updateTargetResourcePreviouslyMissing(ctx 
 // It updates the status of the DisruptionRollout instance.
 func (r *DisruptionRolloutReconciler) handleTargetResourceFirstMissing(ctx context.Context, instance *chaosv1beta1.DisruptionRollout) error {
 	instance.Status.TargetResourcePreviouslyMissing = &metav1.Time{Time: time.Now()}
+	instance.Status.MissingTargetResource = instance.Spec.TargetResource.DeepCopy()
 	if err := r.Client.Status().Update(ctx, instance); err != nil {
 		return fmt.Errorf("failed to update status: %w", err)
 	}
@@ -263,6 +266,7 @@ func (r *DisruptionRolloutReconciler) handleTargetResourceMissingPastExpiration(
 // It updates the status of the DisruptionRollout instance.
 func (r *DisruptionRolloutReconciler) handleTargetResourceNowPresent(ctx context.Context, instance *chaosv1beta1.DisruptionRollout) error {
 	instance.Status.TargetResourcePreviouslyMissing = nil
+	instance.Status.MissingTargetResource = nil
 	if err := r.Client.Status().Update(ctx, instance); err != nil {
 		return fmt.Errorf("failed to update status: %w", err)
 	}

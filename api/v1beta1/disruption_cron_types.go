@@ -98,6 +98,10 @@ type DisruptionCronStatus struct {
 	// +nullable
 	TargetResourcePreviouslyMissing *metav1.Time `json:"targetResourcePreviouslyMissing,omitempty"`
 
+	// Target whose absence is timed by TargetResourcePreviouslyMissing.
+	// +nullable
+	MissingTargetResource *TargetResourceSpec `json:"missingTargetResource,omitempty"`
+
 	History []DisruptionCronTrigger `json:"history,omitempty"`
 }
 
