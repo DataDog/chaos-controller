@@ -82,6 +82,8 @@ Usage: `chaosli context --path <path to disruption file>`
 
 Description: Gives you context of the targets you intend to disrupt. Shares information regarding status of pods, containers, and nodes. Shares information regarding the state of pods, containers, and nodes as well.
 
+Both `selector` and `advancedSelector` constrain the pods and nodes displayed by this command.
+
 #### Testing Locally
 
 Run `go run chaosli/main.go context --path <path to disruption file>`
