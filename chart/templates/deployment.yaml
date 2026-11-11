@@ -64,8 +64,8 @@ spec:
                 fieldRef:
                   apiVersion: v1
                   fieldPath: status.hostIP
-            - name: TRACE_AGENT_URL
-              value: $(HOST_IP):8126
+            - name: DD_TRACE_AGENT_URL
+              value: http://$(HOST_IP):8126
             # Below GOXXXX env var are required by go runtime
             - name: GOROOT
               value: /usr/local/go
