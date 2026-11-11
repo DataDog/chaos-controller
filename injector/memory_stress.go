@@ -62,16 +62,26 @@ func (m *memoryStressInjector) Inject() error {
 		return fmt.Errorf("unable to join cgroup for process '%d': %w", stressPID, err)
 	}
 
-	// read memory limit from cgroup
-	memoryLimit, err := m.readMemoryLimit()
-	if err != nil {
-		return fmt.Errorf("unable to read memory limit: %w", err)
-	}
+	var memoryLimit, currentUsage int64
+	var err error
 
-	// read current memory usage from cgroup
-	currentUsage, err := m.readMemoryUsage()
-	if err != nil {
-		return fmt.Errorf("unable to read memory usage: %w", err)
+	if m.config.Disruption.Level == types.DisruptionLevelNode {
+		memoryLimit, currentUsage, err = readNodeMemoryStats()
+		if err != nil {
+			return fmt.Errorf("unable to read node memory: %w", err)
+		}
+	} else {
+		// read memory limit from cgroup
+		memoryLimit, err = m.readMemoryLimit()
+		if err != nil {
+			return fmt.Errorf("unable to read memory limit: %w", err)
+		}
+
+		// read current memory usage from cgroup
+		currentUsage, err = m.readMemoryUsage()
+		if err != nil {
+			return fmt.Errorf("unable to read memory usage: %w", err)
+		}
 	}
 
 	targetBytes := (memoryLimit * int64(m.targetPercent) / 100) - currentUsage
