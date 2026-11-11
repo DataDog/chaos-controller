@@ -6,6 +6,7 @@
 package v1beta1
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
 	"strconv"
@@ -278,20 +279,7 @@ func (s *DNSDisruptionSpec) GenerateArgs() []string {
 
 	// Add records
 	if len(s.Records) > 0 {
-		// Format: hostname1:type1:value1:ttl1,hostname2:type2:value2:ttl2,...
-		var recordArgs []string
-
-		for _, record := range s.Records {
-			recordStr := fmt.Sprintf("%s:%s:%s:%d",
-				record.Hostname,
-				strings.ToUpper(record.Record.Type),
-				record.Record.Value,
-				record.Record.TTL,
-			)
-			recordArgs = append(recordArgs, recordStr)
-		}
-
-		args = append(args, "--records", strings.Join(recordArgs, ";"))
+		args = append(args, "--records", encodeDNSRecords(s.Records))
 	}
 
 	// Add port (defaults to 53 if not specified)
@@ -368,4 +356,36 @@ func (s *DNSDisruptionSpec) Explain() []string {
 		port, protocol)
 
 	return []string{"", explanation.String()}
+}
+
+// encodeDNSRecords encodes records for the injector --records flag. Records are
+// joined as hostname:type:value:ttl separated by ";", the format every injector
+// version reads. A field containing ";" cannot be expressed that way, so such
+// record sets are sent as a JSON array instead, which injectors from this
+// version on also accept.
+func encodeDNSRecords(records []DNSRecord) string {
+	legacy := make([]string, 0, len(records))
+	upper := make([]DNSRecord, 0, len(records))
+
+	for _, record := range records {
+		if strings.Contains(record.Hostname, ";") || strings.Contains(record.Record.Value, ";") {
+			legacy = nil
+		}
+
+		record.Record.Type = strings.ToUpper(record.Record.Type)
+		upper = append(upper, record)
+
+		if legacy != nil {
+			legacy = append(legacy, fmt.Sprintf("%s:%s:%s:%d", record.Hostname, record.Record.Type, record.Record.Value, record.Record.TTL))
+		}
+	}
+
+	if legacy != nil {
+		return strings.Join(legacy, ";")
+	}
+
+	// DNSRecord contains only strings and integers, so marshaling cannot fail.
+	encoded, _ := json.Marshal(upper)
+
+	return string(encoded)
 }
