@@ -828,6 +828,7 @@ func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *ch
 		if err = r.Client.Status().Update(ctx, statusCopy); err != nil {
 			return fmt.Errorf("error updating disruption status with run count: %w", err)
 		}
+		instance.ResourceVersion = statusCopy.ResourceVersion
 	}
 
 	return nil
