@@ -68,7 +68,8 @@ func (i *cpuPressureInjector) Inject() error {
 			return fmt.Errorf("unable to read CPUSet for current container: %w", err)
 		}
 
-		percentage = int(math.Floor(float64(i.spec.Count.IntValue()) / float64(assignedCPUs.Size()) * 100))
+		// Round up so integer percentages never understate a requested core count.
+		percentage = int(math.Ceil(float64(i.spec.Count.IntValue()) * 100 / float64(assignedCPUs.Size())))
 
 		i.config.Log.Infow("percentage calculated from number of cpu", tags.ProvidedValueKey, i.spec.Count, tags.AssignedCpusKey, assignedCPUs, tags.PercentageKey, percentage)
 	} else if percentage, err = intstr.GetScaledValueFromIntOrPercent(i.spec.Count, 100, true); err != nil { // if a percentage is provided, keep it as is
