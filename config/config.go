@@ -670,6 +670,10 @@ func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osAr
 		return cfg, fmt.Errorf("cannot enable slack notifier without enabling the user info webhook")
 	}
 
+	if !cfg.Controller.UserInfoHook && len(cfg.Controller.SafeMode.PermittedUserGroups) > 0 {
+		return cfg, fmt.Errorf("cannot enforce permitted user groups without enabling the user info webhook")
+	}
+
 	if cfg.Controller.DefaultDuration > 0 && cfg.Controller.MaxDuration > 0 && cfg.Controller.DefaultDuration > cfg.Controller.MaxDuration {
 		return cfg, fmt.Errorf("defaultDuration of %s, must be less than or equal to the maxDuration %s", cfg.Controller.DefaultDuration, cfg.Controller.MaxDuration)
 	}
