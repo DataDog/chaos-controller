@@ -51,6 +51,8 @@ The injector needs some kernel modules to be enabled to be able to run:
 
 ## Manual cleanup instructions
 
+The injector leaves the target network namespace before returning a cleanup error, including failures to remove qdiscs or iptables rules. The CLI can then retry cleanup without accumulating namespace entries on its thread.
+
 :information_source: All those commands must be executed on the infected host (except for `kubectl`).
 
 ---
