@@ -8,7 +8,7 @@
 
 const volatile pid_t target_pid = 0;
 const volatile pid_t exclude_pid;
-const volatile char filter_path[61];
+const volatile char filter_path[63];
 const volatile pid_t exit_code = ENOENT;
 const volatile int probability = 100;
 
@@ -68,9 +68,9 @@ int injection_disk_failure(struct pt_regs *ctx)
     // Allow only file with the desired prefix.
     struct pt_regs *real_regs = (struct pt_regs *)PT_REGS_PARM1(ctx);
     char *path = (char *)PT_REGS_PARM2_CORE(real_regs);
-    char cmp_path_name[62];
+    char cmp_path_name[63];
     bpf_probe_read(&cmp_path_name, sizeof(cmp_path_name), path);
-    char cmp_expected_path[62];
+    char cmp_expected_path[63];
     bpf_probe_read(cmp_expected_path, sizeof(cmp_expected_path),  (const void *)filter_path);
     int filter_len = (int) (sizeof(filter_path) / sizeof(filter_path[0])) - 1;
    
