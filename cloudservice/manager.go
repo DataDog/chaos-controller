@@ -284,6 +284,11 @@ func (s *cloudServicesProvidersManager) requestIPRangesFromProvider(url string) 
 		return nil, err
 	}
 
+	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
+		_ = response.Body.Close()
+		return nil, fmt.Errorf("unexpected HTTP status %d from %s", response.StatusCode, url)
+	}
+
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		return nil, err
