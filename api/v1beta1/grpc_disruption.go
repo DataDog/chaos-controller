@@ -47,7 +47,8 @@ type GRPCDisruptionSpec struct {
 	// +kubebuilder:validation:Maximum=65535
 	Port int `json:"port" chaos_validate:"gte=1,lte=65535"`
 	// +kubebuilder:validation:Required
-	Endpoints []EndpointAlteration `json:"endpoints" chaos_validate:"required,dive"`
+	// +kubebuilder:validation:MinItems=1
+	Endpoints []EndpointAlteration `json:"endpoints" chaos_validate:"required,min=1,dive"`
 }
 
 // EndpointAlteration represents an endpoint to disrupt and the corresponding error to return
@@ -66,6 +67,10 @@ type EndpointAlteration struct {
 // Validate validates that all alterations have either an error or override to return and at least 1% chance of occurring,
 // as well as that the sum of query percentages of all alterations assigned to a target endpoint do not exceed 100%
 func (s GRPCDisruptionSpec) Validate() (retErr error) {
+	if len(s.Endpoints) == 0 {
+		return fmt.Errorf("GRPC: at least one endpoint alteration must be specified")
+	}
+
 	queryPctByEndpoint := map[string]int{}
 	unquantifiedAlts := map[string]int{}
 
