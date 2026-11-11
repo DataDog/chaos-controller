@@ -190,31 +190,30 @@ func (i *podReplacementInjector) uncordonNode(ctx context.Context) error {
 
 // getTargetPod retrieves the specific target pod for this disruption
 func (i *podReplacementInjector) getTargetPod(ctx context.Context) (*corev1.Pod, error) {
-	// For pod replacement, we want to target the specific pod that was selected
-	// We can identify it using the target pod IP from the disruption config
-	if i.config.Disruption.TargetPodIP == "" {
-		return nil, fmt.Errorf("target pod IP is required for pod replacement disruption")
+	if i.config.Disruption.TargetName == "" {
+		return nil, fmt.Errorf("target pod name is required for pod replacement disruption")
 	}
 
-	// List pods on the target node and find the one with matching IP
-	podList, err := i.k8sClientset.CoreV1().Pods("").List(ctx, metav1.ListOptions{
-		FieldSelector: fmt.Sprintf("spec.nodeName=%s", i.nodeName),
-	})
+	if i.config.Disruption.DisruptionNamespace == "" {
+		return nil, fmt.Errorf("target pod namespace is required for pod replacement disruption")
+	}
+
+	pod, err := i.k8sClientset.CoreV1().Pods(i.config.Disruption.DisruptionNamespace).Get(
+		ctx, i.config.Disruption.TargetName, metav1.GetOptions{},
+	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list pods on node %s: %w", i.nodeName, err)
+		return nil, err
 	}
 
-	// Find the target pod by IP
-	for _, pod := range podList.Items {
-		if pod.Status.PodIP == i.config.Disruption.TargetPodIP &&
-			pod.DeletionTimestamp == nil &&
-			pod.Status.Phase != corev1.PodSucceeded &&
-			pod.Status.Phase != corev1.PodFailed {
-			return &pod, nil
-		}
+	if pod.Spec.NodeName != i.nodeName {
+		return nil, fmt.Errorf("target pod %s is not on node %s", pod.Name, i.nodeName)
 	}
 
-	return nil, fmt.Errorf("target pod with IP %s not found on node %s", i.config.Disruption.TargetPodIP, i.nodeName)
+	if pod.DeletionTimestamp != nil || pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed {
+		return nil, fmt.Errorf("target pod %s is terminating or terminated", pod.Name)
+	}
+
+	return pod, nil
 }
 
 // deletePVCs deletes all PVCs associated with the pods
