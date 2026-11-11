@@ -344,6 +344,21 @@ var _ = Describe("DiskFull", func() {
 			})
 		})
 
+		Context("with dry-run mode and an existing file at the ballast path", func() {
+			BeforeEach(func() {
+				config.Disruption.DryRun = true
+				ballastPath := filepath.Join(tmpDir, ".chaos-diskfull-test-namespace-test-disruption-test-node")
+				Expect(os.WriteFile(ballastPath, []byte("ballast"), 0644)).To(Succeed())
+			})
+
+			It("should leave the file in place", func() {
+				Expect(inj.Clean()).To(Succeed())
+
+				_, statErr := os.Stat(filepath.Join(tmpDir, ".chaos-diskfull-test-namespace-test-disruption-test-node"))
+				Expect(statErr).ToNot(HaveOccurred())
+			})
+		})
+
 		Context("when ballast file does not exist", func() {
 			It("should succeed without error (idempotent)", func() {
 				err := inj.Clean()
