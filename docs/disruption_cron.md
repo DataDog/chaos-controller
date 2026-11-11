@@ -47,6 +47,8 @@ The `.spec.schedule` field is required. The value of that field follows the [Cro
 For instance, `0 12 * * 5` states that the task must be started every Friday at noon.
 To generate CronJob schedule expressions, you can also use web tools like [crontab.guru](https://crontab.guru/).
 
+Interval schedules such as `@every 1h` are anchored to creation time, or to the last scheduled run once one exists. Reconciling or restarting the controller does not reset that interval.
+
 ### Target resource
 The `.spec.targetResource` field specifies which resource to run disruptions against, and is required. Since DisruptionCrons are designed to be semi-permanent, they're best used to target other long-lasting resources. As such, the `.spec.targetResource.kind` field can only be set to either `deployment` or `statefulset`. At runtime, pods from either of these resources are randomly selected for disruption.
 

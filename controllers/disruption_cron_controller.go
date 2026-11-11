@@ -353,13 +353,13 @@ func (r *DisruptionCronReconciler) getNextSchedule(instance *chaosv1beta1.Disrup
 		return time.Time{}, sched.Next(now), nil
 	}
 
-	for t := sched.Next(earliestTime); !t.After(now); t = sched.Next(t) {
-		lastMissed = t
+	for next = sched.Next(earliestTime); !next.After(now); next = sched.Next(next) {
+		lastMissed = next
 	}
 
-	r.handleMetricSinkError(r.MetricsSink.MetricNextScheduledTime(time.Until(sched.Next(now)), DisruptionCronTags))
+	r.handleMetricSinkError(r.MetricsSink.MetricNextScheduledTime(time.Until(next), DisruptionCronTags))
 
-	return lastMissed, sched.Next(now), nil
+	return lastMissed, next, nil
 }
 
 // SetupWithManager setups the current reconciler with the given manager
