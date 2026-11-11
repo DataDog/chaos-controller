@@ -31,6 +31,16 @@ func ContainersChanged(oldPodSpec, newPodSpec *corev1.PodSpec, log *zap.SugaredL
 		return true, newInitContainersHash, newContainersHash, nil
 	}
 
+	// Init containers run sequentially, so their order is part of the change.
+	if len(oldPodSpec.InitContainers) != len(newPodSpec.InitContainers) {
+		return true, newInitContainersHash, newContainersHash, nil
+	}
+	for i := range oldPodSpec.InitContainers {
+		if oldPodSpec.InitContainers[i].Name != newPodSpec.InitContainers[i].Name {
+			return true, newInitContainersHash, newContainersHash, nil
+		}
+	}
+
 	return false, oldInitContainersHash, oldContainersHash, nil
 }
 

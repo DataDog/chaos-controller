@@ -150,6 +150,24 @@ var _ = Describe("ContainersChanged", func() {
 		Expect(changed).To(BeTrue())
 	})
 
+	It("returns true when init containers are reordered", func() {
+		old := makePodSpec([]corev1.Container{makeContainer("prepare", "busybox"), makeContainer("migrate", "busybox")}, nil)
+		new := old.DeepCopy()
+		new.InitContainers[0], new.InitContainers[1] = new.InitContainers[1], new.InitContainers[0]
+		changed, _, _, err := watchers.ContainersChanged(old, new, logger)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(changed).To(BeTrue())
+	})
+
+	It("ignores ordinary container ordering", func() {
+		old := makePodSpec(nil, []corev1.Container{makeContainer("app", "nginx"), makeContainer("sidecar", "envoy")})
+		new := old.DeepCopy()
+		new.Containers[0], new.Containers[1] = new.Containers[1], new.Containers[0]
+		changed, _, _, err := watchers.ContainersChanged(old, new, logger)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(changed).To(BeFalse())
+	})
+
 	It("returns new hashes when changed", func() {
 		old := makePodSpec(nil, []corev1.Container{makeContainer("app", "nginx:1.0")})
 		new := makePodSpec(nil, []corev1.Container{makeContainer("app", "nginx:2.0")})
