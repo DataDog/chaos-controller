@@ -986,6 +986,7 @@ func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Even
 
 			return errors.Join(err, i.config.Netns.Exit())
 		}
+
 		if err := i.config.Netns.Enter(); err != nil {
 			return fmt.Errorf("unable to enter the given container network namespace: %w", err)
 		}
@@ -1005,9 +1006,11 @@ func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Even
 
 		exitErr := i.config.Netns.Exit()
 		watcher.tcFiltersFromPodEndpoints = filters
+
 		if exitErr != nil {
 			return fmt.Errorf("unable to exit the given container network namespace: %w", exitErr)
 		}
+
 		return nil
 	}
 
