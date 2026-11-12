@@ -874,8 +874,10 @@ func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.E
 		return fmt.Errorf("unable to enter the given container network namespace: %w", err)
 	}
 
+	selector := labels.SelectorFromValidatedSet(service.Spec.Selector).String()
+
 	podList, err := i.config.K8sClient.CoreV1().Pods(watcher.watchedServiceSpec.Namespace).List(context.Background(), metav1.ListOptions{
-		LabelSelector: labels.SelectorFromValidatedSet(service.Spec.Selector).String(),
+		LabelSelector: selector,
 	})
 	if err != nil {
 		return fmt.Errorf("error watching the list of pods for the given kubernetes service (%s/%s): %w", service.Namespace, service.Name, err)
@@ -916,6 +918,19 @@ func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.E
 		watcher.tcFiltersFromNamespaceServices, err = i.removeServiceFiltersInList(interfaces, watcher.tcFiltersFromNamespaceServices, nsServicesTcFilters)
 		if err != nil {
 			return err
+		}
+	}
+
+	if selector != watcher.labelServiceSelector {
+		watcher.labelServiceSelector = selector
+		watcher.podsResourceVersion = podList.ResourceVersion
+		watcher.kubernetesPodEndpointsWatcher = nil
+		watcher.podsWithoutIPs = nil
+
+		for _, pod := range podList.Items {
+			if pod.Status.PodIP == "" {
+				watcher.podsWithoutIPs = append(watcher.podsWithoutIPs, pod.Name)
+			}
 		}
 	}
 
@@ -1014,6 +1029,13 @@ func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Even
 func (i *networkDisruptionInjector) watchServiceChanges(ctx context.Context, watcher serviceWatcher, interfaces []string, flowid string) {
 	log := i.config.Log.With(tags.ServiceNamespaceKey, watcher.watchedServiceSpec.Namespace, tags.ServiceNameKey, watcher.watchedServiceSpec.Name)
 
+	var podsWatcher watch.Interface
+	defer func() {
+		if podsWatcher != nil {
+			podsWatcher.Stop()
+		}
+	}()
+
 	for {
 		// We create the watcher channels when it's closed
 		if watcher.kubernetesServiceWatcher == nil {
@@ -1035,9 +1057,15 @@ func (i *networkDisruptionInjector) watchServiceChanges(ctx context.Context, wat
 		}
 
 		if watcher.kubernetesPodEndpointsWatcher == nil {
+			if podsWatcher != nil {
+				podsWatcher.Stop()
+			}
+
 			watcherLog := log.With(tags.WatcherNameKey, "kubernetesPodEndpointsWatcher")
 
-			podsWatcher, err := i.config.K8sClient.CoreV1().Pods(watcher.watchedServiceSpec.Namespace).Watch(context.Background(), metav1.ListOptions{
+			var err error
+
+			podsWatcher, err = i.config.K8sClient.CoreV1().Pods(watcher.watchedServiceSpec.Namespace).Watch(context.Background(), metav1.ListOptions{
 				LabelSelector:       watcher.labelServiceSelector,
 				ResourceVersion:     watcher.podsResourceVersion,
 				AllowWatchBookmarks: true,
