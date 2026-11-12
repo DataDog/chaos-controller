@@ -10,6 +10,8 @@ The `network` field provides an automated way of adding disruptions to the outgo
 
 All of them can be combined in the same disruption resource. To apply these disruptions, the `tc` utility is used and the behavior is different according to the use cases.
 
+HTTP method and path filtering is available only for pod-level disruptions without `onInit`. Admission rejects `network.http` at node level or with `onInit` because those injection paths cannot apply HTTP filters.
+
 <p align="center"><kbd>
     <img src="../docs/img/network_prio/pfifo.png" height=200 width=650 />
 </kbd></p>
