@@ -132,8 +132,9 @@ func (i *podReplacementInjector) cordonNode(ctx context.Context) error {
 	}
 
 	if node.Spec.Unschedulable {
-		i.config.Log.Infow("node is already cordoned")
-		i.cordoned = true
+		// the node has already been cordoned by someone else (e.g. an operator):
+		// do not take ownership of the cordon so it is not undone during cleanup
+		i.config.Log.Infow("node is already cordoned, leaving the cordon in place and not taking ownership of it")
 
 		return nil
 	}
@@ -171,7 +172,10 @@ func (i *podReplacementInjector) uncordonNode(ctx context.Context) error {
 	}
 
 	if !node.Spec.Unschedulable {
+		// someone else already uncordoned it: this injector no longer owns a cordon
+		i.cordoned = false
 		i.config.Log.Infow("node is already uncordoned")
+
 		return nil
 	}
 
@@ -182,6 +186,10 @@ func (i *podReplacementInjector) uncordonNode(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to uncordon node %s: %w", i.nodeName, err)
 	}
+
+	// reset ownership: a later Clean call must not uncordon the node again if
+	// it has been cordoned by someone else in the meantime
+	i.cordoned = false
 
 	i.config.Log.Infow("successfully uncordoned node")
 
