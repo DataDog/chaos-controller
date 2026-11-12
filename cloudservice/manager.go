@@ -279,6 +279,7 @@ func (s *cloudServicesProvidersManager) pullIPRangesPerCloudProvider(ctx context
 				return fmt.Errorf("invalid extra IP range entry %q: IP ranges must not be empty", ipRangeList)
 			}
 		}
+
 		provider.IPRangeInfo.IPRanges[service] = append(provider.IPRangeInfo.IPRanges[service], splitIPRange...)
 	}
 
