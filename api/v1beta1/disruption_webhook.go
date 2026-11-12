@@ -650,7 +650,13 @@ func safetyNetCountNotTooLarge(ctx context.Context, r *Disruption) (bool, string
 	}
 
 	if isPercent {
-		userCountVal = float64(userCountInt) / 100.0 * float64(targetCount)
+		// estimate the targets the way the controller selects them, rounding percentages up
+		selected, err := r.GetTargetsCountAsInt(targetCount, true)
+		if err != nil {
+			return false, "", fmt.Errorf("failed to get count: %w", err)
+		}
+
+		userCountVal = float64(selected)
 	} else {
 		userCountVal = float64(userCountInt)
 	}

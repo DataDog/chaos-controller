@@ -1131,6 +1131,93 @@ var _ = Describe("Disruption Webhook", func() {
 			})
 		})
 
+		When("a percentage count rounds up above the cluster threshold", func() {
+			It("should trigger the safety net", func() {
+				// Arrange: 10 pods in the namespace, all 10 matching the selector, count=61%
+				// the controller rounds up: GetTargetsCountAsInt(10, true) targets 7 pods (70% > 66% cluster threshold)
+				disruption = &Disruption{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      testDisruptionName,
+						Namespace: chaosNamespace,
+					},
+					Spec: DisruptionSpec{
+						Level: chaostypes.DisruptionLevelPod,
+						Count: &intstr.IntOrString{Type: intstr.String, StrVal: "61%"},
+						Selector: labels.Set{
+							"app": "target",
+						},
+					},
+				}
+
+				pods := []client.Object{}
+				for i := range 10 {
+					pods = append(pods, &v1.Pod{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      fmt.Sprintf("pod-%d", i),
+							Namespace: chaosNamespace,
+							Labels:    map[string]string{"app": "target"},
+						},
+						Spec: v1.PodSpec{
+							Containers: []v1.Container{{Image: "pause", Name: "ctn"}},
+						},
+					})
+				}
+
+				apiReader = fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(pods...).Build()
+
+				// Act
+				caught, response, err := safetyNetCountNotTooLarge(context.Background(), disruption)
+
+				// Assert
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(caught).To(BeTrue())
+				Expect(response).To(ContainSubstring("cluster"))
+			})
+		})
+
+		When("a percentage count stays under the cluster threshold after rounding up", func() {
+			It("should not trigger the safety net", func() {
+				// Arrange: 10 pods in the namespace, all 10 matching the selector, count=60%
+				// the controller rounds up: GetTargetsCountAsInt(10, true) targets 6 pods (60% <= 66% cluster threshold)
+				disruption = &Disruption{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      testDisruptionName,
+						Namespace: chaosNamespace,
+					},
+					Spec: DisruptionSpec{
+						Level: chaostypes.DisruptionLevelPod,
+						Count: &intstr.IntOrString{Type: intstr.String, StrVal: "60%"},
+						Selector: labels.Set{
+							"app": "target",
+						},
+					},
+				}
+
+				pods := []client.Object{}
+				for i := range 10 {
+					pods = append(pods, &v1.Pod{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      fmt.Sprintf("pod-%d", i),
+							Namespace: chaosNamespace,
+							Labels:    map[string]string{"app": "target"},
+						},
+						Spec: v1.PodSpec{
+							Containers: []v1.Container{{Image: "pause", Name: "ctn"}},
+						},
+					})
+				}
+
+				apiReader = fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(pods...).Build()
+
+				// Act
+				caught, _, err := safetyNetCountNotTooLarge(context.Background(), disruption)
+
+				// Assert
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(caught).To(BeFalse())
+			})
+		})
+
 		When("targeting nodes at level node", func() {
 			It("should list nodes without error", func() {
 				// Arrange: 3 nodes — verifies node listing works via the cache client
