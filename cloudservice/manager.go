@@ -268,9 +268,18 @@ func (s *cloudServicesProvidersManager) pullIPRangesPerCloudProvider(ctx context
 		// there's no easy way to undo this lowercasing. So we've stored the extra ranges in the following syntax:
 		// "service;iprange;iprange;...;iprange". We split by ';' once to find the service, then split by ';' again to find
 		// all extra ranges
-		serviceAndSplitIPRange := strings.SplitN(ipRangeList, ";", 2)
-		service := serviceAndSplitIPRange[0]
-		splitIPRange := strings.Split(serviceAndSplitIPRange[1], ";")
+		service, ranges, found := strings.Cut(ipRangeList, ";")
+		if !found || strings.TrimSpace(service) == "" {
+			return fmt.Errorf("invalid extra IP range entry %q: expected service;iprange[;iprange...]", ipRangeList)
+		}
+
+		splitIPRange := strings.Split(ranges, ";")
+		for _, ipRange := range splitIPRange {
+			if strings.TrimSpace(ipRange) == "" {
+				return fmt.Errorf("invalid extra IP range entry %q: IP ranges must not be empty", ipRangeList)
+			}
+		}
+
 		provider.IPRangeInfo.IPRanges[service] = append(provider.IPRangeInfo.IPRanges[service], splitIPRange...)
 	}
 
