@@ -875,6 +875,7 @@ func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.E
 	}
 
 	selector := labels.SelectorFromValidatedSet(service.Spec.Selector).String()
+
 	podList, err := i.config.K8sClient.CoreV1().Pods(watcher.watchedServiceSpec.Namespace).List(context.Background(), metav1.ListOptions{
 		LabelSelector: selector,
 	})
@@ -925,6 +926,7 @@ func (i *networkDisruptionInjector) handleKubernetesServiceChanges(event watch.E
 		watcher.podsResourceVersion = podList.ResourceVersion
 		watcher.kubernetesPodEndpointsWatcher = nil
 		watcher.podsWithoutIPs = nil
+
 		for _, pod := range podList.Items {
 			if pod.Status.PodIP == "" {
 				watcher.podsWithoutIPs = append(watcher.podsWithoutIPs, pod.Name)
@@ -1058,9 +1060,11 @@ func (i *networkDisruptionInjector) watchServiceChanges(ctx context.Context, wat
 			if podsWatcher != nil {
 				podsWatcher.Stop()
 			}
+
 			watcherLog := log.With(tags.WatcherNameKey, "kubernetesPodEndpointsWatcher")
 
 			var err error
+
 			podsWatcher, err = i.config.K8sClient.CoreV1().Pods(watcher.watchedServiceSpec.Namespace).Watch(context.Background(), metav1.ListOptions{
 				LabelSelector:       watcher.labelServiceSelector,
 				ResourceVersion:     watcher.podsResourceVersion,
