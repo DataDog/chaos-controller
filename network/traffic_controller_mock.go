@@ -78,6 +78,55 @@ func (_c *TrafficControllerMock_AddBPFFilter_Call) RunAndReturn(run func([]strin
 	return _c
 }
 
+// AddFWFilter provides a mock function with given fields: ifaces, parent, handle, flowid
+func (_m *TrafficControllerMock) AddFWFilter(ifaces []string, parent string, handle string, flowid string) error {
+	ret := _m.Called(ifaces, parent, handle, flowid)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddFWFilter")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func([]string, string, string, string) error); ok {
+		r0 = rf(ifaces, parent, handle, flowid)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// TrafficControllerMock_AddFWFilter_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddFWFilter'
+type TrafficControllerMock_AddFWFilter_Call struct {
+	*mock.Call
+}
+
+// AddFWFilter is a helper method to define mock.On call
+//   - ifaces []string
+//   - parent string
+//   - handle string
+//   - flowid string
+func (_e *TrafficControllerMock_Expecter) AddFWFilter(ifaces interface{}, parent interface{}, handle interface{}, flowid interface{}) *TrafficControllerMock_AddFWFilter_Call {
+	return &TrafficControllerMock_AddFWFilter_Call{Call: _e.mock.On("AddFWFilter", ifaces, parent, handle, flowid)}
+}
+
+func (_c *TrafficControllerMock_AddFWFilter_Call) Run(run func(ifaces []string, parent string, handle string, flowid string)) *TrafficControllerMock_AddFWFilter_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]string), args[1].(string), args[2].(string), args[3].(string))
+	})
+	return _c
+}
+
+func (_c *TrafficControllerMock_AddFWFilter_Call) Return(_a0 error) *TrafficControllerMock_AddFWFilter_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *TrafficControllerMock_AddFWFilter_Call) RunAndReturn(run func([]string, string, string, string) error) *TrafficControllerMock_AddFWFilter_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // AddFilter provides a mock function with given fields: ifaces, parent, handle, srcIP, dstIP, srcPort, dstPort, prot, state, flowid
 func (_m *TrafficControllerMock) AddFilter(ifaces []string, parent string, handle string, srcIP *net.IPNet, dstIP *net.IPNet, srcPort int, dstPort int, prot protocol, state connState, flowid string) (uint32, error) {
 	ret := _m.Called(ifaces, parent, handle, srcIP, dstIP, srcPort, dstPort, prot, state, flowid)
@@ -139,55 +188,6 @@ func (_c *TrafficControllerMock_AddFilter_Call) Return(_a0 uint32, _a1 error) *T
 }
 
 func (_c *TrafficControllerMock_AddFilter_Call) RunAndReturn(run func([]string, string, string, *net.IPNet, *net.IPNet, int, int, protocol, connState, string) (uint32, error)) *TrafficControllerMock_AddFilter_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// AddFlowerFilter provides a mock function with given fields: ifaces, parent, handle, flowid
-func (_m *TrafficControllerMock) AddFlowerFilter(ifaces []string, parent string, handle string, flowid string) error {
-	ret := _m.Called(ifaces, parent, handle, flowid)
-
-	if len(ret) == 0 {
-		panic("no return value specified for AddFlowerFilter")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func([]string, string, string, string) error); ok {
-		r0 = rf(ifaces, parent, handle, flowid)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// TrafficControllerMock_AddFlowerFilter_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddFlowerFilter'
-type TrafficControllerMock_AddFlowerFilter_Call struct {
-	*mock.Call
-}
-
-// AddFlowerFilter is a helper method to define mock.On call
-//   - ifaces []string
-//   - parent string
-//   - handle string
-//   - flowid string
-func (_e *TrafficControllerMock_Expecter) AddFlowerFilter(ifaces interface{}, parent interface{}, handle interface{}, flowid interface{}) *TrafficControllerMock_AddFlowerFilter_Call {
-	return &TrafficControllerMock_AddFlowerFilter_Call{Call: _e.mock.On("AddFlowerFilter", ifaces, parent, handle, flowid)}
-}
-
-func (_c *TrafficControllerMock_AddFlowerFilter_Call) Run(run func(ifaces []string, parent string, handle string, flowid string)) *TrafficControllerMock_AddFlowerFilter_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].([]string), args[1].(string), args[2].(string), args[3].(string))
-	})
-	return _c
-}
-
-func (_c *TrafficControllerMock_AddFlowerFilter_Call) Return(_a0 error) *TrafficControllerMock_AddFlowerFilter_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *TrafficControllerMock_AddFlowerFilter_Call) RunAndReturn(run func([]string, string, string, string) error) *TrafficControllerMock_AddFlowerFilter_Call {
 	_c.Call.Return(run)
 	return _c
 }

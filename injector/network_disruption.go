@@ -511,8 +511,8 @@ func (i *networkDisruptionInjector) applyOperations() error {
 				return fmt.Errorf("could not update the configuration of the bpf-network-tc-filter filter: %w", err)
 			}
 
-			// create flower filter to classify packets based on their mark
-			if err := i.config.TrafficController.AddFlowerFilter(interfaces, "4:0", types.InjectorCgroupClassID, "4:2"); err != nil {
+			// create fw filter to classify packets based on their mark
+			if err := i.config.TrafficController.AddFWFilter(interfaces, "4:0", types.InjectorCgroupClassID, "4:2"); err != nil {
 				return fmt.Errorf("can't create the fw filter: %w", err)
 			}
 
@@ -526,8 +526,8 @@ func (i *networkDisruptionInjector) applyOperations() error {
 				return fmt.Errorf("can't create a new qdisc: %w", err)
 			}
 
-			// create flower filter to classify packets based on their mark
-			if err := i.config.TrafficController.AddFlowerFilter(interfaces, "2:0", types.InjectorCgroupClassID, "2:2"); err != nil {
+			// create fw filter to classify packets based on their mark
+			if err := i.config.TrafficController.AddFWFilter(interfaces, "2:0", types.InjectorCgroupClassID, "2:2"); err != nil {
 				return fmt.Errorf("can't create the fw filter: %w", err)
 			}
 			// parent 2:2 refers to the 2nd band of the 2nd prio qdisc
