@@ -9,7 +9,7 @@ variables:
   CONTROLLER_IMAGE_NAME: chaos-controller
   INJECTOR_IMAGE_NAME: chaos-injector
   HANDLER_IMAGE_NAME: chaos-handler
-  DD_PKG_IMAGE: "registry.ddbuild.io/agent-delivery/dd-pkg:v0.9.4"
+  DD_PKG_IMAGE: "registry.ddbuild.io/agent-delivery/dd-pkg@sha256:d17807b4184af571f80b2fe48b0b84b550d39a88fe27dd518a4015ff774867c9"
   SLACK_NOTIFIER_IMAGE: "registry.ddbuild.io/slack-notifier:v143950606-3639816-sdm-gbi-noble@sha256:29f990ce735597cbe3a00b6846ddc6723ecc82f6e8c8772cf99b5e662d7759d1"
   # Increase CPU and memory resources to speed up the build
   KUBERNETES_CPU_REQUEST: "4"
