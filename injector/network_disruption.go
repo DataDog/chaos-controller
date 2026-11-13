@@ -7,6 +7,7 @@ package injector
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"net"
@@ -958,6 +959,57 @@ func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Even
 	// at the right resource already computed.
 	if event.Type == watch.Bookmark {
 		watcher.podsResourceVersion = pod.ResourceVersion
+
+		return nil
+	}
+
+	if percentage := watcher.watchedServiceSpec.Percentage; percentage != nil && *percentage > 0 && *percentage < 100 {
+		// Selection depends on the complete endpoint set, not just this event.
+		// Listing also handles IP assignment and events superseded by newer changes.
+		pods, err := i.config.K8sClient.CoreV1().Pods(watcher.watchedServiceSpec.Namespace).List(context.Background(), metav1.ListOptions{
+			LabelSelector: watcher.labelServiceSelector,
+		})
+		if err != nil {
+			// the caller rebuilds the watcher from an empty list: remove the tracked
+			// filters inside the target network namespace first
+			err = fmt.Errorf("error listing pods for service percentage selection: %w", err)
+
+			if enterErr := i.config.Netns.Enter(); enterErr != nil {
+				return errors.Join(err, enterErr)
+			}
+
+			if _, cleanErr := i.removeServiceFiltersInList(interfaces, watcher.tcFiltersFromPodEndpoints, watcher.tcFiltersFromPodEndpoints); cleanErr != nil {
+				err = errors.Join(err, cleanErr)
+			}
+
+			watcher.tcFiltersFromPodEndpoints = nil
+
+			return errors.Join(err, i.config.Netns.Exit())
+		}
+
+		if err := i.config.Netns.Enter(); err != nil {
+			return fmt.Errorf("unable to enter the given container network namespace: %w", err)
+		}
+
+		filters, err := i.handlePodEndpointsServiceFiltersOnKubernetesServiceChanges(watcher.watchedServiceSpec, watcher.tcFiltersFromPodEndpoints, pods.Items, watcher.servicePorts, interfaces, flowid)
+		if err != nil {
+			// remove the tracked filters while still in the target network namespace;
+			// the caller rebuilds the watcher from an empty list
+			if _, cleanErr := i.removeServiceFiltersInList(interfaces, watcher.tcFiltersFromPodEndpoints, watcher.tcFiltersFromPodEndpoints); cleanErr != nil {
+				err = errors.Join(err, cleanErr)
+			}
+
+			watcher.tcFiltersFromPodEndpoints = nil
+
+			return errors.Join(err, i.config.Netns.Exit())
+		}
+
+		exitErr := i.config.Netns.Exit()
+		watcher.tcFiltersFromPodEndpoints = filters
+
+		if exitErr != nil {
+			return fmt.Errorf("unable to exit the given container network namespace: %w", exitErr)
+		}
 
 		return nil
 	}
