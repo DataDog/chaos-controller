@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -18,16 +19,22 @@ import (
 // the device
 type Informer interface {
 	Major() int
+	Minor() int
 	Source() string
 }
 
 type disk struct {
 	major  int
+	minor  int
 	source string
 }
 
 // FromPath returns a disk informer from the given path
 func FromPath(path string) (Informer, error) {
+	return fromPath(path, "/sys/dev/block")
+}
+
+func fromPath(path, sysfs string) (Informer, error) {
 	// ensure the file exists before going further
 	if _, err := os.Stat(path); err != nil {
 		return nil, err
@@ -48,6 +55,9 @@ func FromPath(path string) (Informer, error) {
 	for scanner.Scan() {
 		lines = append(lines, scanner.Text())
 	}
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("error reading df output: %w", err)
+	}
 
 	// we expect 2 lines here, the first one being the header
 	if len(lines) != 2 {
@@ -57,7 +67,7 @@ func FromPath(path string) (Informer, error) {
 	// get the second line (and get rid of the header)
 	device := lines[1]
 
-	// get device major identifier
+	// get device major and minor identifiers
 	ls := exec.Command("ls", "-lH", device)
 
 	out, err = ls.CombinedOutput()
@@ -70,29 +80,80 @@ func FromPath(path string) (Informer, error) {
 	// example:
 	//	# ls -lH /dev/sda1
 	//	brw-rw---- 1 root disk 8, 1 Jul  7 09:51 /dev/sda1
-	lsParsed := strings.Split(string(out), " ")
-	if len(lsParsed) < 10 {
-		return nil, fmt.Errorf("unexpected ls output: %s", string(out))
+	lsParsed := strings.Fields(string(out))
+	if len(lsParsed) < 10 || !strings.HasPrefix(lsParsed[0], "b") || !strings.HasSuffix(lsParsed[4], ",") {
+		return nil, fmt.Errorf("unexpected ls output: %s", out)
 	}
 
-	// 4th field is the major number with a coma (cf. ls format above)
-	// example: 8,
-	majorS := strings.TrimSuffix(lsParsed[4], ",")
-
-	// cast major identifier to a number
-	major, err := strconv.Atoi(majorS)
+	major, minor, err := parseDeviceID(strings.TrimSuffix(lsParsed[4], ",") + ":" + lsParsed[5])
 	if err != nil {
-		return nil, fmt.Errorf("unexpected device major identifier (%s): %w", majorS, err)
+		return nil, err
+	}
+
+	major, minor, err = wholeDevice(sysfs, major, minor)
+	if err != nil {
+		return nil, err
 	}
 
 	return disk{
 		major:  major,
+		minor:  minor,
 		source: device,
 	}, nil
 }
 
+// wholeDevice resolves partitions to their parent disk, as blkcg requires a whole device.
+func wholeDevice(sysfs string, major, minor int) (int, int, error) {
+	device, err := filepath.EvalSymlinks(filepath.Join(sysfs, fmt.Sprintf("%d:%d", major, minor)))
+	if err != nil {
+		return 0, 0, fmt.Errorf("error resolving block device %d:%d: %w", major, minor, err)
+	}
+
+	if _, err := os.Stat(filepath.Join(device, "partition")); os.IsNotExist(err) {
+		return major, minor, nil
+	} else if err != nil {
+		return 0, 0, fmt.Errorf("error checking block device partition: %w", err)
+	}
+
+	parent := filepath.Join(filepath.Dir(device), "dev")
+	out, err := os.ReadFile(parent)
+	if err != nil {
+		return 0, 0, fmt.Errorf("error reading parent block device %s: %w", parent, err)
+	}
+
+	major, minor, err = parseDeviceID(strings.TrimSpace(string(out)))
+	if err != nil {
+		return 0, 0, fmt.Errorf("error reading parent block device %s: %w", parent, err)
+	}
+
+	return major, minor, nil
+}
+
+func parseDeviceID(id string) (int, int, error) {
+	fields := strings.Split(id, ":")
+	if len(fields) != 2 {
+		return 0, 0, fmt.Errorf("unexpected block device identifier: %q", id)
+	}
+
+	major, err := strconv.ParseUint(fields[0], 10, 32)
+	if err != nil {
+		return 0, 0, fmt.Errorf("unexpected device major identifier (%s): %w", fields[0], err)
+	}
+
+	minor, err := strconv.ParseUint(fields[1], 10, 32)
+	if err != nil {
+		return 0, 0, fmt.Errorf("unexpected device minor identifier (%s): %w", fields[1], err)
+	}
+
+	return int(major), int(minor), nil
+}
+
 func (d disk) Major() int {
 	return d.major
+}
+
+func (d disk) Minor() int {
+	return d.minor
 }
 
 func (d disk) Source() string {
