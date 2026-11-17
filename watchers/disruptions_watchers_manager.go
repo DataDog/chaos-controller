@@ -8,6 +8,7 @@ package watchers
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -52,8 +53,17 @@ type disruptionsWatchersManager struct {
 	controller       controller.Controller
 	factory          Factory
 	reader           client.Reader
-	watchersManagers WatcherManagers
-	managerUIDs      map[types.NamespacedName]types.UID
+	mu               sync.RWMutex
+	watchersManagers map[types.NamespacedName]*watcherManagerEntry
+}
+
+// watcherManagerEntry keeps the manager and object identity together. Cleanup of a
+// detached entry waits for its in-flight creators without blocking other entries.
+type watcherManagerEntry struct {
+	manager  Manager
+	uid      types.UID
+	creators int
+	removed  bool
 }
 
 type WatcherName string
@@ -71,7 +81,7 @@ var watchersNames = []WatcherName{
 }
 
 // CreateAllWatchers creates all the Watchers associated with the given Disruption.
-func (d disruptionsWatchersManager) CreateAllWatchers(ctx context.Context, disruption *v1beta1.Disruption, watcherManagerMock Manager, cacheMock k8scontrollercache.Cache) error {
+func (d *disruptionsWatchersManager) CreateAllWatchers(ctx context.Context, disruption *v1beta1.Disruption, watcherManagerMock Manager, cacheMock k8scontrollercache.Cache) error {
 	// Check that the disruption object has a name and namespace
 	if disruption.Name == "" || disruption.Namespace == "" {
 		return fmt.Errorf("the disruption is not valid. It should contain a name and a namespace")
@@ -80,26 +90,9 @@ func (d disruptionsWatchersManager) CreateAllWatchers(ctx context.Context, disru
 	// Get the namespaced name of the disruption
 	disruptionNamespacedName := getDisruptionNamespacedName(disruption)
 
-	// Evict the cached manager if the disruption was recreated under the same namespace/name.
-	// A UID mismatch means the Kubernetes object is new; the old cached manager must not be reused.
-	if cachedUID, ok := d.managerUIDs[disruptionNamespacedName]; ok && cachedUID != disruption.UID {
-		d.watchersManagers[disruptionNamespacedName].RemoveAllWatchers()
-		delete(d.watchersManagers, disruptionNamespacedName)
-		delete(d.managerUIDs, disruptionNamespacedName)
-	}
-
-	var watcherManager Manager
-
-	// If a mock watcher manager was passed in, use it
-	if watcherManagerMock == nil {
-		watcherManager = d.getWatcherManager(ctx, disruptionNamespacedName)
-	} else {
-		watcherManager = watcherManagerMock
-	}
-
-	// Save the watcher manager for later use
-	d.watchersManagers[disruptionNamespacedName] = watcherManager
-	d.managerUIDs[disruptionNamespacedName] = disruption.UID
+	entry := d.acquireManager(disruptionNamespacedName, disruption.UID, watcherManagerMock)
+	defer d.releaseManager(entry)
+	watcherManager := entry.manager
 
 	// Calculate a hash of the disruption spec (excluding the count field)
 	disSpecHash, err := disruption.Spec.HashNoCount()
@@ -139,7 +132,7 @@ func (d disruptionsWatchersManager) CreateAllWatchers(ctx context.Context, disru
 }
 
 // RemoveAllWatchers removes all the Watchers associated with the given Disruption.
-func (d disruptionsWatchersManager) RemoveAllWatchers(ctx context.Context, disruption *v1beta1.Disruption) {
+func (d *disruptionsWatchersManager) RemoveAllWatchers(ctx context.Context, disruption *v1beta1.Disruption) {
 	ctx, span := otel.Tracer(tracer.InstrumentationScopeDisruption).Start(ctx, "disruption.watchers.remove_all_for_disruption",
 		trace.WithSpanKind(trace.SpanKindInternal),
 		trace.WithAttributes(
@@ -151,37 +144,26 @@ func (d disruptionsWatchersManager) RemoveAllWatchers(ctx context.Context, disru
 	logger := cLog.FromContext(ctx)
 	namespacedName := getDisruptionNamespacedName(disruption)
 
-	// Get the Watcher Manager associated with the Disruption.
-	watcherManager := d.watchersManagers[namespacedName]
-
-	// If the Watcher Manager does not exist just do nothing.
-	if watcherManager == nil {
-		span.SetAttributes(attribute.Bool(attributes.WatchersManagerFound, false))
+	found := d.removeManager(namespacedName, nil)
+	span.SetAttributes(attribute.Bool(attributes.WatchersManagerFound, found))
+	if !found {
 		logger.Debugw("could not remove all watchers")
-
 		return
 	}
-
-	span.SetAttributes(attribute.Bool(attributes.WatchersManagerFound, true))
-
-	watcherManager.RemoveAllWatchers()
-
-	// Remove the Watcher Manager from the map.
-	delete(d.watchersManagers, namespacedName)
-	delete(d.managerUIDs, namespacedName)
 
 	logger.Infow("all watchers have been removed")
 }
 
 // RemoveAllOrphanWatchers removes all Watchers associated with a none existing Disruption.
-func (d disruptionsWatchersManager) RemoveAllOrphanWatchers(ctx context.Context) error {
-	if len(d.watchersManagers) == 0 {
+func (d *disruptionsWatchersManager) RemoveAllOrphanWatchers(ctx context.Context) error {
+	managers := d.snapshotManagers()
+	if len(managers) == 0 {
 		return nil
 	}
 
 	ctx, span := otel.Tracer(tracer.InstrumentationScopeDisruption).Start(ctx, "disruption.watchers.scan_orphan_managers",
 		trace.WithSpanKind(trace.SpanKindInternal),
-		trace.WithAttributes(attribute.Int(attributes.WatchersStoredManagers, len(d.watchersManagers))))
+		trace.WithAttributes(attribute.Int(attributes.WatchersStoredManagers, len(managers))))
 	defer endWatcherSpan(span, nil)
 
 	var orphansRemoved int
@@ -206,7 +188,7 @@ func (d disruptionsWatchersManager) RemoveAllOrphanWatchers(ctx context.Context)
 	}
 
 	// For each stored watcher manager, remove it if its disruption no longer exists
-	for namespacedName, watchersManager := range d.watchersManagers {
+	for namespacedName, entry := range managers {
 		if _, found := existing[namespacedName]; found {
 			continue
 		}
@@ -218,13 +200,12 @@ func (d disruptionsWatchersManager) RemoveAllOrphanWatchers(ctx context.Context)
 				attribute.String(attributes.DisruptionNamespace, namespacedName.Namespace),
 			))
 
-		watchersManager.RemoveAllWatchers()
-		delete(d.watchersManagers, namespacedName)
-		delete(d.managerUIDs, namespacedName)
-
-		orphansRemoved++
-
+		removed := d.removeManager(namespacedName, entry)
 		endWatcherSpan(dropSpan, nil)
+		if !removed {
+			continue
+		}
+		orphansRemoved++
 
 		cLog.FromContext(dropCtx).Infow("all watchers have been removed",
 			tags.WatcherNameKey, namespacedName.Name,
@@ -238,9 +219,8 @@ func (d disruptionsWatchersManager) RemoveAllOrphanWatchers(ctx context.Context)
 // RemoveWatchersForDisruption removes all watchers for the given disruption without scanning the full cache.
 // It is called from the reconcile NotFound path so cleanup happens immediately, rather than waiting for
 // the 5-minute orphan sweep that runs in the background.
-func (d disruptionsWatchersManager) RemoveWatchersForDisruption(ctx context.Context, namespacedName types.NamespacedName) {
-	watcherManager, ok := d.watchersManagers[namespacedName]
-	if !ok {
+func (d *disruptionsWatchersManager) RemoveWatchersForDisruption(ctx context.Context, namespacedName types.NamespacedName) {
+	if !d.removeManager(namespacedName, nil) {
 		return
 	}
 
@@ -252,10 +232,6 @@ func (d disruptionsWatchersManager) RemoveWatchersForDisruption(ctx context.Cont
 		))
 	defer endWatcherSpan(span, nil)
 
-	watcherManager.RemoveAllWatchers()
-	delete(d.watchersManagers, namespacedName)
-	delete(d.managerUIDs, namespacedName)
-
 	cLog.FromContext(ctx).Infow("targeted watcher cleanup completed",
 		tags.WatcherNameKey, namespacedName.Name,
 		tags.WatcherNamespaceKey, namespacedName.Namespace,
@@ -264,24 +240,23 @@ func (d disruptionsWatchersManager) RemoveWatchersForDisruption(ctx context.Cont
 
 // RemoveAllExpiredWatchers loops through all the watcher managers in the disruptionsWatchersManager
 // and removes all the expired watchers for each watcher manager.
-func (d disruptionsWatchersManager) RemoveAllExpiredWatchers(ctx context.Context) {
-	for _, watchersManager := range d.watchersManagers {
-		watchersManager.RemoveExpiredWatchers()
+func (d *disruptionsWatchersManager) RemoveAllExpiredWatchers(ctx context.Context) {
+	for _, entry := range d.snapshotManagers() {
+		entry.manager.RemoveExpiredWatchers()
 	}
 }
 
 // NewDisruptionsWatchersManager return a new DisruptionsWatchersManager instance
 func NewDisruptionsWatchersManager(controller controller.Controller, factory Factory, reader client.Reader) DisruptionsWatchersManager {
-	return disruptionsWatchersManager{
-		watchersManagers: WatcherManagers{},
-		managerUIDs:      map[types.NamespacedName]types.UID{},
+	return &disruptionsWatchersManager{
+		watchersManagers: map[types.NamespacedName]*watcherManagerEntry{},
 		controller:       controller,
 		factory:          factory,
 		reader:           reader,
 	}
 }
 
-func (d disruptionsWatchersManager) addWatcher(disruption *v1beta1.Disruption, watcherName WatcherName, watcherNameHash string, cacheMock k8scontrollercache.Cache, watcherManager Manager) error {
+func (d *disruptionsWatchersManager) addWatcher(disruption *v1beta1.Disruption, watcherName WatcherName, watcherNameHash string, cacheMock k8scontrollercache.Cache, watcherManager Manager) error {
 	var (
 		newWatcher Watcher
 		err        error
@@ -315,16 +290,70 @@ func getDisruptionNamespacedName(disruption *v1beta1.Disruption) types.Namespace
 	}
 }
 
-func (d disruptionsWatchersManager) getWatcherManager(ctx context.Context, disruptionNamespacedName types.NamespacedName) Manager {
-	// If we have already created a watcher manager for this disruption, use it
-	if cachedWatcherManager := d.watchersManagers[disruptionNamespacedName]; cachedWatcherManager != nil {
-		cLog.FromContext(ctx).Debugw("Load watcher manager from the cache")
-
-		return cachedWatcherManager
+// acquireManager publishes the manager before startup and tracks creators so a
+// concurrent removal cannot leave a newly started watcher in a detached manager.
+func (d *disruptionsWatchersManager) acquireManager(name types.NamespacedName, uid types.UID, supplied Manager) *watcherManagerEntry {
+	d.mu.Lock()
+	entry := d.watchersManagers[name]
+	var obsolete Manager
+	if entry != nil && entry.uid != uid {
+		entry.removed = true
+		if entry.creators == 0 {
+			obsolete = entry.manager
+		}
+		entry = nil
 	}
+	if entry == nil || supplied != nil {
+		manager := supplied
+		if manager == nil {
+			manager = NewManager(d.reader, d.controller)
+		}
+		entry = &watcherManagerEntry{manager: manager, uid: uid}
+		d.watchersManagers[name] = entry
+	}
+	entry.creators++
+	d.mu.Unlock()
+	if obsolete != nil {
+		obsolete.RemoveAllWatchers()
+	}
+	return entry
+}
 
-	cLog.FromContext(ctx).Debugw("Creating a new watcher manager")
+func (d *disruptionsWatchersManager) releaseManager(entry *watcherManagerEntry) {
+	d.mu.Lock()
+	entry.creators--
+	cleanup := entry.removed && entry.creators == 0
+	d.mu.Unlock()
+	if cleanup {
+		entry.manager.RemoveAllWatchers()
+	}
+}
 
-	// Otherwise, create a new watcher manager
-	return NewManager(d.reader, d.controller)
+func (d *disruptionsWatchersManager) snapshotManagers() map[types.NamespacedName]*watcherManagerEntry {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	entries := make(map[types.NamespacedName]*watcherManagerEntry, len(d.watchersManagers))
+	for name, entry := range d.watchersManagers {
+		entries[name] = entry
+	}
+	return entries
+}
+
+// removeManager claims cleanup only if the snapshot still identifies this entry.
+// In particular, an orphan List response cannot evict a concurrently replaced manager.
+func (d *disruptionsWatchersManager) removeManager(name types.NamespacedName, expected *watcherManagerEntry) bool {
+	d.mu.Lock()
+	entry := d.watchersManagers[name]
+	if entry == nil || (expected != nil && entry != expected) {
+		d.mu.Unlock()
+		return false
+	}
+	delete(d.watchersManagers, name)
+	entry.removed = true
+	cleanup := entry.creators == 0
+	d.mu.Unlock()
+	if cleanup {
+		entry.manager.RemoveAllWatchers()
+	}
+	return true
 }
