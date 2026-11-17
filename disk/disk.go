@@ -55,6 +55,7 @@ func fromPath(path, sysfs string) (Informer, error) {
 	for scanner.Scan() {
 		lines = append(lines, scanner.Text())
 	}
+
 	if err := scanner.Err(); err != nil {
 		return nil, fmt.Errorf("error reading df output: %w", err)
 	}
@@ -116,6 +117,7 @@ func wholeDevice(sysfs string, major, minor int) (int, int, error) {
 	}
 
 	parent := filepath.Join(filepath.Dir(device), "dev")
+
 	out, err := os.ReadFile(parent)
 	if err != nil {
 		return 0, 0, fmt.Errorf("error reading parent block device %s: %w", parent, err)
