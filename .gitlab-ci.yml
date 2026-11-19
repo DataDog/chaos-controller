@@ -161,7 +161,7 @@ release-prod-tag:
   tags: ["arch:amd64"]
   variables:
     IMAGE_SUFFIX: ""
-    IMG_REGISTRIES: "dockerhub"
+    IMG_REGISTRIES: "dev"
     PUBLIC_IMAGES_PUBLISH_TIMEOUT: "1800"
   script:
     - |
