@@ -18,6 +18,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/watch"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
@@ -693,10 +694,23 @@ func (i *networkDisruptionInjector) buildServiceFiltersFromPod(pod v1.Pod, servi
 	endpointsToWatch := []tcServiceFilter{}
 
 	for _, port := range servicePorts {
+		targetPort, err := resolveServicePortTarget(port, pod)
+		if err != nil {
+			// a target port we cannot resolve must not become port 0: a tc filter
+			// with no port would disrupt every port of the endpoint
+			i.config.Log.Warnw("could not resolve service target port for pod, skipping port",
+				tags.ErrorKey, err,
+				tags.TargetPodNameKey, pod.Name,
+				tags.PortKey, port.TargetPort.String(),
+			)
+
+			continue
+		}
+
 		filter := tcServiceFilter{
 			service: networkDisruptionService{
 				ip:       endpointIP,
-				port:     int(port.TargetPort.IntVal),
+				port:     targetPort,
 				protocol: port.Protocol,
 			},
 		}
@@ -707,6 +721,27 @@ func (i *networkDisruptionInjector) buildServiceFiltersFromPod(pod v1.Pod, servi
 	}
 
 	return endpointsToWatch
+}
+
+// resolveServicePortTarget returns the port number a service port targets on the given pod.
+// A numeric target port is used as is; a named target port is resolved against the
+// container ports declared by the pod. It returns an error if the name cannot be resolved.
+func resolveServicePortTarget(servicePort v1.ServicePort, pod v1.Pod) (int, error) {
+	if servicePort.TargetPort.Type == intstr.String {
+		for _, container := range pod.Spec.Containers {
+			for _, containerPort := range container.Ports {
+				if containerPort.Name == servicePort.TargetPort.StrVal &&
+					containerPort.Protocol == servicePort.Protocol &&
+					containerPort.ContainerPort != 0 {
+					return int(containerPort.ContainerPort), nil
+				}
+			}
+		}
+
+		return 0, fmt.Errorf("target port %q is not declared as a %s container port in any container of the pod", servicePort.TargetPort.StrVal, servicePort.Protocol)
+	}
+
+	return int(servicePort.TargetPort.IntVal), nil
 }
 
 // buildServiceFiltersFromService builds a list of tc filters per service using the service ports
@@ -953,7 +988,15 @@ func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Even
 
 	tcFiltersFromPod := i.buildServiceFiltersFromPod(*pod, watcher.servicePorts)
 	if len(tcFiltersFromPod) == 0 {
-		return fmt.Errorf("unable to find service %s/%s endpoints to filter", watcher.watchedServiceSpec.Name, watcher.watchedServiceSpec.Namespace)
+		if len(watcher.servicePorts) == 0 {
+			return fmt.Errorf("unable to find service %s/%s endpoints to filter", watcher.watchedServiceSpec.Name, watcher.watchedServiceSpec.Namespace)
+		}
+
+		// none of the service's named target ports exists on this pod, so it
+		// serves no traffic to filter
+		i.config.Log.Infow("pod exposes none of the service target ports, nothing to filter", tags.DestinationPodNameKey, pod.Name)
+
+		return i.config.Netns.Exit()
 	}
 
 	switch event.Type {
