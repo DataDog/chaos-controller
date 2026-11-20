@@ -640,6 +640,45 @@ var _ = Describe("Failure", func() {
 			})
 		})
 
+		Context("HTTP filter scope validation", func() {
+			BeforeEach(func() {
+				spec.HTTP = &v1beta1.NetworkHTTPFilters{
+					Methods: v1beta1.HTTPMethods{http.MethodGet},
+					Paths:   v1beta1.HTTPPaths{"/health"},
+				}
+			})
+
+			checkRejected := func() {
+				Expect(err).NotTo(HaveOccurred())
+				// Confirm that these scopes install the fault without any HTTP classifier.
+				tc.AssertNumberOfCalls(GinkgoT(), "AddNetem", 1)
+				tc.AssertNumberOfCalls(GinkgoT(), "AddBPFFilter", 0)
+				tc.AssertNumberOfCalls(GinkgoT(), "ConfigBPFFilter", 0)
+				count := intstr.FromInt(1)
+				candidate := v1beta1.DisruptionSpec{
+					Count:   &count,
+					Level:   config.Disruption.Level,
+					OnInit:  config.Disruption.OnInit,
+					Network: &spec,
+				}
+				Expect(candidate.ValidateSelectorsOptional(false)).To(MatchError(ContainSubstring("network HTTP filters require pod level without onInit")))
+			}
+
+			Context("at node level", func() {
+				BeforeEach(func() {
+					config.Disruption.Level = chaostypes.DisruptionLevelNode
+				})
+				It("rejects filters the injector cannot honor", checkRejected)
+			})
+
+			Context("on pod initialization", func() {
+				BeforeEach(func() {
+					config.Disruption.OnInit = true
+				})
+				It("rejects filters the injector cannot honor", checkRejected)
+			})
+		})
+
 		Context("with allowed hosts", func() {
 			BeforeEach(func() {
 				spec.AllowedHosts = []v1beta1.NetworkDisruptionHostSpec{
