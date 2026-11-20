@@ -666,6 +666,11 @@ func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osAr
 		return cfg, fmt.Errorf("unable to parse main flags: %w", err)
 	}
 
+	// Group authorization trusts the identity stamped by the user info webhook.
+	if !cfg.Controller.UserInfoHook && len(cfg.Controller.SafeMode.PermittedUserGroups) > 0 {
+		return cfg, fmt.Errorf("cannot configure permitted user groups without enabling the user info webhook")
+	}
+
 	if !cfg.Controller.UserInfoHook && cfg.Controller.Notifiers.Slack.Enabled {
 		return cfg, fmt.Errorf("cannot enable slack notifier without enabling the user info webhook")
 	}
