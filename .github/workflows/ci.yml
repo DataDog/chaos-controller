@@ -46,23 +46,24 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-      - name: Get Datadog credentials
-        id: dd-sts
+      - name: Get Datadog credentials via datadog-wif
+        id: dd-wif
         if: github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'push'
-        uses: DataDog/dd-sts-action@2e8187910199bd93129520183c093e19aa585c75 # v1.0.0
+        uses: DataDog/datadog-workload-identity-federation-github-action/intake@c9456387851248e0a5452f99085b16ad14fc3acb # v1.0.0
         with:
-          policy: chaos-controller
+          org_uuid: ${{ secrets.DATADOG_ORG_UUID }}
+          site: datadoghq.com
       - name: Install tools
         run: make -j4 install-controller-gen install-yamlfmt install-kubebuilder install-datadog-ci
       - name: Run unit tests
         run: make test GINKGO_PROCS=2
         env:
-          DATADOG_API_KEY: ${{ steps.dd-sts.outputs.api_key || '' }}
+          DATADOG_API_KEY: ${{ steps.dd-wif.outputs.api_key || '' }}
       - name: Upload code coverage
         if: success() && (github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'push')
         run: ./bin/tools/datadog-ci coverage upload --format go-coverprofile --flags "type:unit-tests" cover.profile
         env:
-          DATADOG_API_KEY: ${{ steps.dd-sts.outputs.api_key }}
+          DATADOG_API_KEY: ${{ steps.dd-wif.outputs.api_key }}
       - name: Upload test report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -100,12 +101,13 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-      - name: Get Datadog credentials
-        id: dd-sts
+      - name: Get Datadog credentials via datadog-wif
+        id: dd-wif
         if: github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'push'
-        uses: DataDog/dd-sts-action@2e8187910199bd93129520183c093e19aa585c75 # v1.0.0
+        uses: DataDog/datadog-workload-identity-federation-github-action/intake@c9456387851248e0a5452f99085b16ad14fc3acb # v1.0.0
         with:
-          policy: chaos-controller
+          org_uuid: ${{ secrets.DATADOG_ORG_UUID }}
+          site: datadoghq.com
       - name: Install tools
         run: make -j6 install-controller-gen install-yamlfmt install-helm install-kubebuilder install-datadog-ci
       - name: Download docker tarballs
@@ -127,7 +129,7 @@ jobs:
         run: make minikube-load-all
       - name: Run e2e tests
         env:
-          DATADOG_API_KEY: ${{ steps.dd-sts.outputs.api_key || '' }}
+          DATADOG_API_KEY: ${{ steps.dd-wif.outputs.api_key || '' }}
         run: |
           for attempt in 1 2 3; do
             echo "=== Attempt ${attempt}/3 ==="
