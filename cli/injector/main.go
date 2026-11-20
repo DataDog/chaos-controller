@@ -265,13 +265,6 @@ func initConfig(cmd *cobra.Command, _ []string) {
 				pids = append(pids, pid)
 			}
 		} else {
-			// check for pod IP flag
-			if disruptionArgs.TargetPodIP == "" {
-				log.Fatal("--target-pod-ip flag must be passed when --level=pod")
-
-				return
-			}
-
 			pids = []uint32{1}
 			ctns = []container.Container{nil}
 		}

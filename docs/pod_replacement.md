@@ -114,7 +114,7 @@ spec:
 
 - Pod replacement requires `level: pod` in the disruption specification
 - Only one specific pod is targeted per disruption instance
-- The target pod is identified by its IP address and must be in a running state
+- The target pod is identified by its name in the disruption's namespace and must still be on the selected node, without being terminating or terminated. Other pods sharing its host-network IP are not targeted.
 
 ### Grace Period Handling
 
