@@ -40,7 +40,9 @@ func Hash(container *corev1.Container) (string, error) {
 		return "", fmt.Errorf("error serializing instance spec: %w", err)
 	}
 
-	return hex.EncodeToString(md5.New().Sum(containerJSON)), nil
+	digest := md5.Sum(containerJSON)
+
+	return hex.EncodeToString(digest[:]), nil
 }
 
 func HashPodSpec(podSpec *corev1.PodSpec) (map[string]string, map[string]string, error) {

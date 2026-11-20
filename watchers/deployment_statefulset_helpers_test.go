@@ -6,6 +6,12 @@
 package watchers_test
 
 import (
+	"encoding/hex"
+	"encoding/json"
+	"reflect"
+	"strings"
+	"testing/quick"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -25,6 +31,90 @@ func makePodSpec(initContainers, containers []corev1.Container) *corev1.PodSpec 
 }
 
 var _ = Describe("Hash", func() {
+	It("returns a fixed-size digest without serialized environment values", func() {
+		c := makeContainer("app", "nginx:latest")
+		c.Env = []corev1.EnvVar{{Name: "TOKEN", Value: "synthetic-sensitive-value"}}
+		h, err := watchers.Hash(&c)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(h).To(MatchRegexp(`^[0-9a-f]{32}$`))
+		decoded, err := hex.DecodeString(h)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(string(decoded)).NotTo(ContainSubstring(c.Env[0].Value))
+	})
+
+	It("detects arbitrary environment value changes", func() {
+		Expect(quick.Check(func(before, after string) bool {
+			c := makeContainer("app", "nginx:latest")
+			c.Env = []corev1.EnvVar{{Name: "TOKEN", Value: before}}
+			oldHash, err := watchers.Hash(&c)
+			if err != nil {
+				return false
+			}
+			c.Env[0].Value = after
+			newHash, err := watchers.Hash(&c)
+			// JSON normalizes invalid UTF-8, so compare the serialized inputs.
+			c.Env[0].Value = before
+			oldJSON, _ := json.Marshal(c)
+			c.Env[0].Value = after
+			newJSON, _ := json.Marshal(c)
+			return err == nil && (oldHash == newHash) == (string(oldJSON) == string(newJSON))
+		}, &quick.Config{MaxCount: 1000})).To(Succeed())
+	})
+
+	It("includes every serialized container field in change detection", func() {
+		// Each fixture changes one top-level field. Keep coverage aligned with the API.
+		fields := map[string]string{
+			"name": `"other"`, "image": `"other:v2"`,
+			"command": `["run"]`, "args": `["--flag"]`, "workingDir": `"/work"`,
+			"ports":                  `[{"containerPort":8080}]`,
+			"envFrom":                `[{"configMapRef":{"name":"settings"}}]`,
+			"env":                    `[{"name":"TOKEN","value":"synthetic-value"}]`,
+			"resources":              `{"limits":{"cpu":"1"}}`,
+			"resizePolicy":           `[{"resourceName":"cpu","restartPolicy":"RestartContainer"}]`,
+			"restartPolicy":          `"Always"`,
+			"restartPolicyRules":     `[{"action":"Restart","exitCodes":{"operator":"In","values":[1]}}]`,
+			"volumeMounts":           `[{"name":"data","mountPath":"/data"}]`,
+			"volumeDevices":          `[{"name":"data","devicePath":"/dev/data"}]`,
+			"livenessProbe":          `{"exec":{"command":["true"]}}`,
+			"readinessProbe":         `{"exec":{"command":["true"]}}`,
+			"startupProbe":           `{"exec":{"command":["true"]}}`,
+			"lifecycle":              `{"postStart":{"exec":{"command":["true"]}}}`,
+			"terminationMessagePath": `"/termination"`, "terminationMessagePolicy": `"FallbackToLogsOnError"`,
+			"imagePullPolicy": `"Always"`, "securityContext": `{"runAsNonRoot":true}`,
+			"stdin": `true`, "stdinOnce": `true`, "tty": `true`,
+		}
+		containerType := reflect.TypeOf(corev1.Container{})
+		for i := 0; i < containerType.NumField(); i++ {
+			name := strings.Split(containerType.Field(i).Tag.Get("json"), ",")[0]
+			Expect(fields).To(HaveKey(name), "missing fixture for %s", name)
+		}
+		original := corev1.Container{}
+		originalHash, err := watchers.Hash(&original)
+		Expect(err).NotTo(HaveOccurred())
+		for name, value := range fields {
+			var changed corev1.Container
+			Expect(json.Unmarshal([]byte(`{"`+name+`":`+value+`}`), &changed)).To(Succeed(), name)
+			changedHash, err := watchers.Hash(&changed)
+			Expect(err).NotTo(HaveOccurred(), name)
+			Expect(changedHash).NotTo(Equal(originalHash), name)
+		}
+	})
+
+	It("hashes large specs completely and deterministically", func() {
+		c := makeContainer("app", "nginx:latest")
+		c.Env = []corev1.EnvVar{{Name: "LARGE", Value: strings.Repeat("synthetic", 128*1024)}}
+		first, err := watchers.Hash(&c)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(first).To(HaveLen(32))
+		copyHash, err := watchers.Hash(c.DeepCopy())
+		Expect(err).NotTo(HaveOccurred())
+		Expect(copyHash).To(Equal(first))
+		c.Env[0].Value += "changed-at-the-end"
+		changed, err := watchers.Hash(&c)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(changed).NotTo(Equal(first))
+	})
+
 	It("returns non-empty hash for a container", func() {
 		c := makeContainer("app", "nginx:latest")
 		h, err := watchers.Hash(&c)
