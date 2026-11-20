@@ -1131,6 +1131,83 @@ var _ = Describe("Disruption Webhook", func() {
 			})
 		})
 
+		When("targeting all nodes matching the selector at level node", func() {
+			It("should trigger the safety net", func() {
+				// Arrange: 3 worker nodes in the cluster, all 3 matching the selector, count=3 (100% > 66% cluster threshold)
+				disruption = &Disruption{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      testDisruptionName,
+						Namespace: chaosNamespace,
+					},
+					Spec: DisruptionSpec{
+						Level: chaostypes.DisruptionLevelNode,
+						Count: &intstr.IntOrString{IntVal: 3},
+						Selector: labels.Set{
+							"role": "worker",
+						},
+					},
+				}
+
+				nodes := []client.Object{}
+				for i := range 3 {
+					nodes = append(nodes, &v1.Node{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:   fmt.Sprintf("node-%d", i),
+							Labels: map[string]string{"role": "worker"},
+						},
+					})
+				}
+
+				apiReader = fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(nodes...).Build()
+
+				// Act
+				caught, response, err := safetyNetCountNotTooLarge(context.Background(), disruption)
+
+				// Assert
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(caught).To(BeTrue())
+				Expect(response).To(ContainSubstring("cluster"))
+			})
+		})
+
+		When("targeting a small fraction of nodes at level node", func() {
+			It("should not trigger the safety net", func() {
+				// Arrange: 3 worker nodes in the cluster, all 3 matching the selector, count=1 (33% < 66% cluster threshold)
+				disruption = &Disruption{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      testDisruptionName,
+						Namespace: chaosNamespace,
+					},
+					Spec: DisruptionSpec{
+						Level: chaostypes.DisruptionLevelNode,
+						Count: &intstr.IntOrString{IntVal: 1},
+						Selector: labels.Set{
+							"role": "worker",
+						},
+					},
+				}
+
+				nodes := []client.Object{}
+				for i := range 3 {
+					nodes = append(nodes, &v1.Node{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:   fmt.Sprintf("node-%d", i),
+							Labels: map[string]string{"role": "worker"},
+						},
+					})
+				}
+
+				apiReader = fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(nodes...).Build()
+
+				// Act
+				caught, _, err := safetyNetCountNotTooLarge(context.Background(), disruption)
+
+				// Assert
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(caught).To(BeFalse())
+			})
+		})
+
 		When("targeting nodes at level node", func() {
 			It("should list nodes without error", func() {
 				// Arrange: 3 nodes — verifies node listing works via the cache client
