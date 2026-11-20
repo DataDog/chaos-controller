@@ -699,6 +699,13 @@ func safetyNetMissingNetworkFilters(r *Disruption) bool {
 		return false
 	}
 
+	// Host rules are alternatives: one unrestricted rule bypasses every scoped rule.
+	for _, host := range r.Spec.Network.Hosts {
+		if host.Host == "" && host.Port == 0 && host.Protocol == "" && host.ConnState == "" {
+			return true
+		}
+	}
+
 	if len(r.Spec.Network.Services) > 0 {
 		return false
 	}
