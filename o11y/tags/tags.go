@@ -285,6 +285,7 @@ const (
 	// Metrics and counting
 	AssignedCpusKey             = "assigned_cpus"
 	BpsKey                      = "bps"
+	IopsKey                     = "iops"
 	CalculatedPercentOfTotalKey = "calculated_percent_of_total"
 	ClusterThresholdKey         = "cluster_threshold"
 	CountKey                    = "count"

@@ -65,12 +65,21 @@ func (i injectorCmdFactory) NewInjectorBackgroundCmd(deadline time.Time, disrupt
 		disruptionArgs.TargetContainers = map[string]string{target: targetContainerID}
 	}
 
+	// Child subprocesses should not inherit pulse args — the parent process handles pulsing.
+	// Passing pulse args to children causes: (1) double-pulsing at node level where both
+	// parent and child independently pulse, and (2) re-spawned children unnecessarily
+	// waiting for pulse initial delay on every re-inject cycle.
+	childArgs := disruptionArgs
+	childArgs.PulseActiveDuration = 0
+	childArgs.PulseDormantDuration = 0
+	childArgs.PulseInitialDelay = 0
+
 	args = append(
 		args,
 		ParentPIDFlag.String(), strconv.Itoa(i.processManager.ProcessID()),
 		DeadlineFlag.String(), deadline.Format(time.RFC3339),
 	)
-	args = disruptionArgs.CreateCmdArgs(args)
+	args = childArgs.CreateCmdArgs(args)
 
 	ctx, cancel := context.WithDeadline(context.Background(), deadline)
 	cmd := i.cmdBuilder.NewCmd(ctx, ChaosInjectorBinaryLocation, args)

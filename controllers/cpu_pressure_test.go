@@ -6,6 +6,8 @@
 package controllers
 
 import (
+	"strings"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -44,6 +46,61 @@ var _ = Describe("CPU Pressure", func() {
 
 	JustBeforeEach(func(ctx SpecContext) {
 		cpuStress, targetPod, _ = InjectPodsAndDisruption(ctx, cpuStress, true)
+	})
+
+	Context("pulse mode", func() {
+		BeforeEach(func() {
+			cpuStress.Spec.Duration = "2m"
+			cpuStress.Spec.Pulse = &chaosv1beta1.DisruptionPulse{
+				ActiveDuration:  chaosv1beta1.DisruptionDuration("15s"),
+				DormantDuration: chaosv1beta1.DisruptionDuration("10s"),
+			}
+		})
+
+		It("should inject with pulse arguments and cycle through active/dormant phases", func(ctx SpecContext) {
+			ExpectDisruptionStatus(ctx, cpuStress, chaostypes.DisruptionInjectionStatusInjected)
+
+			By("Ensuring chaos pod is created")
+			ExpectChaosPods(ctx, cpuStress, 1)
+
+			By("Verifying chaos pod has pulse arguments")
+			Eventually(func(g Gomega, ctx SpecContext) {
+				chaosPods, err := listChaosPods(ctx, cpuStress)
+				g.Expect(err).ToNot(HaveOccurred())
+				g.Expect(chaosPods.Items).To(HaveLen(1))
+
+				args := strings.Join(chaosPods.Items[0].Spec.Containers[0].Args, " ")
+				g.Expect(args).To(ContainSubstring("cpu-pressure"))
+				g.Expect(args).To(ContainSubstring("--pulse-active-duration"))
+				g.Expect(args).To(ContainSubstring("--pulse-dormant-duration"))
+			}).WithContext(ctx).Within(calcDisruptionGoneTimeout(cpuStress)).ProbeEvery(disruptionPotentialChangesEvery).Should(Succeed())
+
+			By("Ensuring disruption stays healthy throughout pulse cycle")
+			ExpectDisruptionStatusUntilExpired(ctx, cpuStress, chaostypes.DisruptionInjectionStatusInjected)
+		})
+
+		When("initial delay is configured", func() {
+			BeforeEach(func() {
+				cpuStress.Spec.Pulse.InitialDelay = chaosv1beta1.DisruptionDuration("5s")
+			})
+
+			It("should inject with initial delay argument and remain healthy", func(ctx SpecContext) {
+				ExpectDisruptionStatus(ctx, cpuStress, chaostypes.DisruptionInjectionStatusInjected)
+
+				By("Verifying chaos pod has initial delay argument")
+				Eventually(func(g Gomega, ctx SpecContext) {
+					chaosPods, err := listChaosPods(ctx, cpuStress)
+					g.Expect(err).ToNot(HaveOccurred())
+					g.Expect(chaosPods.Items).To(HaveLen(1))
+
+					args := strings.Join(chaosPods.Items[0].Spec.Containers[0].Args, " ")
+					g.Expect(args).To(ContainSubstring("--pulse-initial-delay"))
+				}).WithContext(ctx).Within(calcDisruptionGoneTimeout(cpuStress)).ProbeEvery(disruptionPotentialChangesEvery).Should(Succeed())
+
+				By("Ensuring disruption stays healthy throughout pulse cycle with initial delay")
+				ExpectDisruptionStatusUntilExpired(ctx, cpuStress, chaostypes.DisruptionInjectionStatusInjected)
+			})
+		})
 	})
 
 	DescribeTable("targeted container is stopped", func(ctx SpecContext, forced bool) {

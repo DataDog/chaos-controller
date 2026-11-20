@@ -4,19 +4,21 @@ The `diskPressure` field offers a way to apply IO throttling on a specific mount
 
 ## Throttling
 
-Unlike the CPU pressure, this kind of disruption is not done by stressing the disk but by throttling its capacities. A throttle can be applied on read or write operations, or both.
+Unlike the CPU pressure, this kind of disruption is not done by stressing the disk but by throttling its capacities. A throttle can be applied on read or write operations, or both. Two units are supported and can be combined:
+* **bandwidth** — bytes per second (`readBytesPerSec` / `writeBytesPerSec`)
+* **IOPS** — IO operations per second (`readIOPSPerSec` / `writeIOPSPerSec`)
 
 The throttling is done by using the [blkio cgroup controller](https://www.kernel.org/doc/Documentation/cgroup-v1/blkio-controller.txt), and more specifically:
-* by the `blkio.throttle.read_bps_device` and `blkio.throttle.write_bps_device` files for cgroup v1
-* by the `io.max` file for cgroup v2 ([more to read here](https://docs.kernel.org/admin-guide/cgroup-v2.html#io-interface-files))
+* for cgroup v1, by the `blkio.throttle.read_bps_device` / `blkio.throttle.write_bps_device` files (bandwidth) and the `blkio.throttle.read_iops_device` / `blkio.throttle.write_iops_device` files (IOPS)
+* by the `io.max` file for cgroup v2 — keys `rbps` / `wbps` (bandwidth) and `riops` / `wiops` (IOPS) ([more to read here](https://docs.kernel.org/admin-guide/cgroup-v2.html#io-interface-files))
 
 To apply the throttle, the injector will:
 
 * search for the device related to the given path
   * it is done by using the `df` command which will print out the device path
-* retrieve the device major identifier
-  * it is done by using the `ls` command on the device path (eg. `/dev/sda1`) which will print out the major and minor identifiers of the device
-* write the throttle using the major identifier of the device
+* retrieve the device's major and minor identifiers using `ls`
+* resolve partitions to their parent whole disk through `/sys/dev/block`, using both parent identifiers
+* write the throttle using the whole disk's `major:minor` pair (for example, `8:16` or `259:3`)
 
 ### Notes
 
@@ -34,7 +36,7 @@ More information can be found on [this blog post](https://medium.com/some-tldrs/
 
 ## Manual cleanup instructions
 
-:information_source: All those commands must be executed on the infected host (except for `kubectl`).
+:information_source: All those commands must be executed on the infected host (except for `kubectl`). Replace `8:0` in the examples with the throttled whole disk's actual `major:minor` pair.
 
 ---
 
@@ -79,6 +81,8 @@ kubectl get -ojson pod demo-curl-547bb9c686-57484 | jq '.status.containerStatuse
 # echo "8:0 0" > /sys/fs/cgroup/blkio/kubepods/burstable/poda37541dc-4905-4a7f-98c0-7d13f58df0eb/cb33d4ce77f7396851196043a56e625f38429720cd5d3153cb061feae6038460/blkio.throttle.write_bps_device
 ```
 
+*If IOPS throttling was applied, reset `blkio.throttle.read_iops_device` and `blkio.throttle.write_iops_device` the same way (`echo "8:0 0" > ...`).*
+
 * Ensure that the values are reset
 
 ```
@@ -95,7 +99,7 @@ kubectl get -ojson pod demo-curl-547bb9c686-57484 | jq '.status.containerStatuse
 * Reset throttle values for the found device
 
 ```
-# echo "8:0 rbps=max wbps=max" > /sys/fs/cgroup/kubepods/burstable/poda37541dc-4905-4a7f-98c0-7d13f58df0eb/cb33d4ce77f7396851196043a56e625f38429720cd5d3153cb061feae6038460/io.max
+# echo "8:0 rbps=max wbps=max riops=max wiops=max" > /sys/fs/cgroup/kubepods/burstable/poda37541dc-4905-4a7f-98c0-7d13f58df0eb/cb33d4ce77f7396851196043a56e625f38429720cd5d3153cb061feae6038460/io.max
 ```
 
 * Ensure that the values are reset

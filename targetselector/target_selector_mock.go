@@ -30,7 +30,7 @@ func (_m *TargetSelectorMock) EXPECT() *TargetSelectorMock_Expecter {
 }
 
 // GetMatchingNodesOverTotalNodes provides a mock function with given fields: c, instance
-func (_m *TargetSelectorMock) GetMatchingNodesOverTotalNodes(c client.Client, instance *v1beta1.Disruption) (*v1.NodeList, int, error) {
+func (_m *TargetSelectorMock) GetMatchingNodesOverTotalNodes(c client.Reader, instance *v1beta1.Disruption) (*v1.NodeList, int, error) {
 	ret := _m.Called(c, instance)
 
 	if len(ret) == 0 {
@@ -40,10 +40,10 @@ func (_m *TargetSelectorMock) GetMatchingNodesOverTotalNodes(c client.Client, in
 	var r0 *v1.NodeList
 	var r1 int
 	var r2 error
-	if rf, ok := ret.Get(0).(func(client.Client, *v1beta1.Disruption) (*v1.NodeList, int, error)); ok {
+	if rf, ok := ret.Get(0).(func(client.Reader, *v1beta1.Disruption) (*v1.NodeList, int, error)); ok {
 		return rf(c, instance)
 	}
-	if rf, ok := ret.Get(0).(func(client.Client, *v1beta1.Disruption) *v1.NodeList); ok {
+	if rf, ok := ret.Get(0).(func(client.Reader, *v1beta1.Disruption) *v1.NodeList); ok {
 		r0 = rf(c, instance)
 	} else {
 		if ret.Get(0) != nil {
@@ -51,13 +51,13 @@ func (_m *TargetSelectorMock) GetMatchingNodesOverTotalNodes(c client.Client, in
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(client.Client, *v1beta1.Disruption) int); ok {
+	if rf, ok := ret.Get(1).(func(client.Reader, *v1beta1.Disruption) int); ok {
 		r1 = rf(c, instance)
 	} else {
 		r1 = ret.Get(1).(int)
 	}
 
-	if rf, ok := ret.Get(2).(func(client.Client, *v1beta1.Disruption) error); ok {
+	if rf, ok := ret.Get(2).(func(client.Reader, *v1beta1.Disruption) error); ok {
 		r2 = rf(c, instance)
 	} else {
 		r2 = ret.Error(2)
@@ -72,15 +72,15 @@ type TargetSelectorMock_GetMatchingNodesOverTotalNodes_Call struct {
 }
 
 // GetMatchingNodesOverTotalNodes is a helper method to define mock.On call
-//   - c client.Client
+//   - c client.Reader
 //   - instance *v1beta1.Disruption
 func (_e *TargetSelectorMock_Expecter) GetMatchingNodesOverTotalNodes(c interface{}, instance interface{}) *TargetSelectorMock_GetMatchingNodesOverTotalNodes_Call {
 	return &TargetSelectorMock_GetMatchingNodesOverTotalNodes_Call{Call: _e.mock.On("GetMatchingNodesOverTotalNodes", c, instance)}
 }
 
-func (_c *TargetSelectorMock_GetMatchingNodesOverTotalNodes_Call) Run(run func(c client.Client, instance *v1beta1.Disruption)) *TargetSelectorMock_GetMatchingNodesOverTotalNodes_Call {
+func (_c *TargetSelectorMock_GetMatchingNodesOverTotalNodes_Call) Run(run func(c client.Reader, instance *v1beta1.Disruption)) *TargetSelectorMock_GetMatchingNodesOverTotalNodes_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(client.Client), args[1].(*v1beta1.Disruption))
+		run(args[0].(client.Reader), args[1].(*v1beta1.Disruption))
 	})
 	return _c
 }
@@ -90,13 +90,13 @@ func (_c *TargetSelectorMock_GetMatchingNodesOverTotalNodes_Call) Return(_a0 *v1
 	return _c
 }
 
-func (_c *TargetSelectorMock_GetMatchingNodesOverTotalNodes_Call) RunAndReturn(run func(client.Client, *v1beta1.Disruption) (*v1.NodeList, int, error)) *TargetSelectorMock_GetMatchingNodesOverTotalNodes_Call {
+func (_c *TargetSelectorMock_GetMatchingNodesOverTotalNodes_Call) RunAndReturn(run func(client.Reader, *v1beta1.Disruption) (*v1.NodeList, int, error)) *TargetSelectorMock_GetMatchingNodesOverTotalNodes_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // GetMatchingPodsOverTotalPods provides a mock function with given fields: c, instance
-func (_m *TargetSelectorMock) GetMatchingPodsOverTotalPods(c client.Client, instance *v1beta1.Disruption) (*v1.PodList, int, error) {
+func (_m *TargetSelectorMock) GetMatchingPodsOverTotalPods(c client.Reader, instance *v1beta1.Disruption) (*v1.PodList, int, error) {
 	ret := _m.Called(c, instance)
 
 	if len(ret) == 0 {
@@ -106,10 +106,10 @@ func (_m *TargetSelectorMock) GetMatchingPodsOverTotalPods(c client.Client, inst
 	var r0 *v1.PodList
 	var r1 int
 	var r2 error
-	if rf, ok := ret.Get(0).(func(client.Client, *v1beta1.Disruption) (*v1.PodList, int, error)); ok {
+	if rf, ok := ret.Get(0).(func(client.Reader, *v1beta1.Disruption) (*v1.PodList, int, error)); ok {
 		return rf(c, instance)
 	}
-	if rf, ok := ret.Get(0).(func(client.Client, *v1beta1.Disruption) *v1.PodList); ok {
+	if rf, ok := ret.Get(0).(func(client.Reader, *v1beta1.Disruption) *v1.PodList); ok {
 		r0 = rf(c, instance)
 	} else {
 		if ret.Get(0) != nil {
@@ -117,13 +117,13 @@ func (_m *TargetSelectorMock) GetMatchingPodsOverTotalPods(c client.Client, inst
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(client.Client, *v1beta1.Disruption) int); ok {
+	if rf, ok := ret.Get(1).(func(client.Reader, *v1beta1.Disruption) int); ok {
 		r1 = rf(c, instance)
 	} else {
 		r1 = ret.Get(1).(int)
 	}
 
-	if rf, ok := ret.Get(2).(func(client.Client, *v1beta1.Disruption) error); ok {
+	if rf, ok := ret.Get(2).(func(client.Reader, *v1beta1.Disruption) error); ok {
 		r2 = rf(c, instance)
 	} else {
 		r2 = ret.Error(2)
@@ -138,15 +138,15 @@ type TargetSelectorMock_GetMatchingPodsOverTotalPods_Call struct {
 }
 
 // GetMatchingPodsOverTotalPods is a helper method to define mock.On call
-//   - c client.Client
+//   - c client.Reader
 //   - instance *v1beta1.Disruption
 func (_e *TargetSelectorMock_Expecter) GetMatchingPodsOverTotalPods(c interface{}, instance interface{}) *TargetSelectorMock_GetMatchingPodsOverTotalPods_Call {
 	return &TargetSelectorMock_GetMatchingPodsOverTotalPods_Call{Call: _e.mock.On("GetMatchingPodsOverTotalPods", c, instance)}
 }
 
-func (_c *TargetSelectorMock_GetMatchingPodsOverTotalPods_Call) Run(run func(c client.Client, instance *v1beta1.Disruption)) *TargetSelectorMock_GetMatchingPodsOverTotalPods_Call {
+func (_c *TargetSelectorMock_GetMatchingPodsOverTotalPods_Call) Run(run func(c client.Reader, instance *v1beta1.Disruption)) *TargetSelectorMock_GetMatchingPodsOverTotalPods_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(client.Client), args[1].(*v1beta1.Disruption))
+		run(args[0].(client.Reader), args[1].(*v1beta1.Disruption))
 	})
 	return _c
 }
@@ -156,13 +156,13 @@ func (_c *TargetSelectorMock_GetMatchingPodsOverTotalPods_Call) Return(_a0 *v1.P
 	return _c
 }
 
-func (_c *TargetSelectorMock_GetMatchingPodsOverTotalPods_Call) RunAndReturn(run func(client.Client, *v1beta1.Disruption) (*v1.PodList, int, error)) *TargetSelectorMock_GetMatchingPodsOverTotalPods_Call {
+func (_c *TargetSelectorMock_GetMatchingPodsOverTotalPods_Call) RunAndReturn(run func(client.Reader, *v1beta1.Disruption) (*v1.PodList, int, error)) *TargetSelectorMock_GetMatchingPodsOverTotalPods_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // TargetIsHealthy provides a mock function with given fields: target, c, instance
-func (_m *TargetSelectorMock) TargetIsHealthy(target string, c client.Client, instance *v1beta1.Disruption) error {
+func (_m *TargetSelectorMock) TargetIsHealthy(target string, c client.Reader, instance *v1beta1.Disruption) error {
 	ret := _m.Called(target, c, instance)
 
 	if len(ret) == 0 {
@@ -170,7 +170,7 @@ func (_m *TargetSelectorMock) TargetIsHealthy(target string, c client.Client, in
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, client.Client, *v1beta1.Disruption) error); ok {
+	if rf, ok := ret.Get(0).(func(string, client.Reader, *v1beta1.Disruption) error); ok {
 		r0 = rf(target, c, instance)
 	} else {
 		r0 = ret.Error(0)
@@ -186,15 +186,15 @@ type TargetSelectorMock_TargetIsHealthy_Call struct {
 
 // TargetIsHealthy is a helper method to define mock.On call
 //   - target string
-//   - c client.Client
+//   - c client.Reader
 //   - instance *v1beta1.Disruption
 func (_e *TargetSelectorMock_Expecter) TargetIsHealthy(target interface{}, c interface{}, instance interface{}) *TargetSelectorMock_TargetIsHealthy_Call {
 	return &TargetSelectorMock_TargetIsHealthy_Call{Call: _e.mock.On("TargetIsHealthy", target, c, instance)}
 }
 
-func (_c *TargetSelectorMock_TargetIsHealthy_Call) Run(run func(target string, c client.Client, instance *v1beta1.Disruption)) *TargetSelectorMock_TargetIsHealthy_Call {
+func (_c *TargetSelectorMock_TargetIsHealthy_Call) Run(run func(target string, c client.Reader, instance *v1beta1.Disruption)) *TargetSelectorMock_TargetIsHealthy_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(client.Client), args[2].(*v1beta1.Disruption))
+		run(args[0].(string), args[1].(client.Reader), args[2].(*v1beta1.Disruption))
 	})
 	return _c
 }
@@ -204,7 +204,7 @@ func (_c *TargetSelectorMock_TargetIsHealthy_Call) Return(_a0 error) *TargetSele
 	return _c
 }
 
-func (_c *TargetSelectorMock_TargetIsHealthy_Call) RunAndReturn(run func(string, client.Client, *v1beta1.Disruption) error) *TargetSelectorMock_TargetIsHealthy_Call {
+func (_c *TargetSelectorMock_TargetIsHealthy_Call) RunAndReturn(run func(string, client.Reader, *v1beta1.Disruption) error) *TargetSelectorMock_TargetIsHealthy_Call {
 	_c.Call.Return(run)
 	return _c
 }

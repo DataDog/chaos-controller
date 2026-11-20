@@ -8,8 +8,9 @@
 package mocks
 
 import (
-	mock "github.com/stretchr/testify/mock"
 	cache "k8s.io/client-go/tools/cache"
+
+	mock "github.com/stretchr/testify/mock"
 
 	time "time"
 )
@@ -290,6 +291,53 @@ func (_c *CacheInformerMock_HasSynced_Call) Return(_a0 bool) *CacheInformerMock_
 }
 
 func (_c *CacheInformerMock_HasSynced_Call) RunAndReturn(run func() bool) *CacheInformerMock_HasSynced_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// HasSyncedChecker provides a mock function with no fields
+func (_m *CacheInformerMock) HasSyncedChecker() cache.DoneChecker {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for HasSyncedChecker")
+	}
+
+	var r0 cache.DoneChecker
+	if rf, ok := ret.Get(0).(func() cache.DoneChecker); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(cache.DoneChecker)
+		}
+	}
+
+	return r0
+}
+
+// CacheInformerMock_HasSyncedChecker_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HasSyncedChecker'
+type CacheInformerMock_HasSyncedChecker_Call struct {
+	*mock.Call
+}
+
+// HasSyncedChecker is a helper method to define mock.On call
+func (_e *CacheInformerMock_Expecter) HasSyncedChecker() *CacheInformerMock_HasSyncedChecker_Call {
+	return &CacheInformerMock_HasSyncedChecker_Call{Call: _e.mock.On("HasSyncedChecker")}
+}
+
+func (_c *CacheInformerMock_HasSyncedChecker_Call) Run(run func()) *CacheInformerMock_HasSyncedChecker_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *CacheInformerMock_HasSyncedChecker_Call) Return(_a0 cache.DoneChecker) *CacheInformerMock_HasSyncedChecker_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *CacheInformerMock_HasSyncedChecker_Call) RunAndReturn(run func() cache.DoneChecker) *CacheInformerMock_HasSyncedChecker_Call {
 	_c.Call.Return(run)
 	return _c
 }

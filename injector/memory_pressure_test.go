@@ -85,9 +85,13 @@ var _ = Describe("Memory pressure", func() {
 		})
 
 		It("succeeds and calls stop after proper inject", func() {
+			doneCh := make(chan struct{})
+			close(doneCh)
+
 			background.EXPECT().Start().Return(nil).Once()
 			background.EXPECT().KeepAlive().Once()
 			background.EXPECT().Stop().Return(nil).Once()
+			background.EXPECT().Done().Return((<-chan struct{})(doneCh)).Once()
 
 			inj := NewMemoryPressureInjector(config, "50%", time.Duration(0), factory, args)
 

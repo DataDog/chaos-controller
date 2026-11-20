@@ -44,7 +44,14 @@ type Controller struct {
 	// e.g. ReplicaSet in apps group (regardless of version) would be `ReplicaSet.apps`.
 	GroupKindConcurrency map[string]int
 
-	// MaxConcurrentReconciles is the maximum number of concurrent Reconciles which can be run. Defaults to 1.
+	// MaxConcurrentReconciles is the maximum number of concurrent reconciliations which can be run.
+	// Defaults to 1.
+	//
+	// This value is used as a default for controllers that do not specify their own value.
+	// Per-controller options take precedence over this setting.
+	//
+	// For more details on how concurrency works, see the MaxConcurrentReconciles
+	// field in pkg/controller.TypedOptions.
 	MaxConcurrentReconciles int
 
 	// CacheSyncTimeout refers to the time limit set to wait for syncing caches.
@@ -79,7 +86,7 @@ type Controller struct {
 	// UsePriorityQueue configures the controllers queue to use the controller-runtime provided
 	// priority queue.
 	//
-	// Note: This flag is disabled by default until a future version. This feature is currently in beta.
+	// Note: This flag is enabled by default.
 	// For more details, see: https://github.com/kubernetes-sigs/controller-runtime/issues/2374.
 	UsePriorityQueue *bool
 

@@ -27,8 +27,8 @@ func newDockerRuntime() (Runtime, error) {
 	return &dockerRuntime{client: c}, nil
 }
 
-func (d dockerRuntime) PID(id string) (uint32, error) {
-	ci, err := d.client.ContainerInspect(context.Background(), id)
+func (d dockerRuntime) PID(ctx context.Context, id string) (uint32, error) {
+	ci, err := d.client.ContainerInspect(ctx, id)
 	if err != nil {
 		return 0, fmt.Errorf("error while loading given container: %w", err)
 	}
@@ -36,11 +36,11 @@ func (d dockerRuntime) PID(id string) (uint32, error) {
 	return uint32(ci.State.Pid), nil
 }
 
-func (d dockerRuntime) HostPath(id, path string) (string, error) {
+func (d dockerRuntime) HostPath(ctx context.Context, id, path string) (string, error) {
 	var hostPath string
 
 	// inspect container
-	ci, err := d.client.ContainerInspect(context.Background(), id)
+	ci, err := d.client.ContainerInspect(ctx, id)
 	if err != nil {
 		return "", fmt.Errorf("error while loading given container: %w", err)
 	}

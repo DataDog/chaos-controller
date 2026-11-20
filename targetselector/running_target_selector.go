@@ -33,7 +33,7 @@ func NewRunningTargetSelector(controllerEnableSafeguards bool, controllerNodeNam
 }
 
 // GetMatchingPodsOverTotalPods returns a pods list containing all running pods matching the given label selector and namespace and the count of pods matching the selector
-func (r runningTargetSelector) GetMatchingPodsOverTotalPods(c client.Client, instance *chaosv1beta1.Disruption) (*corev1.PodList, int, error) {
+func (r runningTargetSelector) GetMatchingPodsOverTotalPods(c client.Reader, instance *chaosv1beta1.Disruption) (*corev1.PodList, int, error) {
 	// get parsed selector
 	selector, err := GetLabelSelectorFromInstance(instance)
 	if err != nil {
@@ -115,7 +115,7 @@ podLoop:
 }
 
 // GetMatchingNodesOverTotalNodes returns a nodes list containing all nodes matching the given label selector and the count of nodes matching the selector
-func (r runningTargetSelector) GetMatchingNodesOverTotalNodes(c client.Client, instance *chaosv1beta1.Disruption) (*corev1.NodeList, int, error) {
+func (r runningTargetSelector) GetMatchingNodesOverTotalNodes(c client.Reader, instance *chaosv1beta1.Disruption) (*corev1.NodeList, int, error) {
 	// get parsed selector
 	selector, err := GetLabelSelectorFromInstance(instance)
 	if err != nil {
@@ -174,7 +174,7 @@ nodeLoop:
 }
 
 // TargetIsHealthy returns an error if the given target is unhealthy or does not exist
-func (r runningTargetSelector) TargetIsHealthy(target string, c client.Client, instance *chaosv1beta1.Disruption) error {
+func (r runningTargetSelector) TargetIsHealthy(target string, c client.Reader, instance *chaosv1beta1.Disruption) error {
 	switch instance.Spec.Level {
 	case chaostypes.DisruptionLevelPod:
 		var p corev1.Pod

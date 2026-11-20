@@ -1,3 +1,19 @@
+/*
+Copyright The Kubernetes Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package interceptor
 
 import (
@@ -26,6 +42,7 @@ type Funcs struct {
 	SubResourceCreate func(ctx context.Context, client client.Client, subResourceName string, obj client.Object, subResource client.Object, opts ...client.SubResourceCreateOption) error
 	SubResourceUpdate func(ctx context.Context, client client.Client, subResourceName string, obj client.Object, opts ...client.SubResourceUpdateOption) error
 	SubResourcePatch  func(ctx context.Context, client client.Client, subResourceName string, obj client.Object, patch client.Patch, opts ...client.SubResourcePatchOption) error
+	SubResourceApply  func(ctx context.Context, client client.Client, subResourceName string, obj runtime.ApplyConfiguration, opts ...client.SubResourceApplyOption) error
 }
 
 // NewClient returns a new interceptor client that calls the functions in funcs instead of the underlying client's methods, if they are not nil.
@@ -42,6 +59,13 @@ type interceptor struct {
 }
 
 var _ client.WithWatch = &interceptor{}
+
+// Unwrap returns the client that is wrapped by this interceptor. This is used by consumers that need to
+// access functionality of the wrapped client that is not part of the client.WithWatch interface, such as
+// sigs.k8s.io/controller-runtime/pkg/client/fake.AddIndex.
+func (c interceptor) Unwrap() client.WithWatch {
+	return c.client
+}
 
 func (c interceptor) GroupVersionKindFor(obj runtime.Object) (schema.GroupVersionKind, error) {
 	return c.client.GroupVersionKindFor(obj)
@@ -172,4 +196,11 @@ func (s subResourceInterceptor) Patch(ctx context.Context, obj client.Object, pa
 		return s.funcs.SubResourcePatch(ctx, s.client, s.subResourceName, obj, patch, opts...)
 	}
 	return s.client.SubResource(s.subResourceName).Patch(ctx, obj, patch, opts...)
+}
+
+func (s subResourceInterceptor) Apply(ctx context.Context, obj runtime.ApplyConfiguration, opts ...client.SubResourceApplyOption) error {
+	if s.funcs.SubResourceApply != nil {
+		return s.funcs.SubResourceApply(ctx, s.client, s.subResourceName, obj, opts...)
+	}
+	return s.client.SubResource(s.subResourceName).Apply(ctx, obj, opts...)
 }

@@ -8,9 +8,10 @@
 package mocks
 
 import (
-	context "context"
-
+	cacheapi "sigs.k8s.io/controller-runtime/pkg/cache/cacheapi"
 	client "sigs.k8s.io/controller-runtime/pkg/client"
+
+	context "context"
 
 	meta "k8s.io/apimachinery/pkg/api/meta"
 
@@ -99,7 +100,7 @@ func (_c *K8SClientMock_Apply_Call) RunAndReturn(run func(context.Context, runti
 }
 
 // Create provides a mock function with given fields: ctx, obj, opts
-func (_m *K8SClientMock) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
+func (_m *K8SClientMock) Create(ctx context.Context, obj cacheapi.Object, opts ...client.CreateOption) error {
 	_va := make([]interface{}, len(opts))
 	for _i := range opts {
 		_va[_i] = opts[_i]
@@ -114,7 +115,7 @@ func (_m *K8SClientMock) Create(ctx context.Context, obj client.Object, opts ...
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, client.Object, ...client.CreateOption) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, cacheapi.Object, ...client.CreateOption) error); ok {
 		r0 = rf(ctx, obj, opts...)
 	} else {
 		r0 = ret.Error(0)
@@ -130,14 +131,14 @@ type K8SClientMock_Create_Call struct {
 
 // Create is a helper method to define mock.On call
 //   - ctx context.Context
-//   - obj client.Object
+//   - obj cacheapi.Object
 //   - opts ...client.CreateOption
 func (_e *K8SClientMock_Expecter) Create(ctx interface{}, obj interface{}, opts ...interface{}) *K8SClientMock_Create_Call {
 	return &K8SClientMock_Create_Call{Call: _e.mock.On("Create",
 		append([]interface{}{ctx, obj}, opts...)...)}
 }
 
-func (_c *K8SClientMock_Create_Call) Run(run func(ctx context.Context, obj client.Object, opts ...client.CreateOption)) *K8SClientMock_Create_Call {
+func (_c *K8SClientMock_Create_Call) Run(run func(ctx context.Context, obj cacheapi.Object, opts ...client.CreateOption)) *K8SClientMock_Create_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		variadicArgs := make([]client.CreateOption, len(args)-2)
 		for i, a := range args[2:] {
@@ -145,7 +146,7 @@ func (_c *K8SClientMock_Create_Call) Run(run func(ctx context.Context, obj clien
 				variadicArgs[i] = a.(client.CreateOption)
 			}
 		}
-		run(args[0].(context.Context), args[1].(client.Object), variadicArgs...)
+		run(args[0].(context.Context), args[1].(cacheapi.Object), variadicArgs...)
 	})
 	return _c
 }
@@ -155,13 +156,13 @@ func (_c *K8SClientMock_Create_Call) Return(_a0 error) *K8SClientMock_Create_Cal
 	return _c
 }
 
-func (_c *K8SClientMock_Create_Call) RunAndReturn(run func(context.Context, client.Object, ...client.CreateOption) error) *K8SClientMock_Create_Call {
+func (_c *K8SClientMock_Create_Call) RunAndReturn(run func(context.Context, cacheapi.Object, ...client.CreateOption) error) *K8SClientMock_Create_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Delete provides a mock function with given fields: ctx, obj, opts
-func (_m *K8SClientMock) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
+func (_m *K8SClientMock) Delete(ctx context.Context, obj cacheapi.Object, opts ...client.DeleteOption) error {
 	_va := make([]interface{}, len(opts))
 	for _i := range opts {
 		_va[_i] = opts[_i]
@@ -176,7 +177,7 @@ func (_m *K8SClientMock) Delete(ctx context.Context, obj client.Object, opts ...
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, client.Object, ...client.DeleteOption) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, cacheapi.Object, ...client.DeleteOption) error); ok {
 		r0 = rf(ctx, obj, opts...)
 	} else {
 		r0 = ret.Error(0)
@@ -192,14 +193,14 @@ type K8SClientMock_Delete_Call struct {
 
 // Delete is a helper method to define mock.On call
 //   - ctx context.Context
-//   - obj client.Object
+//   - obj cacheapi.Object
 //   - opts ...client.DeleteOption
 func (_e *K8SClientMock_Expecter) Delete(ctx interface{}, obj interface{}, opts ...interface{}) *K8SClientMock_Delete_Call {
 	return &K8SClientMock_Delete_Call{Call: _e.mock.On("Delete",
 		append([]interface{}{ctx, obj}, opts...)...)}
 }
 
-func (_c *K8SClientMock_Delete_Call) Run(run func(ctx context.Context, obj client.Object, opts ...client.DeleteOption)) *K8SClientMock_Delete_Call {
+func (_c *K8SClientMock_Delete_Call) Run(run func(ctx context.Context, obj cacheapi.Object, opts ...client.DeleteOption)) *K8SClientMock_Delete_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		variadicArgs := make([]client.DeleteOption, len(args)-2)
 		for i, a := range args[2:] {
@@ -207,7 +208,7 @@ func (_c *K8SClientMock_Delete_Call) Run(run func(ctx context.Context, obj clien
 				variadicArgs[i] = a.(client.DeleteOption)
 			}
 		}
-		run(args[0].(context.Context), args[1].(client.Object), variadicArgs...)
+		run(args[0].(context.Context), args[1].(cacheapi.Object), variadicArgs...)
 	})
 	return _c
 }
@@ -217,13 +218,13 @@ func (_c *K8SClientMock_Delete_Call) Return(_a0 error) *K8SClientMock_Delete_Cal
 	return _c
 }
 
-func (_c *K8SClientMock_Delete_Call) RunAndReturn(run func(context.Context, client.Object, ...client.DeleteOption) error) *K8SClientMock_Delete_Call {
+func (_c *K8SClientMock_Delete_Call) RunAndReturn(run func(context.Context, cacheapi.Object, ...client.DeleteOption) error) *K8SClientMock_Delete_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // DeleteAllOf provides a mock function with given fields: ctx, obj, opts
-func (_m *K8SClientMock) DeleteAllOf(ctx context.Context, obj client.Object, opts ...client.DeleteAllOfOption) error {
+func (_m *K8SClientMock) DeleteAllOf(ctx context.Context, obj cacheapi.Object, opts ...client.DeleteAllOfOption) error {
 	_va := make([]interface{}, len(opts))
 	for _i := range opts {
 		_va[_i] = opts[_i]
@@ -238,7 +239,7 @@ func (_m *K8SClientMock) DeleteAllOf(ctx context.Context, obj client.Object, opt
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, client.Object, ...client.DeleteAllOfOption) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, cacheapi.Object, ...client.DeleteAllOfOption) error); ok {
 		r0 = rf(ctx, obj, opts...)
 	} else {
 		r0 = ret.Error(0)
@@ -254,14 +255,14 @@ type K8SClientMock_DeleteAllOf_Call struct {
 
 // DeleteAllOf is a helper method to define mock.On call
 //   - ctx context.Context
-//   - obj client.Object
+//   - obj cacheapi.Object
 //   - opts ...client.DeleteAllOfOption
 func (_e *K8SClientMock_Expecter) DeleteAllOf(ctx interface{}, obj interface{}, opts ...interface{}) *K8SClientMock_DeleteAllOf_Call {
 	return &K8SClientMock_DeleteAllOf_Call{Call: _e.mock.On("DeleteAllOf",
 		append([]interface{}{ctx, obj}, opts...)...)}
 }
 
-func (_c *K8SClientMock_DeleteAllOf_Call) Run(run func(ctx context.Context, obj client.Object, opts ...client.DeleteAllOfOption)) *K8SClientMock_DeleteAllOf_Call {
+func (_c *K8SClientMock_DeleteAllOf_Call) Run(run func(ctx context.Context, obj cacheapi.Object, opts ...client.DeleteAllOfOption)) *K8SClientMock_DeleteAllOf_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		variadicArgs := make([]client.DeleteAllOfOption, len(args)-2)
 		for i, a := range args[2:] {
@@ -269,7 +270,7 @@ func (_c *K8SClientMock_DeleteAllOf_Call) Run(run func(ctx context.Context, obj 
 				variadicArgs[i] = a.(client.DeleteAllOfOption)
 			}
 		}
-		run(args[0].(context.Context), args[1].(client.Object), variadicArgs...)
+		run(args[0].(context.Context), args[1].(cacheapi.Object), variadicArgs...)
 	})
 	return _c
 }
@@ -279,13 +280,13 @@ func (_c *K8SClientMock_DeleteAllOf_Call) Return(_a0 error) *K8SClientMock_Delet
 	return _c
 }
 
-func (_c *K8SClientMock_DeleteAllOf_Call) RunAndReturn(run func(context.Context, client.Object, ...client.DeleteAllOfOption) error) *K8SClientMock_DeleteAllOf_Call {
+func (_c *K8SClientMock_DeleteAllOf_Call) RunAndReturn(run func(context.Context, cacheapi.Object, ...client.DeleteAllOfOption) error) *K8SClientMock_DeleteAllOf_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Get provides a mock function with given fields: ctx, key, obj, opts
-func (_m *K8SClientMock) Get(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
+func (_m *K8SClientMock) Get(ctx context.Context, key types.NamespacedName, obj cacheapi.Object, opts ...client.GetOption) error {
 	_va := make([]interface{}, len(opts))
 	for _i := range opts {
 		_va[_i] = opts[_i]
@@ -300,7 +301,7 @@ func (_m *K8SClientMock) Get(ctx context.Context, key types.NamespacedName, obj 
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, types.NamespacedName, client.Object, ...client.GetOption) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, types.NamespacedName, cacheapi.Object, ...client.GetOption) error); ok {
 		r0 = rf(ctx, key, obj, opts...)
 	} else {
 		r0 = ret.Error(0)
@@ -317,14 +318,14 @@ type K8SClientMock_Get_Call struct {
 // Get is a helper method to define mock.On call
 //   - ctx context.Context
 //   - key types.NamespacedName
-//   - obj client.Object
+//   - obj cacheapi.Object
 //   - opts ...client.GetOption
 func (_e *K8SClientMock_Expecter) Get(ctx interface{}, key interface{}, obj interface{}, opts ...interface{}) *K8SClientMock_Get_Call {
 	return &K8SClientMock_Get_Call{Call: _e.mock.On("Get",
 		append([]interface{}{ctx, key, obj}, opts...)...)}
 }
 
-func (_c *K8SClientMock_Get_Call) Run(run func(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption)) *K8SClientMock_Get_Call {
+func (_c *K8SClientMock_Get_Call) Run(run func(ctx context.Context, key types.NamespacedName, obj cacheapi.Object, opts ...client.GetOption)) *K8SClientMock_Get_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		variadicArgs := make([]client.GetOption, len(args)-3)
 		for i, a := range args[3:] {
@@ -332,7 +333,7 @@ func (_c *K8SClientMock_Get_Call) Run(run func(ctx context.Context, key types.Na
 				variadicArgs[i] = a.(client.GetOption)
 			}
 		}
-		run(args[0].(context.Context), args[1].(types.NamespacedName), args[2].(client.Object), variadicArgs...)
+		run(args[0].(context.Context), args[1].(types.NamespacedName), args[2].(cacheapi.Object), variadicArgs...)
 	})
 	return _c
 }
@@ -342,7 +343,7 @@ func (_c *K8SClientMock_Get_Call) Return(_a0 error) *K8SClientMock_Get_Call {
 	return _c
 }
 
-func (_c *K8SClientMock_Get_Call) RunAndReturn(run func(context.Context, types.NamespacedName, client.Object, ...client.GetOption) error) *K8SClientMock_Get_Call {
+func (_c *K8SClientMock_Get_Call) RunAndReturn(run func(context.Context, types.NamespacedName, cacheapi.Object, ...client.GetOption) error) *K8SClientMock_Get_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -522,7 +523,7 @@ func (_c *K8SClientMock_List_Call) RunAndReturn(run func(context.Context, client
 }
 
 // Patch provides a mock function with given fields: ctx, obj, patch, opts
-func (_m *K8SClientMock) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+func (_m *K8SClientMock) Patch(ctx context.Context, obj cacheapi.Object, patch client.Patch, opts ...client.PatchOption) error {
 	_va := make([]interface{}, len(opts))
 	for _i := range opts {
 		_va[_i] = opts[_i]
@@ -537,7 +538,7 @@ func (_m *K8SClientMock) Patch(ctx context.Context, obj client.Object, patch cli
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, client.Object, client.Patch, ...client.PatchOption) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, cacheapi.Object, client.Patch, ...client.PatchOption) error); ok {
 		r0 = rf(ctx, obj, patch, opts...)
 	} else {
 		r0 = ret.Error(0)
@@ -553,7 +554,7 @@ type K8SClientMock_Patch_Call struct {
 
 // Patch is a helper method to define mock.On call
 //   - ctx context.Context
-//   - obj client.Object
+//   - obj cacheapi.Object
 //   - patch client.Patch
 //   - opts ...client.PatchOption
 func (_e *K8SClientMock_Expecter) Patch(ctx interface{}, obj interface{}, patch interface{}, opts ...interface{}) *K8SClientMock_Patch_Call {
@@ -561,7 +562,7 @@ func (_e *K8SClientMock_Expecter) Patch(ctx interface{}, obj interface{}, patch 
 		append([]interface{}{ctx, obj, patch}, opts...)...)}
 }
 
-func (_c *K8SClientMock_Patch_Call) Run(run func(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption)) *K8SClientMock_Patch_Call {
+func (_c *K8SClientMock_Patch_Call) Run(run func(ctx context.Context, obj cacheapi.Object, patch client.Patch, opts ...client.PatchOption)) *K8SClientMock_Patch_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		variadicArgs := make([]client.PatchOption, len(args)-3)
 		for i, a := range args[3:] {
@@ -569,7 +570,7 @@ func (_c *K8SClientMock_Patch_Call) Run(run func(ctx context.Context, obj client
 				variadicArgs[i] = a.(client.PatchOption)
 			}
 		}
-		run(args[0].(context.Context), args[1].(client.Object), args[2].(client.Patch), variadicArgs...)
+		run(args[0].(context.Context), args[1].(cacheapi.Object), args[2].(client.Patch), variadicArgs...)
 	})
 	return _c
 }
@@ -579,7 +580,7 @@ func (_c *K8SClientMock_Patch_Call) Return(_a0 error) *K8SClientMock_Patch_Call 
 	return _c
 }
 
-func (_c *K8SClientMock_Patch_Call) RunAndReturn(run func(context.Context, client.Object, client.Patch, ...client.PatchOption) error) *K8SClientMock_Patch_Call {
+func (_c *K8SClientMock_Patch_Call) RunAndReturn(run func(context.Context, cacheapi.Object, client.Patch, ...client.PatchOption) error) *K8SClientMock_Patch_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -774,7 +775,7 @@ func (_c *K8SClientMock_SubResource_Call) RunAndReturn(run func(string) client.S
 }
 
 // Update provides a mock function with given fields: ctx, obj, opts
-func (_m *K8SClientMock) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
+func (_m *K8SClientMock) Update(ctx context.Context, obj cacheapi.Object, opts ...client.UpdateOption) error {
 	_va := make([]interface{}, len(opts))
 	for _i := range opts {
 		_va[_i] = opts[_i]
@@ -789,7 +790,7 @@ func (_m *K8SClientMock) Update(ctx context.Context, obj client.Object, opts ...
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, client.Object, ...client.UpdateOption) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, cacheapi.Object, ...client.UpdateOption) error); ok {
 		r0 = rf(ctx, obj, opts...)
 	} else {
 		r0 = ret.Error(0)
@@ -805,14 +806,14 @@ type K8SClientMock_Update_Call struct {
 
 // Update is a helper method to define mock.On call
 //   - ctx context.Context
-//   - obj client.Object
+//   - obj cacheapi.Object
 //   - opts ...client.UpdateOption
 func (_e *K8SClientMock_Expecter) Update(ctx interface{}, obj interface{}, opts ...interface{}) *K8SClientMock_Update_Call {
 	return &K8SClientMock_Update_Call{Call: _e.mock.On("Update",
 		append([]interface{}{ctx, obj}, opts...)...)}
 }
 
-func (_c *K8SClientMock_Update_Call) Run(run func(ctx context.Context, obj client.Object, opts ...client.UpdateOption)) *K8SClientMock_Update_Call {
+func (_c *K8SClientMock_Update_Call) Run(run func(ctx context.Context, obj cacheapi.Object, opts ...client.UpdateOption)) *K8SClientMock_Update_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		variadicArgs := make([]client.UpdateOption, len(args)-2)
 		for i, a := range args[2:] {
@@ -820,7 +821,7 @@ func (_c *K8SClientMock_Update_Call) Run(run func(ctx context.Context, obj clien
 				variadicArgs[i] = a.(client.UpdateOption)
 			}
 		}
-		run(args[0].(context.Context), args[1].(client.Object), variadicArgs...)
+		run(args[0].(context.Context), args[1].(cacheapi.Object), variadicArgs...)
 	})
 	return _c
 }
@@ -830,7 +831,7 @@ func (_c *K8SClientMock_Update_Call) Return(_a0 error) *K8SClientMock_Update_Cal
 	return _c
 }
 
-func (_c *K8SClientMock_Update_Call) RunAndReturn(run func(context.Context, client.Object, ...client.UpdateOption) error) *K8SClientMock_Update_Call {
+func (_c *K8SClientMock_Update_Call) RunAndReturn(run func(context.Context, cacheapi.Object, ...client.UpdateOption) error) *K8SClientMock_Update_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -14,7 +14,6 @@ import (
 )
 
 func init() {
-	SchemeBuilder.Register(&DisruptionCron{}, &DisruptionCronList{})
 }
 
 //+kubebuilder:object:root=true

@@ -160,7 +160,7 @@ var _ = Describe("Watcher factory", func() {
 
 			It("should return an error", func() {
 				Expect(err).Should(HaveOccurred())
-				Expect(err.Error()).Should(HavePrefix("could not create the name disruption target watcher. Error: error getting instance selector"))
+				Expect(err.Error()).Should(HavePrefix("could not create the name disruption target watcher:"))
 			})
 		})
 	})

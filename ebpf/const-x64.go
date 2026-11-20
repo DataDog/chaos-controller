@@ -9,3 +9,4 @@
 package ebpf
 
 const SysOpenat = "__x64_sys_openat"
+const SysWrite = "__x64_sys_write"

@@ -8,7 +8,7 @@
 package mocks
 
 import (
-	cache "sigs.k8s.io/controller-runtime/pkg/cache"
+	cacheapi "sigs.k8s.io/controller-runtime/pkg/cache/cacheapi"
 	client "sigs.k8s.io/controller-runtime/pkg/client"
 
 	context "context"
@@ -34,7 +34,7 @@ func (_m *CacheCacheMock) EXPECT() *CacheCacheMock_Expecter {
 }
 
 // Get provides a mock function with given fields: ctx, key, obj, opts
-func (_m *CacheCacheMock) Get(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
+func (_m *CacheCacheMock) Get(ctx context.Context, key types.NamespacedName, obj cacheapi.Object, opts ...client.GetOption) error {
 	_va := make([]interface{}, len(opts))
 	for _i := range opts {
 		_va[_i] = opts[_i]
@@ -49,7 +49,7 @@ func (_m *CacheCacheMock) Get(ctx context.Context, key types.NamespacedName, obj
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, types.NamespacedName, client.Object, ...client.GetOption) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, types.NamespacedName, cacheapi.Object, ...client.GetOption) error); ok {
 		r0 = rf(ctx, key, obj, opts...)
 	} else {
 		r0 = ret.Error(0)
@@ -66,14 +66,14 @@ type CacheCacheMock_Get_Call struct {
 // Get is a helper method to define mock.On call
 //   - ctx context.Context
 //   - key types.NamespacedName
-//   - obj client.Object
+//   - obj cacheapi.Object
 //   - opts ...client.GetOption
 func (_e *CacheCacheMock_Expecter) Get(ctx interface{}, key interface{}, obj interface{}, opts ...interface{}) *CacheCacheMock_Get_Call {
 	return &CacheCacheMock_Get_Call{Call: _e.mock.On("Get",
 		append([]interface{}{ctx, key, obj}, opts...)...)}
 }
 
-func (_c *CacheCacheMock_Get_Call) Run(run func(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption)) *CacheCacheMock_Get_Call {
+func (_c *CacheCacheMock_Get_Call) Run(run func(ctx context.Context, key types.NamespacedName, obj cacheapi.Object, opts ...client.GetOption)) *CacheCacheMock_Get_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		variadicArgs := make([]client.GetOption, len(args)-3)
 		for i, a := range args[3:] {
@@ -81,7 +81,7 @@ func (_c *CacheCacheMock_Get_Call) Run(run func(ctx context.Context, key types.N
 				variadicArgs[i] = a.(client.GetOption)
 			}
 		}
-		run(args[0].(context.Context), args[1].(types.NamespacedName), args[2].(client.Object), variadicArgs...)
+		run(args[0].(context.Context), args[1].(types.NamespacedName), args[2].(cacheapi.Object), variadicArgs...)
 	})
 	return _c
 }
@@ -91,13 +91,13 @@ func (_c *CacheCacheMock_Get_Call) Return(_a0 error) *CacheCacheMock_Get_Call {
 	return _c
 }
 
-func (_c *CacheCacheMock_Get_Call) RunAndReturn(run func(context.Context, types.NamespacedName, client.Object, ...client.GetOption) error) *CacheCacheMock_Get_Call {
+func (_c *CacheCacheMock_Get_Call) RunAndReturn(run func(context.Context, types.NamespacedName, cacheapi.Object, ...client.GetOption) error) *CacheCacheMock_Get_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // GetInformer provides a mock function with given fields: ctx, obj, opts
-func (_m *CacheCacheMock) GetInformer(ctx context.Context, obj client.Object, opts ...cache.InformerGetOption) (cache.Informer, error) {
+func (_m *CacheCacheMock) GetInformer(ctx context.Context, obj cacheapi.Object, opts ...cacheapi.InformerGetOption) (cacheapi.Informer, error) {
 	_va := make([]interface{}, len(opts))
 	for _i := range opts {
 		_va[_i] = opts[_i]
@@ -111,20 +111,20 @@ func (_m *CacheCacheMock) GetInformer(ctx context.Context, obj client.Object, op
 		panic("no return value specified for GetInformer")
 	}
 
-	var r0 cache.Informer
+	var r0 cacheapi.Informer
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, client.Object, ...cache.InformerGetOption) (cache.Informer, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, cacheapi.Object, ...cacheapi.InformerGetOption) (cacheapi.Informer, error)); ok {
 		return rf(ctx, obj, opts...)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, client.Object, ...cache.InformerGetOption) cache.Informer); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, cacheapi.Object, ...cacheapi.InformerGetOption) cacheapi.Informer); ok {
 		r0 = rf(ctx, obj, opts...)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(cache.Informer)
+			r0 = ret.Get(0).(cacheapi.Informer)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, client.Object, ...cache.InformerGetOption) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, cacheapi.Object, ...cacheapi.InformerGetOption) error); ok {
 		r1 = rf(ctx, obj, opts...)
 	} else {
 		r1 = ret.Error(1)
@@ -140,38 +140,38 @@ type CacheCacheMock_GetInformer_Call struct {
 
 // GetInformer is a helper method to define mock.On call
 //   - ctx context.Context
-//   - obj client.Object
-//   - opts ...cache.InformerGetOption
+//   - obj cacheapi.Object
+//   - opts ...cacheapi.InformerGetOption
 func (_e *CacheCacheMock_Expecter) GetInformer(ctx interface{}, obj interface{}, opts ...interface{}) *CacheCacheMock_GetInformer_Call {
 	return &CacheCacheMock_GetInformer_Call{Call: _e.mock.On("GetInformer",
 		append([]interface{}{ctx, obj}, opts...)...)}
 }
 
-func (_c *CacheCacheMock_GetInformer_Call) Run(run func(ctx context.Context, obj client.Object, opts ...cache.InformerGetOption)) *CacheCacheMock_GetInformer_Call {
+func (_c *CacheCacheMock_GetInformer_Call) Run(run func(ctx context.Context, obj cacheapi.Object, opts ...cacheapi.InformerGetOption)) *CacheCacheMock_GetInformer_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := make([]cache.InformerGetOption, len(args)-2)
+		variadicArgs := make([]cacheapi.InformerGetOption, len(args)-2)
 		for i, a := range args[2:] {
 			if a != nil {
-				variadicArgs[i] = a.(cache.InformerGetOption)
+				variadicArgs[i] = a.(cacheapi.InformerGetOption)
 			}
 		}
-		run(args[0].(context.Context), args[1].(client.Object), variadicArgs...)
+		run(args[0].(context.Context), args[1].(cacheapi.Object), variadicArgs...)
 	})
 	return _c
 }
 
-func (_c *CacheCacheMock_GetInformer_Call) Return(_a0 cache.Informer, _a1 error) *CacheCacheMock_GetInformer_Call {
+func (_c *CacheCacheMock_GetInformer_Call) Return(_a0 cacheapi.Informer, _a1 error) *CacheCacheMock_GetInformer_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *CacheCacheMock_GetInformer_Call) RunAndReturn(run func(context.Context, client.Object, ...cache.InformerGetOption) (cache.Informer, error)) *CacheCacheMock_GetInformer_Call {
+func (_c *CacheCacheMock_GetInformer_Call) RunAndReturn(run func(context.Context, cacheapi.Object, ...cacheapi.InformerGetOption) (cacheapi.Informer, error)) *CacheCacheMock_GetInformer_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // GetInformerForKind provides a mock function with given fields: ctx, gvk, opts
-func (_m *CacheCacheMock) GetInformerForKind(ctx context.Context, gvk schema.GroupVersionKind, opts ...cache.InformerGetOption) (cache.Informer, error) {
+func (_m *CacheCacheMock) GetInformerForKind(ctx context.Context, gvk schema.GroupVersionKind, opts ...cacheapi.InformerGetOption) (cacheapi.Informer, error) {
 	_va := make([]interface{}, len(opts))
 	for _i := range opts {
 		_va[_i] = opts[_i]
@@ -185,20 +185,20 @@ func (_m *CacheCacheMock) GetInformerForKind(ctx context.Context, gvk schema.Gro
 		panic("no return value specified for GetInformerForKind")
 	}
 
-	var r0 cache.Informer
+	var r0 cacheapi.Informer
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, schema.GroupVersionKind, ...cache.InformerGetOption) (cache.Informer, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, schema.GroupVersionKind, ...cacheapi.InformerGetOption) (cacheapi.Informer, error)); ok {
 		return rf(ctx, gvk, opts...)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, schema.GroupVersionKind, ...cache.InformerGetOption) cache.Informer); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, schema.GroupVersionKind, ...cacheapi.InformerGetOption) cacheapi.Informer); ok {
 		r0 = rf(ctx, gvk, opts...)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(cache.Informer)
+			r0 = ret.Get(0).(cacheapi.Informer)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, schema.GroupVersionKind, ...cache.InformerGetOption) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, schema.GroupVersionKind, ...cacheapi.InformerGetOption) error); ok {
 		r1 = rf(ctx, gvk, opts...)
 	} else {
 		r1 = ret.Error(1)
@@ -215,18 +215,18 @@ type CacheCacheMock_GetInformerForKind_Call struct {
 // GetInformerForKind is a helper method to define mock.On call
 //   - ctx context.Context
 //   - gvk schema.GroupVersionKind
-//   - opts ...cache.InformerGetOption
+//   - opts ...cacheapi.InformerGetOption
 func (_e *CacheCacheMock_Expecter) GetInformerForKind(ctx interface{}, gvk interface{}, opts ...interface{}) *CacheCacheMock_GetInformerForKind_Call {
 	return &CacheCacheMock_GetInformerForKind_Call{Call: _e.mock.On("GetInformerForKind",
 		append([]interface{}{ctx, gvk}, opts...)...)}
 }
 
-func (_c *CacheCacheMock_GetInformerForKind_Call) Run(run func(ctx context.Context, gvk schema.GroupVersionKind, opts ...cache.InformerGetOption)) *CacheCacheMock_GetInformerForKind_Call {
+func (_c *CacheCacheMock_GetInformerForKind_Call) Run(run func(ctx context.Context, gvk schema.GroupVersionKind, opts ...cacheapi.InformerGetOption)) *CacheCacheMock_GetInformerForKind_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := make([]cache.InformerGetOption, len(args)-2)
+		variadicArgs := make([]cacheapi.InformerGetOption, len(args)-2)
 		for i, a := range args[2:] {
 			if a != nil {
-				variadicArgs[i] = a.(cache.InformerGetOption)
+				variadicArgs[i] = a.(cacheapi.InformerGetOption)
 			}
 		}
 		run(args[0].(context.Context), args[1].(schema.GroupVersionKind), variadicArgs...)
@@ -234,18 +234,18 @@ func (_c *CacheCacheMock_GetInformerForKind_Call) Run(run func(ctx context.Conte
 	return _c
 }
 
-func (_c *CacheCacheMock_GetInformerForKind_Call) Return(_a0 cache.Informer, _a1 error) *CacheCacheMock_GetInformerForKind_Call {
+func (_c *CacheCacheMock_GetInformerForKind_Call) Return(_a0 cacheapi.Informer, _a1 error) *CacheCacheMock_GetInformerForKind_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *CacheCacheMock_GetInformerForKind_Call) RunAndReturn(run func(context.Context, schema.GroupVersionKind, ...cache.InformerGetOption) (cache.Informer, error)) *CacheCacheMock_GetInformerForKind_Call {
+func (_c *CacheCacheMock_GetInformerForKind_Call) RunAndReturn(run func(context.Context, schema.GroupVersionKind, ...cacheapi.InformerGetOption) (cacheapi.Informer, error)) *CacheCacheMock_GetInformerForKind_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // IndexField provides a mock function with given fields: ctx, obj, field, extractValue
-func (_m *CacheCacheMock) IndexField(ctx context.Context, obj client.Object, field string, extractValue client.IndexerFunc) error {
+func (_m *CacheCacheMock) IndexField(ctx context.Context, obj cacheapi.Object, field string, extractValue cacheapi.IndexerFunc) error {
 	ret := _m.Called(ctx, obj, field, extractValue)
 
 	if len(ret) == 0 {
@@ -253,7 +253,7 @@ func (_m *CacheCacheMock) IndexField(ctx context.Context, obj client.Object, fie
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, client.Object, string, client.IndexerFunc) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, cacheapi.Object, string, cacheapi.IndexerFunc) error); ok {
 		r0 = rf(ctx, obj, field, extractValue)
 	} else {
 		r0 = ret.Error(0)
@@ -269,16 +269,16 @@ type CacheCacheMock_IndexField_Call struct {
 
 // IndexField is a helper method to define mock.On call
 //   - ctx context.Context
-//   - obj client.Object
+//   - obj cacheapi.Object
 //   - field string
-//   - extractValue client.IndexerFunc
+//   - extractValue cacheapi.IndexerFunc
 func (_e *CacheCacheMock_Expecter) IndexField(ctx interface{}, obj interface{}, field interface{}, extractValue interface{}) *CacheCacheMock_IndexField_Call {
 	return &CacheCacheMock_IndexField_Call{Call: _e.mock.On("IndexField", ctx, obj, field, extractValue)}
 }
 
-func (_c *CacheCacheMock_IndexField_Call) Run(run func(ctx context.Context, obj client.Object, field string, extractValue client.IndexerFunc)) *CacheCacheMock_IndexField_Call {
+func (_c *CacheCacheMock_IndexField_Call) Run(run func(ctx context.Context, obj cacheapi.Object, field string, extractValue cacheapi.IndexerFunc)) *CacheCacheMock_IndexField_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(client.Object), args[2].(string), args[3].(client.IndexerFunc))
+		run(args[0].(context.Context), args[1].(cacheapi.Object), args[2].(string), args[3].(cacheapi.IndexerFunc))
 	})
 	return _c
 }
@@ -288,7 +288,7 @@ func (_c *CacheCacheMock_IndexField_Call) Return(_a0 error) *CacheCacheMock_Inde
 	return _c
 }
 
-func (_c *CacheCacheMock_IndexField_Call) RunAndReturn(run func(context.Context, client.Object, string, client.IndexerFunc) error) *CacheCacheMock_IndexField_Call {
+func (_c *CacheCacheMock_IndexField_Call) RunAndReturn(run func(context.Context, cacheapi.Object, string, cacheapi.IndexerFunc) error) *CacheCacheMock_IndexField_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -356,7 +356,7 @@ func (_c *CacheCacheMock_List_Call) RunAndReturn(run func(context.Context, clien
 }
 
 // RemoveInformer provides a mock function with given fields: ctx, obj
-func (_m *CacheCacheMock) RemoveInformer(ctx context.Context, obj client.Object) error {
+func (_m *CacheCacheMock) RemoveInformer(ctx context.Context, obj cacheapi.Object) error {
 	ret := _m.Called(ctx, obj)
 
 	if len(ret) == 0 {
@@ -364,7 +364,7 @@ func (_m *CacheCacheMock) RemoveInformer(ctx context.Context, obj client.Object)
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, client.Object) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, cacheapi.Object) error); ok {
 		r0 = rf(ctx, obj)
 	} else {
 		r0 = ret.Error(0)
@@ -380,14 +380,14 @@ type CacheCacheMock_RemoveInformer_Call struct {
 
 // RemoveInformer is a helper method to define mock.On call
 //   - ctx context.Context
-//   - obj client.Object
+//   - obj cacheapi.Object
 func (_e *CacheCacheMock_Expecter) RemoveInformer(ctx interface{}, obj interface{}) *CacheCacheMock_RemoveInformer_Call {
 	return &CacheCacheMock_RemoveInformer_Call{Call: _e.mock.On("RemoveInformer", ctx, obj)}
 }
 
-func (_c *CacheCacheMock_RemoveInformer_Call) Run(run func(ctx context.Context, obj client.Object)) *CacheCacheMock_RemoveInformer_Call {
+func (_c *CacheCacheMock_RemoveInformer_Call) Run(run func(ctx context.Context, obj cacheapi.Object)) *CacheCacheMock_RemoveInformer_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(client.Object))
+		run(args[0].(context.Context), args[1].(cacheapi.Object))
 	})
 	return _c
 }
@@ -397,7 +397,7 @@ func (_c *CacheCacheMock_RemoveInformer_Call) Return(_a0 error) *CacheCacheMock_
 	return _c
 }
 
-func (_c *CacheCacheMock_RemoveInformer_Call) RunAndReturn(run func(context.Context, client.Object) error) *CacheCacheMock_RemoveInformer_Call {
+func (_c *CacheCacheMock_RemoveInformer_Call) RunAndReturn(run func(context.Context, cacheapi.Object) error) *CacheCacheMock_RemoveInformer_Call {
 	_c.Call.Return(run)
 	return _c
 }

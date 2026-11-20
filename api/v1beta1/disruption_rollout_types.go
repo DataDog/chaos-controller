@@ -10,7 +10,6 @@ import (
 )
 
 func init() {
-	SchemeBuilder.Register(&DisruptionRollout{}, &DisruptionRolloutList{})
 }
 
 //+kubebuilder:object:root=true

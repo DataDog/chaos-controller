@@ -38,6 +38,9 @@ type FactoryConfig struct {
 	Reader         client.Reader
 	Recorder       record.EventRecorder
 	ChaosNamespace string
+	// CachePool is the shared namespace cache pool used by DisruptionTargetWatcher.
+	// When nil, each watcher creates its own cache (legacy behaviour, kept for tests).
+	CachePool *NamespaceCachePool
 }
 
 // NewWatcherFactory creates a new instance of the factory for creating new watcher instances.
@@ -70,37 +73,57 @@ func (f factory) NewChaosPodWatcher(name string, disruption *v1beta1.Disruption,
 }
 
 // NewDisruptionTargetWatcher creates a new watcher instance for target pods of a disruption.
+// When a CachePool is configured on the factory, the watcher uses a shared per-namespace cache
+// instead of creating a dedicated cache, reducing goroutine and memory usage at scale.
 func (f factory) NewDisruptionTargetWatcher(name string, enableObserver bool, disruption *v1beta1.Disruption, cacheMock k8scache.Cache) (Watcher, error) {
-	// Add instance specific labels if provided
-	cacheOptions, err := newDisruptionTargetCacheOptions(disruption)
+	// Compute the label selector for this disruption's targets.
+	labelSelector, err := targetselector.GetLabelSelectorFromInstance(disruption)
 	if err != nil {
-		return nil, fmt.Errorf("could not create the %s disruption target watcher. Error: %w", name, err)
+		return nil, fmt.Errorf("could not create the %s disruption target watcher: %w", name, err)
 	}
 
 	// Create a new handler for this watcher instance
-	handler := DisruptionTargetHandler{
+	h := DisruptionTargetHandler{
 		recorder:       f.config.Recorder,
 		reader:         f.config.Reader,
 		enableObserver: enableObserver,
 		disruption:     disruption,
 		metricsAdapter: NewWatcherMetricsAdapter(f.config.MetricSink, f.config.Log),
 		log:            f.config.Log,
+		labelSelector:  labelSelector,
 	}
 
 	// targetObjectType can either be a pod or a node
 	var targetObjectType client.Object = &corev1.Pod{}
+
+	// Namespace for pool key: empty string for node-level (cluster-scoped).
+	targetNamespace := disruption.Namespace
 	if disruption.Spec.Level == chaostypes.DisruptionLevelNode {
 		targetObjectType = &corev1.Node{}
+		targetNamespace = ""
 	}
 
-	// Create a new watcher configuration object
 	watcherConfig := WatcherConfig{
 		Name:           name,
-		Handler:        &handler,
+		Handler:        &h,
 		ObjectType:     targetObjectType,
-		CacheOptions:   cacheOptions,
+		LabelSelector:  labelSelector,
 		Log:            f.config.Log,
 		NamespacedName: types.NamespacedName{Name: disruption.GetName(), Namespace: disruption.GetNamespace()},
+		Namespace:      targetNamespace,
+	}
+
+	if cacheMock == nil && f.config.CachePool != nil {
+		// Shared cache path: pool manages cache lifecycle.
+		watcherConfig.CachePool = f.config.CachePool
+	} else {
+		// Own cache path (tests or no pool configured).
+		cacheOptions, err := newDisruptionTargetCacheOptions(disruption)
+		if err != nil {
+			return nil, fmt.Errorf("could not create the %s disruption target watcher: %w", name, err)
+		}
+
+		watcherConfig.CacheOptions = cacheOptions
 	}
 
 	return NewWatcher(watcherConfig, cacheMock, nil)

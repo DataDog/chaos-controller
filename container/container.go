@@ -6,6 +6,7 @@
 package container
 
 import (
+	"context"
 	"fmt"
 )
 
@@ -61,7 +62,7 @@ func NewWithConfig(id, name string, config Config) (Container, error) {
 	}
 
 	// retrieve pid from container info
-	pid, err := config.Runtime.PID(containerID)
+	pid, err := config.Runtime.PID(context.Background(), containerID)
 	if err != nil {
 		return nil, fmt.Errorf("error getting PID: %w", err)
 	}

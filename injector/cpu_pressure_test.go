@@ -120,9 +120,13 @@ var _ = Describe("CPU pressure", func() {
 		})
 
 		It("succeed and call stop after proper inject", func() {
+			doneCh := make(chan struct{})
+			close(doneCh)
+
 			background.EXPECT().Start().Return(nil).Once()
 			background.EXPECT().KeepAlive().Once()
 			background.EXPECT().Stop().Return(nil).Once()
+			background.EXPECT().Done().Return((<-chan struct{})(doneCh)).Once()
 
 			inj := NewCPUPressureInjector(config, "100%", factory, args)
 

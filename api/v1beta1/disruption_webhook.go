@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -19,14 +20,13 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"github.com/DataDog/chaos-controller/cloudservice"
@@ -97,24 +97,18 @@ func (d *Disruption) SetupWebhookWithManager(setupWebhookConfig utils.SetupWebho
 
 	permittedUserGroupWarningString = strings.Join(setupWebhookConfig.PermittedUserGroups, ",")
 
-	return ctrl.NewWebhookManagedBy(setupWebhookConfig.Manager).
+	return ctrl.NewWebhookManagedBy(setupWebhookConfig.Manager, d).
 		WithDefaulter(&Disruption{}).
 		WithValidator(&Disruption{}).
-		For(d).
 		Complete()
 }
 
 //+kubebuilder:webhook:webhookVersions={v1},path=/mutate-chaos-datadoghq-com-v1beta1-disruption,mutating=true,failurePolicy=fail,sideEffects=None,groups=chaos.datadoghq.com,resources=disruptions,verbs=create;update,versions=v1beta1,name=mdisruption.kb.io,admissionReviewVersions={v1,v1beta1}
 
-var _ webhook.CustomDefaulter = &Disruption{}
+var _ admission.Defaulter[*Disruption] = &Disruption{}
 
-// Default implements webhook.CustomDefaulter so a webhook will be registered for the type
-func (d *Disruption) Default(_ context.Context, obj runtime.Object) error {
-	disruptionObj, ok := obj.(*Disruption)
-	if !ok {
-		return fmt.Errorf("expected *Disruption, got %T", obj)
-	}
-
+// Default implements webhook.Defaulter so a webhook will be registered for the type
+func (d *Disruption) Default(_ context.Context, disruptionObj *Disruption) error {
 	disruptionObj.Spec.SetDefaults()
 
 	return nil
@@ -122,15 +116,10 @@ func (d *Disruption) Default(_ context.Context, obj runtime.Object) error {
 
 //+kubebuilder:webhook:webhookVersions={v1},path=/validate-chaos-datadoghq-com-v1beta1-disruption,mutating=false,failurePolicy=fail,sideEffects=None,groups=chaos.datadoghq.com,resources=disruptions,verbs=create;update;delete,versions=v1beta1,name=vdisruption.kb.io,admissionReviewVersions={v1,v1beta1}
 
-var _ webhook.CustomValidator = &Disruption{}
+var _ admission.Validator[*Disruption] = &Disruption{}
 
-// ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type
-func (d *Disruption) ValidateCreate(ctx context.Context, obj runtime.Object) (_ admission.Warnings, err error) {
-	disruptionObj, ok := obj.(*Disruption)
-	if !ok {
-		return nil, fmt.Errorf("expected *Disruption, got %T", obj)
-	}
-
+// ValidateCreate implements webhook.Validator so a webhook will be registered for the type
+func (d *Disruption) ValidateCreate(ctx context.Context, disruptionObj *Disruption) (_ admission.Warnings, err error) {
 	// Use the object from parameter instead of r
 	log := logger.With(
 		tagutil.DisruptionNameKey, disruptionObj.Name,
@@ -303,18 +292,8 @@ func (d *Disruption) ValidateCreate(ctx context.Context, obj runtime.Object) (_ 
 	return nil, nil
 }
 
-// ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type
-func (d *Disruption) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (_ admission.Warnings, err error) {
-	newDisruptionObj, ok := newObj.(*Disruption)
-	if !ok {
-		return nil, fmt.Errorf("expected *Disruption, got %T", newObj)
-	}
-
-	oldDisruption, ok := oldObj.(*Disruption)
-	if !ok {
-		return nil, fmt.Errorf("expected *Disruption, got %T", oldObj)
-	}
-
+// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
+func (d *Disruption) ValidateUpdate(_ context.Context, oldDisruption, newDisruptionObj *Disruption) (_ admission.Warnings, err error) {
 	log := logger.With(
 		tagutil.DisruptionNameKey, newDisruptionObj.Name,
 		tagutil.DisruptionNamespaceKey, newDisruptionObj.Namespace,
@@ -415,13 +394,8 @@ You first need to remove those chaos pods (and potentially their finalizers) to 
 	return nil, nil
 }
 
-// ValidateDelete implements webhook.CustomValidator so a webhook will be registered for the type
-func (d *Disruption) ValidateDelete(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
-	disruptionObj, ok := obj.(*Disruption)
-	if !ok {
-		return nil, fmt.Errorf("expected *Disruption, got %T", obj)
-	}
-
+// ValidateDelete implements webhook.Validator so a webhook will be registered for the type
+func (d *Disruption) ValidateDelete(_ context.Context, disruptionObj *Disruption) (admission.Warnings, error) {
 	// Use the object from parameter
 	if mErr := metricsSink.MetricValidationDeleted(disruptionObj.getMetricsTags()); mErr != nil {
 		logger.Errorw("error sending a metric", tagutil.ErrorKey, mErr)
@@ -509,6 +483,14 @@ func (d *Disruption) initialSafetyNets(ctx context.Context) ([]string, error) {
 				logger.Debugw("the specified disruption contains an invalid path.", tagutil.SafetyNetCatchKey, "DiskFailure")
 
 				responses = append(responses, "the specified path for the disk failure disruption targeting a node must not be \"/\"")
+			}
+		}
+
+		if d.Spec.DiskFull != nil {
+			if caught, response := safetyNetDiskFullMinFreeSpace(d); caught {
+				logger.Debugw("the specified disk full disruption breaches the minimum free space safety floor", tagutil.SafetyNetCatchKey, "DiskFull")
+
+				responses = append(responses, response)
 			}
 		}
 	}
@@ -747,6 +729,31 @@ func safetyNetAttemptsNodeRootDiskFailure(r *Disruption) bool {
 	}
 
 	return false
+}
+
+// safetyNetDiskFullMinFreeSpace checks that the disk full disruption does not breach the 1Mi minimum free space floor.
+// When unsafeMode.allowDiskFullNoFloor is set, all floor checks are bypassed — the operator opted in knowingly.
+func safetyNetDiskFullMinFreeSpace(r *Disruption) (bool, string) {
+	if r.Spec.Unsafemode != nil && r.Spec.Unsafemode.AllowDiskFullNoFloor {
+		return false, ""
+	}
+
+	if r.Spec.DiskFull.Capacity != "" {
+		if pct, err := strconv.Atoi(strings.TrimSuffix(r.Spec.DiskFull.Capacity, "%")); err == nil && pct >= 100 {
+			return true, "disk full disruption with 100% capacity will leave 0 bytes free; " +
+				"use a lower capacity percentage or set unsafeMode.allowDiskFullNoFloor=true to override"
+		}
+	}
+
+	if r.Spec.DiskFull.Remaining != "" {
+		qty, err := resource.ParseQuantity(r.Spec.DiskFull.Remaining)
+		if err == nil && qty.Value() < 1024*1024 {
+			return true, fmt.Sprintf("disk full disruption remaining space %s is below the 1Mi safety floor; "+
+				"set unsafeMode.allowDiskFullNoFloor=true to override", r.Spec.DiskFull.Remaining)
+		}
+	}
+
+	return false, ""
 }
 
 // checkForDisabledDisruptions returns an error if `r` specifies any of the disruption kinds in setupWebhookConfig.DisabledDisruptions

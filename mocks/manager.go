@@ -9,11 +9,15 @@ package mocks
 
 import (
 	cache "sigs.k8s.io/controller-runtime/pkg/cache"
+	cacheapi "sigs.k8s.io/controller-runtime/pkg/cache/cacheapi"
+
 	client "sigs.k8s.io/controller-runtime/pkg/client"
 
 	config "sigs.k8s.io/controller-runtime/pkg/config"
 
 	context "context"
+
+	conversion "sigs.k8s.io/controller-runtime/pkg/webhook/conversion"
 
 	healthz "sigs.k8s.io/controller-runtime/pkg/healthz"
 
@@ -28,6 +32,8 @@ import (
 	mock "github.com/stretchr/testify/mock"
 
 	record "k8s.io/client-go/tools/record"
+
+	recorder "sigs.k8s.io/controller-runtime/pkg/recorder"
 
 	rest "k8s.io/client-go/rest"
 
@@ -516,6 +522,101 @@ func (_c *ManagerMock_GetControllerOptions_Call) RunAndReturn(run func() config.
 	return _c
 }
 
+// GetConverterRegistry provides a mock function with no fields
+func (_m *ManagerMock) GetConverterRegistry() conversion.Registry {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetConverterRegistry")
+	}
+
+	var r0 conversion.Registry
+	if rf, ok := ret.Get(0).(func() conversion.Registry); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(conversion.Registry)
+		}
+	}
+
+	return r0
+}
+
+// ManagerMock_GetConverterRegistry_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetConverterRegistry'
+type ManagerMock_GetConverterRegistry_Call struct {
+	*mock.Call
+}
+
+// GetConverterRegistry is a helper method to define mock.On call
+func (_e *ManagerMock_Expecter) GetConverterRegistry() *ManagerMock_GetConverterRegistry_Call {
+	return &ManagerMock_GetConverterRegistry_Call{Call: _e.mock.On("GetConverterRegistry")}
+}
+
+func (_c *ManagerMock_GetConverterRegistry_Call) Run(run func()) *ManagerMock_GetConverterRegistry_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *ManagerMock_GetConverterRegistry_Call) Return(_a0 conversion.Registry) *ManagerMock_GetConverterRegistry_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *ManagerMock_GetConverterRegistry_Call) RunAndReturn(run func() conversion.Registry) *ManagerMock_GetConverterRegistry_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetEventRecorder provides a mock function with given fields: name
+func (_m *ManagerMock) GetEventRecorder(name string) recorder.EventRecorder {
+	ret := _m.Called(name)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetEventRecorder")
+	}
+
+	var r0 recorder.EventRecorder
+	if rf, ok := ret.Get(0).(func(string) recorder.EventRecorder); ok {
+		r0 = rf(name)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(recorder.EventRecorder)
+		}
+	}
+
+	return r0
+}
+
+// ManagerMock_GetEventRecorder_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetEventRecorder'
+type ManagerMock_GetEventRecorder_Call struct {
+	*mock.Call
+}
+
+// GetEventRecorder is a helper method to define mock.On call
+//   - name string
+func (_e *ManagerMock_Expecter) GetEventRecorder(name interface{}) *ManagerMock_GetEventRecorder_Call {
+	return &ManagerMock_GetEventRecorder_Call{Call: _e.mock.On("GetEventRecorder", name)}
+}
+
+func (_c *ManagerMock_GetEventRecorder_Call) Run(run func(name string)) *ManagerMock_GetEventRecorder_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *ManagerMock_GetEventRecorder_Call) Return(_a0 recorder.EventRecorder) *ManagerMock_GetEventRecorder_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *ManagerMock_GetEventRecorder_Call) RunAndReturn(run func(string) recorder.EventRecorder) *ManagerMock_GetEventRecorder_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetEventRecorderFor provides a mock function with given fields: name
 func (_m *ManagerMock) GetEventRecorderFor(name string) record.EventRecorder {
 	ret := _m.Called(name)
@@ -565,19 +666,19 @@ func (_c *ManagerMock_GetEventRecorderFor_Call) RunAndReturn(run func(string) re
 }
 
 // GetFieldIndexer provides a mock function with no fields
-func (_m *ManagerMock) GetFieldIndexer() client.FieldIndexer {
+func (_m *ManagerMock) GetFieldIndexer() cacheapi.FieldIndexer {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetFieldIndexer")
 	}
 
-	var r0 client.FieldIndexer
-	if rf, ok := ret.Get(0).(func() client.FieldIndexer); ok {
+	var r0 cacheapi.FieldIndexer
+	if rf, ok := ret.Get(0).(func() cacheapi.FieldIndexer); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(client.FieldIndexer)
+			r0 = ret.Get(0).(cacheapi.FieldIndexer)
 		}
 	}
 
@@ -601,12 +702,12 @@ func (_c *ManagerMock_GetFieldIndexer_Call) Run(run func()) *ManagerMock_GetFiel
 	return _c
 }
 
-func (_c *ManagerMock_GetFieldIndexer_Call) Return(_a0 client.FieldIndexer) *ManagerMock_GetFieldIndexer_Call {
+func (_c *ManagerMock_GetFieldIndexer_Call) Return(_a0 cacheapi.FieldIndexer) *ManagerMock_GetFieldIndexer_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *ManagerMock_GetFieldIndexer_Call) RunAndReturn(run func() client.FieldIndexer) *ManagerMock_GetFieldIndexer_Call {
+func (_c *ManagerMock_GetFieldIndexer_Call) RunAndReturn(run func() cacheapi.FieldIndexer) *ManagerMock_GetFieldIndexer_Call {
 	_c.Call.Return(run)
 	return _c
 }

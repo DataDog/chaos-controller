@@ -121,6 +121,10 @@ func getUpstreamDNSFromResolvConf(resolvConfPath string) string {
 		}
 	}
 
+	if err := scanner.Err(); err != nil {
+		return defaultDNS
+	}
+
 	// Return all nameservers as comma-separated list for redundancy
 	if len(nameservers) > 0 {
 		return strings.Join(nameservers, ",")

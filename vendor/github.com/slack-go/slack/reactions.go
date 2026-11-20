@@ -33,44 +33,57 @@ func NewGetReactionsParameters() GetReactionsParameters {
 }
 
 type getReactionsResponseFull struct {
-	Type string
-	M    struct {
-		Reactions []ItemReaction
-	} `json:"message"`
-	F struct {
-		Reactions []ItemReaction
-	} `json:"file"`
-	FC struct {
-		Reactions []ItemReaction
-	} `json:"comment"`
+	reactedItemResponse
 	SlackResponse
 }
 
-func (res getReactionsResponseFull) extractReactions() []ItemReaction {
-	switch res.Type {
+type reactedItemResponse struct {
+	Type    string
+	Channel string `json:"channel,omitempty"` // channel is at the root level for message types
+	M       struct {
+		*Message // message structure already contains reactions
+	} `json:"message"`
+	F struct {
+		*File
+		Reactions []ItemReaction
+	} `json:"file"`
+	FC struct {
+		*Comment
+		Reactions []ItemReaction
+	} `json:"comment"`
+}
+
+func (res reactedItemResponse) extractReactedItem() ReactedItem {
+	item := ReactedItem{}
+	item.Type = res.Type
+
+	switch item.Type {
 	case "message":
-		return res.M.Reactions
+		item.Channel = res.Channel
+		item.Message = res.M.Message
+		item.Reactions = res.M.Reactions
 	case "file":
-		return res.F.Reactions
+		item.File = res.F.File
+		item.Reactions = res.F.Reactions
 	case "file_comment":
-		return res.FC.Reactions
+		item.File = res.F.File
+		item.Comment = res.FC.Comment
+		item.Reactions = res.FC.Reactions
 	}
-	return []ItemReaction{}
+	return item
 }
 
 const (
-	DEFAULT_REACTIONS_USER  = ""
-	DEFAULT_REACTIONS_COUNT = 100
-	DEFAULT_REACTIONS_PAGE  = 1
-	DEFAULT_REACTIONS_FULL  = false
+	DEFAULT_REACTIONS_USER = ""
+	DEFAULT_REACTIONS_FULL = false
 )
 
 // ListReactionsParameters is the inputs to find all reactions by a user.
 type ListReactionsParameters struct {
 	User   string
 	TeamID string
-	Count  int
-	Page   int
+	Cursor string
+	Limit  int
 	Full   bool
 }
 
@@ -78,64 +91,36 @@ type ListReactionsParameters struct {
 // performed by a user.
 func NewListReactionsParameters() ListReactionsParameters {
 	return ListReactionsParameters{
-		User:  DEFAULT_REACTIONS_USER,
-		Count: DEFAULT_REACTIONS_COUNT,
-		Page:  DEFAULT_REACTIONS_PAGE,
-		Full:  DEFAULT_REACTIONS_FULL,
+		User: DEFAULT_REACTIONS_USER,
+		Full: DEFAULT_REACTIONS_FULL,
 	}
 }
 
 type listReactionsResponseFull struct {
-	Items []struct {
-		Type    string
-		Channel string
-		M       struct {
-			*Message
-		} `json:"message"`
-		F struct {
-			*File
-			Reactions []ItemReaction
-		} `json:"file"`
-		FC struct {
-			*Comment
-			Reactions []ItemReaction
-		} `json:"comment"`
-	}
-	Paging `json:"paging"`
+	Items []reactedItemResponse
 	SlackResponse
+	ResponseMetadata `json:"response_metadata"`
 }
 
 func (res listReactionsResponseFull) extractReactedItems() []ReactedItem {
 	items := make([]ReactedItem, len(res.Items))
 	for i, input := range res.Items {
-		item := ReactedItem{}
-		item.Type = input.Type
-		switch input.Type {
-		case "message":
-			item.Channel = input.Channel
-			item.Message = input.M.Message
-			item.Reactions = input.M.Reactions
-		case "file":
-			item.File = input.F.File
-			item.Reactions = input.F.Reactions
-		case "file_comment":
-			item.File = input.F.File
-			item.Comment = input.FC.Comment
-			item.Reactions = input.FC.Reactions
-		}
-		items[i] = item
+		items[i] = input.extractReactedItem()
 	}
 	return items
 }
 
-// AddReaction adds a reaction emoji to a message, file or file comment.
+// AddReaction adds a reaction emoji to a message.
 // For more details, see AddReactionContext documentation.
 func (api *Client) AddReaction(name string, item ItemRef) error {
 	return api.AddReactionContext(context.Background(), name, item)
 }
 
-// AddReactionContext adds a reaction emoji to a message, file or file comment with a custom context.
-// Slack API docs: https://api.slack.com/methods/reactions.add
+// AddReactionContext adds a reaction emoji to a message with a custom context.
+// Set item.Channel and item.Timestamp. Slack deprecated the file and file_comment
+// arguments; react to the file's channel message instead.
+//
+// Slack API docs: https://docs.slack.dev/reference/methods/reactions.add
 func (api *Client) AddReactionContext(ctx context.Context, name string, item ItemRef) error {
 	values := url.Values{
 		"token": {api.token},
@@ -200,15 +185,15 @@ func (api *Client) RemoveReactionContext(ctx context.Context, name string, item 
 	return response.Err()
 }
 
-// GetReactions returns details about the reactions on an item.
+// GetReactions returns item and details about the reactions on an item.
 // For more details, see GetReactionsContext documentation.
-func (api *Client) GetReactions(item ItemRef, params GetReactionsParameters) ([]ItemReaction, error) {
+func (api *Client) GetReactions(item ItemRef, params GetReactionsParameters) (ReactedItem, error) {
 	return api.GetReactionsContext(context.Background(), item, params)
 }
 
-// GetReactionsContext returns details about the reactions on an item with a custom context.
+// GetReactionsContext returns item and details about the reactions on an item with a custom context.
 // Slack API docs: https://api.slack.com/methods/reactions.get
-func (api *Client) GetReactionsContext(ctx context.Context, item ItemRef, params GetReactionsParameters) ([]ItemReaction, error) {
+func (api *Client) GetReactionsContext(ctx context.Context, item ItemRef, params GetReactionsParameters) (ReactedItem, error) {
 	values := url.Values{
 		"token": {api.token},
 	}
@@ -224,31 +209,31 @@ func (api *Client) GetReactionsContext(ctx context.Context, item ItemRef, params
 	if item.Comment != "" {
 		values.Set("file_comment", item.Comment)
 	}
-	if params.Full != DEFAULT_REACTIONS_FULL {
+	if params.Full {
 		values.Set("full", strconv.FormatBool(params.Full))
 	}
 
 	response := &getReactionsResponseFull{}
 	if err := api.postMethod(ctx, "reactions.get", values, response); err != nil {
-		return nil, err
+		return ReactedItem{}, err
 	}
 
 	if err := response.Err(); err != nil {
-		return nil, err
+		return ReactedItem{}, err
 	}
 
-	return response.extractReactions(), nil
+	return response.extractReactedItem(), nil
 }
 
 // ListReactions returns information about the items a user reacted to.
 // For more details, see ListReactionsContext documentation.
-func (api *Client) ListReactions(params ListReactionsParameters) ([]ReactedItem, *Paging, error) {
+func (api *Client) ListReactions(params ListReactionsParameters) ([]ReactedItem, string, error) {
 	return api.ListReactionsContext(context.Background(), params)
 }
 
 // ListReactionsContext returns information about the items a user reacted to with a custom context.
 // Slack API docs: https://api.slack.com/methods/reactions.list
-func (api *Client) ListReactionsContext(ctx context.Context, params ListReactionsParameters) ([]ReactedItem, *Paging, error) {
+func (api *Client) ListReactionsContext(ctx context.Context, params ListReactionsParameters) ([]ReactedItem, string, error) {
 	values := url.Values{
 		"token": {api.token},
 	}
@@ -258,25 +243,25 @@ func (api *Client) ListReactionsContext(ctx context.Context, params ListReaction
 	if params.TeamID != "" {
 		values.Add("team_id", params.TeamID)
 	}
-	if params.Count != DEFAULT_REACTIONS_COUNT {
-		values.Add("count", strconv.Itoa(params.Count))
+	if params.Cursor != "" {
+		values.Add("cursor", params.Cursor)
 	}
-	if params.Page != DEFAULT_REACTIONS_PAGE {
-		values.Add("page", strconv.Itoa(params.Page))
+	if params.Limit != 0 {
+		values.Add("limit", strconv.Itoa(params.Limit))
 	}
-	if params.Full != DEFAULT_REACTIONS_FULL {
+	if params.Full {
 		values.Add("full", strconv.FormatBool(params.Full))
 	}
 
 	response := &listReactionsResponseFull{}
 	err := api.postMethod(ctx, "reactions.list", values, response)
 	if err != nil {
-		return nil, nil, err
+		return nil, "", err
 	}
 
 	if err := response.Err(); err != nil {
-		return nil, nil, err
+		return nil, "", err
 	}
 
-	return response.extractReactedItems(), &response.Paging, nil
+	return response.extractReactedItems(), response.ResponseMetadata.Cursor, nil
 }
