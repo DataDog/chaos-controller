@@ -360,10 +360,6 @@ var _ = Describe("ConfigInformer", func() {
 						Description: "Essential eBPF infrastructure",
 						Enabled:     true,
 					},
-					"CONFIG_BPF_KPROBE_OVERRIDE": ebpf.KernelOption{
-						Description: "Essential eBPF infrastructure",
-						Enabled:     true,
-					},
 					"CONFIG_NET_CLS_ACT": ebpf.KernelOption{
 						Description: "Essential eBPF infrastructure",
 						Enabled:     true,
@@ -377,7 +373,7 @@ var _ = Describe("ConfigInformer", func() {
 	"CONFIG_BPF_SYSCALL": "n",
 	"CONFIG_HAVE_EBPF_JIT": "n",
 	"CONFIG_BPF_JIT": "n",
-	"CONFIG_BPF_KPROBE_OVERRIDE": "n",
+	"CONFIG_FUNCTION_ERROR_INJECTION": "n",
 	"CONFIG_NET_CLS_ACT": "n"
   }
 }
@@ -396,10 +392,6 @@ var _ = Describe("ConfigInformer", func() {
 						Enabled:     false,
 					},
 					"CONFIG_HAVE_EBPF_JIT": ebpf.KernelOption{
-						Description: "Essential eBPF infrastructure",
-						Enabled:     false,
-					},
-					"CONFIG_BPF_KPROBE_OVERRIDE": ebpf.KernelOption{
 						Description: "Essential eBPF infrastructure",
 						Enabled:     false,
 					},
@@ -578,7 +570,7 @@ var _ = Describe("ConfigInformer", func() {
 				"CONFIG_BPF_SYSCALL": "y",
 				"CONFIG_HAVE_EBPF_JIT": "y",
 				"CONFIG_BPF_JIT": "y",
-				"CONFIG_BPF_KPROBE_OVERRIDE": "y",
+				"CONFIG_FUNCTION_ERROR_INJECTION": "y",
 				"CONFIG_NET_CLS_ACT": "n"
 			}
 			}
@@ -595,7 +587,7 @@ var _ = Describe("ConfigInformer", func() {
 				"CONFIG_BPF_SYSCALL": "n",
 				"CONFIG_HAVE_EBPF_JIT": "n",
 				"CONFIG_BPF_JIT": "n",
-				"CONFIG_BPF_KPROBE_OVERRIDE": "n",
+				"CONFIG_FUNCTION_ERROR_INJECTION": "n",
 				"CONFIG_NET_CLS_ACT": "n"
 			}
 			}
@@ -605,12 +597,80 @@ var _ = Describe("ConfigInformer", func() {
 						"CONFIG_BPF_SYSCALL",
 						"CONFIG_HAVE_EBPF_JIT",
 						"CONFIG_BPF_JIT",
-						"CONFIG_BPF_KPROBE_OVERRIDE",
 						"CONFIG_NET_CLS_ACT",
 					},
 				),
 			)
 
+		})
+	})
+
+	When("ValidateDiskFailureRequiredConfig method is called", func() {
+		JustBeforeEach(func() {
+			// Action
+			err = configInformer.ValidateDiskFailureRequiredConfig()
+		})
+
+		Describe("success cases", func() {
+			Context("with CONFIG_FUNCTION_ERROR_INJECTION enabled", func() {
+				BeforeEach(func() {
+					// Arrange
+					bpftoolExecutorMock.EXPECT().Run([]string{"-j", "feature", "probe"}).Return(0, validKernelConfig, nil)
+				})
+
+				It("should not return an error", func() {
+					// Assert
+					Expect(err).ShouldNot(HaveOccurred())
+				})
+			})
+		})
+
+		Describe("error cases", func() {
+			Context("when the kernel configuration is not available", func() {
+				BeforeEach(func() {
+					// Arrange
+					unameFuncMock = func() (unix.Utsname, error) {
+						return unix.Utsname{}, fmt.Errorf("an error happened")
+					}
+				})
+
+				It("should return an error", func() {
+					// Assert
+					Expect(err).Should(HaveOccurred())
+					Expect(err).To(MatchError("kernel config file not found"))
+				})
+			})
+
+			Context("with CONFIG_FUNCTION_ERROR_INJECTION disabled", func() {
+				It("should return an error", func() {
+					// Arrange — fresh configInformer so the disabled config is not shadowed
+					// by the outer BeforeEach's .Maybe() expectation.
+					localBpftool := ebpf.NewExecutorMock(GinkgoT())
+					localBpftool.EXPECT().Run([]string{"-j", "feature", "probe"}).Return(0, `
+{
+  "system_config": {
+    "CONFIG_BPF": "y",
+    "CONFIG_BPF_SYSCALL": "y",
+    "CONFIG_HAVE_EBPF_JIT": "y",
+    "CONFIG_BPF_JIT": "y",
+    "CONFIG_FUNCTION_ERROR_INJECTION": "n",
+    "CONFIG_NET_CLS_ACT": "y"
+  }
+}
+`, nil).Once()
+
+					localStatFS := mocks.NewStatFSMock(GinkgoT())
+					localStatFS.EXPECT().Stat(mock.Anything).Return(nil, nil).Once()
+
+					localConfigInformer, newErr := ebpf.NewConfigInformer(log, false, localBpftool, localStatFS, func() (unix.Utsname, error) {
+						return unix.Utsname{}, nil
+					})
+					Expect(newErr).ShouldNot(HaveOccurred())
+
+					// Action && Assert
+					Expect(localConfigInformer.ValidateDiskFailureRequiredConfig()).To(MatchError(ContainSubstring("CONFIG_FUNCTION_ERROR_INJECTION kernel parameter is required")))
+				})
+			})
 		})
 	})
 

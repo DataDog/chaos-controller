@@ -16,14 +16,13 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/DataDog/chaos-controller/ebpf"
 	"github.com/DataDog/chaos-controller/log"
 	bpf "github.com/aquasecurity/libbpfgo"
 	"github.com/aquasecurity/libbpfgo/helpers"
 	"go.uber.org/zap"
 )
 
-var nPid = flag.Uint64("process", 0, "Process to disrupt")
+var nPidNsInum = flag.Uint64("pid-ns-inum", 0, "PID namespace inode to disrupt (0 = all namespaces)")
 var nPath = flag.String("path", "/", "Filter path")
 var nProbability = flag.Uint64("probability", 100, "Probability to disrupt")
 var nExitCode = flag.Uint64("exit-code", 1, "Exit code")
@@ -72,8 +71,15 @@ func main() {
 	prog, err := bpfModule.GetProgram("injection_disk_failure")
 	must(err)
 
-	// Attach the kprope to catch sys openat syscall
-	_, err = prog.AttachKprobe(ebpf.SysOpenat)
+	// AttachGeneric attaches the fmod_ret program declared in the ELF section
+	// (fmod_ret/__x64_sys_openat or fmod_ret/__arm64_sys_openat). fmod_ret
+	// requires BPF trampoline support (Linux 5.7+). This intentionally
+	// replaces the previous kprobe + bpf_override_return approach: fmod_ret
+	// lets the program return a value directly without needing
+	// bpf_override_return, which is unavailable on kernels built without
+	// CONFIG_BPF_KPROBE_OVERRIDE. Nodes running kernels older than 5.7 are
+	// not supported by this injector and will fail at BPFLoadObject() above.
+	_, err = prog.AttachGeneric()
 	must(err)
 
 	// Create the ring buffer to store events
@@ -96,12 +102,11 @@ func main() {
 }
 
 func printEvent(data []byte) {
-	ppid := int(binary.LittleEndian.Uint32(data[0:4]))
-	pid := int(binary.LittleEndian.Uint32(data[4:8]))
-	tid := int(binary.LittleEndian.Uint32(data[8:12]))
-	gid := int(binary.LittleEndian.Uint32(data[12:16]))
-	comm := string(bytes.TrimRight(data[16:], "\x00"))
-	logger.Infof("Disrupt Ppid %d, Pid %d, Tid: %d, Gid: %d, Command: %s", ppid, pid, tid, gid, comm)
+	pid := int(binary.LittleEndian.Uint32(data[0:4]))
+	tid := int(binary.LittleEndian.Uint32(data[4:8]))
+	gid := int(binary.LittleEndian.Uint32(data[8:12]))
+	comm := string(bytes.TrimRight(data[12:], "\x00"))
+	logger.Infof("Disrupt Pid %d, Tid: %d, Gid: %d, Command: %s", pid, tid, gid, comm)
 }
 
 // The global variables are shared against the userspace application and the BPF application (loaded into the kernel).
@@ -109,10 +114,8 @@ func printEvent(data []byte) {
 func initGlobalVariables(bpfModule *bpf.Module) {
 	flag.Parse()
 
-	// Set the PID
-	var pid uint32
-	pid = uint32(*nPid)
-	if err := bpfModule.InitGlobalVariable("target_pid", pid); err != nil {
+	pidNsInum := uint32(*nPidNsInum)
+	if err := bpfModule.InitGlobalVariable("target_pid_ns_inum", pidNsInum); err != nil {
 		must(err)
 	}
 
@@ -121,14 +124,12 @@ func initGlobalVariables(bpfModule *bpf.Module) {
 		must(err)
 	}
 
-	var exitCode uint32
-	exitCode = uint32(*nExitCode)
+	exitCode := uint32(*nExitCode)
 	if err := bpfModule.InitGlobalVariable("exit_code", exitCode); err != nil {
 		must(err)
 	}
 
-	var probability uint32
-	probability = uint32(*nProbability)
+	probability := uint32(*nProbability)
 	if err := bpfModule.InitGlobalVariable("probability", probability); err != nil {
 		must(err)
 	}
