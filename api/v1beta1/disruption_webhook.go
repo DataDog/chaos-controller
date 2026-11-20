@@ -387,6 +387,19 @@ You first need to remove those chaos pods (and potentially their finalizers) to 
 		return nil, err
 	}
 
+	// a count change retargets the disruption, so the count safety net applies as it does on creation
+	if enableSafemode && !reflect.DeepEqual(oldDisruption.Spec.Count, newDisruptionObj.Spec.Count) &&
+		(newDisruptionObj.Spec.Unsafemode == nil || !newDisruptionObj.Spec.Unsafemode.DisableAll) {
+		caught, response, err := safetyNetCountNotTooLarge(ctx, newDisruptionObj)
+		if err != nil {
+			return nil, fmt.Errorf("error checking for countNotTooLarge safetynet: %w", err)
+		}
+
+		if caught {
+			return nil, fmt.Errorf("the count safety net caught an issue with the updated count: %s", response)
+		}
+	}
+
 	if mErr := metricsSink.MetricValidationUpdated(newDisruptionObj.getMetricsTags()); mErr != nil {
 		log.Errorw("error sending a metric", tagutil.ErrorKey, mErr)
 	}

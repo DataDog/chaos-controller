@@ -240,6 +240,13 @@ var _ = Describe("Disruption Webhook", func() {
 			When("count is updated", func() {
 				BeforeEach(func() {
 					newDisruption.Spec.Count = &intstr.IntOrString{IntVal: 2}
+
+					// these specs cover the spec hash rules; the count safety net on updates has its own spec,
+					// so do not inherit safe mode from specs that ran earlier in the suite
+					previousSafemode := enableSafemode
+					enableSafemode = false
+
+					DeferCleanup(func() { enableSafemode = previousSafemode })
 				})
 
 				Context("DynamicTargeting (StaticTargeting=false)", func() {
