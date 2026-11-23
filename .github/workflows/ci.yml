@@ -105,12 +105,25 @@ jobs:
         target: [injector, manager, handler]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Cache Buildx layers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /tmp/.buildx-cache
+          key: buildx-${{ matrix.target }}-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            buildx-${{ matrix.target }}-${{ runner.os }}-
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        run: docker buildx create --name ci-builder --driver docker-container --use --bootstrap
       - name: Build ${{ matrix.target }}
         run: |
+          CACHE_FROM=""
+          if [ -f /tmp/.buildx-cache/index.json ]; then
+            CACHE_FROM="--cache-from=type=local,src=/tmp/.buildx-cache"
+          fi
           make docker-build-${{ matrix.target }} SKIP_GENERATE=true \
-            CONTAINER_BUILD_EXTRA_ARGS="--load --cache-from=type=gha,scope=${{ matrix.target }} --cache-to=type=gha,mode=max,scope=${{ matrix.target }}"
+            CONTAINER_BUILD_EXTRA_ARGS="--load ${CACHE_FROM} --cache-to=type=local,dest=/tmp/.buildx-cache-new,mode=max"
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
       - name: Upload tarball
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
