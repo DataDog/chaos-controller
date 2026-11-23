@@ -37,14 +37,12 @@ RUN /tmp/install-go && rm -f /tmp/install-go
 # Copy EBPF source and build
 WORKDIR /app
 COPY go.mod go.sum ./
-RUN --mount=type=cache,target=/go/pkg/mod \
-    go mod download
+COPY vendor/ vendor/
 
 COPY . .
 
 WORKDIR /app/ebpf
-RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=cache,target=/root/.cache/go-build \
+RUN --mount=type=cache,target=/root/.cache/go-build \
     make all
 
 # Build stage for Go binary
@@ -55,19 +53,17 @@ ARG TARGETARCH
 
 WORKDIR /go/src/github.com/chaos-controller/
 
-# Copy go mod files first for better caching
+# Copy vendored dependencies first for better layer caching (avoids network downloads)
 COPY go.mod go.sum ./
-RUN --mount=type=cache,target=/go/pkg/mod \
-    go mod download
+COPY vendor/ vendor/
 
 # Copy the source code
 COPY . .
 
 # Build the injector binary
-RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=cache,target=/root/.cache/go-build \
+RUN --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-    go build -ldflags="-s -w" -o bin/injector/injector ./cli/injector
+    go build -mod=vendor -ldflags="-s -w" -o bin/injector/injector ./cli/injector
 # Stage for system binaries and libraries
 FROM ubuntu:24.04 AS binaries
 

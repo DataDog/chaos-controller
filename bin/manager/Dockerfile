@@ -8,19 +8,17 @@ ARG TARGETARCH
 
 WORKDIR /go/src/github.com/chaos-controller/
 
-# Copy go mod files first for better caching
+# Copy vendored dependencies first for better layer caching (avoids network downloads)
 COPY go.mod go.sum ./
-RUN --mount=type=cache,target=/go/pkg/mod \
-    go mod download
+COPY vendor/ vendor/
 
 # Copy the source code
 COPY . .
 
 # Build the manager binary
-RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=cache,target=/root/.cache/go-build \
+RUN --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-    go build -ldflags="-s -w" -o manager .
+    go build -mod=vendor -ldflags="-s -w" -o manager .
 # Final stage
 FROM gcr.io/distroless/base-debian13:nonroot
 
