@@ -10,7 +10,7 @@ controller:
   # tests requiring to be fast should adapt it when relevant, or delete disruption quicker if they can
   defaultDuration: 2m
   finalizerDeletionDelay: 2s
-  expiredDisruptionGCDelay: 5s
+  expiredDisruptionGCDelay: 15s
   minimumCronFrequency: 1m
   webhook:
     generateCert: true
