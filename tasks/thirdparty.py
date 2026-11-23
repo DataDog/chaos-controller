@@ -8,6 +8,7 @@
 from concurrent.futures import ProcessPoolExecutor
 import csv
 import glob
+import multiprocessing
 import os
 import sys
 from invoke import task
@@ -72,10 +73,15 @@ def license_check(ctx):
         for row in reader:
             existing_deps[row[0]] = row[2]
 
-    # detect licenses in parallel while preserving module order
-    with ProcessPoolExecutor() as executor:
-        detected = list(executor.map(_detect_license, deps.keys()))
-
+    # detect licenses in parallel while preserving module order;
+    # use 'fork' where available because invoke loads task modules dynamically
+    # without registering them on sys.path for spawn/forkserver workers
+    if 'fork' in multiprocessing.get_all_start_methods():
+        mp_context = multiprocessing.get_context('fork')
+        with ProcessPoolExecutor(mp_context=mp_context) as executor:
+            detected = list(executor.map(_detect_license, deps.keys()))
+    else:
+        detected = [_detect_license(parent) for parent in deps.keys()]
     # write deps to csv
     with open(csv_file, 'w', newline='') as csvfile:
         w = csv.DictWriter(csvfile, ['From', 'Package', 'License'])
