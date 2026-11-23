@@ -5,20 +5,53 @@
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
 # Copyright 2026 Datadog, Inc.
 
+from concurrent.futures import ProcessPoolExecutor
 import csv
 import glob
 import os
 import sys
-
 from invoke import task
 import spdx_lookup as lookup
 
 csv_file = 'LICENSE-3rdparty.csv'
 
+def _detect_license(parent):
+    """Detect the SPDX license identifier for a vendored module."""
+    error = None
+
+    # find license file
+    base_path = 'vendor/{}'.format(parent)
+    license_filename = None
+    if os.path.isfile('{}/LICENSE'.format(base_path)):
+        license_filename = '{}/LICENSE'.format(base_path)
+    elif os.path.isfile('{}/COPYING'.format(base_path)):
+        license_filename = '{}/COPYING'.format(base_path)
+    else:
+        license_files = glob.glob('{}/LICENSE.*'.format(base_path))
+        if len(license_files) > 1:
+            error = 'error: multiple license files for package {}'.format(parent)
+        elif len(license_files) == 0:
+            error = 'error: could not find license file for package {}'.format(parent)
+        else:
+            license_filename = license_files[0]
+
+    # determine license type
+    license_type = 'Unknown'
+    if license_filename is not None:
+        with open('{}'.format(license_filename), 'r') as license_file:
+            match = lookup.match(license_file.read())
+            if match is None:
+                error = 'error: could not determine license type for package {}'.format(parent)
+            else:
+                license_type = match.license.id
+
+    return parent, license_type, error
+
+
 @task
 def license_check(ctx):
     """ Build LICENSE-3rdparty.csv """
-    # read deps from go.sum file
+    # read deps from vendor/modules.txt
     deps = {}
     with open('vendor/modules.txt', 'r') as modules:
         parent = ''
@@ -39,38 +72,16 @@ def license_check(ctx):
         for row in reader:
             existing_deps[row[0]] = row[2]
 
+    # detect licenses in parallel while preserving module order
+    with ProcessPoolExecutor() as executor:
+        detected = list(executor.map(_detect_license, deps.keys()))
+
     # write deps to csv
     with open(csv_file, 'w', newline='') as csvfile:
         w = csv.DictWriter(csvfile, ['From', 'Package', 'License'])
         w.writeheader()
-        for parent, packages in deps.items():
-            error = None
-
-            # find license file
-            base_path = 'vendor/{}'.format(parent)
-            license_filename = None
-            if os.path.isfile('{}/LICENSE'.format(base_path)):
-                license_filename = '{}/LICENSE'.format(base_path)
-            elif os.path.isfile('{}/COPYING'.format(base_path)):
-                license_filename = '{}/COPYING'.format(base_path)
-            else:
-                license_files = glob.glob('{}/LICENSE.*'.format(base_path))
-                if len(license_files) > 1:
-                    error = 'error: multiple license files for package {}'.format(parent)
-                elif len(license_files) == 0:
-                    error = 'error: could not find license file for package {}'.format(parent)
-                else:
-                    license_filename = license_files[0]
-
-            # determine license type
-            license_type = 'Unknown'
-            if license_filename is not None:
-                with open('{}'.format(license_filename), 'r') as license_file:
-                    match = lookup.match(license_file.read())
-                    if match is None:
-                        error = 'error: could not determine license type for package {}'.format(parent)
-                    else:
-                        license_type = match.license.id
+        for parent, license_type, error in detected:
+            packages = deps[parent]
 
             # if the license has already been defined in the CSV, multiple options:
             # - an error occurred during recognition but the license has already been specified, we can keep it

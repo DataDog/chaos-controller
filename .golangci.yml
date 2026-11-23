@@ -12,6 +12,7 @@ linters:
     - bodyclose
     - dogsled
     - errcheck
+    - ginkgolinter
     - gocritic
     - godox
     - goprintffuncname

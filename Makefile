@@ -23,6 +23,7 @@ LOCALBIN ?= $(shell pwd)/bin/tools
 CONTROLLER_GEN = $(LOCALBIN)/controller-gen
 YAMLFMT        = $(LOCALBIN)/yamlfmt
 GOLANGCI_LINT  = $(LOCALBIN)/golangci-lint
+GOTESTSUM      = $(LOCALBIN)/gotestsum
 HELM           = $(LOCALBIN)/helm
 WATCHEXEC      = $(LOCALBIN)/watchexec
 MOCKERY        = $(LOCALBIN)/mockery
@@ -163,6 +164,16 @@ WATCHEXEC_SHA256_linux_amd64       = 74651d6f450bca5436eee35b7828f1b97388d3b3976
 WATCHEXEC_SHA256_linux_arm64       = 87ec2094f2e883a090cb4a72a073f9b44f4aba7f50481f068e175f993d15c581
 WATCHEXEC_SHA256                   = $(WATCHEXEC_SHA256_$(GOOS)_$(GOARCH))
 
+# gotestsum v$(GOTESTSUM_VERSION)
+# Source: https://github.com/gotestyourself/gotestsum/releases/download/v$(GOTESTSUM_VERSION)/gotestsum-$(GOTESTSUM_VERSION)-checksums.txt
+GOTESTSUM_VERSION                  = 1.13.0
+GOTESTSUM_INSTALLED_VERSION        = $(shell ($(LOCALBIN)/gotestsum --version 2>/dev/null || echo "") | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+GOTESTSUM_SHA256_darwin_amd64      = 99529350f4c7b780b1efc543ca0d9721b09f0a4228f0efa9281261f58fefa05a
+GOTESTSUM_SHA256_darwin_arm64      = 509cb27aef747f48faf9bce424f59dcf79572c905204b990ee935bbfcc7fa0e9
+GOTESTSUM_SHA256_linux_amd64       = 11ccddeaf708ef228889f9fe2f68291a75b27013ddfc3b18156e094f5f40e8ee
+GOTESTSUM_SHA256_linux_arm64       = 7644a4c5cd1bb978d56245aeab25a586ac5ac62adebed20a399548867c13499d
+GOTESTSUM_SHA256                   = $(GOTESTSUM_SHA256_$(GOOS)_$(GOARCH))
+
 # Portable SHA256 verification: macOS ships shasum, Linux ships sha256sum
 SHA256SUM = sha256sum
 ifeq (darwin,$(GOOS))
@@ -251,7 +262,7 @@ chaosli:
 	GOOS=darwin GOARCH=$(GOARCH) CGO_ENABLED=0 go build -ldflags="-X github.com/DataDog/chaos-controller/cli/chaosli/cmd.Version=$(VERSION)" -o bin/chaosli/chaosli_darwin_$(GOARCH) ./cli/chaosli/
 
 # https://onsi.github.io/ginkgo/#recommended-continuous-integration-configuration
-GINKGO_PROCS ?= 4
+GINKGO_PROCS ?= $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 
 _ginkgo_test:
 # Run the test and write a file if succeed
@@ -286,6 +297,27 @@ test: generate-controller manifests
 	$(if $(GOPATH),,$(error GOPATH is not set. Please set GOPATH before running make test))
 	$(MAKE) _ginkgo_test GO_TEST_REPORT_NAME=$@ \
 		GINKGO_TEST_ARGS="-r --skip-package=controllers --randomize-suites --timeout=10m $(TEST_ARGS)"
+
+## Run unit tests in parallel across packages via go test + gotestsum (optimized for CI)
+test-ci: install-gotestsum
+	-$(GOTESTSUM) --format pkgname --junitfile report-test.xml -- \
+		-mod=vendor -race -coverprofile=cover.profile -timeout=10m \
+		$(shell go list -mod=vendor ./... | grep -v '/controllers$$') \
+		&& touch report-test-succeed
+ifneq (true,$(GO_TEST_SKIP_UPLOAD))
+ifdef DATADOG_API_KEY
+ifneq (,$(wildcard $(LOCALBIN)/datadog-ci))
+	-DD_ENV=$(DD_ENV) $(DATADOG_CI) junit upload --service chaos-controller --tags="team:chaos-engineering,type:test" report-test.xml
+else
+	@echo "datadog-ci binary is not installed, run 'make install-datadog-ci' to upload tests results to datadog"
+endif
+else
+	@echo "DATADOG_API_KEY env var is not defined, create a local API key https://app.datadoghq.com/personal-settings/application-keys if you want to upload your local tests results to datadog"
+endif
+else
+	@echo "datadog-ci junit upload SKIPPED"
+endif
+	[ -f report-test-succeed ] && rm -f report-test-succeed || exit 1
 
 spellcheck-deps:
 ifeq (, $(shell which npm))
@@ -360,8 +392,7 @@ vet:
 lint: install-golangci-lint
 # By using GOOS=linux we aim to validate files as if we were on linux
 # you can use a similar trick with gopls to have vs-code linting your linux platform files instead of darwin
-	GOOS=linux $(GOLANGCI_LINT) run -E ginkgolinter ./...
-	GOOS=linux $(GOLANGCI_LINT) run
+	GOOS=linux $(GOLANGCI_LINT) run ./...
 
 ## Generate all generated artifacts (code, manifests, mocks, protobufs)
 generate: generate-controller manifests generate-mocks generate-disruptionlistener-protobuf generate-chaosdogfood-protobuf
@@ -579,6 +610,16 @@ ifeq (,$(wildcard $(LOCALBIN)/datadog-ci))
 	curl -L --fail "https://github.com/DataDog/datadog-ci/releases/latest/download/datadog-ci_$(GOOS)-x64" --output "$(LOCALBIN)/datadog-ci" && chmod u+x $(LOCALBIN)/datadog-ci
 endif
 
+install-gotestsum: | $(LOCALBIN)
+ifneq ($(GOTESTSUM_INSTALLED_VERSION),$(GOTESTSUM_VERSION))
+	$(info gotestsum version $(GOTESTSUM_VERSION) is not installed or version differs ($(GOTESTSUM_VERSION) != $(GOTESTSUM_INSTALLED_VERSION)))
+	$(info installing gotestsum v$(GOTESTSUM_VERSION)...)
+	curl -sSLo /tmp/gotestsum.tar.gz "https://github.com/gotestyourself/gotestsum/releases/download/v$(GOTESTSUM_VERSION)/gotestsum_$(GOTESTSUM_VERSION)_$(GOOS)_$(GOARCH).tar.gz"
+	echo "$(GOTESTSUM_SHA256)  /tmp/gotestsum.tar.gz" | $(SHA256SUM) -c -
+	tar -xzf /tmp/gotestsum.tar.gz --directory=$(LOCALBIN) gotestsum
+	rm /tmp/gotestsum.tar.gz
+endif
+
 install-mockery: | $(LOCALBIN)
 # recommended way to install mockery is through their released binaries, NOT go install...
 # https://vektra.github.io/mockery/installation/#github-release
@@ -633,7 +674,7 @@ install-go:
 	BUILDGOVERSION=$(BUILDGOVERSION) ./scripts/install-go
 
 ## Install all project tools into $(LOCALBIN)
-install-tools: install-golangci-lint install-controller-gen install-mockery install-yamlfmt install-helm install-kubebuilder install-datadog-ci install-watchexec install-protobuf install-protoc-gen-go install-protoc-gen-go-grpc
+install-tools: install-golangci-lint install-gotestsum install-controller-gen install-mockery install-yamlfmt install-helm install-kubebuilder install-datadog-ci install-watchexec install-protobuf install-protoc-gen-go install-protoc-gen-go-grpc
 
 EXISTING_HELM_RELEASE = $(shell $(HELM) status -n datadog-agent my-datadog-operator --output json 2>/dev/null | grep -q '"status":"deployed"' && echo "true" || echo "")
 
