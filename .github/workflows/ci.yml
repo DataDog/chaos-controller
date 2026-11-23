@@ -30,59 +30,49 @@ jobs:
       - name: Detect changed paths
         id: filter
         if: github.event_name == 'pull_request'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/files" --jq '.[].filename' > /tmp/changed_files.txt
-          python3 - <<'PY'
-          import fnmatch, os
-
-          with open("/tmp/changed_files.txt") as f:
-              files = [line.strip() for line in f if line.strip()]
-
-          def matches(path, patterns):
-              for pat in patterns:
-                  if pat.endswith("/**"):
-                      prefix = pat[:-3]
-                      if path == prefix or path.startswith(prefix + "/"):
-                          return True
-                  elif pat.startswith("**/"):
-                      sub = pat[3:]
-                      if fnmatch.fnmatch(path, sub) or fnmatch.fnmatch(os.path.basename(path), sub):
-                          return True
-                  elif fnmatch.fnmatch(path, pat):
-                      return True
-              return False
-
-          filters = {
-              "go": [
-                  "**/*.go", "go.mod", "go.sum", "vendor/**", "Makefile", "hack/**",
-                  "grpc/**", "dogfood/**", ".golangci.yml", ".local.mockery.yaml",
-                  ".vendor.mockery.yaml", ".github/workflows/ci.yml",
-              ],
-              "docker_e2e": [
-                  "**/*.go", "go.mod", "go.sum", "vendor/**", "Makefile", "bin/**",
-                  "ebpf/**", "chart/**", "scripts/install-go", ".dockerignore",
-                  ".github/workflows/ci.yml",
-              ],
-              "python": [
-                  "tasks/**", "vendor/modules.txt", "LICENSE-3rdparty.csv",
-                  "**/*.go", "**/*.py", "**/*.sh", "**/*.yaml", "**/*.yml",
-                  "Makefile", ".github/workflows/ci.yml",
-              ],
-              "docs": [
-                  "**/*.md", ".spelling", ".github/workflows/ci.yml",
-              ],
-          }
-
-          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
-              for name, pats in filters.items():
-                  hit = any(matches(p, pats) for p in files)
-                  val = "true" if hit else "false"
-                  print(f"{name}={val}")
-                  out.write(f"{name}={val}\n")
-          PY
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        with:
+          filters: |
+            go:
+              - '**/*.go'
+              - 'go.mod'
+              - 'go.sum'
+              - 'vendor/**'
+              - 'Makefile'
+              - 'hack/**'
+              - 'grpc/**'
+              - 'dogfood/**'
+              - '.golangci.yml'
+              - '.local.mockery.yaml'
+              - '.vendor.mockery.yaml'
+              - '.github/workflows/ci.yml'
+            docker_e2e:
+              - '**/*.go'
+              - 'go.mod'
+              - 'go.sum'
+              - 'vendor/**'
+              - 'Makefile'
+              - 'bin/**'
+              - 'ebpf/**'
+              - 'chart/**'
+              - 'scripts/install-go'
+              - '.dockerignore'
+              - '.github/workflows/ci.yml'
+            python:
+              - 'tasks/**'
+              - 'vendor/modules.txt'
+              - 'LICENSE-3rdparty.csv'
+              - '**/*.go'
+              - '**/*.py'
+              - '**/*.sh'
+              - '**/*.yaml'
+              - '**/*.yml'
+              - 'Makefile'
+              - '.github/workflows/ci.yml'
+            docs:
+              - '**/*.md'
+              - '.spelling'
+              - '.github/workflows/ci.yml'
 
   lint-and-format:
     needs: changes
