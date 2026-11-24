@@ -27,6 +27,7 @@ var _ = DescribeTable("disk pressure cleanup preserves unconfigured IOPS limits"
 
 		informer := disk.NewInformerMock(GinkgoT())
 		informer.EXPECT().Major().Return(8)
+		informer.EXPECT().Minor().Return(0)
 		informer.EXPECT().Source().Return("/dev/sda")
 
 		read := 1024
