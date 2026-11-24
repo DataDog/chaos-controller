@@ -22,7 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-const shortDisruptionDuration = "45s"
+const shortDisruptionDuration = "30s"
 
 var _ = Describe("Disruption Controller", func() {
 	var (

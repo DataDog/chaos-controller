@@ -154,10 +154,10 @@ var _ = Describe("Memory Pressure", func() {
 
 	Context("pulse mode", func() {
 		BeforeEach(func() {
-			memoryStress.Spec.Duration = "45s"
+			memoryStress.Spec.Duration = "30s"
 			memoryStress.Spec.Pulse = &chaosv1beta1.DisruptionPulse{
 				ActiveDuration:  chaosv1beta1.DisruptionDuration("10s"),
-				DormantDuration: chaosv1beta1.DisruptionDuration("10s"),
+				DormantDuration: chaosv1beta1.DisruptionDuration("5s"),
 			}
 		})
 

@@ -3,8 +3,8 @@
 
 NOW_ISO8601 = $(shell date -u +"%Y-%m-%dT%H:%M:%S")
 
-GOOS = $(shell go env GOOS)
-GOARCH = $(shell go env GOARCH)
+GOOS ?= $(shell go env GOOS)
+GOARCH ?= $(shell go env GOARCH)
 
 # change also github actions go build version "GO_VERSION:" if you change the version below
 # https://github.com/DataDog/chaos-controller/blob/main/.github/workflows/ci.yml#L13
@@ -266,11 +266,13 @@ chaosli:
 # https://onsi.github.io/ginkgo/#recommended-continuous-integration-configuration
 GINKGO_PROCS ?= $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 GINKGO_COVER_RACE_FLAGS ?= --cover --coverprofile=cover.profile --race
+GINKGO_CMD ?= $(if $(wildcard $(LOCALBIN)/ginkgo),$(LOCALBIN)/ginkgo,go run github.com/onsi/ginkgo/v2/ginkgo)
+E2E_TEST_TARGET ?= controllers
 
 _ginkgo_test:
 # Run the test and write a file if succeed
 # Do not stop on any error
-	-go run github.com/onsi/ginkgo/v2/ginkgo --fail-on-pending --keep-going --vv \
+	-$(GINKGO_CMD) --fail-on-pending --keep-going --vv \
 		$(GINKGO_COVER_RACE_FLAGS) --randomize-all \
 		--trace --json-report=report-$(GO_TEST_REPORT_NAME).json --junit-report=report-$(GO_TEST_REPORT_NAME).xml \
 		--compilers=$(GINKGO_PROCS) --procs=$(GINKGO_PROCS) \
@@ -380,7 +382,7 @@ ifneq (true,$(SKIP_DEPLOY)) # we can only wait for a controller if it exists, lo
 endif
 	E2E_TEST_CLUSTER_NAME=$(E2E_TEST_CLUSTER_NAME) E2E_TEST_KUBECTL_CONTEXT=$(E2E_TEST_KUBECTL_CONTEXT) $(MAKE) _ginkgo_test GO_TEST_REPORT_NAME=$@ \
 		GINKGO_COVER_RACE_FLAGS="" \
-		GINKGO_TEST_ARGS='--flake-attempts=3 --timeout=25m $(if $(E2E_TEST_FOCUS),--focus="$(E2E_TEST_FOCUS)") $(if $(E2E_TEST_SKIP),--skip="$(E2E_TEST_SKIP)") controllers'
+		GINKGO_TEST_ARGS='--flake-attempts=3 --timeout=25m $(if $(E2E_TEST_FOCUS),--focus="$(E2E_TEST_FOCUS)") $(if $(E2E_TEST_SKIP),--skip="$(E2E_TEST_SKIP)") $(E2E_TEST_TARGET)'
 
 # Test chaosli API portability
 chaosli-test:

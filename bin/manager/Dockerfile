@@ -19,6 +19,20 @@ COPY . .
 RUN --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
     go build -mod=vendor -ldflags="-s -w" -o manager .
+# Prebuilt binary stage (used by CI when the Go binary is compiled on the host)
+FROM gcr.io/distroless/base-debian13:nonroot AS prebuilt
+
+COPY --chmod=100 bin/manager/manager /usr/local/bin/manager
+
+ENTRYPOINT ["/usr/local/bin/manager"]
+
+LABEL baseimage.os="debian"
+LABEL baseimage.isgbi="custom"
+LABEL baseimage.name="gcr.io/distroless/base-debian13:nonroot"
+
+ARG BUILDSTAMP
+LABEL baseimage.buildstamp="${BUILDSTAMP}"
+
 # Final stage
 FROM gcr.io/distroless/base-debian13:nonroot
 

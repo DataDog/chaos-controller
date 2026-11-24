@@ -39,7 +39,8 @@ WORKDIR /app
 COPY go.mod go.sum ./
 COPY vendor/ vendor/
 
-COPY . .
+COPY ebpf/ ebpf/
+COPY log/ log/
 
 WORKDIR /app/ebpf
 RUN --mount=type=cache,target=/root/.cache/go-build \
@@ -89,8 +90,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     chmod +x bpftool && \
     mv bpftool /usr/bin/bpftool-amd64
 
-# Final stage
-FROM gcr.io/distroless/python3-debian13:latest
+# Shared runtime base (system binaries, glibc libs, and compiled eBPF programs)
+FROM gcr.io/distroless/python3-debian13:latest AS runtime-base
 
 ARG TARGETARCH
 
@@ -111,10 +112,6 @@ COPY --from=binaries /usr/lib/x86_64-linux-gn[u] /usr/lib/x86_64-linux-gnu/
 # no more sh
 COPY --from=binaries /usr/bin/test /bin/sh
 
-# Copy the Go binary wrifrom the builder stage with execute permissions
-COPY --chmod=100 --from=go-builder /go/src/github.com/chaos-controller/bin/injector/injector /usr/local/bin/chaos-injector
-COPY --chmod=100 --from=go-builder /go/src/github.com/chaos-controller/bin/injector/injector /usr/local/bin/injector
-
 # Copy EBPF binaries from the EBPF builder stage with execute permissions
 COPY --chmod=100 --from=ebpf-builder /app/bin/injector/ebpf/${TARGETARCH}/ /usr/local/bin/
 
@@ -123,6 +120,22 @@ ENTRYPOINT ["/usr/local/bin/chaos-injector"]
 LABEL baseimage.os="debian"
 LABEL baseimage.isgbi="custom"
 LABEL baseimage.name="gcr.io/distroless/python3-debian13:latest"
+
+# Prebuilt Go binary stage (used by CI when the Go binary is compiled on the host)
+FROM runtime-base AS prebuilt
+
+COPY --chmod=100 bin/injector/injector /usr/local/bin/chaos-injector
+COPY --chmod=100 bin/injector/injector /usr/local/bin/injector
+
+ARG BUILDSTAMP
+LABEL baseimage.buildstamp="${BUILDSTAMP}"
+
+# Final stage
+FROM runtime-base
+
+# Copy the Go binary from the builder stage with execute permissions
+COPY --chmod=100 --from=go-builder /go/src/github.com/chaos-controller/bin/injector/injector /usr/local/bin/chaos-injector
+COPY --chmod=100 --from=go-builder /go/src/github.com/chaos-controller/bin/injector/injector /usr/local/bin/injector
 
 ARG BUILDSTAMP
 LABEL baseimage.buildstamp="${BUILDSTAMP}"

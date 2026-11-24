@@ -14,6 +14,9 @@ permissions:
 
 env:
   GOPATH: /home/runner/go
+  GOBIN: /home/runner/go/bin
+  GOOS: linux
+  GOARCH: amd64
 
 jobs:
   changes:
@@ -160,21 +163,68 @@ jobs:
           path: report-test.xml
 
   docker-build:
+    name: docker-build (${{ matrix.target }})
     needs: changes
     if: github.event_name == 'push' || needs.changes.outputs.docker_e2e == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        target: [injector, manager, handler]
+        include:
+          - target: injector
+            pkg: ./cli/injector
+          - target: manager
+            pkg: .
+          - target: handler
+            pkg: ./cli/handler
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Cache Go build cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/go-build
+          key: go-cache-docker-${{ matrix.target }}-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            go-cache-docker-${{ matrix.target }}-${{ runner.os }}-${{ hashFiles('go.sum') }}-
+            go-cache-docker-${{ matrix.target }}-${{ runner.os }}-
+      - name: Compile ${{ matrix.target }} Go binary
+        run: |
+          mkdir -p bin/${{ matrix.target }}
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+            go build -mod=vendor -ldflags="-s -w" -o bin/${{ matrix.target }}/${{ matrix.target }} ${{ matrix.pkg }}
+      - name: Cache injector Buildx base layers
+        id: buildx-cache
+        if: matrix.target == 'injector'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /tmp/.buildx-cache
+          key: buildx-injector-${{ runner.os }}-${{ hashFiles('bin/injector/Dockerfile', 'ebpf/**', 'log/**', 'go.sum', 'scripts/install-go') }}
+          restore-keys: |
+            buildx-injector-${{ runner.os }}-
       - name: Set up Docker Buildx
+        if: matrix.target == 'injector'
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - name: Build ${{ matrix.target }}
         run: |
+          EXTRA_ARGS="--target=prebuilt --load"
+          if [ "${{ matrix.target }}" = "injector" ]; then
+            if [ -f /tmp/.buildx-cache/index.json ]; then
+              EXTRA_ARGS="${EXTRA_ARGS} --cache-from=type=local,src=/tmp/.buildx-cache"
+            fi
+            if [ "${{ steps.buildx-cache.outputs.cache-hit }}" != "true" ]; then
+              EXTRA_ARGS="${EXTRA_ARGS} --cache-to=type=local,dest=/tmp/.buildx-cache-new,mode=max"
+            fi
+          fi
           make docker-build-${{ matrix.target }} SKIP_GENERATE=true \
-            CONTAINER_BUILD_EXTRA_ARGS="--load --cache-from=type=gha,scope=${{ matrix.target }} --cache-to=type=gha,mode=max,scope=${{ matrix.target }}"
+            CONTAINER_BUILD_EXTRA_ARGS="${EXTRA_ARGS}"
+          if [ "${{ matrix.target }}" = "injector" ] && [ -d /tmp/.buildx-cache-new ]; then
+            rm -rf /tmp/.buildx-cache
+            mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+          fi
       - name: Upload tarball
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -182,31 +232,10 @@ jobs:
           path: bin/${{ matrix.target }}/${{ matrix.target }}.tar.gz
           retention-days: 1
 
-  e2e-test-shard:
-    name: e2e-test (${{ matrix.shard }})
-    runs-on: ubuntu-latest
-    needs: [changes, docker-build]
+  build-e2e-test:
+    needs: changes
     if: github.event_name == 'push' || needs.changes.outputs.docker_e2e == 'true'
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - shard: memory-pressure
-            focus: Memory Pressure
-            skip: ""
-          - shard: cpu-pressure
-            focus: CPU Pressure
-            skip: ""
-          - shard: expired-statuses
-            focus: disruption expired statuses
-            skip: ""
-          - shard: controller-and-clientset
-            focus: ""
-            skip: Memory Pressure|CPU Pressure|disruption expired statuses
-    permissions:
-      id-token: write
-      contents: read
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
@@ -221,6 +250,51 @@ jobs:
           restore-keys: |
             go-cache-e2e-${{ runner.os }}-${{ hashFiles('go.sum') }}-
             go-cache-e2e-${{ runner.os }}-
+      - name: Precompile ginkgo and e2e test binary
+        run: |
+          mkdir -p bin/tools
+          go build -mod=vendor -o bin/tools/ginkgo github.com/onsi/ginkgo/v2/ginkgo
+          go test -mod=vendor -c -o controllers/controllers.test ./controllers
+      - name: Upload e2e test binaries
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-test-bin
+          path: |
+            bin/tools/ginkgo
+            controllers/controllers.test
+          retention-days: 1
+
+  e2e-test-shard:
+    name: e2e-test (${{ matrix.shard }})
+    runs-on: ubuntu-latest
+    needs: [changes, docker-build, build-e2e-test]
+    if: github.event_name == 'push' || needs.changes.outputs.docker_e2e == 'true'
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: memory-pressure
+            focus: Memory Pressure
+            skip: ""
+            procs: 6
+          - shard: cpu-pressure
+            focus: CPU Pressure
+            skip: ""
+            procs: 4
+          - shard: expired-statuses
+            focus: disruption expired statuses
+            skip: ""
+            procs: 4
+          - shard: controller-and-clientset
+            focus: ""
+            skip: Memory Pressure|CPU Pressure|disruption expired statuses
+            procs: 6
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Cache tools
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -240,19 +314,46 @@ jobs:
         with:
           pattern: docker-*
           merge-multiple: false
-      - name: Move tarballs into place
+      - name: Download e2e test binaries
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: e2e-test-bin
+      - name: Move artifacts into place
         run: |
           for target in injector manager handler; do
             mkdir -p bin/${target}
             mv docker-${target}/${target}.tar.gz bin/${target}/
           done
-      - name: Cache Minikube preload
+          chmod +x bin/tools/ginkgo controllers/controllers.test
+      - name: Cache Minikube preload and kicbase image
+        id: minikube-cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: ~/.minikube/cache
-          key: minikube-cache-${{ runner.os }}-v1.28.0
+          path: |
+            ~/.minikube/cache
+            /tmp/minikube-kicbase
+          key: minikube-cache-${{ runner.os }}-v1.28.0-v2
+      - name: Load cached Minikube kicbase image
+        run: |
+          if [ -f /tmp/minikube-kicbase/kicbase.tar.zst ]; then
+            zstd -dc /tmp/minikube-kicbase/kicbase.tar.zst | docker load
+          elif [ -f /tmp/minikube-kicbase/kicbase.tar.gz ]; then
+            gzip -dc /tmp/minikube-kicbase/kicbase.tar.gz | docker load
+          fi
       - name: Install Minikube
-        run: make ci-install-minikube MINIKUBE_CPUS=max MINIKUBE_MEMORY=12288
+        run: |
+          make ci-install-minikube MINIKUBE_CPUS=max MINIKUBE_MEMORY=12288
+          if [ "${{ steps.minikube-cache.outputs.cache-hit }}" != "true" ]; then
+            mkdir -p /tmp/minikube-kicbase
+            KICBASE_IMG=$(docker images --format '{{.Repository}}:{{.Tag}}' | grep 'kicbase' | head -1 || true)
+            if [ -n "${KICBASE_IMG}" ]; then
+              if command -v zstd >/dev/null 2>&1; then
+                docker save "${KICBASE_IMG}" | zstd -T0 -3 -o /tmp/minikube-kicbase/kicbase.tar.zst
+              else
+                docker save "${KICBASE_IMG}" | gzip -1 > /tmp/minikube-kicbase/kicbase.tar.gz
+              fi
+            fi
+          fi
       - name: Load images into Minikube
         run: make minikube-load-all
       - name: Run e2e tests
@@ -261,7 +362,7 @@ jobs:
         run: |
           for attempt in 1 2 3; do
             echo "=== Attempt ${attempt}/3 ==="
-            if make e2e-test SKIP_GENERATE=true KUBECTL="minikube kubectl --" E2E_TEST_CLUSTER_NAME="minikube" E2E_TEST_KUBECTL_CONTEXT="minikube" E2E_TEST_FOCUS="${{ matrix.focus }}" E2E_TEST_SKIP="${{ matrix.skip }}"; then
+            if make e2e-test SKIP_GENERATE=true GINKGO_PROCS=${{ matrix.procs }} E2E_TEST_TARGET=./controllers/controllers.test KUBECTL="minikube kubectl --" E2E_TEST_CLUSTER_NAME="minikube" E2E_TEST_KUBECTL_CONTEXT="minikube" E2E_TEST_FOCUS="${{ matrix.focus }}" E2E_TEST_SKIP="${{ matrix.skip }}"; then
               exit 0
             fi
             echo "Attempt ${attempt} failed"
@@ -296,7 +397,7 @@ jobs:
 
   e2e-test:
     runs-on: ubuntu-latest
-    needs: [changes, docker-build, e2e-test-shard]
+    needs: [changes, docker-build, build-e2e-test, e2e-test-shard]
     if: always()
     steps:
       - name: Check e2e shard results
@@ -309,8 +410,8 @@ jobs:
             echo "E2E tests skipped (no relevant files changed)"
             exit 0
           fi
-          if [ "${{ needs.docker-build.result }}" != "success" ] || [ "${{ needs.e2e-test-shard.result }}" != "success" ]; then
-            echo "docker-build=${{ needs.docker-build.result }} e2e-test-shard=${{ needs.e2e-test-shard.result }}"
+          if [ "${{ needs.docker-build.result }}" != "success" ] || [ "${{ needs.build-e2e-test.result }}" != "success" ] || [ "${{ needs.e2e-test-shard.result }}" != "success" ]; then
+            echo "docker-build=${{ needs.docker-build.result }} build-e2e-test=${{ needs.build-e2e-test.result }} e2e-test-shard=${{ needs.e2e-test-shard.result }}"
             exit 1
           fi
           echo "All e2e shards passed"

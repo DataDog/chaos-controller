@@ -51,10 +51,10 @@ var _ = Describe("CPU Pressure", func() {
 
 	Context("pulse mode", func() {
 		BeforeEach(func() {
-			cpuStress.Spec.Duration = "45s"
+			cpuStress.Spec.Duration = "30s"
 			cpuStress.Spec.Pulse = &chaosv1beta1.DisruptionPulse{
 				ActiveDuration:  chaosv1beta1.DisruptionDuration("10s"),
-				DormantDuration: chaosv1beta1.DisruptionDuration("10s"),
+				DormantDuration: chaosv1beta1.DisruptionDuration("5s"),
 			}
 		})
 
