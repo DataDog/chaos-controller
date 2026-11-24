@@ -383,8 +383,13 @@ You first need to remove those chaos pods (and potentially their finalizers) to 
 		return nil, fmt.Errorf("[StaticTargeting: false] only a disruption spec's Count field can be updated, please delete and recreate it if needed")
 	}
 
-	if err := newDisruptionObj.Spec.Validate(); err != nil {
-		return nil, err
+	// an unchanged spec was validated when it was admitted; validating it again
+	// would refuse metadata-only updates, such as the controller removing its
+	// finalizer, for disruptions admitted before a validation rule was added
+	if !reflect.DeepEqual(oldDisruption.Spec, newDisruptionObj.Spec) {
+		if err := newDisruptionObj.Spec.Validate(); err != nil {
+			return nil, err
+		}
 	}
 
 	// a count change retargets the disruption, so the count safety net applies as it does on creation

@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
@@ -174,8 +175,11 @@ func (d *DisruptionCron) ValidateUpdate(_ context.Context, oldDisruptionCronObj,
 		return nil, err
 	}
 
-	if err = newDisruptionCronObj.validateDisruptionCronSpec(); err != nil {
-		return nil, err
+	// an unchanged spec was validated when it was admitted, see Disruption.ValidateUpdate
+	if !reflect.DeepEqual(oldDisruptionCronObj.Spec, newDisruptionCronObj.Spec) {
+		if err = newDisruptionCronObj.validateDisruptionCronSpec(); err != nil {
+			return nil, err
+		}
 	}
 
 	// If a DisruptionCron is already more frequent than the minimum frequency, we don't want to
