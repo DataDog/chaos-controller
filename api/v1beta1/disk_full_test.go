@@ -142,6 +142,13 @@ var _ = Describe("DiskFullSpec", func() {
 				},
 				[]string{"remaining must not be negative"},
 			),
+			Entry("with remaining beyond int64, which would wrap to a small value",
+				DiskFullSpec{
+					Path:      "/data",
+					Remaining: "18446744073710600192",
+				},
+				[]string{"remaining must not exceed"},
+			),
 			Entry("with path as root",
 				DiskFullSpec{
 					Path:     "/",
