@@ -6,7 +6,7 @@ on:
     branches: [main]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.repository }}-${{ github.head_ref || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.repository }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -234,7 +234,7 @@ jobs:
           org_uuid: ${{ secrets.DATADOG_ORG_UUID }}
           site: datadoghq.com
       - name: Install tools
-        run: make -j6 install-controller-gen install-yamlfmt install-helm install-kubebuilder install-datadog-ci
+        run: make -j4 install-helm install-datadog-ci
       - name: Download docker tarballs
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -252,9 +252,7 @@ jobs:
           path: ~/.minikube/cache
           key: minikube-cache-${{ runner.os }}-v1.28.0
       - name: Install Minikube
-        run: make ci-install-minikube MINIKUBE_CPUS=max MINIKUBE_MEMORY=max
-      - name: Install cert-manager
-        run: make lima-install-cert-manager KUBECTL="minikube kubectl --"
+        run: make ci-install-minikube MINIKUBE_CPUS=max MINIKUBE_MEMORY=12288
       - name: Load images into Minikube
         run: make minikube-load-all
       - name: Run e2e tests
@@ -263,7 +261,7 @@ jobs:
         run: |
           for attempt in 1 2 3; do
             echo "=== Attempt ${attempt}/3 ==="
-            if make e2e-test KUBECTL="minikube kubectl --" E2E_TEST_CLUSTER_NAME="minikube" E2E_TEST_KUBECTL_CONTEXT="minikube" E2E_TEST_FOCUS="${{ matrix.focus }}" E2E_TEST_SKIP="${{ matrix.skip }}"; then
+            if make e2e-test SKIP_GENERATE=true KUBECTL="minikube kubectl --" E2E_TEST_CLUSTER_NAME="minikube" E2E_TEST_KUBECTL_CONTEXT="minikube" E2E_TEST_FOCUS="${{ matrix.focus }}" E2E_TEST_SKIP="${{ matrix.skip }}"; then
               exit 0
             fi
             echo "Attempt ${attempt} failed"

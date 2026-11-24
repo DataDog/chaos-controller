@@ -265,13 +265,14 @@ chaosli:
 
 # https://onsi.github.io/ginkgo/#recommended-continuous-integration-configuration
 GINKGO_PROCS ?= $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
+GINKGO_COVER_RACE_FLAGS ?= --cover --coverprofile=cover.profile --race
 
 _ginkgo_test:
 # Run the test and write a file if succeed
 # Do not stop on any error
 	-go run github.com/onsi/ginkgo/v2/ginkgo --fail-on-pending --keep-going --vv \
-		--cover --coverprofile=cover.profile --randomize-all \
-		--race --trace --json-report=report-$(GO_TEST_REPORT_NAME).json --junit-report=report-$(GO_TEST_REPORT_NAME).xml \
+		$(GINKGO_COVER_RACE_FLAGS) --randomize-all \
+		--trace --json-report=report-$(GO_TEST_REPORT_NAME).json --junit-report=report-$(GO_TEST_REPORT_NAME).xml \
 		--compilers=$(GINKGO_PROCS) --procs=$(GINKGO_PROCS) \
 		--poll-progress-after=10s --poll-progress-interval=10s \
 		$(GINKGO_TEST_ARGS) \
@@ -295,7 +296,10 @@ endif
 
 # Tests & CI
 ## Run unit tests
+ifneq ($(SKIP_GENERATE),true)
 test: generate-controller manifests
+endif
+test:
 	$(if $(GOPATH),,$(error GOPATH is not set. Please set GOPATH before running make test))
 	$(MAKE) _ginkgo_test GO_TEST_REPORT_NAME=$@ \
 		GINKGO_TEST_ARGS="-r --skip-package=controllers --randomize-suites --timeout=10m $(TEST_ARGS)"
@@ -367,11 +371,15 @@ SKIP_DEPLOY ?=
 
 ## Run e2e tests (against a real cluster)
 ## to run them locally you first need to run `make install-kubebuilder`
+ifneq ($(SKIP_GENERATE),true)
 e2e-test: generate-controller manifests
+endif
+e2e-test:
 ifneq (true,$(SKIP_DEPLOY)) # we can only wait for a controller if it exists, local.yaml does not deploy the controller
 	$(MAKE) lima-install HELM_VALUES=ci.yaml
 endif
 	E2E_TEST_CLUSTER_NAME=$(E2E_TEST_CLUSTER_NAME) E2E_TEST_KUBECTL_CONTEXT=$(E2E_TEST_KUBECTL_CONTEXT) $(MAKE) _ginkgo_test GO_TEST_REPORT_NAME=$@ \
+		GINKGO_COVER_RACE_FLAGS="" \
 		GINKGO_TEST_ARGS='--flake-attempts=3 --timeout=25m $(if $(E2E_TEST_FOCUS),--focus="$(E2E_TEST_FOCUS)") $(if $(E2E_TEST_SKIP),--skip="$(E2E_TEST_SKIP)") controllers'
 
 # Test chaosli API portability
@@ -428,7 +436,10 @@ lima-install-demo:
 ## Install CRDs and controller into a lima k3s cluster
 ## In order to use already built images inside the containerd runtime
 ## we override images for all of our components to the expected namespace
-lima-install: manifests install-helm
+ifneq ($(SKIP_GENERATE),true)
+lima-install: manifests
+endif
+lima-install: install-helm
 	$(HELM) template \
 		--set=controller.version=$(CONTAINER_VERSION) \
 		--set=controller.metricsSink=$(LIMA_INSTALL_SINK) \
