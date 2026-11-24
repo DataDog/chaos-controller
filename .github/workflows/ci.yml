@@ -16,7 +16,67 @@ env:
   GOPATH: /home/runner/go
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      go: ${{ steps.filter.outputs.go }}
+      docker_e2e: ${{ steps.filter.outputs.docker_e2e }}
+      python: ${{ steps.filter.outputs.python }}
+      docs: ${{ steps.filter.outputs.docs }}
+    steps:
+      - name: Detect changed paths
+        id: filter
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        with:
+          filters: |
+            go:
+              - '**/*.go'
+              - 'go.mod'
+              - 'go.sum'
+              - 'vendor/**'
+              - 'Makefile'
+              - 'hack/**'
+              - 'grpc/**'
+              - 'dogfood/**'
+              - '.golangci.yml'
+              - '.local.mockery.yaml'
+              - '.vendor.mockery.yaml'
+              - '.github/workflows/ci.yml'
+            docker_e2e:
+              - '**/*.go'
+              - 'go.mod'
+              - 'go.sum'
+              - 'vendor/**'
+              - 'Makefile'
+              - 'bin/**'
+              - 'ebpf/**'
+              - 'chart/**'
+              - 'scripts/install-go'
+              - '.dockerignore'
+              - '.github/workflows/ci.yml'
+            python:
+              - 'tasks/**'
+              - 'vendor/modules.txt'
+              - 'LICENSE-3rdparty.csv'
+              - '**/*.go'
+              - '**/*.py'
+              - '**/*.sh'
+              - '**/*.yaml'
+              - '**/*.yml'
+              - 'Makefile'
+              - '.github/workflows/ci.yml'
+            docs:
+              - '**/*.md'
+              - '.spelling'
+              - '.github/workflows/ci.yml'
+
   lint-and-format:
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -49,6 +109,8 @@ jobs:
         run: make lint
 
   test:
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -98,6 +160,8 @@ jobs:
           path: report-test.xml
 
   docker-build:
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.docker_e2e == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -118,10 +182,28 @@ jobs:
           path: bin/${{ matrix.target }}/${{ matrix.target }}.tar.gz
           retention-days: 1
 
-  e2e-test:
+  e2e-test-shard:
+    name: e2e-test (${{ matrix.shard }})
     runs-on: ubuntu-latest
-    needs: docker-build
-    timeout-minutes: 45
+    needs: [changes, docker-build]
+    if: github.event_name == 'push' || needs.changes.outputs.docker_e2e == 'true'
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: memory-pressure
+            focus: Memory Pressure
+            skip: ""
+          - shard: cpu-pressure
+            focus: CPU Pressure
+            skip: ""
+          - shard: expired-statuses
+            focus: disruption expired statuses
+            skip: ""
+          - shard: controller-and-clientset
+            focus: ""
+            skip: Memory Pressure|CPU Pressure|disruption expired statuses
     permissions:
       id-token: write
       contents: read
@@ -164,6 +246,11 @@ jobs:
             mkdir -p bin/${target}
             mv docker-${target}/${target}.tar.gz bin/${target}/
           done
+      - name: Cache Minikube preload
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.minikube/cache
+          key: minikube-cache-${{ runner.os }}-v1.28.0
       - name: Install Minikube
         run: make ci-install-minikube MINIKUBE_CPUS=max MINIKUBE_MEMORY=max
       - name: Install cert-manager
@@ -176,7 +263,7 @@ jobs:
         run: |
           for attempt in 1 2 3; do
             echo "=== Attempt ${attempt}/3 ==="
-            if make e2e-test KUBECTL="minikube kubectl --" E2E_TEST_CLUSTER_NAME="minikube" E2E_TEST_KUBECTL_CONTEXT="minikube"; then
+            if make e2e-test KUBECTL="minikube kubectl --" E2E_TEST_CLUSTER_NAME="minikube" E2E_TEST_KUBECTL_CONTEXT="minikube" E2E_TEST_FOCUS="${{ matrix.focus }}" E2E_TEST_SKIP="${{ matrix.skip }}"; then
               exit 0
             fi
             echo "Attempt ${attempt} failed"
@@ -200,16 +287,39 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: e2e-controller-logs
+          name: e2e-controller-logs-${{ matrix.shard }}
           path: /tmp/logs
       - name: Upload e2e test report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: report-e2e-test.xml
+          name: report-e2e-test-${{ matrix.shard }}.xml
           path: report-e2e-test.xml
 
+  e2e-test:
+    runs-on: ubuntu-latest
+    needs: [changes, docker-build, e2e-test-shard]
+    if: always()
+    steps:
+      - name: Check e2e shard results
+        run: |
+          if [ "${{ needs.changes.result }}" != "success" ]; then
+            echo "changes job did not succeed (${{ needs.changes.result }})"
+            exit 1
+          fi
+          if [ "${{ github.event_name }}" != "push" ] && [ "${{ needs.changes.outputs.docker_e2e }}" != "true" ]; then
+            echo "E2E tests skipped (no relevant files changed)"
+            exit 0
+          fi
+          if [ "${{ needs.docker-build.result }}" != "success" ] || [ "${{ needs.e2e-test-shard.result }}" != "success" ]; then
+            echo "docker-build=${{ needs.docker-build.result }} e2e-test-shard=${{ needs.e2e-test-shard.result }}"
+            exit 1
+          fi
+          echo "All e2e shards passed"
+
   validate-codegen:
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -256,6 +366,8 @@ jobs:
           git diff --exit-code ':!go.*'
 
   python-checks:
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.python == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -271,6 +383,8 @@ jobs:
           git diff --exit-code
 
   doc-spellcheck:
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.docs == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2

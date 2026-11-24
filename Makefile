@@ -185,6 +185,8 @@ endif
 # `make test TEST_ARGS=--until-it-fails` to run tests randomly and repeatedly until a failure might occur (help to detect flaky tests or wrong tests setup)
 # `make test TEST_ARGS=injector` will focus on package injector to run tests
 TEST_ARGS ?=
+E2E_TEST_FOCUS ?=
+E2E_TEST_SKIP ?=
 
 DD_ENV = local
 # https://circleci.com/docs/variables/
@@ -353,8 +355,11 @@ MINIKUBE_CPUS ?= 6
 MINIKUBE_MEMORY ?= 28672
 
 ci-install-minikube:
-	curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube_latest_amd64.deb
-	sudo dpkg -i minikube_latest_amd64.deb
+	if ! command -v minikube >/dev/null 2>&1; then \
+		curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube_latest_amd64.deb && \
+		sudo dpkg -i minikube_latest_amd64.deb && \
+		rm -f minikube_latest_amd64.deb; \
+	fi
 	minikube start --cpus='$(MINIKUBE_CPUS)' --memory='$(MINIKUBE_MEMORY)' --vm-driver=docker --container-runtime=containerd --kubernetes-version=${KUBERNETES_VERSION}
 	minikube status
 
@@ -367,7 +372,7 @@ ifneq (true,$(SKIP_DEPLOY)) # we can only wait for a controller if it exists, lo
 	$(MAKE) lima-install HELM_VALUES=ci.yaml
 endif
 	E2E_TEST_CLUSTER_NAME=$(E2E_TEST_CLUSTER_NAME) E2E_TEST_KUBECTL_CONTEXT=$(E2E_TEST_KUBECTL_CONTEXT) $(MAKE) _ginkgo_test GO_TEST_REPORT_NAME=$@ \
-		GINKGO_TEST_ARGS="--flake-attempts=3 --timeout=25m controllers"
+		GINKGO_TEST_ARGS='--flake-attempts=3 --timeout=25m $(if $(E2E_TEST_FOCUS),--focus="$(E2E_TEST_FOCUS)") $(if $(E2E_TEST_SKIP),--skip="$(E2E_TEST_SKIP)") controllers'
 
 # Test chaosli API portability
 chaosli-test:
