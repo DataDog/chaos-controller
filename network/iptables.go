@@ -81,8 +81,10 @@ func (i *iptables) Clear() error {
 
 			i.log.Infow("iptables rule doesn't exist anymore, skipping cleaning", tags.TableKey, r.table, tags.ChainKey, r.chain, tags.RuleSpecKey, r.rulespec)
 		}
+
 		i.injectedRules = i.injectedRules[1:]
 	}
+
 	i.injectedRules = nil
 
 	// eventually delete the injector dedicated chain
