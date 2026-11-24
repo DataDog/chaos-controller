@@ -234,6 +234,34 @@ var _ = Describe("Disruption Webhook", func() {
 							Expect(err).To(MatchError("the user info annotation is immutable"))
 						})
 					})
+					When("the user info of the new disruption has the same %v representation but different groups", func() {
+						It("should not allow the update", func(ctx SpecContext) {
+							// Arrange
+							Expect(oldDisruption.SetUserInfo(authv1.UserInfo{Username: "lorem", Groups: []string{"a b"}})).Should(Succeed())
+							Expect(newDisruption.SetUserInfo(authv1.UserInfo{Username: "lorem", Groups: []string{"a", "b"}})).Should(Succeed())
+
+							// Action
+							_, err := newDisruption.ValidateUpdate(ctx, oldDisruption, newDisruption)
+
+							// Assert
+							By("return an error")
+							Expect(err).To(MatchError("the user info annotation is immutable"))
+						})
+					})
+					When("the user info of the new disruption is identical", func() {
+						It("should allow the update", func(ctx SpecContext) {
+							// Arrange
+							userInfo := authv1.UserInfo{Username: "lorem", UID: "ipsum", Groups: []string{"group1", "group2"}}
+							Expect(oldDisruption.SetUserInfo(userInfo)).Should(Succeed())
+							Expect(newDisruption.SetUserInfo(userInfo)).Should(Succeed())
+
+							// Action
+							_, err := newDisruption.ValidateUpdate(ctx, oldDisruption, newDisruption)
+
+							// Assert
+							Expect(err).Should(Succeed())
+						})
+					})
 				})
 			})
 

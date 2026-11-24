@@ -8,10 +8,10 @@ package v1beta1
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"strings"
 
 	authV1 "k8s.io/api/authentication/v1"
-	"k8s.io/api/authentication/v1beta1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -109,8 +109,7 @@ func validateUserInfoImmutable(oldObject, newObject client.Object) error {
 		return nil
 	}
 
-	emptyUserInfo := fmt.Sprintf("%v", v1beta1.UserInfo{})
-	if fmt.Sprintf("%v", oldUserInfo) == emptyUserInfo {
+	if reflect.DeepEqual(oldUserInfo, authV1.UserInfo{}) {
 		return nil
 	}
 
@@ -119,7 +118,7 @@ func validateUserInfoImmutable(oldObject, newObject client.Object) error {
 		return err
 	}
 
-	if fmt.Sprintf("%v", userInfo) != fmt.Sprintf("%v", oldUserInfo) {
+	if !reflect.DeepEqual(userInfo, oldUserInfo) {
 		return fmt.Errorf("the user info annotation is immutable")
 	}
 
