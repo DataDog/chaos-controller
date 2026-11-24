@@ -124,7 +124,6 @@ func (m *memoryStressInjector) stress(targetBytes int64, ready chan<- struct{}) 
 		if steps < 1 {
 			steps = 1
 		}
-
 	} else {
 		steps = 1
 	}
