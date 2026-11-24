@@ -5,3 +5,5 @@ If you do not plan to use the generated install manifest because you need some s
 ```
 helm template chart/
 ```
+
+When `controller.safeMode.permittedUserGroups` is nonempty, `controller.userInfoHook` must be `true`. The controller refuses to start otherwise, because group validation relies on the user info webhook to replace caller-supplied identity annotations with the authenticated request identity. This requirement also applies when `controller.safeMode.enable` is `false`, and is checked after command-line overrides are applied.
