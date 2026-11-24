@@ -24,6 +24,9 @@ FROM scratch AS prebuilt
 
 COPY --chmod=100 bin/handler/handler /usr/local/bin/handler
 
+# numeric: scratch has no /etc/passwd
+USER 0
+
 ENTRYPOINT ["/usr/local/bin/handler"]
 
 LABEL baseimage.os="scratch"
@@ -37,6 +40,9 @@ LABEL baseimage.buildstamp="${BUILDSTAMP}"
 FROM scratch AS handler
 
 COPY --chmod=100 --from=builder /go/src/github.com/chaos-controller/handler /usr/local/bin/handler
+
+# numeric: scratch has no /etc/passwd
+USER 0
 
 ENTRYPOINT ["/usr/local/bin/handler"]
 
