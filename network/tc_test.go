@@ -231,7 +231,7 @@ var _ = Describe("Tc", func() {
 		})
 		Context("add an output limit on root device of 12345 bytes per second", func() {
 			It("should execute", func() {
-				tcExecuter.AssertCalled(GinkgoT(), "Run", []string{"qdisc", "add", "dev", "lo", "root", "tbf", "rate", "12345", "latency", "50ms", "burst", "12345"})
+				tcExecuter.AssertCalled(GinkgoT(), "Run", []string{"qdisc", "add", "dev", "lo", "root", "tbf", "rate", "12345bps", "latency", "50ms", "burst", "12345"})
 			})
 		})
 	})

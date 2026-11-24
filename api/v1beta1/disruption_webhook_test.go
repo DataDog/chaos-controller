@@ -234,12 +234,47 @@ var _ = Describe("Disruption Webhook", func() {
 							Expect(err).To(MatchError("the user info annotation is immutable"))
 						})
 					})
+					When("the user info of the new disruption has the same %v representation but different groups", func() {
+						It("should not allow the update", func(ctx SpecContext) {
+							// Arrange
+							Expect(oldDisruption.SetUserInfo(authv1.UserInfo{Username: "lorem", Groups: []string{"a b"}})).Should(Succeed())
+							Expect(newDisruption.SetUserInfo(authv1.UserInfo{Username: "lorem", Groups: []string{"a", "b"}})).Should(Succeed())
+
+							// Action
+							_, err := newDisruption.ValidateUpdate(ctx, oldDisruption, newDisruption)
+
+							// Assert
+							By("return an error")
+							Expect(err).To(MatchError("the user info annotation is immutable"))
+						})
+					})
+					When("the user info of the new disruption is identical", func() {
+						It("should allow the update", func(ctx SpecContext) {
+							// Arrange
+							userInfo := authv1.UserInfo{Username: "lorem", UID: "ipsum", Groups: []string{"group1", "group2"}}
+							Expect(oldDisruption.SetUserInfo(userInfo)).Should(Succeed())
+							Expect(newDisruption.SetUserInfo(userInfo)).Should(Succeed())
+
+							// Action
+							_, err := newDisruption.ValidateUpdate(ctx, oldDisruption, newDisruption)
+
+							// Assert
+							Expect(err).Should(Succeed())
+						})
+					})
 				})
 			})
 
 			When("count is updated", func() {
 				BeforeEach(func() {
 					newDisruption.Spec.Count = &intstr.IntOrString{IntVal: 2}
+
+					// these specs cover the spec hash rules; the count safety net on updates has its own spec,
+					// so do not inherit safe mode from specs that ran earlier in the suite
+					previousSafemode := enableSafemode
+					enableSafemode = false
+
+					DeferCleanup(func() { enableSafemode = previousSafemode })
 				})
 
 				Context("DynamicTargeting (StaticTargeting=false)", func() {
@@ -1123,6 +1158,83 @@ var _ = Describe("Disruption Webhook", func() {
 				}
 
 				// Act (no apiReader needed — returns early)
+				caught, _, err := safetyNetCountNotTooLarge(context.Background(), disruption)
+
+				// Assert
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(caught).To(BeFalse())
+			})
+		})
+
+		When("targeting all nodes matching the selector at level node", func() {
+			It("should trigger the safety net", func() {
+				// Arrange: 3 worker nodes in the cluster, all 3 matching the selector, count=3 (100% > 66% cluster threshold)
+				disruption = &Disruption{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      testDisruptionName,
+						Namespace: chaosNamespace,
+					},
+					Spec: DisruptionSpec{
+						Level: chaostypes.DisruptionLevelNode,
+						Count: &intstr.IntOrString{IntVal: 3},
+						Selector: labels.Set{
+							"role": "worker",
+						},
+					},
+				}
+
+				nodes := []client.Object{}
+				for i := range 3 {
+					nodes = append(nodes, &v1.Node{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:   fmt.Sprintf("node-%d", i),
+							Labels: map[string]string{"role": "worker"},
+						},
+					})
+				}
+
+				apiReader = fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(nodes...).Build()
+
+				// Act
+				caught, response, err := safetyNetCountNotTooLarge(context.Background(), disruption)
+
+				// Assert
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(caught).To(BeTrue())
+				Expect(response).To(ContainSubstring("cluster"))
+			})
+		})
+
+		When("targeting a small fraction of nodes at level node", func() {
+			It("should not trigger the safety net", func() {
+				// Arrange: 3 worker nodes in the cluster, all 3 matching the selector, count=1 (33% < 66% cluster threshold)
+				disruption = &Disruption{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      testDisruptionName,
+						Namespace: chaosNamespace,
+					},
+					Spec: DisruptionSpec{
+						Level: chaostypes.DisruptionLevelNode,
+						Count: &intstr.IntOrString{IntVal: 1},
+						Selector: labels.Set{
+							"role": "worker",
+						},
+					},
+				}
+
+				nodes := []client.Object{}
+				for i := range 3 {
+					nodes = append(nodes, &v1.Node{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:   fmt.Sprintf("node-%d", i),
+							Labels: map[string]string{"role": "worker"},
+						},
+					})
+				}
+
+				apiReader = fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(nodes...).Build()
+
+				// Act
 				caught, _, err := safetyNetCountNotTooLarge(context.Background(), disruption)
 
 				// Assert

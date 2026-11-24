@@ -6,9 +6,11 @@ The `network` field provides an automated way of adding disruptions to the outgo
 * `corrupt` corrupts a percentage of the outgoing traffic to simulate packet corruption
 * `delay` adds the given delay to the outgoing traffic to simulate a slow network
 * `delayJitter` adds jitter to `delay` represented as a percentage: `delay ± delay * (delayJitter / 100)`
-* `bandwidthLimit` limits the outgoing traffic bandwidth to simulate a bandwidth struggle
+* `bandwidthLimit` limits the outgoing traffic bandwidth in bytes per second to simulate a bandwidth struggle. The injector passes an explicit `bps` unit to `tc`; an unqualified rate would be interpreted as bits per second.
 
 All of them can be combined in the same disruption resource. To apply these disruptions, the `tc` utility is used and the behavior is different according to the use cases.
+
+HTTP method and path filtering is available only for pod-level disruptions without `onInit`. Admission rejects `network.http` at node level or with `onInit` because those injection paths cannot apply HTTP filters.
 
 <p align="center"><kbd>
     <img src="../docs/img/network_prio/pfifo.png" height=200 width=650 />

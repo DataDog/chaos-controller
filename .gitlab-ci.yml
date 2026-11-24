@@ -38,6 +38,12 @@ check-lockfile:
   stage: check
   image: registry.ddbuild.io/images/mirror/ubuntu:24.04
   tags: ["arch:amd64"]
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - changes:
+        - tasks/requirements.in
+        - tasks/requirements.txt
+        - .gitlab-ci.yml
   script:
     - apt-get update && apt-get install -y --no-install-recommends python3 python3-pip git ca-certificates
     - python3 -m pip install uv --break-system-packages
@@ -67,10 +73,16 @@ build:make:
   <<: *docker-hub-login
   stage: build
   when: always
+  parallel:
+    matrix:
+      - TARGET:
+          - injector
+          - manager
+          - handler
   script:
     - *install-make
     - >
-      make docker-build-only-all \
+      make docker-build-only-${TARGET} \
           CONTAINER_BUILD_EXTRA_ARGS='-t $$(CONTAINER_NAME):$(CONTAINER_VERSION)'" --platform=linux/amd64,linux/arm64 --label target=${TARGET_LABEL}" \
           SKIP_GENERATE=true
 
@@ -161,7 +173,7 @@ release-prod-tag:
   tags: ["arch:amd64"]
   variables:
     IMAGE_SUFFIX: ""
-    IMG_REGISTRIES: "dockerhub"
+    IMG_REGISTRIES: "dev"
     PUBLIC_IMAGES_PUBLISH_TIMEOUT: "1800"
   script:
     - |

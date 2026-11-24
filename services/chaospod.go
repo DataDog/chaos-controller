@@ -196,8 +196,9 @@ func (m *chaosPodService) HandleChaosPodTermination(ctx context.Context, disrupt
 				continue
 			}
 
-			// if the injector container definitively did not start, we can remove the finalizer
-			if cs.Started != nil && !(*cs.Started) {
+			// Started is not historical: it can be false after an injector has run.
+			// Only treat a waiting injector with no previous termination as never started.
+			if cs.State.Waiting != nil && cs.LastTerminationState.Terminated == nil && cs.Started != nil && !(*cs.Started) {
 				shouldRemoveFinalizer = true
 			}
 
@@ -427,12 +428,24 @@ func (m *chaosPodService) HandleOrphanedChaosPods(ctx context.Context, req ctrl.
 
 		target := pod.Labels[chaostypes.TargetLabel]
 
-		var p corev1.Pod
+		var targetObject client.Object = &corev1.Pod{}
+
+		targetKey := types.NamespacedName{Name: target, Namespace: req.Namespace}
+		args := m.GetPodInjectorArgs(ctx, pod)
+
+		for i := 0; i+1 < len(args); i++ {
+			if args[i] == "--level" && args[i+1] == string(chaostypes.DisruptionLevelNode) {
+				targetObject = &corev1.Node{}
+				targetKey.Namespace = ""
+
+				break
+			}
+		}
 
 		logger.Infow("checking if we can clean up orphaned chaos pod", tagutil.ChaosPodNameKey, pod.Name, tagutil.TargetNameKey, target)
 
 		// if target doesn't exist, we can try to clean up the chaos pod
-		if err = m.config.Reader.Get(ctx, types.NamespacedName{Name: target, Namespace: req.Namespace}, &p); apierrors.IsNotFound(err) {
+		if err = m.config.Reader.Get(ctx, targetKey, targetObject); apierrors.IsNotFound(err) {
 			logger.Warnw("orphaned chaos pod detected, will attempt to delete", tagutil.ChaosPodNameKey, pod.Name)
 
 			if err = m.removeFinalizerForChaosPod(ctx, &pod); err != nil {

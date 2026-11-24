@@ -147,7 +147,7 @@ func (t *tc) AddOutputLimit(ifaces []string, parent string, handle string, bytes
 	//   - https://unix.stackexchange.com/questions/100785/bucket-size-in-tbf
 	//   - https://linux.die.net/man/8/tc-tbf
 	for _, iface := range ifaces {
-		if _, _, err := t.executer.Run(buildCmd("qdisc", iface, parent, "", 0, handle, "tbf", fmt.Sprintf("rate %d latency 50ms burst %d", bytesPerSec, bytesPerSec))); err != nil {
+		if _, _, err := t.executer.Run(buildCmd("qdisc", iface, parent, "", 0, handle, "tbf", fmt.Sprintf("rate %dbps latency 50ms burst %d", bytesPerSec, bytesPerSec))); err != nil {
 			return err
 		}
 	}

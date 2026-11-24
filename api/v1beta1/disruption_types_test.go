@@ -9,6 +9,8 @@ import (
 	"sort"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
+
 	. "github.com/DataDog/chaos-controller/api/v1beta1"
 	builderstest "github.com/DataDog/chaos-controller/builderstest"
 	chaostypes "github.com/DataDog/chaos-controller/types"
@@ -452,6 +454,17 @@ var _ = Describe("Disruption", func() {
 			builderstest.NewDisruptionBuilder(),
 			builderstest.NewPodsBuilder().One().Terminated().Parent().Two().Terminated().Parent(),
 			TSTemporarilyTerminated),
+		Entry(
+			"a pending chaos pod with no container statuses IS NOT terminated",
+			builderstest.NewDisruptionBuilder().WithCreationDuration(30*time.Second).WithDuration("1h").WithInjectionStatus(chaostypes.DisruptionInjectionStatusInjected),
+			builderstest.PodsBuilder{
+				{
+					Pod: &corev1.Pod{
+						Status: corev1.PodStatus{Phase: corev1.PodPending},
+					},
+				},
+			},
+			TSNotTerminated),
 		Entry(
 			"no pod injected is temporarily terminated",
 			builderstest.NewDisruptionBuilder().WithInjectionStatus(chaostypes.DisruptionInjectionStatusInjected),

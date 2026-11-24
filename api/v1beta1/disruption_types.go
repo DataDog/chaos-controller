@@ -434,6 +434,12 @@ func (d *Disruption) TerminationStatus(chaosPods []corev1.Pod) TerminationStatus
 	// or by deletion of targets leading to deletion of injectors
 	// injection terminated with an error are considered NOT terminated
 	for _, chaosPod := range chaosPods {
+		// a chaos pod with no container statuses has not started yet (e.g. Pending)
+		// so none of its containers exited successfully and the disruption is still running
+		if len(chaosPod.Status.ContainerStatuses) == 0 {
+			return TSNotTerminated
+		}
+
 		for _, containerStatuses := range chaosPod.Status.ContainerStatuses {
 			if containerStatuses.State.Terminated == nil || containerStatuses.State.Terminated.ExitCode != 0 {
 				return TSNotTerminated
@@ -722,6 +728,11 @@ func (s DisruptionSpec) validateGlobalDisruptionScope(requireSelectors bool) (re
 		if s.Level == chaostypes.DisruptionLevelNode {
 			retErr = multierror.Append(retErr, errors.New("cannot execute a pod replacement because the level configuration is set to node"))
 		}
+	}
+
+	// HTTP classifiers are only installed for pod-level, non-init disruptions.
+	if s.Network != nil && s.Network.HTTP != nil && (s.Level == chaostypes.DisruptionLevelNode || s.OnInit) {
+		retErr = multierror.Append(retErr, errors.New("network HTTP filters require pod level without onInit"))
 	}
 
 	// Rule: on init compatibility

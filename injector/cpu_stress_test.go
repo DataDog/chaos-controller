@@ -103,8 +103,28 @@ var _ = Describe("CPU stress", func() {
 
 					By("succeeding to clean")
 					Expect(inj.Clean()).To(Succeed())
+
+					By("succeeding to clean a second time")
+					Expect(inj.Clean()).To(Succeed())
 				})
 			})
+		})
+	})
+
+	Describe("Clean", func() {
+		Specify("cleaning a never injected stress returns no error", func() {
+			By("cleaning the fresh injector")
+			Expect(inj.Clean()).To(Succeed())
+
+			By("allowing a second clean call without error")
+			Expect(inj.Clean()).To(Succeed())
+		})
+
+		Specify("cleaning a stress after a failed injection returns no error", func() {
+			cgroups.EXPECT().ReadCPUSet().Return(cpuset.CPUSet{}, fmt.Errorf("error from CPUSet")).Once()
+
+			Expect(inj.Inject()).To(MatchError("unable to read CPUSet: error from CPUSet"))
+			Expect(inj.Clean()).To(Succeed())
 		})
 	})
 })

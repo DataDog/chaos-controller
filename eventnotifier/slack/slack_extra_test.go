@@ -46,6 +46,16 @@ var _ = Describe("Slack New", func() {
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("seemingly empty"))
 	})
+
+	It("returns error when token file contains only whitespace", func() {
+		path := filepath.Join(tmpDir, "whitespace-token")
+		Expect(os.WriteFile(path, []byte(" \n"), 0o600)).To(Succeed())
+		_, err := New(context.TODO(), types.NotifiersCommonConfig{}, NotifierSlackConfig{
+			TokenFilepath: path,
+		})
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("seemingly empty"))
+	})
 })
 
 var _ = Describe("Slack GetNotifierName", func() {

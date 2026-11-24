@@ -14,6 +14,10 @@ const (
 )
 
 func (p manager) SetAffinity(cpus []int) error {
+	if p.dryRun {
+		return nil
+	}
+
 	affinitySet := unix.CPUSet{}
 	for _, cpu := range cpus {
 		affinitySet.Set(cpu)
@@ -24,6 +28,10 @@ func (p manager) SetAffinity(cpus []int) error {
 
 // Prioritize set the priority of the current process group to the max value (-20)
 func (p manager) Prioritize() error {
+	if p.dryRun {
+		return nil
+	}
+
 	pgid := unix.Getpgrp()
 
 	return unix.Setpriority(unix.PRIO_PGRP, pgid, maxPriorityValue)

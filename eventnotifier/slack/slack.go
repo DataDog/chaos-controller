@@ -83,13 +83,12 @@ func New(ctx context.Context, commonConfig types.NotifiersCommonConfig, slackCon
 		return nil, fmt.Errorf("slack token file could notifier be read: %w", err)
 	}
 
-	stoken := string(token)
-
-	if stoken == "" {
+	fields := strings.Fields(string(token)) // removes eventual \n at the end of the file
+	if len(fields) == 0 {
 		return nil, fmt.Errorf("slack token file is read, but seemingly empty")
 	}
 
-	stoken = strings.Fields(stoken)[0] // removes eventual \n at the end of the file
+	stoken := fields[0]
 	slackClient := slack.New(stoken)
 
 	if _, err = slackClient.AuthTest(); err != nil {

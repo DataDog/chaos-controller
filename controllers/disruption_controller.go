@@ -124,9 +124,11 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			return
 		}
 
+		// a conflict means nothing this reconcile decided was persisted: keep the
+		// error so controller-runtime retries it with its rate limiter, as no
+		// later event is guaranteed to reconcile the disruption again
 		if chaosv1beta1.IsUpdateConflictError(err) {
 			r.log.Infow("a retryable error occurred in reconcile loop", tagutil.ErrorKey, err)
-			err = nil
 		} else {
 			r.log.Errorw("an error occurred in reconcile loop", tagutil.ErrorKey, err)
 		}
@@ -828,6 +830,8 @@ func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *ch
 		if err = r.Client.Status().Update(ctx, statusCopy); err != nil {
 			return fmt.Errorf("error updating disruption status with run count: %w", err)
 		}
+
+		instance.ResourceVersion = statusCopy.ResourceVersion
 	}
 
 	return nil
@@ -1010,15 +1014,15 @@ func (r *DisruptionReconciler) selectTargets(ctx context.Context, instance *chao
 	var matchErr error
 
 	matchingTargets, totalAvailableTargetsCount, matchErr = r.getSelectorMatchingTargets(instance)
-	if matchErr != nil {
-		r.log.Errorw("error getting matching targets", tagutil.ErrorKey, matchErr)
-	}
-
 	matchSpan.SetAttributes(
 		attribute.Int(attributes.DisruptionMatchingTargets, len(matchingTargets)),
 		attribute.Int(attributes.DisruptionTotalAvailTargets, totalAvailableTargetsCount),
 	)
 	endSpan(matchSpan, matchErr)
+
+	if matchErr != nil {
+		return fmt.Errorf("error getting matching targets: %w", matchErr)
+	}
 
 	instance.Status.RemoveDeadTargets(matchingTargets)
 

@@ -383,8 +383,26 @@ You first need to remove those chaos pods (and potentially their finalizers) to 
 		return nil, fmt.Errorf("[StaticTargeting: false] only a disruption spec's Count field can be updated, please delete and recreate it if needed")
 	}
 
-	if err := newDisruptionObj.Spec.Validate(); err != nil {
-		return nil, err
+	// an unchanged spec was validated when it was admitted; validating it again
+	// would refuse metadata-only updates, such as the controller removing its
+	// finalizer, for disruptions admitted before a validation rule was added
+	if !reflect.DeepEqual(oldDisruption.Spec, newDisruptionObj.Spec) {
+		if err := newDisruptionObj.Spec.Validate(); err != nil {
+			return nil, err
+		}
+	}
+
+	// a count change retargets the disruption, so the count safety net applies as it does on creation
+	if enableSafemode && !reflect.DeepEqual(oldDisruption.Spec.Count, newDisruptionObj.Spec.Count) &&
+		(newDisruptionObj.Spec.Unsafemode == nil || !newDisruptionObj.Spec.Unsafemode.DisableAll) {
+		caught, response, err := safetyNetCountNotTooLarge(ctx, newDisruptionObj)
+		if err != nil {
+			return nil, fmt.Errorf("error checking for countNotTooLarge safetynet: %w", err)
+		}
+
+		if caught {
+			return nil, fmt.Errorf("the count safety net caught an issue with the updated count: %s", response)
+		}
 	}
 
 	if mErr := metricsSink.MetricValidationUpdated(newDisruptionObj.getMetricsTags()); mErr != nil {
@@ -636,6 +654,30 @@ func safetyNetCountNotTooLarge(ctx context.Context, r *Disruption) (bool, string
 		}
 
 		totalCount += len(nodes.Items)
+
+		nodes = &metav1.PartialObjectMetadataList{}
+		nodes.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("NodeList"))
+
+		listOptions := &client.ListOptions{
+			LabelSelector: labels.SelectorFromValidatedSet(r.Spec.Selector),
+			Limit:         listPageSize,
+		}
+
+		// we grab the number of targets in the cluster
+		if err := apiReader.List(ctx, nodes, listOptions); err != nil {
+			return false, "", fmt.Errorf("error listing target nodes: %w", err)
+		}
+
+		for nodes.Continue != "" {
+			targetCount += len(nodes.Items)
+			listOptions.Continue = nodes.Continue
+
+			if err := apiReader.List(ctx, nodes, listOptions); err != nil {
+				return false, "", fmt.Errorf("error listing target nodes: %w", err)
+			}
+		}
+
+		targetCount += len(nodes.Items)
 	}
 
 	userCountVal := 0.0

@@ -318,6 +318,62 @@ var _ = Describe("PodReplacement", func() {
 				})
 			})
 
+			Context("when the node was already cordoned by someone else", func() {
+				BeforeEach(func() {
+					// an operator cordoned the node before the disruption started
+					node, err := k8sClient.CoreV1().Nodes().Get(context.Background(), nodeName, metav1.GetOptions{})
+					Expect(err).ToNot(HaveOccurred())
+					node.Spec.Unschedulable = true
+					_, err = k8sClient.CoreV1().Nodes().Update(context.Background(), node, metav1.UpdateOptions{})
+					Expect(err).ToNot(HaveOccurred())
+				})
+
+				It("should leave the node cordoned after injection and cleanup", func() {
+					By("injecting")
+					Expect(inj.Inject()).To(Succeed())
+
+					By("cleaning")
+					Expect(inj.Clean()).To(Succeed())
+
+					By("keeping the node cordoned")
+					node, err := k8sClient.CoreV1().Nodes().Get(context.Background(), nodeName, metav1.GetOptions{})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(node.Spec.Unschedulable).To(BeTrue(), "the disruption must not uncordon a node cordoned by someone else")
+				})
+			})
+
+			Context("when the node was not cordoned before injection", func() {
+				It("should cordon the node during injection and uncordon it during injection cleanup", func() {
+					By("injecting")
+					Expect(inj.Inject()).To(Succeed())
+
+					By("checking the node is uncordoned at the end of injection")
+					node, err := k8sClient.CoreV1().Nodes().Get(context.Background(), nodeName, metav1.GetOptions{})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(node.Spec.Unschedulable).To(BeFalse(), "the injector cordoned the node itself so it must uncordon it")
+				})
+
+				It("should not undo an external cordon made after the injector released its own", func() {
+					By("injecting, which cordons then uncordons the node itself")
+					Expect(inj.Inject()).To(Succeed())
+
+					By("cordoning the node again externally")
+					node, err := k8sClient.CoreV1().Nodes().Get(context.Background(), nodeName, metav1.GetOptions{})
+					Expect(err).ToNot(HaveOccurred())
+					node.Spec.Unschedulable = true
+					_, err = k8sClient.CoreV1().Nodes().Update(context.Background(), node, metav1.UpdateOptions{})
+					Expect(err).ToNot(HaveOccurred())
+
+					By("cleaning")
+					Expect(inj.Clean()).To(Succeed())
+
+					By("keeping the externally cordoned node cordoned")
+					node, err = k8sClient.CoreV1().Nodes().Get(context.Background(), nodeName, metav1.GetOptions{})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(node.Spec.Unschedulable).To(BeTrue(), "a Clean after a successful uncordon must not uncordon a newer external cordon")
+				})
+			})
+
 			Context("in dry run mode", func() {
 				BeforeEach(func() {
 					config.Disruption.DryRun = true

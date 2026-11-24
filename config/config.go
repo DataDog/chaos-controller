@@ -384,17 +384,9 @@ func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osAr
 		return cfg, err
 	}
 
-	if _, err := resource.ParseQuantity(cfg.Handler.CPU); err != nil {
-		return cfg, err
-	}
-
 	mainFS.StringVar(&cfg.Handler.Memory, "handler-memory", "100Mi", "Memory limit/requests for handler init container")
 
 	if err := viper.BindPFlag("handler.memory", mainFS.Lookup("handler-memory")); err != nil {
-		return cfg, err
-	}
-
-	if _, err := resource.ParseQuantity(cfg.Handler.Memory); err != nil {
 		return cfg, err
 	}
 
@@ -666,8 +658,20 @@ func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osAr
 		return cfg, fmt.Errorf("unable to parse main flags: %w", err)
 	}
 
+	if _, err := resource.ParseQuantity(cfg.Handler.CPU); err != nil {
+		return cfg, err
+	}
+
+	if _, err := resource.ParseQuantity(cfg.Handler.Memory); err != nil {
+		return cfg, err
+	}
+
 	if !cfg.Controller.UserInfoHook && cfg.Controller.Notifiers.Slack.Enabled {
 		return cfg, fmt.Errorf("cannot enable slack notifier without enabling the user info webhook")
+	}
+
+	if !cfg.Controller.UserInfoHook && len(cfg.Controller.SafeMode.PermittedUserGroups) > 0 {
+		return cfg, fmt.Errorf("cannot enforce permitted user groups without enabling the user info webhook")
 	}
 
 	if cfg.Controller.DefaultDuration > 0 && cfg.Controller.MaxDuration > 0 && cfg.Controller.DefaultDuration > cfg.Controller.MaxDuration {

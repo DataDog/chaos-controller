@@ -149,7 +149,7 @@ func overwriteDisruptionSelectors(ctx context.Context, cl client.Client, disrupt
 	}
 
 	if len(selectors.MatchExpressions) > 0 {
-		disruption.Spec.AdvancedSelector = selectors.MatchExpressions
+		disruption.Spec.AdvancedSelector = append(disruption.Spec.AdvancedSelector, selectors.MatchExpressions...)
 	}
 
 	return nil

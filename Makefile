@@ -3,8 +3,8 @@
 
 NOW_ISO8601 = $(shell date -u +"%Y-%m-%dT%H:%M:%S")
 
-GOOS = $(shell go env GOOS)
-GOARCH = $(shell go env GOARCH)
+GOOS ?= $(shell go env GOOS)
+GOARCH ?= $(shell go env GOARCH)
 
 # change also github actions go build version "GO_VERSION:" if you change the version below
 # https://github.com/DataDog/chaos-controller/blob/main/.github/workflows/ci.yml#L13
@@ -23,6 +23,7 @@ LOCALBIN ?= $(shell pwd)/bin/tools
 CONTROLLER_GEN = $(LOCALBIN)/controller-gen
 YAMLFMT        = $(LOCALBIN)/yamlfmt
 GOLANGCI_LINT  = $(LOCALBIN)/golangci-lint
+GOTESTSUM      = $(LOCALBIN)/gotestsum
 HELM           = $(LOCALBIN)/helm
 WATCHEXEC      = $(LOCALBIN)/watchexec
 MOCKERY        = $(LOCALBIN)/mockery
@@ -163,6 +164,16 @@ WATCHEXEC_SHA256_linux_amd64       = 74651d6f450bca5436eee35b7828f1b97388d3b3976
 WATCHEXEC_SHA256_linux_arm64       = 87ec2094f2e883a090cb4a72a073f9b44f4aba7f50481f068e175f993d15c581
 WATCHEXEC_SHA256                   = $(WATCHEXEC_SHA256_$(GOOS)_$(GOARCH))
 
+# gotestsum v$(GOTESTSUM_VERSION)
+# Source: https://github.com/gotestyourself/gotestsum/releases/download/v$(GOTESTSUM_VERSION)/gotestsum-$(GOTESTSUM_VERSION)-checksums.txt
+GOTESTSUM_VERSION                  = 1.13.0
+GOTESTSUM_INSTALLED_VERSION        = $(shell ($(LOCALBIN)/gotestsum --version 2>/dev/null || echo "") | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+GOTESTSUM_SHA256_darwin_amd64      = 99529350f4c7b780b1efc543ca0d9721b09f0a4228f0efa9281261f58fefa05a
+GOTESTSUM_SHA256_darwin_arm64      = 509cb27aef747f48faf9bce424f59dcf79572c905204b990ee935bbfcc7fa0e9
+GOTESTSUM_SHA256_linux_amd64       = 11ccddeaf708ef228889f9fe2f68291a75b27013ddfc3b18156e094f5f40e8ee
+GOTESTSUM_SHA256_linux_arm64       = 7644a4c5cd1bb978d56245aeab25a586ac5ac62adebed20a399548867c13499d
+GOTESTSUM_SHA256                   = $(GOTESTSUM_SHA256_$(GOOS)_$(GOARCH))
+
 # Portable SHA256 verification: macOS ships shasum, Linux ships sha256sum
 SHA256SUM = sha256sum
 ifeq (darwin,$(GOOS))
@@ -174,6 +185,8 @@ endif
 # `make test TEST_ARGS=--until-it-fails` to run tests randomly and repeatedly until a failure might occur (help to detect flaky tests or wrong tests setup)
 # `make test TEST_ARGS=injector` will focus on package injector to run tests
 TEST_ARGS ?=
+E2E_TEST_FOCUS ?=
+E2E_TEST_SKIP ?=
 
 DD_ENV = local
 # https://circleci.com/docs/variables/
@@ -251,14 +264,17 @@ chaosli:
 	GOOS=darwin GOARCH=$(GOARCH) CGO_ENABLED=0 go build -ldflags="-X github.com/DataDog/chaos-controller/cli/chaosli/cmd.Version=$(VERSION)" -o bin/chaosli/chaosli_darwin_$(GOARCH) ./cli/chaosli/
 
 # https://onsi.github.io/ginkgo/#recommended-continuous-integration-configuration
-GINKGO_PROCS ?= 4
+GINKGO_PROCS ?= $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
+GINKGO_COVER_RACE_FLAGS ?= --cover --coverprofile=cover.profile --race
+GINKGO_CMD ?= $(if $(wildcard $(LOCALBIN)/ginkgo),$(LOCALBIN)/ginkgo,go run github.com/onsi/ginkgo/v2/ginkgo)
+E2E_TEST_TARGET ?= controllers
 
 _ginkgo_test:
 # Run the test and write a file if succeed
 # Do not stop on any error
-	-go run github.com/onsi/ginkgo/v2/ginkgo --fail-on-pending --keep-going --vv \
-		--cover --coverprofile=cover.profile --randomize-all \
-		--race --trace --json-report=report-$(GO_TEST_REPORT_NAME).json --junit-report=report-$(GO_TEST_REPORT_NAME).xml \
+	-$(GINKGO_CMD) --fail-on-pending --keep-going --vv \
+		$(GINKGO_COVER_RACE_FLAGS) --randomize-all \
+		--trace --json-report=report-$(GO_TEST_REPORT_NAME).json --junit-report=report-$(GO_TEST_REPORT_NAME).xml \
 		--compilers=$(GINKGO_PROCS) --procs=$(GINKGO_PROCS) \
 		--poll-progress-after=10s --poll-progress-interval=10s \
 		$(GINKGO_TEST_ARGS) \
@@ -282,10 +298,34 @@ endif
 
 # Tests & CI
 ## Run unit tests
+ifneq ($(SKIP_GENERATE),true)
 test: generate-controller manifests
+endif
+test:
 	$(if $(GOPATH),,$(error GOPATH is not set. Please set GOPATH before running make test))
 	$(MAKE) _ginkgo_test GO_TEST_REPORT_NAME=$@ \
 		GINKGO_TEST_ARGS="-r --skip-package=controllers --randomize-suites --timeout=10m $(TEST_ARGS)"
+
+## Run unit tests in parallel across packages via go test + gotestsum (optimized for CI)
+test-ci: install-gotestsum
+	-$(GOTESTSUM) --format pkgname --junitfile report-test.xml -- \
+		-mod=vendor -race -coverprofile=cover.profile -timeout=10m \
+		$(shell go list -mod=vendor ./... | grep -v '/controllers$$') \
+		&& touch report-test-succeed
+ifneq (true,$(GO_TEST_SKIP_UPLOAD))
+ifdef DATADOG_API_KEY
+ifneq (,$(wildcard $(LOCALBIN)/datadog-ci))
+	-DD_ENV=$(DD_ENV) $(DATADOG_CI) junit upload --service chaos-controller --tags="team:chaos-engineering,type:test" report-test.xml
+else
+	@echo "datadog-ci binary is not installed, run 'make install-datadog-ci' to upload tests results to datadog"
+endif
+else
+	@echo "DATADOG_API_KEY env var is not defined, create a local API key https://app.datadoghq.com/personal-settings/application-keys if you want to upload your local tests results to datadog"
+endif
+else
+	@echo "datadog-ci junit upload SKIPPED"
+endif
+	[ -f report-test-succeed ] && rm -f report-test-succeed || exit 1
 
 spellcheck-deps:
 ifeq (, $(shell which npm))
@@ -321,8 +361,11 @@ MINIKUBE_CPUS ?= 6
 MINIKUBE_MEMORY ?= 28672
 
 ci-install-minikube:
-	curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube_latest_amd64.deb
-	sudo dpkg -i minikube_latest_amd64.deb
+	if ! command -v minikube >/dev/null 2>&1; then \
+		curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube_latest_amd64.deb && \
+		sudo dpkg -i minikube_latest_amd64.deb && \
+		rm -f minikube_latest_amd64.deb; \
+	fi
 	minikube start --cpus='$(MINIKUBE_CPUS)' --memory='$(MINIKUBE_MEMORY)' --vm-driver=docker --container-runtime=containerd --kubernetes-version=${KUBERNETES_VERSION}
 	minikube status
 
@@ -330,12 +373,16 @@ SKIP_DEPLOY ?=
 
 ## Run e2e tests (against a real cluster)
 ## to run them locally you first need to run `make install-kubebuilder`
+ifneq ($(SKIP_GENERATE),true)
 e2e-test: generate-controller manifests
+endif
+e2e-test:
 ifneq (true,$(SKIP_DEPLOY)) # we can only wait for a controller if it exists, local.yaml does not deploy the controller
 	$(MAKE) lima-install HELM_VALUES=ci.yaml
 endif
 	E2E_TEST_CLUSTER_NAME=$(E2E_TEST_CLUSTER_NAME) E2E_TEST_KUBECTL_CONTEXT=$(E2E_TEST_KUBECTL_CONTEXT) $(MAKE) _ginkgo_test GO_TEST_REPORT_NAME=$@ \
-		GINKGO_TEST_ARGS="--flake-attempts=3 --timeout=25m controllers"
+		GINKGO_COVER_RACE_FLAGS="" \
+		GINKGO_TEST_ARGS='--flake-attempts=3 --timeout=25m $(if $(E2E_TEST_FOCUS),--focus="$(E2E_TEST_FOCUS)") $(if $(E2E_TEST_SKIP),--skip="$(E2E_TEST_SKIP)") $(E2E_TEST_TARGET)'
 
 # Test chaosli API portability
 chaosli-test:
@@ -360,8 +407,7 @@ vet:
 lint: install-golangci-lint
 # By using GOOS=linux we aim to validate files as if we were on linux
 # you can use a similar trick with gopls to have vs-code linting your linux platform files instead of darwin
-	GOOS=linux $(GOLANGCI_LINT) run -E ginkgolinter ./...
-	GOOS=linux $(GOLANGCI_LINT) run
+	GOOS=linux $(GOLANGCI_LINT) run ./...
 
 ## Generate all generated artifacts (code, manifests, mocks, protobufs)
 generate: generate-controller manifests generate-mocks generate-disruptionlistener-protobuf generate-chaosdogfood-protobuf
@@ -392,7 +438,10 @@ lima-install-demo:
 ## Install CRDs and controller into a lima k3s cluster
 ## In order to use already built images inside the containerd runtime
 ## we override images for all of our components to the expected namespace
-lima-install: manifests install-helm
+ifneq ($(SKIP_GENERATE),true)
+lima-install: manifests
+endif
+lima-install: install-helm
 	$(HELM) template \
 		--set=controller.version=$(CONTAINER_VERSION) \
 		--set=controller.metricsSink=$(LIMA_INSTALL_SINK) \
@@ -579,6 +628,16 @@ ifeq (,$(wildcard $(LOCALBIN)/datadog-ci))
 	curl -L --fail "https://github.com/DataDog/datadog-ci/releases/latest/download/datadog-ci_$(GOOS)-x64" --output "$(LOCALBIN)/datadog-ci" && chmod u+x $(LOCALBIN)/datadog-ci
 endif
 
+install-gotestsum: | $(LOCALBIN)
+ifneq ($(GOTESTSUM_INSTALLED_VERSION),$(GOTESTSUM_VERSION))
+	$(info gotestsum version $(GOTESTSUM_VERSION) is not installed or version differs ($(GOTESTSUM_VERSION) != $(GOTESTSUM_INSTALLED_VERSION)))
+	$(info installing gotestsum v$(GOTESTSUM_VERSION)...)
+	curl -sSLo /tmp/gotestsum.tar.gz "https://github.com/gotestyourself/gotestsum/releases/download/v$(GOTESTSUM_VERSION)/gotestsum_$(GOTESTSUM_VERSION)_$(GOOS)_$(GOARCH).tar.gz"
+	echo "$(GOTESTSUM_SHA256)  /tmp/gotestsum.tar.gz" | $(SHA256SUM) -c -
+	tar -xzf /tmp/gotestsum.tar.gz --directory=$(LOCALBIN) gotestsum
+	rm /tmp/gotestsum.tar.gz
+endif
+
 install-mockery: | $(LOCALBIN)
 # recommended way to install mockery is through their released binaries, NOT go install...
 # https://vektra.github.io/mockery/installation/#github-release
@@ -633,7 +692,7 @@ install-go:
 	BUILDGOVERSION=$(BUILDGOVERSION) ./scripts/install-go
 
 ## Install all project tools into $(LOCALBIN)
-install-tools: install-golangci-lint install-controller-gen install-mockery install-yamlfmt install-helm install-kubebuilder install-datadog-ci install-watchexec install-protobuf install-protoc-gen-go install-protoc-gen-go-grpc
+install-tools: install-golangci-lint install-gotestsum install-controller-gen install-mockery install-yamlfmt install-helm install-kubebuilder install-datadog-ci install-watchexec install-protobuf install-protoc-gen-go install-protoc-gen-go-grpc
 
 EXISTING_HELM_RELEASE = $(shell $(HELM) status -n datadog-agent my-datadog-operator --output json 2>/dev/null | grep -q '"status":"deployed"' && echo "true" || echo "")
 

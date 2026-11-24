@@ -1,5 +1,6 @@
 *.swp
 .git/
-vendor/
+.venv/
+bin/tools/
 out/
 cli/chaosli/chaosli.DOCKERFILE
