@@ -383,8 +383,12 @@ You first need to remove those chaos pods (and potentially their finalizers) to 
 		return nil, fmt.Errorf("[StaticTargeting: false] only a disruption spec's Count field can be updated, please delete and recreate it if needed")
 	}
 
-	if err := newDisruptionObj.Spec.Validate(); err != nil {
-		return nil, err
+	// The hash checks above allow only Count to change. Revalidate those changes,
+	// but let metadata-only updates clean up specs accepted by older validators.
+	if !reflect.DeepEqual(oldDisruption.Spec.Count, newDisruptionObj.Spec.Count) {
+		if err := newDisruptionObj.Spec.Validate(); err != nil {
+			return nil, err
+		}
 	}
 
 	if mErr := metricsSink.MetricValidationUpdated(newDisruptionObj.getMetricsTags()); mErr != nil {
