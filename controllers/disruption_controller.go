@@ -1012,15 +1012,15 @@ func (r *DisruptionReconciler) selectTargets(ctx context.Context, instance *chao
 	var matchErr error
 
 	matchingTargets, totalAvailableTargetsCount, matchErr = r.getSelectorMatchingTargets(instance)
-	if matchErr != nil {
-		r.log.Errorw("error getting matching targets", tagutil.ErrorKey, matchErr)
-	}
-
 	matchSpan.SetAttributes(
 		attribute.Int(attributes.DisruptionMatchingTargets, len(matchingTargets)),
 		attribute.Int(attributes.DisruptionTotalAvailTargets, totalAvailableTargetsCount),
 	)
 	endSpan(matchSpan, matchErr)
+
+	if matchErr != nil {
+		return fmt.Errorf("error getting matching targets: %w", matchErr)
+	}
 
 	instance.Status.RemoveDeadTargets(matchingTargets)
 
