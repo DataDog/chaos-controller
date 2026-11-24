@@ -384,17 +384,9 @@ func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osAr
 		return cfg, err
 	}
 
-	if _, err := resource.ParseQuantity(cfg.Handler.CPU); err != nil {
-		return cfg, err
-	}
-
 	mainFS.StringVar(&cfg.Handler.Memory, "handler-memory", "100Mi", "Memory limit/requests for handler init container")
 
 	if err := viper.BindPFlag("handler.memory", mainFS.Lookup("handler-memory")); err != nil {
-		return cfg, err
-	}
-
-	if _, err := resource.ParseQuantity(cfg.Handler.Memory); err != nil {
 		return cfg, err
 	}
 
@@ -664,6 +656,14 @@ func New(client corev1client.ConfigMapInterface, logger *zap.SugaredLogger, osAr
 	// now that configuration file has been loaded, parse all remaining flags
 	if err := mainFS.Parse(osArgs); err != nil {
 		return cfg, fmt.Errorf("unable to parse main flags: %w", err)
+	}
+
+	if _, err := resource.ParseQuantity(cfg.Handler.CPU); err != nil {
+		return cfg, err
+	}
+
+	if _, err := resource.ParseQuantity(cfg.Handler.Memory); err != nil {
+		return cfg, err
 	}
 
 	if !cfg.Controller.UserInfoHook && cfg.Controller.Notifiers.Slack.Enabled {
