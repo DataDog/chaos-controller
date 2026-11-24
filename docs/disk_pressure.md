@@ -16,9 +16,9 @@ To apply the throttle, the injector will:
 
 * search for the device related to the given path
   * it is done by using the `df` command which will print out the device path
-* retrieve the device major identifier
-  * it is done by using the `ls` command on the device path (eg. `/dev/sda1`) which will print out the major and minor identifiers of the device
-* write the throttle using the major identifier of the device
+* retrieve the device's major and minor identifiers using `ls`
+* resolve partitions to their parent whole disk through `/sys/dev/block`, using both parent identifiers
+* write the throttle using the whole disk's `major:minor` pair (for example, `8:16` or `259:3`)
 
 ### Notes
 
@@ -36,7 +36,7 @@ More information can be found on [this blog post](https://medium.com/some-tldrs/
 
 ## Manual cleanup instructions
 
-:information_source: All those commands must be executed on the infected host (except for `kubectl`).
+:information_source: All those commands must be executed on the infected host (except for `kubectl`). Replace `8:0` in the examples with the throttled whole disk's actual `major:minor` pair.
 
 ---
 

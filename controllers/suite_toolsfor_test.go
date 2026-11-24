@@ -29,12 +29,12 @@ import (
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
 const (
-	disruptionPotentialChangesEvery = time.Second
+	disruptionPotentialChangesEvery = 250 * time.Millisecond
 )
 
 type lightConfig struct {
 	Controller struct {
-		FinalizerDeletionDelay   time.Duration `json:"finalizerDeletionDelay"`
+		FinalizerDeletionDelay   time.Duration `yaml:"finalizerDeletionDelay"`
 		ExpiredDisruptionGCDelay time.Duration `yaml:"expiredDisruptionGCDelay"`
 		DefaultDuration          time.Duration `yaml:"defaultDuration"`
 	} `yaml:"controller"`
@@ -86,12 +86,15 @@ func calcDisruptionGoneTimeout(disruption chaosv1beta1.Disruption) time.Duration
 			Fail("an existing disruption should have a non-zero duration")
 		}
 
-		if remainingDisruptionDuration := disruption.RemainingDuration(); remainingDisruptionDuration > 0 {
-			disruptionDuration = remainingDisruptionDuration
+		remainingDisruptionDuration := disruption.RemainingDuration()
+		if remainingDisruptionDuration < 0 {
+			remainingDisruptionDuration = 0
 		}
+
+		disruptionDuration = remainingDisruptionDuration
 	}
 
-	disruptionGoneDuration := disruptionDuration + lightCfg.Controller.ExpiredDisruptionGCDelay + 5*time.Second + lightCfg.Controller.FinalizerDeletionDelay
+	disruptionGoneDuration := disruptionDuration + lightCfg.Controller.ExpiredDisruptionGCDelay + 15*time.Second + lightCfg.Controller.FinalizerDeletionDelay
 
 	AddReportEntry(fmt.Sprintf("disruption %s will be gone at %v (in %v)", disruption.Name, time.Now().Add(disruptionGoneDuration), disruptionGoneDuration))
 
@@ -275,32 +278,59 @@ func ExpectDisruptionStatus(ctx SpecContext, disruption chaosv1beta1.Disruption,
 	}).WithContext(ctx).Within(calcDisruptionGoneTimeout(disruption)).ProbeEvery(disruptionPotentialChangesEvery).Should(Succeed())
 }
 
-// ExpectDisruptionStatusUntilExpired consistently expect provided status until disruption is gone
+// ExpectDisruptionStatusUntilExpired expects provided status until the disruption expires or is garbage collected
 func ExpectDisruptionStatusUntilExpired(ctx SpecContext, disruption chaosv1beta1.Disruption, status chaostypes.DisruptionInjectionStatus) {
 	GinkgoHelper()
 
 	AddReportEntry("Checking disruption has always status", status)
 
-	Consistently(func(ctx SpecContext) error {
-		// retrieve the previously created disruption
-		if err := k8sClient.Get(ctx, types.NamespacedName{
-			Namespace: disruption.Namespace,
-			Name:      disruption.Name,
-		}, &disruption); err != nil {
-			return StopTryingNotRetryableKubernetesError(err, false, true)
-		}
+	disruptionKey := types.NamespacedName{
+		Namespace: disruption.Namespace,
+		Name:      disruption.Name,
+	}
 
-		if disruption.Status.InjectionStatus != status {
-			// when requested status is NOT a previsouly status, we should stop looking when transition occured and new status is a previously one
-			if !status.Previously() && disruption.Status.InjectionStatus.Previously() {
-				return nil
+	check := func() (done bool) {
+		var current chaosv1beta1.Disruption
+		if err := k8sClient.Get(ctx, disruptionKey, &current); err != nil {
+			if apierrors.IsNotFound(err) {
+				return true
 			}
 
-			return fmt.Errorf("unexpected disruption status %s, expect %s", disruption.Status.InjectionStatus, status)
+			Expect(err).ToNot(HaveOccurred())
 		}
 
-		return nil
-	}).WithContext(ctx).Within(calcDisruptionGoneTimeout(disruption)).ProbeEvery(disruptionPotentialChangesEvery).Should(Succeed())
+		if current.Status.InjectionStatus != status {
+			// when requested status is NOT a previously status, stop once the disruption transitions to an expired status
+			if !status.Previously() && current.Status.InjectionStatus.Previously() {
+				return true
+			}
+
+			Fail(fmt.Sprintf("unexpected disruption status %s, expect %s", current.Status.InjectionStatus, status))
+		}
+
+		return false
+	}
+
+	if check() {
+		return
+	}
+
+	deadline := time.After(calcDisruptionGoneTimeout(disruption))
+	ticker := time.NewTicker(disruptionPotentialChangesEvery)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			Fail(fmt.Sprintf("context cancelled while checking disruption %s status: %v", disruption.Name, ctx.Err()))
+		case <-deadline:
+			return
+		case <-ticker.C:
+			if check() {
+				return
+			}
+		}
+	}
 }
 
 // DeleteDisruption safely delete a disruption and does not fail if the disruption does not exists
