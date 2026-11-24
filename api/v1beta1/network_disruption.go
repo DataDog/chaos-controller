@@ -163,11 +163,13 @@ func (p HTTPPath) validate() error {
 }
 
 func (paths HTTPPaths) isNotDefault() bool {
-	if len(paths) == 0 || len(paths) > 1 {
-		return false
+	for _, path := range paths {
+		if path != DefaultHTTPPathFilter {
+			return true
+		}
 	}
 
-	return paths[0] != DefaultHTTPPathFilter
+	return false
 }
 
 func (h HTTPMethods) isNotEmpty() bool {
