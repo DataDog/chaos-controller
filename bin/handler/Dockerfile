@@ -1,23 +1,24 @@
+# syntax=docker/dockerfile:1
 # Build stage
 ARG BUILDGOVERSION=1.27.3
-FROM golang:${BUILDGOVERSION} AS builder
+FROM --platform=$BUILDPLATFORM golang:${BUILDGOVERSION} AS builder
 
 ARG TARGETOS=linux
 ARG TARGETARCH
 
 WORKDIR /go/src/github.com/chaos-controller/
 
-# Copy go mod files first for better caching
+# Copy vendored dependencies first for better layer caching (avoids network downloads)
 COPY go.mod go.sum ./
-RUN go mod download
+COPY vendor/ vendor/
 
 # Copy the source code
 COPY . .
 
 # Build the handler binary
-RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-    go build -o handler ./cli/handler
-
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+    go build -mod=vendor -ldflags="-s -w" -o handler ./cli/handler
 # Final stage
 FROM scratch AS handler
 

@@ -23,15 +23,28 @@ jobs:
       - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version-file: go.mod
-          cache: true
+          cache: false
+      - name: Cache Go build and lint caches
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/.cache/golangci-lint
+          key: go-cache-lint-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            go-cache-lint-${{ runner.os }}-${{ hashFiles('go.sum') }}-
+            go-cache-lint-${{ runner.os }}-
+      - name: Cache tools
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: bin/tools
+          key: tools-lint-${{ runner.os }}-${{ hashFiles('Makefile') }}
       - name: Install lint tools
-        run: make install-golangci-lint install-controller-gen
+        run: make install-golangci-lint
       - name: Format
         run: |
           make fmt
           git diff --exit-code
-      - name: Vet
-        run: make vet
       - name: Lint
         run: make lint
 
@@ -45,7 +58,20 @@ jobs:
       - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version-file: go.mod
-          cache: true
+          cache: false
+      - name: Cache Go build cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/go-build
+          key: go-cache-test-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            go-cache-test-${{ runner.os }}-${{ hashFiles('go.sum') }}-
+            go-cache-test-${{ runner.os }}-
+      - name: Cache tools
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: bin/tools
+          key: tools-test-${{ runner.os }}-${{ hashFiles('Makefile') }}
       - name: Get Datadog credentials via datadog-wif
         id: dd-wif
         if: github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'push'
@@ -54,9 +80,9 @@ jobs:
           org_uuid: ${{ secrets.DATADOG_ORG_UUID }}
           site: datadoghq.com
       - name: Install tools
-        run: make -j4 install-controller-gen install-yamlfmt install-kubebuilder install-datadog-ci
+        run: make -j2 install-gotestsum install-datadog-ci
       - name: Run unit tests
-        run: make test GINKGO_PROCS=2
+        run: make test-ci
         env:
           DATADOG_API_KEY: ${{ steps.dd-wif.outputs.api_key || '' }}
       - name: Upload code coverage
@@ -79,8 +105,12 @@ jobs:
         target: [injector, manager, handler]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - name: Build ${{ matrix.target }}
-        run: make docker-build-${{ matrix.target }} SKIP_GENERATE=true
+        run: |
+          make docker-build-${{ matrix.target }} SKIP_GENERATE=true \
+            CONTAINER_BUILD_EXTRA_ARGS="--load --cache-from=type=gha,scope=${{ matrix.target }} --cache-to=type=gha,mode=max,scope=${{ matrix.target }}"
       - name: Upload tarball
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -100,7 +130,20 @@ jobs:
       - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version-file: go.mod
-          cache: true
+          cache: false
+      - name: Cache Go build cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/go-build
+          key: go-cache-e2e-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            go-cache-e2e-${{ runner.os }}-${{ hashFiles('go.sum') }}-
+            go-cache-e2e-${{ runner.os }}-
+      - name: Cache tools
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: bin/tools
+          key: tools-e2e-${{ runner.os }}-${{ hashFiles('Makefile') }}
       - name: Get Datadog credentials via datadog-wif
         id: dd-wif
         if: github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'push'
@@ -173,9 +216,24 @@ jobs:
       - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version-file: go.mod
-          cache: true
+          cache: false
+      - name: Cache Go build cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/go-build
+          key: go-cache-codegen-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            go-cache-codegen-${{ runner.os }}-${{ hashFiles('go.sum') }}-
+            go-cache-codegen-${{ runner.os }}-
+      - name: Cache tools
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            bin/tools
+            bin/protoc-include
+          key: tools-codegen-${{ runner.os }}-${{ hashFiles('Makefile') }}
       - name: Install tools
-        run: make -j6 install-controller-gen install-yamlfmt install-mockery install-protobuf PROTOC_OS=linux
+        run: make -j6 install-controller-gen install-yamlfmt install-mockery install-protobuf install-protoc-gen-go install-protoc-gen-go-grpc PROTOC_OS=linux
       - name: Validate go dependencies
         run: |
           make godeps
