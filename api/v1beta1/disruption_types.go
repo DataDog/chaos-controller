@@ -434,6 +434,12 @@ func (d *Disruption) TerminationStatus(chaosPods []corev1.Pod) TerminationStatus
 	// or by deletion of targets leading to deletion of injectors
 	// injection terminated with an error are considered NOT terminated
 	for _, chaosPod := range chaosPods {
+		// a chaos pod with no container statuses has not started yet (e.g. Pending)
+		// so none of its containers exited successfully and the disruption is still running
+		if len(chaosPod.Status.ContainerStatuses) == 0 {
+			return TSNotTerminated
+		}
+
 		for _, containerStatuses := range chaosPod.Status.ContainerStatuses {
 			if containerStatuses.State.Terminated == nil || containerStatuses.State.Terminated.ExitCode != 0 {
 				return TSNotTerminated
