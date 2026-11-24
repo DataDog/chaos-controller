@@ -13,6 +13,8 @@ Available providers are:
 
 The manager handles regular IP ranges files pulls to refresh the file content on enabled providers. The chart contains the default public URL for each cloud provider but it can be customized if needed. You can also disable some providers or all of them in case you want to disable the feature. Please note that if you specify a custom URL, the file must match the same format as the public one to be loaded successfully, otherwise the controller will crash.
 
+An unsuccessful HTTP response is rejected rather than parsed as an IP range file. During refresh, the manager retains the last successfully loaded ranges when this happens.
+
 ```
 cloudProviders:
     disableAll: false
