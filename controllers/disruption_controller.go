@@ -124,9 +124,11 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			return
 		}
 
+		// a conflict means nothing this reconcile decided was persisted: keep the
+		// error so controller-runtime retries it with its rate limiter, as no
+		// later event is guaranteed to reconcile the disruption again
 		if chaosv1beta1.IsUpdateConflictError(err) {
 			r.log.Infow("a retryable error occurred in reconcile loop", tagutil.ErrorKey, err)
-			err = nil
 		} else {
 			r.log.Errorw("an error occurred in reconcile loop", tagutil.ErrorKey, err)
 		}
