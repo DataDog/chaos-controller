@@ -724,6 +724,11 @@ func (s DisruptionSpec) validateGlobalDisruptionScope(requireSelectors bool) (re
 		}
 	}
 
+	// HTTP classifiers are only installed for pod-level, non-init disruptions.
+	if s.Network != nil && s.Network.HTTP != nil && (s.Level == chaostypes.DisruptionLevelNode || s.OnInit) {
+		retErr = multierror.Append(retErr, errors.New("network HTTP filters require pod level without onInit"))
+	}
+
 	// Rule: on init compatibility
 	if s.OnInit {
 		if s.CPUPressure != nil ||

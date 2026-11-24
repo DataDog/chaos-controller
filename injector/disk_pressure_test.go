@@ -40,7 +40,9 @@ var _ = Describe("Failure", func() {
 
 		// disk informer
 		informer = disk.NewInformerMock(GinkgoT())
+		// The informer resolves /dev/sda1 to its whole disk, 8:0.
 		informer.EXPECT().Major().Return(8)
+		informer.EXPECT().Minor().Return(0)
 		informer.EXPECT().Source().Return("/dev/sda1")
 
 		// env vars

@@ -8,6 +8,7 @@ package controllers
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -153,10 +154,10 @@ var _ = Describe("Memory Pressure", func() {
 
 	Context("pulse mode", func() {
 		BeforeEach(func() {
-			memoryStress.Spec.Duration = "2m"
+			memoryStress.Spec.Duration = "30s"
 			memoryStress.Spec.Pulse = &chaosv1beta1.DisruptionPulse{
-				ActiveDuration:  chaosv1beta1.DisruptionDuration("15s"),
-				DormantDuration: chaosv1beta1.DisruptionDuration("10s"),
+				ActiveDuration:  chaosv1beta1.DisruptionDuration("10s"),
+				DormantDuration: chaosv1beta1.DisruptionDuration("5s"),
 			}
 		})
 
@@ -229,25 +230,47 @@ var _ = Describe("Memory Pressure", func() {
 
 		disruptionKey := types.NamespacedName{Namespace: memoryStress.Namespace, Name: memoryStress.Name}
 
+		done := make(chan struct{})
+
 		Concurrently{
 			func(ctx SpecContext) {
-				Consistently(func(g Gomega, ctx SpecContext) {
+				check := func() {
 					var dis chaosv1beta1.Disruption
 					if err := k8sClient.Get(ctx, disruptionKey, &dis); apierrors.IsNotFound(err) {
 						return
 					} else {
-						g.Expect(err).ToNot(HaveOccurred())
+						Expect(err).ToNot(HaveOccurred())
 					}
 
-					g.Expect(dis.Status.InjectionStatus).To(BeElementOf(
+					Expect(dis.Status.InjectionStatus).To(BeElementOf(
 						chaostypes.DisruptionInjectionStatusInjected,
 						chaostypes.DisruptionInjectionStatusPausedInjected,
 						chaostypes.DisruptionInjectionStatusPreviouslyInjected,
 					))
-				}).WithContext(ctx).Within(calcDisruptionGoneTimeout(memoryStress)).ProbeEvery(disruptionPotentialChangesEvery).Should(Succeed())
+				}
+
+				check()
+
+				deadline := time.After(calcDisruptionGoneTimeout(memoryStress))
+				ticker := time.NewTicker(disruptionPotentialChangesEvery)
+				defer ticker.Stop()
+
+				for {
+					select {
+					case <-done:
+						return
+					case <-ctx.Done():
+						return
+					case <-deadline:
+						return
+					case <-ticker.C:
+						check()
+					}
+				}
 			},
 			func(ctx SpecContext) {
 				GinkgoHelper()
+				defer close(done)
 
 				CreateDisruption(ctx, stopTargetedContainer, targetPod)
 

@@ -190,13 +190,13 @@ func (i *diskPressureInjector) formatThrottle(throttle int, mode diskPressureThr
 		// to set that value, it is now a key/value pair (rbps/wbps for bandwidth, riops/wiops for iops)
 		switch mode {
 		case diskPressureThrottleModeReadBps:
-			return fmt.Sprintf("%d:0 rbps=%s", i.config.Informer.Major(), sThrottle)
+			return fmt.Sprintf("%d:%d rbps=%s", i.config.Informer.Major(), i.config.Informer.Minor(), sThrottle)
 		case diskPressureThrottleModeWriteBps:
-			return fmt.Sprintf("%d:0 wbps=%s", i.config.Informer.Major(), sThrottle)
+			return fmt.Sprintf("%d:%d wbps=%s", i.config.Informer.Major(), i.config.Informer.Minor(), sThrottle)
 		case diskPressureThrottleModeReadIops:
-			return fmt.Sprintf("%d:0 riops=%s", i.config.Informer.Major(), sThrottle)
+			return fmt.Sprintf("%d:%d riops=%s", i.config.Informer.Major(), i.config.Informer.Minor(), sThrottle)
 		case diskPressureThrottleModeWriteIops:
-			return fmt.Sprintf("%d:0 wiops=%s", i.config.Informer.Major(), sThrottle)
+			return fmt.Sprintf("%d:%d wiops=%s", i.config.Informer.Major(), i.config.Informer.Minor(), sThrottle)
 		default:
 			return "" // should never be used
 		}
@@ -204,7 +204,7 @@ func (i *diskPressureInjector) formatThrottle(throttle int, mode diskPressureThr
 
 	// cgroups v1 throttling format is much simple and only takes the value
 	// example: 252:0 1024
-	return fmt.Sprintf("%d:0 %d", i.config.Informer.Major(), throttle)
+	return fmt.Sprintf("%d:%d %d", i.config.Informer.Major(), i.config.Informer.Minor(), throttle)
 }
 
 // getThrottleFilename returns the filename to use to write IO read/write throttling data to

@@ -57,7 +57,7 @@ var podReplacementCmd = &cobra.Command{
 }
 
 func init() {
-	podReplacementCmd.Flags().Bool("delete-storage", true, "If specified, PVCs associated with the target pod will be deleted")
+	podReplacementCmd.Flags().Bool("delete-storage", false, "If specified, PVCs associated with the target pod will be deleted")
 	podReplacementCmd.Flags().Bool("force-delete", false, "If specified, the pod will be force deleted (grace period 0)")
 	podReplacementCmd.Flags().String("grace-period-seconds", "", "Grace period in seconds for pod deletion")
 }
