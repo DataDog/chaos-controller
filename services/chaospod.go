@@ -428,6 +428,7 @@ func (m *chaosPodService) HandleOrphanedChaosPods(ctx context.Context, req ctrl.
 		target := pod.Labels[chaostypes.TargetLabel]
 
 		var targetObject client.Object = &corev1.Pod{}
+
 		targetKey := types.NamespacedName{Name: target, Namespace: req.Namespace}
 		args := m.GetPodInjectorArgs(ctx, pod)
 
