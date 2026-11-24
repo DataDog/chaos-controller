@@ -6,6 +6,10 @@
 package watchers_test
 
 import (
+	"crypto/md5"
+	"encoding/hex"
+	"encoding/json"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -25,6 +29,23 @@ func makePodSpec(initContainers, containers []corev1.Container) *corev1.PodSpec 
 }
 
 var _ = Describe("Hash", func() {
+	It("returns the MD5 hex digest of the marshaled container", func() {
+		c := corev1.Container{
+			Name:  "app",
+			Image: "nginx:1",
+			Env:   []corev1.EnvVar{{Name: "SECRET", Value: "hunter2"}},
+		}
+		h, err := watchers.Hash(&c)
+		Expect(err).NotTo(HaveOccurred())
+
+		containerJSON, err := json.Marshal(c)
+		Expect(err).NotTo(HaveOccurred())
+		sum := md5.Sum(containerJSON)
+
+		Expect(h).To(Equal(hex.EncodeToString(sum[:])))
+		Expect(h).To(HaveLen(32))
+	})
+
 	It("returns non-empty hash for a container", func() {
 		c := makeContainer("app", "nginx:latest")
 		h, err := watchers.Hash(&c)
