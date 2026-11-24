@@ -194,6 +194,7 @@ func (r runningTargetSelector) TargetIsHealthy(target string, c client.Reader, i
 				}
 			}
 		}
+
 		if !healthy {
 			return errors.New("pod is not Running")
 		}
