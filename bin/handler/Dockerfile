@@ -19,6 +19,20 @@ COPY . .
 RUN --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
     go build -mod=vendor -ldflags="-s -w" -o handler ./cli/handler
+# Prebuilt binary stage (used by CI when the Go binary is compiled on the host)
+FROM scratch AS prebuilt
+
+COPY --chmod=100 bin/handler/handler /usr/local/bin/handler
+
+ENTRYPOINT ["/usr/local/bin/handler"]
+
+LABEL baseimage.os="scratch"
+LABEL baseimage.isgbi="scratch"
+LABEL baseimage.name="scratch"
+
+ARG BUILDSTAMP
+LABEL baseimage.buildstamp="${BUILDSTAMP}"
+
 # Final stage
 FROM scratch AS handler
 
