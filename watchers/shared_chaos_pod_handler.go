@@ -134,21 +134,25 @@ func (h *SharedChaosPodHandler) sendEvent(pod *corev1.Pod, disruptionName, disru
 	// A recreated disruption can share its name with an orphaned injector's parent.
 	// The injector arguments already persist the original disruption UID.
 	var podDisruptionUID string
+
 	for _, container := range pod.Spec.Containers {
 		if container.Name != "injector" {
 			continue
 		}
+
 		for i := len(container.Args) - 1; i >= 0; i-- {
 			arg := container.Args[i]
 			if arg == "--log-context-disruption-uid" && i+1 < len(container.Args) {
 				podDisruptionUID = container.Args[i+1]
 				break
 			}
+
 			if uid, found := strings.CutPrefix(arg, "--log-context-disruption-uid="); found {
 				podDisruptionUID = uid
 				break
 			}
 		}
+
 		break
 	}
 
