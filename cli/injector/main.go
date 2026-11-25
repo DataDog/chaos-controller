@@ -483,6 +483,7 @@ func refreshConfigs(newContainer func(id, name string) (container.Container, err
 	}
 
 	updateInjectorConfigs(injectors, refreshed)
+
 	return nil
 }
 
