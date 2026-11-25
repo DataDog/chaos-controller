@@ -122,7 +122,7 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	disruptions, err := GetChildDisruptions(ctx, r.Client, instance.Namespace, DisruptionCronNameLabel, instance.Name)
 	if err != nil {
-		return ctrl.Result{}, nil
+		return ctrl.Result{}, err
 	}
 
 	// Update the DisruptionCron status with the time when the last disruption was successfully scheduled

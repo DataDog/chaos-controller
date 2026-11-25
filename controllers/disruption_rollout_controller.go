@@ -90,7 +90,7 @@ func (r *DisruptionRolloutReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 	disruptions, err := GetChildDisruptions(ctx, r.Client, instance.Namespace, DisruptionRolloutNameLabel, instance.Name)
 	if err != nil {
-		return ctrl.Result{}, nil
+		return ctrl.Result{}, err
 	}
 
 	// Update the DisruptionRollout status with the time when the last disruption was successfully scheduled
