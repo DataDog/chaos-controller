@@ -7,7 +7,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"os"
 	"time"
@@ -364,13 +363,13 @@ func main() {
 		}
 
 		// add the indexer on target resource for disruption rollouts
-		err = mgr.GetCache().IndexField(context.Background(), &chaosv1beta1.DisruptionRollout{}, "targetResource", func(obj client.Object) []string {
+		err = mgr.GetCache().IndexField(context.Background(), &chaosv1beta1.DisruptionRollout{}, watchers.TargetResourceIndexKey, func(obj client.Object) []string {
 			dr, ok := obj.(*chaosv1beta1.DisruptionRollout)
 			if !ok {
 				return []string{""}
 			}
 
-			targetResource := fmt.Sprintf("%s-%s-%s", dr.Spec.TargetResource.Kind, dr.GetNamespace(), dr.Spec.TargetResource.Name)
+			targetResource := watchers.TargetResourceIndexedValue(dr.Spec.TargetResource.Kind, dr.GetNamespace(), dr.Spec.TargetResource.Name)
 
 			return []string{targetResource}
 		})
