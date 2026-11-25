@@ -26,6 +26,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.28.1
 	github.com/onsi/gomega v1.39.1
 	github.com/opencontainers/cgroups v0.0.6
+	github.com/prometheus/procfs v0.21.1
 	github.com/robfig/cron v1.2.0
 	github.com/slack-go/slack v0.35.0
 	github.com/spf13/cobra v1.10.2
@@ -172,7 +173,6 @@ require (
 	github.com/prometheus/client_golang v1.24.1 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.70.1 // indirect
-	github.com/prometheus/procfs v0.21.1
 	github.com/puzpuzpuz/xsync/v3 v3.5.1 // indirect
 	github.com/richardartoul/molecule v1.0.1-0.20240607132359-c1a75a0f9580 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect

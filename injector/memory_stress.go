@@ -63,6 +63,7 @@ func (m *memoryStressInjector) Inject() error {
 	}
 
 	var memoryLimit, currentUsage int64
+
 	var err error
 
 	if m.config.Disruption.Level == types.DisruptionLevelNode {

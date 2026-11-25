@@ -30,6 +30,7 @@ func readNodeMemoryStats() (int64, int64, error) {
 	if err != nil {
 		return 0, 0, fmt.Errorf("unable to read node meminfo: %w", err)
 	}
+
 	if info.MemTotalBytes == nil || info.MemAvailableBytes == nil {
 		return 0, 0, fmt.Errorf("meminfo must include MemTotal and MemAvailable")
 	}
