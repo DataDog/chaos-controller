@@ -838,19 +838,23 @@ func (s NetworkDisruptionServiceSpec) ExtractAffectedPortsInServicePorts(k8sServ
 	}
 
 	goodPorts, notFoundPorts := []v1.ServicePort{}, []NetworkDisruptionServicePortSpec{}
+
 	for _, allowedPort := range s.Ports {
 		if allowedPort.Port == 0 && allowedPort.Name == "" {
 			continue
 		}
 
 		found := false
+
 		for _, port := range k8sService.Spec.Ports {
 			if (allowedPort.Port != 0 && port.Port != int32(allowedPort.Port)) || (allowedPort.Name != "" && port.Name != allowedPort.Name) {
 				continue
 			}
+
 			goodPorts = append(goodPorts, port)
 			found = true
 		}
+
 		if !found {
 			notFoundPorts = append(notFoundPorts, allowedPort)
 		}
