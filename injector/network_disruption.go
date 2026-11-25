@@ -636,6 +636,7 @@ func (i *networkDisruptionInjector) addServiceFilters(serviceName string, filter
 			if err != nil {
 				return nil, err
 			}
+
 			filter.priorities = append(filter.priorities, priority)
 			i.config.Log.Infow(fmt.Sprintf("added a tc filter for service %s-%s with priority %d", serviceName, filter.service, priority), tags.InterfacesKey, interfaces)
 		}
