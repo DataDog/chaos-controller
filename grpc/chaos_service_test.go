@@ -14,6 +14,8 @@ import (
 	. "github.com/onsi/gomega"
 	"go.uber.org/zap/zaptest"
 	googlegrpc "google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -99,7 +101,7 @@ var _ = Describe("ChaosDisruptionListener", func() {
 		})
 
 		Context("cancelled context", func() {
-			It("does not apply config when context cancelled before mutex", func() {
+			It("applies nothing and reports the cancellation", func() {
 				cancelCtx, cancel := context.WithCancel(context.Background())
 				cancel()
 
@@ -113,8 +115,12 @@ var _ = Describe("ChaosDisruptionListener", func() {
 						},
 					},
 				}
-				// May or may not apply config depending on timing, but should not panic
-				Expect(func() { listener.Disrupt(cancelCtx, spec) }).NotTo(Panic())
+				_, err := listener.Disrupt(cancelCtx, spec)
+				Expect(status.Code(err)).To(Equal(codes.Canceled))
+
+				// the listener stays unconfigured, so a live request can still apply
+				_, err = listener.Disrupt(context.Background(), spec)
+				Expect(err).NotTo(HaveOccurred())
 			})
 		})
 	})

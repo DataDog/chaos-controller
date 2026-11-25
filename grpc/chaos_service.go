@@ -27,7 +27,7 @@ import (
 type ChaosDisruptionListener struct {
 	pb.UnimplementedDisruptionListenerServer
 	configuration grpccalc.DisruptionConfiguration
-	mutex         sync.Mutex
+	mutex         sync.RWMutex // guards configuration, read by every intercepted call
 	logger        *zap.SugaredLogger
 }
 
@@ -81,21 +81,22 @@ func (d *ChaosDisruptionListener) Disrupt(ctx context.Context, disruptionSpec *p
 		}
 	}
 
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+
+	// check and apply under one lock, so two concurrent requests cannot both
+	// find the listener unconfigured
 	if len(d.configuration) > 0 {
 		d.logger.Error("cannot apply new DisruptionSpec when DisruptionListener is already configured")
 		return nil, status.Error(codes.AlreadyExists, "Cannot apply new DisruptionSpec when DisruptionListener is already configured")
 	}
 
-	d.mutex.Lock()
-
-	select {
-	case <-ctx.Done():
+	if err := ctx.Err(); err != nil {
 		d.logger.Error("cannot apply new DisruptionSpec, gRPC request was canceled")
-	default:
-		d.configuration = config
+		return nil, status.FromContextError(err).Err()
 	}
 
-	d.mutex.Unlock()
+	d.configuration = config
 
 	return &emptypb.Empty{}, nil
 }
@@ -112,11 +113,14 @@ func (d *ChaosDisruptionListener) ResetDisruptions(context.Context, *emptypb.Emp
 // ChaosServerInterceptor is a function which can be registered on instantiation of a gRPC server
 // to intercept all traffic to the server and crosscheck their endpoints to disrupt them.
 func (d *ChaosDisruptionListener) ChaosServerInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (response interface{}, err error) {
-	d.logger.Debugw("intercept method with specified alterations", "grpc_method", info.FullMethod, "nb_alterations", len(d.configuration))
+	d.logger.Debugw("intercept method with specified alterations", "grpc_method", info.FullMethod)
 
 	targetEndpoint := grpccalc.TargetEndpoint(info.FullMethod)
 
+	d.mutex.RLock()
 	endpointConfiguration, ok := d.configuration[targetEndpoint]
+	d.mutex.RUnlock()
+
 	if !ok {
 		d.logger.Debugw("endpoint is not configured. Skipping",
 			"grpc_method", info.FullMethod,
