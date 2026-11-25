@@ -767,6 +767,7 @@ func (h NetworkDisruptionHostSpec) Validate() error {
 			ip = subnet.IP
 		}
 	}
+
 	if ip != nil && ip.To4() == nil {
 		return fmt.Errorf("IPv6 network hosts are not supported: %s", h.Host)
 	}
