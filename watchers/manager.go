@@ -77,17 +77,23 @@ func (m manager) AddWatcher(w Watcher) error {
 		return fmt.Errorf("could not start the watcher. Error: %w", err)
 	}
 
-	// Add the Watcher instance to the Manager's Watchers
-	m.watchers[watcherName] = w
-
 	// Get the cache source of the Watcher instance
 	cacheSource, err := w.GetCacheSource()
 	if err != nil {
+		w.Clean()
 		return fmt.Errorf("could not get the cache source of the watcher. Error: %w", err)
 	}
 
 	// Watch for changes in the cache
-	return m.controller.Watch(cacheSource)
+	if err := m.controller.Watch(cacheSource); err != nil {
+		w.Clean()
+		return err
+	}
+
+	// Only cache watchers whose source was registered successfully.
+	m.watchers[watcherName] = w
+
+	return nil
 }
 
 // RemoveWatcher removes a Watcher instance from the Manager
