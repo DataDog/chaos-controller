@@ -39,12 +39,12 @@ func (h DeploymentHandler) OnAdd(obj interface{}) {
 	}
 
 	// If deployment doesn't have associated disruption rollout, do nothing
-	hasDisruptionRollout, err := h.HasAssociatedDisruptionRollout(deployment)
+	disruptionRollouts, err := h.FetchAssociatedDisruptionRollouts(deployment)
 	if err != nil {
 		return
 	}
 
-	if !hasDisruptionRollout {
+	if len(disruptionRollouts.Items) == 0 {
 		return
 	}
 
@@ -53,9 +53,22 @@ func (h DeploymentHandler) OnAdd(obj interface{}) {
 		return
 	}
 
-	err = h.UpdateDisruptionRolloutStatus(deployment, initContainersHash, containersHash)
-	if err != nil {
-		return
+	for _, dr := range disruptionRollouts.Items {
+		// Initial informer delivery can replay an already observed resource.
+		if dr.Status.LastContainerChangeTime != nil &&
+			!HashesChanged(dr.Status.LatestInitContainersHash, initContainersHash, h.log) &&
+			!HashesChanged(dr.Status.LatestContainersHash, containersHash, h.log) {
+			continue
+		}
+
+		dr.Status.LatestInitContainersHash = initContainersHash
+		dr.Status.LatestContainersHash = containersHash
+		dr.Status.LastContainerChangeTime = &metav1.Time{Time: time.Now()}
+
+		if err := h.Client.Status().Update(context.Background(), &dr); err != nil {
+			h.log.Errorw("unable to update DisruptionRollout status", tags.DisruptionRolloutNameKey, dr.Name, tags.ErrorKey, err)
+			return
+		}
 	}
 }
 

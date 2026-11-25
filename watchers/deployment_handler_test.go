@@ -101,7 +101,7 @@ var _ = Describe("DeploymentHandler", func() {
 			Expect(func() { handler.OnAdd(dep) }).NotTo(Panic())
 		})
 
-		It("calls UpdateDisruptionRolloutStatus when rollout exists", func() {
+		It("updates the status of an unobserved rollout", func() {
 			dep := makeDeployment("dep", "ns", []corev1.Container{{Name: "app", Image: "nginx"}})
 			dr := v1beta1.DisruptionRollout{ObjectMeta: metav1.ObjectMeta{Name: "dr", Namespace: "ns"}}
 			statusWriter := &fakeSubResourceWriter{}
@@ -109,9 +109,8 @@ var _ = Describe("DeploymentHandler", func() {
 			k8sMock.EXPECT().List(mock.Anything, mock.AnythingOfType("*v1beta1.DisruptionRolloutList"), mock.Anything).
 				Run(func(_ context.Context, list client.ObjectList, _ ...client.ListOption) {
 					list.(*v1beta1.DisruptionRolloutList).Items = []v1beta1.DisruptionRollout{dr}
-				}).Return(nil).Times(2)
-			k8sMock.EXPECT().Status().Return(statusWriter)
-			k8sMock.EXPECT().Status().Return(statusWriter)
+				}).Return(nil).Once()
+			k8sMock.EXPECT().Status().Return(statusWriter).Once()
 
 			Expect(func() { handler.OnAdd(dep) }).NotTo(Panic())
 		})
