@@ -158,6 +158,7 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	if targetMissingRequeueAfter > 0 {
 		scheduledResult.RequeueAfter = min(scheduledResult.RequeueAfter, targetMissingRequeueAfter)
 	}
+
 	requeueTime := scheduledResult.RequeueAfter.Round(time.Second)
 
 	r.log.Infow("calculated next scheduled run", tagutil.NextRunKey, nextRun.Format(time.UnixDate), tagutil.NowKey, time.Now().Format(time.UnixDate))
