@@ -248,6 +248,12 @@ func (i *diskFullInjector) UpdateConfig(config Config) {
 func (i *diskFullInjector) Clean() error {
 	i.config.Log.Infow("cleaning disk full disruption", "ballastPath", i.ballastPath)
 
+	// a dry run never writes a ballast file, so any file at this path is not ours to remove
+	if i.config.Disruption.DryRun {
+		i.config.Log.Infow("dry-run: no ballast file to remove", "ballastPath", i.ballastPath)
+		return nil
+	}
+
 	if err := os.Remove(i.ballastPath); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			i.config.Log.Infow("ballast file already removed", "ballastPath", i.ballastPath)
