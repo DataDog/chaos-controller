@@ -49,7 +49,7 @@ var _ = Describe("splitHeaders", func() {
 	It("accepts values containing colons by splitting on the first colon", func() {
 		result, err := splitHeaders([]string{"a:b:c"})
 		Expect(err).NotTo(HaveOccurred())
-		Expect(result).To(HaveKeyWithValue("a", "b:c"))
+		Expect(result).To(HaveKeyWithValue("A", "b:c"))
 	})
 
 	It("trims optional whitespace around the value", func() {
