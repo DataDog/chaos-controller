@@ -63,6 +63,10 @@ func (m *ChaosHandlerMutator) Handle(ctx context.Context, req admission.Request)
 	timeoutLabel, ok := pod.Annotations["chaos.datadoghq.com/disrupt-on-init-timeout"]
 	if ok {
 		if timeoutOverride, err := time.ParseDuration(timeoutLabel); err == nil {
+			if timeoutOverride <= 0 {
+				return admission.Errored(http.StatusBadRequest, fmt.Errorf("handler timeout must be positive, got %s", timeoutOverride.String()))
+			}
+
 			if timeoutOverride > m.MaxTimeout {
 				m.Log.Warnw("pod was rejected due to handler timeout set too high", tags.TimeoutKey, timeoutOverride.String(), tags.MaxTimeoutKey, m.MaxTimeout.String())
 				err = fmt.Errorf("you have requested a handler timeout of %s but the maximum allowed timeout is %s", timeoutOverride.String(), m.MaxTimeout.String())
