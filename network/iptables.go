@@ -63,7 +63,8 @@ func (i *iptables) Clear() error {
 	}
 
 	// remove previously injected rules
-	for _, r := range i.injectedRules {
+	for len(i.injectedRules) > 0 {
+		r := i.injectedRules[0]
 		i.log.Infow("trying to delete injected iptables rule", tags.ChainKey, r.chain, tags.TableKey, r.table, tags.RuleSpecKey, r.rulespec)
 
 		// delete rule
@@ -74,15 +75,17 @@ func (i *iptables) Clear() error {
 				return fmt.Errorf("unable to determine if iptables rule exists: %w; unable to delete iptables rule: %w", existsErr, err)
 			}
 
-			if !exists {
-				i.log.Infow("iptables rule doesn't exist anymore, skipping cleaning", tags.TableKey, r.table, tags.ChainKey, r.chain, tags.RuleSpecKey, r.rulespec)
-
-				continue
+			if exists {
+				return err
 			}
 
-			return err
+			i.log.Infow("iptables rule doesn't exist anymore, skipping cleaning", tags.TableKey, r.table, tags.ChainKey, r.chain, tags.RuleSpecKey, r.rulespec)
 		}
+
+		i.injectedRules = i.injectedRules[1:]
 	}
+
+	i.injectedRules = nil
 
 	// eventually delete the injector dedicated chain
 	// the error is ignored here as any remaining rules in the chain, or any remaining
