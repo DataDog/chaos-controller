@@ -631,6 +631,8 @@ The DNS responder uses the `github.com/miekg/dns` library and is implemented as 
 
 ## Manual cleanup instructions
 
+If DNS redirect setup fails, the injector stops and releases its responder. Cleanup can then complete without stopping that server twice, and a later injection can start a fresh responder.
+
 :information_source: All those commands must be executed on the infected host (except for `kubectl`).
 
 ---
