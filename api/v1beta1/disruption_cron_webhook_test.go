@@ -627,6 +627,67 @@ var _ = Describe("DisruptionCron Webhook", func() {
 				})
 			})
 
+			When("the disruption template duration becomes longer with the same schedule", func() {
+				It("should return an error", func(ctx SpecContext) {
+					// Arrange
+					// an hourly schedule with a 10m duration leaves 50m undisrupted, which is fine
+					// with a 30m minimum undisrupted interval, but a duration-only update to 59m leaves
+					// only 1m undisrupted, which the minimum frequency must reject
+					minimumCronFrequency = 30 * time.Minute
+					disruptionCron := makeValidDisruptionCron()
+					disruptionCron.Spec.Schedule = "0 * * * *"
+					disruptionCron.Spec.DisruptionTemplate.Duration = "10m"
+
+					oldDisruptionCron := makeValidDisruptionCron()
+					oldDisruptionCron.Spec.Schedule = "0 * * * *"
+					oldDisruptionCron.Spec.DisruptionTemplate.Duration = "10m"
+
+					// the create-time spec is valid against the minimum frequency
+					mockEventRecorder := mocks.NewEventRecorderMock(GinkgoT())
+					mockEventRecorder.EXPECT().AnnotatedEventf(disruptionCron, mock.Anything, Events[EventDisruptionCronCreated].Type, string(EventDisruptionCronCreated), "%s", mock.Anything)
+					disruptionCronWebhookRecorder = mockEventRecorder
+
+					_, err := disruptionCron.ValidateCreate(ctx, disruptionCron)
+					Expect(err).ShouldNot(HaveOccurred())
+
+					// now update only the duration
+					disruptionCron.Spec.DisruptionTemplate.Duration = "59m"
+
+					// Act
+					warnings, err := disruptionCron.ValidateUpdate(ctx, oldDisruptionCron, disruptionCron)
+
+					// Assert
+					Expect(warnings).To(BeNil())
+					Expect(err).Should(HaveOccurred())
+					Expect(err).To(MatchError(ContainSubstring("between disruptions, but the minimum tolerated frequency is 30m")))
+				})
+			})
+			When("the disruption template duration and schedule are unchanged", func() {
+				It("should not return an error", func(ctx SpecContext) {
+					// Arrange: a spec that already violates the minimum frequency is grandfathered in
+					minimumCronFrequency = 30 * time.Minute
+					disruptionCron := makeValidDisruptionCron()
+					disruptionCron.Spec.Schedule = "0 * * * *"
+					disruptionCron.Spec.DisruptionTemplate.Duration = "59m"
+
+					oldDisruptionCron := makeValidDisruptionCron()
+					oldDisruptionCron.Spec.Schedule = "0 * * * *"
+					oldDisruptionCron.Spec.DisruptionTemplate.Duration = "59m"
+
+					By("emit an event to the broadcast")
+					mockEventRecorder := mocks.NewEventRecorderMock(GinkgoT())
+					mockEventRecorder.EXPECT().AnnotatedEventf(disruptionCron, mock.Anything, Events[EventDisruptionCronUpdated].Type, string(EventDisruptionCronUpdated), "%s", mock.Anything)
+					disruptionCronWebhookRecorder = mockEventRecorder
+
+					// Act
+					warnings, err := disruptionCron.ValidateUpdate(ctx, oldDisruptionCron, disruptionCron)
+
+					// Assert
+					Expect(warnings).To(BeNil())
+					Expect(err).ShouldNot(HaveOccurred())
+				})
+			})
+
 			When("disruptionTemplate is invalid", func() {
 				When("the count is invalid", func() {
 					// Other forms of invalid disruptions are covered by the disruption_webook_test.go
