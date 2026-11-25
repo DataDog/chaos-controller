@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/command"
@@ -80,9 +81,9 @@ func (i *DiskFailureInjector) Inject() error {
 		pid = int(i.config.TargetContainer.PID())
 	}
 
-	exitCode := 0
+	exitCode := int(syscall.ENOENT)
 
-	if i.spec.OpenatSyscall != nil {
+	if i.spec.OpenatSyscall != nil && i.spec.OpenatSyscall.ExitCode != "" {
 		exitCode = i.spec.OpenatSyscall.GetExitCodeInt()
 	}
 
