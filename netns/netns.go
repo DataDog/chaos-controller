@@ -47,6 +47,7 @@ func NewManager(log *zap.SugaredLogger, pid uint32) (Manager, error) {
 
 	targetns, err := netns.GetFromPath(targetPath)
 	if err != nil {
+		_ = rootns.Close()
 		return nil, fmt.Errorf("error getting given PID (%d) network namespace from path %s: %w", pid, targetPath, err)
 	}
 
