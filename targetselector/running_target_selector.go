@@ -184,8 +184,18 @@ func (r runningTargetSelector) TargetIsHealthy(target string, c client.Reader, i
 			return err
 		}
 
-		// check if pod is running
-		if p.Status.Phase != corev1.PodRunning {
+		// On-init targets remain Pending while the handler or later init containers run.
+		healthy := p.Status.Phase == corev1.PodRunning
+		if instance.Spec.OnInit && p.Status.Phase == corev1.PodPending {
+			for _, status := range p.Status.InitContainerStatuses {
+				if status.Name == "chaos-handler" && (status.State.Running != nil || (status.State.Terminated != nil && status.State.Terminated.Reason == "Completed")) {
+					healthy = true
+					break
+				}
+			}
+		}
+
+		if !healthy {
 			return errors.New("pod is not Running")
 		}
 
