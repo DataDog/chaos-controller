@@ -357,9 +357,15 @@ func (d DisruptionTargetHandler) buildPodEventsToSend(oldPod corev1.Pod, newPod 
 
 	eventsToSend := make(map[v1beta1.EventReason]bool)
 	runningState := "Running"
+	hasUnhealthyContainer := false
 
 	// compare statuses between old and new pod to detect changes
 	for _, container := range newPod.Status.ContainerStatuses {
+		newState, newReason := getContainerState(container)
+		if newState != runningState && newReason != "Completed" && newReason != "ContainerCreating" {
+			hasUnhealthyContainer = true
+		}
+
 		for _, oldContainer := range oldPod.Status.ContainerStatuses {
 			if container.Name != oldContainer.Name { // When restarting, container can change of ID, so we need to verify by name
 				continue
@@ -377,7 +383,6 @@ func (d DisruptionTargetHandler) buildPodEventsToSend(oldPod corev1.Pod, newPod 
 			}
 
 			lastState, lastReason := getContainerState(oldContainer)
-			newState, newReason := getContainerState(container)
 
 			if lastState != newState {
 				d.log.Infow("container state change detected on target",
@@ -406,7 +411,7 @@ func (d DisruptionTargetHandler) buildPodEventsToSend(oldPod corev1.Pod, newPod 
 	}
 
 	// remove recovering event if pod has another warning container state
-	if eventsToSend[v1beta1.EventTargetPodRecoveredState] && len(eventsToSend) > 1 {
+	if eventsToSend[v1beta1.EventTargetPodRecoveredState] && (hasUnhealthyContainer || len(eventsToSend) > 1) {
 		eventsToSend[v1beta1.EventTargetPodRecoveredState] = false
 		recoverTimestamp = nil
 	}
@@ -414,7 +419,7 @@ func (d DisruptionTargetHandler) buildPodEventsToSend(oldPod corev1.Pod, newPod 
 	eventsToSend, cannotRecoverYet := d.findNotifiableEvents(eventsToSend, disruptionEvents, recoverTimestamp, fmt.Sprintf("%s/%s", newPod.Namespace, newPod.Name))
 
 	// if other warning events have been detected, the target hasn't recovered
-	if cannotRecoverYet || (eventsToSend[v1beta1.EventTargetPodRecoveredState] && len(eventsToSend) > 1) {
+	if cannotRecoverYet || hasUnhealthyContainer || (eventsToSend[v1beta1.EventTargetPodRecoveredState] && len(eventsToSend) > 1) {
 		eventsToSend[v1beta1.EventTargetPodRecoveredState] = false
 	}
 
