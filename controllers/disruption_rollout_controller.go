@@ -268,6 +268,7 @@ func (r *DisruptionRolloutReconciler) handleTargetResourceMissingPastExpiration(
 func (r *DisruptionRolloutReconciler) handleTargetResourceNowPresent(ctx context.Context, instance *chaosv1beta1.DisruptionRollout) error {
 	instance.Status.TargetResourcePreviouslyMissing = nil
 	instance.Status.MissingTargetResource = nil
+
 	if err := r.Client.Status().Update(ctx, instance); err != nil {
 		return fmt.Errorf("failed to update status: %w", err)
 	}
