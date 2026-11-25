@@ -715,10 +715,12 @@ func (r *dnsResponder) buildTXTRecord(w dns.ResponseWriter, req *dns.Msg, record
 	// TXT character-strings have a 255-byte wire limit; backslashes are literal.
 	value := record.Value
 	text := make([]string, 0, (len(value)+254)/255)
+
 	for len(value) > 255 {
 		text = append(text, strings.ReplaceAll(value[:255], `\`, `\\`))
 		value = value[255:]
 	}
+
 	text = append(text, strings.ReplaceAll(value, `\`, `\\`))
 
 	rr := &dns.TXT{
