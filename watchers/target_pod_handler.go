@@ -170,8 +170,9 @@ func (d DisruptionTargetHandler) OnChangeHandleNotifierSink(oldPod, newPod *core
 	}
 
 	// Send events to notifier / to disruption
-	lastEvents, _ := d.getEventsFromCurrentDisruption(tags.DisruptionKey, d.disruption.ObjectMeta, d.disruption.CreationTimestamp.Time)
+	lastEvents, _ := d.getEventsFromCurrentDisruption(v1beta1.DisruptionKind, d.disruption.ObjectMeta, d.disruption.CreationTimestamp.Time)
 
+reasons:
 	for eventReason, toSend := range eventsToSend {
 		if !toSend {
 			continue
@@ -184,10 +185,10 @@ func (d DisruptionTargetHandler) OnChangeHandleNotifierSink(oldPod, newPod *core
 
 		// Send to disruption, broadcast to notifiers
 		for _, event := range lastEvents {
-			if event.Type == string(eventReason) {
+			if event.Reason == string(eventReason) {
 				d.recorder.Event(d.disruption, eventType, string(eventReason), fmt.Sprintf(v1beta1.Events[eventReason].OnDisruptionTemplateMessage, name))
 
-				return
+				continue reasons
 			}
 		}
 
@@ -216,7 +217,7 @@ func (d DisruptionTargetHandler) getEventsFromCurrentDisruption(kind string, obj
 	})
 
 	// Keep events sent during the disruption only, no need to filter events coming from the disruption itself
-	if kind != "Disruption" {
+	if kind != v1beta1.DisruptionKind {
 		for i, event := range eventList.Items {
 			if event.Type == corev1.EventTypeWarning && event.Reason == string(v1beta1.EventDisrupted) || event.LastTimestamp.Time.Before(disruptionStartTime) {
 				if i == 0 {
