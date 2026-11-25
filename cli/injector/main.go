@@ -728,6 +728,7 @@ func watchTargetAndReinject(deadline time.Time, commandName string, pulseActiveD
 	}
 
 	var channel <-chan watch.Event
+
 	var podWatcher watch.Interface
 
 	defer func() {
