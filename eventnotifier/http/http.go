@@ -386,15 +386,15 @@ func (n *Notifier) emitEvent(ctx context.Context, url string, jsonNotif []byte) 
 		return fmt.Errorf("http notifier: error when sending notification: %w", err)
 	}
 
-	if res.StatusCode >= http.StatusMultipleChoices || res.StatusCode < http.StatusOK {
-		return fmt.Errorf("http notifier: receiving %d status code from sent notification", res.StatusCode)
-	}
-
 	defer func() {
 		if err = res.Body.Close(); err != nil {
 			cLog.FromContext(ctx).Warnw("http notifier: error closing body", tags.ErrorKey, err)
 		}
 	}()
+
+	if res.StatusCode >= http.StatusMultipleChoices || res.StatusCode < http.StatusOK {
+		return fmt.Errorf("http notifier: receiving %d status code from sent notification", res.StatusCode)
+	}
 
 	return nil
 }

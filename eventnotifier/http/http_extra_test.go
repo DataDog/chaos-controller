@@ -7,6 +7,7 @@ package http
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -114,6 +115,52 @@ var _ = Describe("New error and headers paths", func() {
 		Expect(err.Error()).To(ContainSubstring("invalid headers for auth"))
 	})
 })
+
+var _ = Describe("emitEvent body close", func() {
+	It("closes the response body on non-2xx responses", func() {
+		closed := make(chan struct{})
+
+		roundTripper := roundTripperFunc(func(r *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusInternalServerError,
+				Status:     "500 Internal Server Error",
+				Header:     http.Header{},
+				Body: trackingReader{
+					onClose: func() { close(closed) },
+				},
+			}, nil
+		})
+
+		notifier := Notifier{
+			client: &http.Client{Transport: roundTripper},
+		}
+
+		err := notifier.emitEvent(context.Background(), "http://localhost/notify", []byte("{}"))
+
+		Expect(err).To(MatchError(ContainSubstring("receiving 500 status code")))
+		Expect(closed).To(BeClosed())
+	})
+})
+
+type roundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripperFunc) RoundTrip(r *http.Request) (*http.Response, error) {
+	return f(r)
+}
+
+type trackingReader struct {
+	onClose func()
+}
+
+func (t trackingReader) Read(p []byte) (int, error) {
+	return 0, io.EOF
+}
+
+func (t trackingReader) Close() error {
+	t.onClose()
+
+	return nil
+}
 
 var _ = Describe("NewBearerAuthTokenProvider", func() {
 	It("creates a provider without error", func() {
