@@ -39,6 +39,7 @@ func New() Sink {
 func (Sink) GetLoggableTraceContext(span trace.Span) []interface{} {
 	spanContext := span.SpanContext()
 	traceID := spanContext.TraceID().String()
+
 	log128Bit := true
 	if configured, err := strconv.ParseBool(os.Getenv("DD_TRACE_128_BIT_TRACEID_LOGGING_ENABLED")); err == nil {
 		log128Bit = configured
