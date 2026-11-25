@@ -92,6 +92,7 @@ func (m manager) AddWatcher(w Watcher) error {
 
 	// Only cache watchers whose source was registered successfully.
 	m.watchers[watcherName] = w
+
 	return nil
 }
 
