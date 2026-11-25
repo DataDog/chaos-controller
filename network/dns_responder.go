@@ -712,6 +712,17 @@ func (r *dnsResponder) buildTXTRecord(w dns.ResponseWriter, req *dns.Msg, record
 	msg := new(dns.Msg)
 	msg.SetReply(req)
 
+	// TXT character-strings have a 255-byte wire limit; backslashes are literal.
+	value := record.Value
+	text := make([]string, 0, (len(value)+254)/255)
+
+	for len(value) > 255 {
+		text = append(text, strings.ReplaceAll(value[:255], `\`, `\\`))
+		value = value[255:]
+	}
+
+	text = append(text, strings.ReplaceAll(value, `\`, `\\`))
+
 	rr := &dns.TXT{
 		Hdr: dns.RR_Header{
 			Name:   req.Question[0].Name,
@@ -719,7 +730,7 @@ func (r *dnsResponder) buildTXTRecord(w dns.ResponseWriter, req *dns.Msg, record
 			Class:  dns.ClassINET,
 			Ttl:    record.TTL,
 		},
-		Txt: []string{record.Value},
+		Txt: text,
 	}
 
 	msg.Answer = append(msg.Answer, rr)
