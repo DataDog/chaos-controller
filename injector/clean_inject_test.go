@@ -6,7 +6,13 @@
 package injector_test
 
 import (
+	"errors"
+	"net"
 	"os"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	chaosapi "github.com/DataDog/chaos-controller/api"
 	"github.com/DataDog/chaos-controller/api/v1beta1"
@@ -84,6 +90,52 @@ var _ = Describe("GRPC Inject/Clean dry-run and no-state", func() {
 		)
 		// May succeed or fail — just verify it doesn't panic
 		Expect(func() { inj.Inject() }).NotTo(Panic())
+	})
+
+	It("Inject returns the RPC error when the grpc server cannot be reached", func() {
+		// grpc.NewClient is lazy: dialing an unreachable address succeeds and the
+		// first RPC fails with codes.Unavailable. Inject must report that failure
+		// instead of returning the nil result of conn.Close and reporting success.
+		inj := NewGRPCDisruptionInjector(
+			v1beta1.GRPCDisruptionSpec{Port: 59998},
+			GRPCDisruptionInjectorConfig{
+				Config: Config{Log: log, Disruption: chaosapi.DisruptionArgs{DryRun: false, TargetPodIP: "127.0.0.1"}},
+			},
+		)
+
+		err := inj.Inject()
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("error sending grpc disruption to grpc server"))
+
+		s, ok := status.FromError(errors.Unwrap(err))
+		Expect(ok).To(BeTrue())
+		Expect(s.Code()).To(Equal(codes.Unavailable))
+	})
+
+	It("Inject returns the RPC error when the grpc server lacks the chaos-interceptor", func() {
+		// a real grpc server without the disruption listener service answers
+		// codes.Unimplemented: Inject returns the error and does not report success
+		lis, lisErr := net.Listen("tcp", "127.0.0.1:0")
+		Expect(lisErr).NotTo(HaveOccurred())
+		DeferCleanup(func() { _ = lis.Close() })
+
+		server := grpc.NewServer()
+		DeferCleanup(server.Stop)
+		go func() { _ = server.Serve(lis) }()
+
+		inj := NewGRPCDisruptionInjector(
+			v1beta1.GRPCDisruptionSpec{Port: lis.Addr().(*net.TCPAddr).Port},
+			GRPCDisruptionInjectorConfig{
+				Config: Config{Log: log, Disruption: chaosapi.DisruptionArgs{DryRun: false, TargetPodIP: "127.0.0.1"}},
+			},
+		)
+
+		err := inj.Inject()
+		Expect(err).To(HaveOccurred())
+
+		s, ok := status.FromError(err)
+		Expect(ok).To(BeTrue())
+		Expect(s.Code()).To(Equal(codes.Unimplemented))
 	})
 })
 
