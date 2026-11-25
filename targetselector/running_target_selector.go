@@ -106,7 +106,9 @@ podLoop:
 			if hasChaosHandler && (pod.Status.Phase == corev1.PodPending || (pod.Status.Phase == corev1.PodRunning && isAlreadyATarget)) {
 				runningPods.Items = append(runningPods.Items, pod)
 			}
-		} else if pod.Status.Phase == corev1.PodRunning {
+		} else if pod.Status.Phase == corev1.PodRunning || (isAlreadyATarget && !instance.Spec.StaticTargeting) {
+			// with dynamic targeting, a target is considered still alive as long as it exists,
+			// so keep already targeted pods even if they are not running anymore
 			runningPods.Items = append(runningPods.Items, pod)
 		}
 	}
@@ -145,6 +147,17 @@ nodeLoop:
 			}
 		}
 
+		// check the node is already a disruption target
+		isAlreadyATarget := false
+
+		for target := range instance.Status.TargetInjections {
+			if target == node.Name {
+				isAlreadyATarget = true
+
+				break
+			}
+		}
+
 		// check if node is ready
 		ready := false
 
@@ -165,7 +178,9 @@ nodeLoop:
 			}
 		}
 
-		if ready {
+		if ready || (isAlreadyATarget && !instance.Spec.StaticTargeting) {
+			// with dynamic targeting, a target is considered still alive as long as it exists,
+			// so keep already targeted nodes even if they are not ready anymore
 			runningNodes.Items = append(runningNodes.Items, node)
 		}
 	}
