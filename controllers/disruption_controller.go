@@ -146,9 +146,10 @@ func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				))
 			orphanErr := r.ChaosPodService.HandleOrphanedChaosPods(ctx, req)
 			endSpan(orphanSpan, orphanErr)
+
 			err = orphanErr
 			if err != nil {
-				return ctrl.Result{Requeue: true}, err
+				return ctrl.Result{}, err
 			}
 
 			// Confirm deletion via uncached reader before tearing down watchers.
