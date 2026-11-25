@@ -557,8 +557,8 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 
 	injectSuccess := inject(cmd.Name(), true, false)
 
-	// create and write readiness probe file if injection succeeded so the pod is marked as ready
-	if injectSuccess {
+	// Only the parent can publish readiness after all target injectors succeeded.
+	if injectSuccess && parentPID == 0 {
 		log.Infof("disruption(s) injected, now waiting for an exit signal")
 
 		if err := os.WriteFile(readinessProbeFile, []byte("1"), 0o400); err != nil {
