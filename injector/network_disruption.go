@@ -1224,6 +1224,7 @@ func (i *networkDisruptionInjector) handleFiltersForServices(interfaces []string
 		i.watchers.Add(1)
 		go func(watcher serviceWatcher) {
 			defer i.watchers.Done()
+
 			i.watchServiceChanges(ctx, watcher, interfaces, flowid)
 		}(watcher)
 	}
@@ -1250,6 +1251,7 @@ func (i *networkDisruptionInjector) handleFiltersForHosts(interfaces []string, f
 	i.watchers.Add(1)
 	go func() {
 		defer i.watchers.Done()
+
 		i.watchHostChanges(ctx, interfaces, hosts, flowid)
 	}()
 
