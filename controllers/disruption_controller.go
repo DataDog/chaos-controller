@@ -568,6 +568,7 @@ func (r *DisruptionReconciler) updateInjectionStatus(ctx context.Context, instan
 						if readyKindsByTarget[target] == nil {
 							readyKindsByTarget[target] = make(map[chaostypes.DisruptionKindName]struct{})
 						}
+
 						readyKindsByTarget[target][chaostypes.DisruptionKindName(chaosPod.Labels[chaostypes.DisruptionKindLabel])] = struct{}{}
 						podReady = true
 						readyPodsCount++
