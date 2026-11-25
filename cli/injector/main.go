@@ -567,7 +567,7 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 	}
 
 	// once injected, send a signal to the handler container so it can exit and let other containers go on
-	if disruptionArgs.OnInit {
+	if disruptionArgs.OnInit && injectSuccess {
 		log.Info("notifying the handler container that injection is now done")
 
 		// ensure a handler container was found
