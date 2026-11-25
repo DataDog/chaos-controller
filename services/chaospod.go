@@ -7,6 +7,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -419,6 +420,8 @@ func (m *chaosPodService) HandleOrphanedChaosPods(ctx context.Context, req ctrl.
 		return err
 	}
 
+	var cleanupErrors []error
+
 	for _, pod := range pods {
 		m.handleMetricSinkError(ctx, m.config.MetricsSink.MetricOrphanFound([]string{
 			tagutil.FormatTag(tagutil.DisruptionNameKey, req.Name),
@@ -449,21 +452,28 @@ func (m *chaosPodService) HandleOrphanedChaosPods(ctx context.Context, req ctrl.
 			logger.Warnw("orphaned chaos pod detected, will attempt to delete", tagutil.ChaosPodNameKey, pod.Name)
 
 			if err = m.removeFinalizerForChaosPod(ctx, &pod); err != nil {
+				if !apierrors.IsNotFound(err) {
+					cleanupErrors = append(cleanupErrors, fmt.Errorf("removing finalizer from orphaned chaos pod %s: %w", pod.Name, err))
+				}
+
 				continue
 			}
 
 			// if the chaos pod still exists after having its finalizer removed, delete it
 			if err = m.deletePod(ctx, pod); err != nil {
+				cleanupErrors = append(cleanupErrors, fmt.Errorf("deleting orphaned chaos pod %s: %w", pod.Name, err))
 				if chaosv1beta1.IsUpdateConflictError(err) {
 					logger.Infow("retryable error deleting orphaned chaos pod", tagutil.ErrorKey, err, tagutil.ChaosPodNameKey, pod.Name)
 				} else {
 					logger.Errorw("error deleting orphaned chaos pod", tagutil.ErrorKey, err, tagutil.ChaosPodNameKey, pod.Name)
 				}
 			}
+		} else if err != nil {
+			cleanupErrors = append(cleanupErrors, fmt.Errorf("checking target %s for orphaned chaos pod %s: %w", target, pod.Name, err))
 		}
 	}
 
-	return nil
+	return errors.Join(cleanupErrors...)
 }
 
 func (m *chaosPodService) convertTolerations(tolerations []config.Toleration) []corev1.Toleration {

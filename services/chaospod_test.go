@@ -1270,8 +1270,8 @@ var _ = Describe("Chaos Pod Service", func() {
 
 					It("should not remove the chaos pod", func() {
 						// Assert
-						By("not return an error")
-						Expect(err).ShouldNot(HaveOccurred())
+						By("return an error so cleanup is retried")
+						Expect(err).Should(HaveOccurred())
 
 						By("not delete chaos pods")
 						k8sClientMock.AssertNotCalled(GinkgoT(), "Delete")
@@ -1321,7 +1321,7 @@ var _ = Describe("Chaos Pod Service", func() {
 
 					It("should not remove the chaos pod", func() {
 						// Assert
-						Expect(err).ShouldNot(HaveOccurred())
+						Expect(err).Should(HaveOccurred())
 
 						By("remove only two chaos pods")
 						k8sClientMock.AssertNumberOfCalls(GinkgoT(), "Delete", 2)
@@ -1357,7 +1357,7 @@ var _ = Describe("Chaos Pod Service", func() {
 
 					It("should not remove the chaos pod", func() {
 						// Assert
-						Expect(err).ShouldNot(HaveOccurred())
+						Expect(err).Should(HaveOccurred())
 					})
 				})
 			})
@@ -1427,7 +1427,7 @@ var _ = Describe("Chaos Pod Service", func() {
 
 					It("should not remove the non orphan chaos pods", func() {
 						// Assert
-						Expect(err).ShouldNot(HaveOccurred())
+						Expect(err).Should(HaveOccurred())
 
 						By("not remove the finalizer")
 						k8sClientMock.AssertNotCalled(GinkgoT(), "Update")
