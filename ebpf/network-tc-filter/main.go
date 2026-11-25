@@ -33,7 +33,7 @@ var (
 	nPaths   = flag.StringArray("path", []string{"/"}, "Filter by http path. Default: /")
 )
 
-const MaxPathLen = 90
+const MaxPathLen = 91
 const MaxMethodLen = 8
 const PathsBPFMapName = "filter_paths"
 const MethodsBPFMapName = "filter_methods"

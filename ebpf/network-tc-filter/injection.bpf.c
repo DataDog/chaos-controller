@@ -6,7 +6,7 @@
 // +build ignore
 #include "injection.bpf.h"
 
-#define MAX_PATH_LEN 90
+#define MAX_PATH_LEN 91
 #define MAX_METHOD_LEN 8
 #define MAX_PATHS_ENTRIES 20
 #define MAX_METHODS_ENTRIES 9
