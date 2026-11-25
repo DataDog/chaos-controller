@@ -26,6 +26,8 @@ The throttle will be applied to the whole device (for the pod only) and not only
 
 When running a disk disruption on a pod with multiple containers, if a specified path to disrupt does not exist on any of the existing containers, those containers will be skipped and not disrupted.
 
+Cleanup leaves existing IOPS limits unchanged when the corresponding IOPS setting is omitted from the disruption.
+
 ### Known issues
 
 TL;DR: the limit will only applies on direct read and write operations (using the `O_DIRECT` flag) because of cgroups v1. We can't use cgroups v2 for now because [containerd doesn't support it yet](https://github.com/opencontainers/runc/issues/2315).
