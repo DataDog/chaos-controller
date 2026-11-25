@@ -107,10 +107,12 @@ var _ = Describe("PodReplacement", func() {
 				MetricsSink: ms,
 				K8sClient:   k8sClient,
 				Disruption: chaosapi.DisruptionArgs{
-					TargetNodeName: nodeName,
-					TargetPodIP:    podIP,
-					Level:          chaostypes.DisruptionLevelPod,
-					DryRun:         false,
+					TargetNodeName:      nodeName,
+					TargetPodIP:         podIP,
+					TargetName:          podName,
+					DisruptionNamespace: namespace,
+					Level:               chaostypes.DisruptionLevelPod,
+					DryRun:              false,
 				},
 			},
 		}
@@ -234,27 +236,27 @@ var _ = Describe("PodReplacement", func() {
 		})
 
 		Describe("error handling", func() {
-			Context("when target pod IP is missing", func() {
+			Context("when target pod name is missing", func() {
 				BeforeEach(func() {
-					config.Disruption.TargetPodIP = ""
+					config.Disruption.TargetName = ""
 				})
 
 				It("should return an error during injection", func() {
 					err := inj.Inject()
 					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(ContainSubstring("target pod IP is required"))
+					Expect(err.Error()).To(ContainSubstring("target pod name is required"))
 				})
 			})
 
 			Context("when target pod does not exist", func() {
 				BeforeEach(func() {
-					config.Disruption.TargetPodIP = "1.2.3.4" // Non-existent pod IP
+					config.Disruption.TargetName = "missing-pod"
 				})
 
 				It("should return an error during injection", func() {
 					err := inj.Inject()
 					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(ContainSubstring("target pod with IP 1.2.3.4 not found"))
+					Expect(err.Error()).To(ContainSubstring("pods \"missing-pod\" not found"))
 				})
 			})
 
