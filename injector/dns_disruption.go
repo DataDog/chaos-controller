@@ -327,6 +327,7 @@ func (i *dnsDisruptionInjector) stopResponder() {
 			i.config.Log.Errorw("error stopping DNS responder", tags.ErrorKey, err)
 		} else {
 			i.responder = nil
+
 			ResetDNSServerOnce()
 		}
 	}
