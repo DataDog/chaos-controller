@@ -349,7 +349,7 @@ func initExitSignalsHandler() {
 }
 
 // initPodWatch initializes the target pod watcher
-func initPodWatch(resourceVersion string) (<-chan watch.Event, error) {
+func initPodWatch(resourceVersion string) (watch.Interface, error) {
 	podWatcher, err := clientset.CoreV1().Pods(disruptionArgs.DisruptionNamespace).Watch(context.Background(), metav1.ListOptions{
 		FieldSelector:       "metadata.name=" + disruptionArgs.TargetName,
 		ResourceVersion:     resourceVersion,
@@ -363,7 +363,7 @@ func initPodWatch(resourceVersion string) (<-chan watch.Event, error) {
 		return nil, fmt.Errorf("unable to watch pod %s in namespace %s", disruptionArgs.TargetName, disruptionArgs.DisruptionNamespace)
 	}
 
-	return podWatcher.ResultChan(), err
+	return podWatcher, err
 }
 
 // inject all the disruptions using the list of injectors
@@ -722,11 +722,25 @@ func watchTargetAndReinject(deadline time.Time, commandName string, pulseActiveD
 
 	var channel <-chan watch.Event
 
+	var podWatcher watch.Interface
+
+	defer func() {
+		if podWatcher != nil {
+			podWatcher.Stop()
+		}
+	}()
+
 	for {
 		if channel == nil {
-			if channel, err = initPodWatch(resourceVersion); err != nil {
+			if podWatcher != nil {
+				podWatcher.Stop()
+			}
+
+			if podWatcher, err = initPodWatch(resourceVersion); err != nil {
 				return err
 			}
+
+			channel = podWatcher.ResultChan()
 		}
 
 		select {
