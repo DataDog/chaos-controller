@@ -54,5 +54,5 @@ roleRef:
   name: chaos-injector
 subjects:
   - kind: ServiceAccount
-    name: chaos-injector
+    name: "{{ .Values.injector.serviceAccount }}"
     namespace: "{{ .Values.chaosNamespace }}"
