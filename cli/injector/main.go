@@ -419,7 +419,24 @@ func reinject(cmdName string) error {
 		log.Errorw("couldn't clean targets before reinjection. Reinjecting anyway")
 	}
 
-	// We rebuild and update the configuration
+	if err = refreshConfigs(container.New, initManagers); err != nil {
+		return err
+	}
+
+	// Reinject target
+	if ok := inject(cmdName, true, true); !ok {
+		return fmt.Errorf("couldn't reinject target")
+	}
+
+	return nil
+}
+
+// refreshConfigs rebuilds every target container configuration from the latest
+// container IDs and stores it both in configs, which later change detection
+// compares against, and in the matching injector
+func refreshConfigs(newContainer func(id, name string) (container.Container, error), newManagers func(pid uint32) (netns.Manager, cgroup.Manager, error)) error {
+	var err error
+
 	for i, conf := range configs {
 		if conf.TargetContainer == nil {
 			continue
@@ -430,23 +447,19 @@ func reinject(cmdName string) error {
 			return fmt.Errorf("container %s is not found (old containerID is %s)", conf.TargetContainer.Name(), conf.TargetContainer.ID())
 		}
 
-		if conf.TargetContainer, err = container.New(newContainerID, conf.TargetContainer.Name()); err != nil {
+		if conf.TargetContainer, err = newContainer(newContainerID, conf.TargetContainer.Name()); err != nil {
 			return fmt.Errorf("unable to create a container from containerID %s: %w", newContainerID, err)
 		}
 
-		if conf.Netns, conf.Cgroup, err = initManagers(conf.TargetContainer.PID()); err != nil {
+		if conf.Netns, conf.Cgroup, err = newManagers(conf.TargetContainer.PID()); err != nil {
 			return fmt.Errorf("unable to reinitialize netns manager and cgroup manager for containerID %s (PID: %d): %w", conf.TargetContainer.ID(), conf.TargetContainer.PID(), err)
 		}
 
 		// Update disruption args with latest updates from container for every config
 		conf.Disruption = disruptionArgs
 
+		configs[i] = conf
 		injectors[i].UpdateConfig(conf)
-	}
-
-	// Reinject target
-	if ok := inject(cmdName, true, true); !ok {
-		return fmt.Errorf("couldn't reinject target")
 	}
 
 	return nil
