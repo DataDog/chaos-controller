@@ -243,6 +243,7 @@ func (r *DisruptionRolloutReconciler) updateTargetResourcePreviouslyMissing(ctx 
 func (r *DisruptionRolloutReconciler) handleTargetResourceFirstMissing(ctx context.Context, instance *chaosv1beta1.DisruptionRollout) error {
 	instance.Status.TargetResourcePreviouslyMissing = &metav1.Time{Time: time.Now()}
 	instance.Status.MissingTargetResource = instance.Spec.TargetResource.DeepCopy()
+
 	if err := r.Client.Status().Update(ctx, instance); err != nil {
 		return fmt.Errorf("failed to update status: %w", err)
 	}

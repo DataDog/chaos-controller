@@ -304,6 +304,7 @@ func (r *DisruptionCronReconciler) updateTargetResourcePreviouslyMissing(ctx con
 func (r *DisruptionCronReconciler) handleTargetResourceFirstMissing(ctx context.Context, instance *chaosv1beta1.DisruptionCron) error {
 	instance.Status.TargetResourcePreviouslyMissing = &metav1.Time{Time: time.Now()}
 	instance.Status.MissingTargetResource = instance.Spec.TargetResource.DeepCopy()
+
 	if err := r.Client.Status().Update(ctx, instance); err != nil {
 		return fmt.Errorf("failed to update status: %w", err)
 	}
@@ -328,6 +329,7 @@ func (r *DisruptionCronReconciler) handleTargetResourceMissingPastExpiration(ctx
 func (r *DisruptionCronReconciler) handleTargetResourceNowPresent(ctx context.Context, instance *chaosv1beta1.DisruptionCron) error {
 	instance.Status.TargetResourcePreviouslyMissing = nil
 	instance.Status.MissingTargetResource = nil
+
 	if err := r.Client.Status().Update(ctx, instance); err != nil {
 		return fmt.Errorf("failed to update status: %w", err)
 	}
