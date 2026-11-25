@@ -2,6 +2,8 @@
 
 The `cpuPressure` field generates CPU load on the targeted pod.
 
+An integer `count` is converted to a percentage of the target's CPU set, rounded up to the next whole percent and capped at 100%. This requests at least the specified number of cores when that many are available. For example, `count: 1` on a 128-CPU set produces 1% pressure per CPU rather than rounding down to zero. Explicit percentage values are used unchanged.
+
 ## How it works
 
 Containers achieve resource limitation (cpu, disk, memory) through cgroups. cgroups have the directory format `/sys/fs/cgroup/<kind>/<name>/`, and we can add a process to a cgroup by appending its `PID` to the `cgroups.procs` or the `tasks` files (depending on the use case). Docker containers get their own cgroup as illustrated by `PID 1873` below:
@@ -131,7 +133,7 @@ Threads fairness:
     execution time (avg/stddev):   9.9793/0.00
 ```
 
-Example `sysbench` with the 1/6 core (16% per core) `examples/cpu_pressure.yaml` CPU pressure applied:
+Example `sysbench` with 16% pressure per core applied:
 
 ```sh
 / # cat /sys/fs/cgroup/cpuset/cpuset.cpus
