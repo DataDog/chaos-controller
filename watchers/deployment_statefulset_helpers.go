@@ -35,6 +35,7 @@ func ContainersChanged(oldPodSpec, newPodSpec *corev1.PodSpec, log *zap.SugaredL
 	if len(oldPodSpec.InitContainers) != len(newPodSpec.InitContainers) {
 		return true, newInitContainersHash, newContainersHash, nil
 	}
+
 	for i := range oldPodSpec.InitContainers {
 		if oldPodSpec.InitContainers[i].Name != newPodSpec.InitContainers[i].Name {
 			return true, newInitContainersHash, newContainersHash, nil
