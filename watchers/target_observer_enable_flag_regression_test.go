@@ -12,7 +12,6 @@ import (
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/stretchr/testify/mock"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 // Install in watchers/target_observer_enable_flag_regression_test.go.
@@ -30,11 +29,7 @@ func TestCreateAllWatchersPreservesDisabledObserver(t *testing.T) {
 	manager.EXPECT().GetWatcher(mock.Anything).Return(nil).Once()
 	manager.EXPECT().AddWatcher(watcher).Return(nil).Once()
 
-	d := disruptionsWatchersManager{
-		factory:          factory,
-		watchersManagers: WatcherManagers{},
-		managerUIDs:      map[types.NamespacedName]types.UID{},
-	}
+	d := NewDisruptionsWatchersManager(nil, factory, nil, false)
 	if err := d.CreateAllWatchers(context.Background(), disruption, manager, nil); err != nil {
 		t.Fatal(err)
 	}
