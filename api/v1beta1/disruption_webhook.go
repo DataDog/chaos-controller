@@ -491,6 +491,7 @@ func (d *Disruption) initialSafetyNets(ctx context.Context) ([]string, error) {
 				if err := networkSpec.UpdateHostsOnCloudDisruption(ctx, cloudServicesProvidersManager); err != nil {
 					return nil, fmt.Errorf("error resolving cloud filters for network safety net: %w", err)
 				}
+
 				networkDisruption = &Disruption{Spec: DisruptionSpec{Network: networkSpec, Unsafemode: d.Spec.Unsafemode}}
 			}
 
