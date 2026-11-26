@@ -189,8 +189,9 @@ var _ = Describe("Slack Notifier", func() {
 
 							expectedReportingSlackChannel := "custom-slack-channel"
 							expectedReporting := &v1beta1.Reporting{
-								SlackChannel: expectedReportingSlackChannel,
-								Purpose:      "lorem",
+								MinNotificationType: types.NotificationInfo,
+								SlackChannel:        expectedReportingSlackChannel,
+								Purpose:             "lorem",
 							}
 
 							switch d := obj.(type) {
@@ -309,7 +310,8 @@ var _ = Describe("Slack Notifier", func() {
 
 								expectedReportingSlackChannel := "custom-slack-channel"
 								expectedReporting := &v1beta1.Reporting{
-									SlackChannel: expectedReportingSlackChannel,
+									MinNotificationType: types.NotificationInfo,
+									SlackChannel:        expectedReportingSlackChannel,
 								}
 
 								switch d := obj.(type) {
@@ -430,7 +432,8 @@ var _ = Describe("Slack Notifier", func() {
 
 								expectedReportingSlackChannel := "custom-slack-channel"
 								expectedReporting := &v1beta1.Reporting{
-									SlackChannel: expectedReportingSlackChannel,
+									MinNotificationType: types.NotificationInfo,
+									SlackChannel:        expectedReportingSlackChannel,
 								}
 
 								switch d := obj.(type) {
@@ -741,7 +744,8 @@ var _ = Describe("Slack Notifier", func() {
 
 							expectedReportingSlackChannel := "custom-slack-channel"
 							expectedReporting := &v1beta1.Reporting{
-								SlackChannel: expectedReportingSlackChannel,
+								MinNotificationType: types.NotificationInfo,
+								SlackChannel:        expectedReportingSlackChannel,
 							}
 							switch d := obj.(type) {
 							case *v1beta1.Disruption:
@@ -870,7 +874,8 @@ var _ = Describe("Slack Notifier", func() {
 
 								expectedReportingSlackChannel := "custom-slack-channel"
 								expectedReporting := &v1beta1.Reporting{
-									SlackChannel: expectedReportingSlackChannel,
+									MinNotificationType: types.NotificationInfo,
+									SlackChannel:        expectedReportingSlackChannel,
 								}
 								switch d := obj.(type) {
 								case *v1beta1.Disruption:
@@ -1100,8 +1105,9 @@ var _ = Describe("Slack Notifier", func() {
 								expectedSlackUserName := "jaden@test.com"
 								expectedReportingSlackChannel := "custom-slack-channel"
 								expectedReporting := &v1beta1.Reporting{
-									SlackChannel:   expectedReportingSlackChannel,
-									SlackUserEmail: expectedSlackUserName,
+									MinNotificationType: types.NotificationInfo,
+									SlackChannel:        expectedReportingSlackChannel,
+									SlackUserEmail:      expectedSlackUserName,
 								}
 
 								switch d := obj.(type) {
