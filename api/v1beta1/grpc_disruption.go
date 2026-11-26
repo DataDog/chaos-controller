@@ -8,7 +8,6 @@ package v1beta1
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"google.golang.org/grpc/codes"
@@ -113,9 +112,8 @@ func (s GRPCDisruptionSpec) Validate() (retErr error) {
 func (s GRPCDisruptionSpec) GenerateArgs() []string {
 	args := []string{
 		"grpc-disruption",
+		"--port", strconv.Itoa(s.Port),
 	}
-
-	endpointAlterationArgs := []string{}
 
 	for _, endptAlt := range s.Endpoints {
 		var alterationType, alterationValue string
@@ -138,18 +136,9 @@ func (s GRPCDisruptionSpec) GenerateArgs() []string {
 			strconv.Itoa(endptAlt.QueryPercent),
 		)
 
-		endpointAlterationArgs = append(endpointAlterationArgs, arg)
+		// Keep each endpoint;type;value;percentage tuple in a single argument.
+		args = append(args, "--endpoint-alterations", arg)
 	}
-
-	args = append(args, []string{"--port", strconv.Itoa(s.Port)}...)
-
-	// Each value passed to --endpoint-alterations should be of the form
-	// `endpoint;alteration_type;alteration_value;optional_query_percent`
-	// e.g.
-	// `/chaosdogfood.ChaosDogfood/order;error;ALREADY_EXISTS;30`
-	// `/chaosdogfood.ChaosDogfood/order;override;{};`
-	args = append(args, "--endpoint-alterations")
-	args = append(args, strings.Split(strings.Join(endpointAlterationArgs, " --endpoint-alterations "), " ")...)
 
 	return args
 }
