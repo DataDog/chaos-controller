@@ -89,7 +89,7 @@ func (d DisruptionArgs) CreateCmdArgs(args []string) []string {
 	}
 
 	if !d.NotInjectedBefore.IsZero() {
-		args = append(args, "--not-injected-before", d.NotInjectedBefore.Format(time.RFC3339))
+		args = append(args, "--not-injected-before", d.NotInjectedBefore.Format(time.RFC3339Nano))
 	}
 
 	// append allowed hosts for network disruptions
