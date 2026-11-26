@@ -24,15 +24,15 @@ var cpuPressureCmd = &cobra.Command{
 		injectorCmdFactory := injector.NewInjectorCmdFactory(log, processManager, cmdFactory)
 		cpuStressArgsBuilder := cpuStressArgsBuilder{}
 
-		for _, config := range configs {
+		for i, config := range configs {
 			injectors = append(
 				injectors,
-				injector.NewCPUPressureInjector(
+				targetInjector{config: i, Injector: injector.NewCPUPressureInjector(
 					config,
 					countStr,
 					injectorCmdFactory,
 					cpuStressArgsBuilder,
-				),
+				)},
 			)
 		}
 	},

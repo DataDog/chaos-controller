@@ -31,7 +31,7 @@ var diskFailureCmd = &cobra.Command{
 		}
 
 		// create injectors
-		for _, config := range configs {
+		for i, config := range configs {
 			inj, err := injector.NewDiskFailureInjector(spec, injector.DiskFailureInjectorConfig{Config: config})
 			if err != nil {
 				log.Fatalw("error initializing the disk failure injector", tags.ErrorKey, err)
@@ -42,7 +42,7 @@ var diskFailureCmd = &cobra.Command{
 				continue
 			}
 
-			injectors = append(injectors, inj)
+			injectors = append(injectors, targetInjector{config: i, Injector: inj})
 		}
 	},
 }

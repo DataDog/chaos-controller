@@ -92,7 +92,7 @@ var networkDisruptionCmd = &cobra.Command{
 				log.Fatalw("error initializing the network disruption injector: %w", err)
 			}
 
-			injectors = append(injectors, inj)
+			injectors = append(injectors, targetInjector{config: i, Injector: inj})
 		}
 	},
 }

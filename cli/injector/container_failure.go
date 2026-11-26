@@ -24,10 +24,10 @@ var containerFailureCmd = &cobra.Command{
 		}
 
 		// create injector
-		for _, config := range configs {
+		for i, config := range configs {
 			inj := injector.NewContainerFailureInjector(spec, injector.ContainerFailureInjectorConfig{Config: config})
 
-			injectors = append(injectors, inj)
+			injectors = append(injectors, targetInjector{config: i, Injector: inj})
 		}
 	},
 }

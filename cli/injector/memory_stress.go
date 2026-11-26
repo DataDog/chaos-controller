@@ -46,12 +46,13 @@ var memoryPressureStressCmd = &cobra.Command{
 
 		injectors = append(
 			injectors,
-			injector.NewMemoryStressInjector(
+			targetInjector{config: 0, Injector: injector.NewMemoryStressInjector(
 				config,
 				targetPercent,
 				rampDuration,
 				processManager,
-			))
+			)},
+		)
 
 		return nil
 	},

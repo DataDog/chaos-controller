@@ -41,7 +41,7 @@ func TestChildReadinessOwnership(t *testing.T) {
 			return nil
 		}).Once()
 		inj.EXPECT().GetDisruptionKind().Return(chaostypes.DisruptionKindName(chaostypes.DisruptionKindCPUStress)).Once()
-		injectors = []injector.Injector{inj}
+		injectors = []targetInjector{{config: 0, Injector: inj}}
 
 		injectAndWait(&cobra.Command{Use: cpuStressCommandName}, nil)
 

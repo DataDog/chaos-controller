@@ -41,12 +41,13 @@ var cpuPressureStressCmd = &cobra.Command{
 
 		injectors = append(
 			injectors,
-			injector.NewCPUStressInjector(
+			targetInjector{config: 0, Injector: injector.NewCPUStressInjector(
 				config,
 				percentage,
 				process,
 				runtime,
-			))
+			)},
+		)
 
 		return nil
 	},

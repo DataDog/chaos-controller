@@ -45,7 +45,7 @@ var dnsDisruptionCmd = &cobra.Command{
 		}
 
 		// Create injector for each config
-		for _, config := range configs {
+		for i, config := range configs {
 			// Create IPTables instance
 			iptables, err := network.NewIPTables(config.Log, disruptionArgs.DryRun)
 			if err != nil {
@@ -62,7 +62,7 @@ var dnsDisruptionCmd = &cobra.Command{
 
 			// Create injector
 			inj := injector.NewDNSDisruptionInjector(spec, injectorConfig)
-			injectors = append(injectors, inj)
+			injectors = append(injectors, targetInjector{config: i, Injector: inj})
 		}
 	},
 }

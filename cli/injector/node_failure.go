@@ -26,13 +26,13 @@ var nodeFailureCmd = &cobra.Command{
 		}
 
 		// create injector
-		for _, config := range configs {
+		for i, config := range configs {
 			inj, err := injector.NewNodeFailureInjector(spec, injector.NodeFailureInjectorConfig{Config: config})
 			if err != nil {
 				log.Fatalw("error creating the node injector", tags.ErrorKey, err)
 			}
 
-			injectors = append(injectors, inj)
+			injectors = append(injectors, targetInjector{config: i, Injector: inj})
 		}
 	},
 }

@@ -41,7 +41,7 @@ var podReplacementCmd = &cobra.Command{
 		}
 
 		// create injector
-		for _, config := range configs {
+		for i, config := range configs {
 			podReplacementConfig := injector.PodReplacementInjectorConfig{
 				Config: config,
 			}
@@ -51,7 +51,7 @@ var podReplacementCmd = &cobra.Command{
 				log.Fatalw("error creating the pod replacement injector", tags.ErrorKey, err)
 			}
 
-			injectors = append(injectors, inj)
+			injectors = append(injectors, targetInjector{config: i, Injector: inj})
 		}
 	},
 }

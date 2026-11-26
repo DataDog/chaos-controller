@@ -65,7 +65,7 @@ var (
 	configs             []injector.Config
 	signals             chan os.Signal
 	injectorCtx         context.Context
-	injectors           []injector.Injector
+	injectors           []targetInjector
 	readyToInject       bool
 	clientset           *kubernetes.Clientset
 	deadline            time.Time
@@ -410,6 +410,24 @@ func inject(kind string, sendToMetrics bool, reinjection bool) bool {
 	return !errOnInject
 }
 
+// targetInjector is an injector and the index in configs of the target
+// configuration it was built from. Commands skip targets they cannot disrupt,
+// such as a container without the disk-pressure path, so the two lists differ.
+type targetInjector struct {
+	injector.Injector
+	config int
+}
+
+// updateInjectorConfigs gives every injector the refreshed configuration of
+// its own target, keyed by index in configs
+func updateInjectorConfigs(injectors []targetInjector, refreshed map[int]injector.Config) {
+	for _, inj := range injectors {
+		if conf, ok := refreshed[inj.config]; ok {
+			inj.UpdateConfig(conf)
+		}
+	}
+}
+
 // reinject reinitialize conf, clean and inject all the disruptions
 func reinject(cmdName string) error {
 	var err error
@@ -437,6 +455,8 @@ func reinject(cmdName string) error {
 func refreshConfigs(newContainer func(id, name string) (container.Container, error), newManagers func(pid uint32) (netns.Manager, cgroup.Manager, error)) error {
 	var err error
 
+	refreshed := make(map[int]injector.Config, len(configs))
+
 	for i, conf := range configs {
 		if conf.TargetContainer == nil {
 			continue
@@ -459,8 +479,10 @@ func refreshConfigs(newContainer func(id, name string) (container.Container, err
 		conf.Disruption = disruptionArgs
 
 		configs[i] = conf
-		injectors[i].UpdateConfig(conf)
+		refreshed[i] = conf
 	}
+
+	updateInjectorConfigs(injectors, refreshed)
 
 	return nil
 }

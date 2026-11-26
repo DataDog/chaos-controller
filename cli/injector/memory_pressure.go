@@ -27,16 +27,16 @@ var memoryPressureCmd = &cobra.Command{
 		injectorCmdFactory := injector.NewInjectorCmdFactory(log, processManager, cmdFactory)
 		memoryStressArgsBuilder := memoryStressArgsBuilder{}
 
-		for _, config := range configs {
+		for i, config := range configs {
 			injectors = append(
 				injectors,
-				injector.NewMemoryPressureInjector(
+				targetInjector{config: i, Injector: injector.NewMemoryPressureInjector(
 					config,
 					targetPercent,
 					rampDuration,
 					injectorCmdFactory,
 					memoryStressArgsBuilder,
-				),
+				)},
 			)
 		}
 	},
