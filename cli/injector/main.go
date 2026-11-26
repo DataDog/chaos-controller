@@ -506,9 +506,11 @@ func clean(kind string, sendToMetrics bool, reinjectionClean bool) bool {
 			}
 
 			log.Errorw("disruption cleaning failed", tags.ErrorKey, err)
-		} else {
-			log.Infof("disruption %s cleaned", inj.GetDisruptionKind())
+
+			continue
 		}
+
+		log.Infof("disruption %s cleaned", inj.GetDisruptionKind())
 
 		if sendToMetrics {
 			if reinjectionClean {
