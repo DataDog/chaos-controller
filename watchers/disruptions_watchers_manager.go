@@ -57,6 +57,7 @@ type WatcherManagers map[types.NamespacedName]Manager
 type disruptionsWatchersManager struct {
 	controller       controller.Controller
 	factory          Factory
+	enableObserver   bool
 	reader           client.Reader
 	watchersManagers WatcherManagers
 	managerUIDs      map[types.NamespacedName]types.UID
@@ -313,12 +314,13 @@ func (d disruptionsWatchersManager) RemoveAllExpiredWatchers(ctx context.Context
 }
 
 // NewDisruptionsWatchersManager return a new DisruptionsWatchersManager instance
-func NewDisruptionsWatchersManager(controller controller.Controller, factory Factory, reader client.Reader) DisruptionsWatchersManager {
+func NewDisruptionsWatchersManager(controller controller.Controller, factory Factory, reader client.Reader, enableObserver bool) DisruptionsWatchersManager {
 	return disruptionsWatchersManager{
 		watchersManagers: WatcherManagers{},
 		managerUIDs:      map[types.NamespacedName]types.UID{},
 		controller:       controller,
 		factory:          factory,
+		enableObserver:   enableObserver,
 		reader:           reader,
 		mu:               &sync.Mutex{},
 	}
@@ -333,7 +335,7 @@ func (d disruptionsWatchersManager) addWatcher(disruption *v1beta1.Disruption, w
 	// Create a new watcher based on its name
 	switch watcherName {
 	case DisruptionTargetWatcherName:
-		newWatcher, err = d.factory.NewDisruptionTargetWatcher(watcherNameHash, true, disruption, cacheMock)
+		newWatcher, err = d.factory.NewDisruptionTargetWatcher(watcherNameHash, d.enableObserver, disruption, cacheMock)
 	case ChaosPodWatcherName:
 		newWatcher, err = d.factory.NewChaosPodWatcher(watcherNameHash, disruption, cacheMock)
 	}

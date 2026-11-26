@@ -59,7 +59,7 @@ func (stubFactory) NewDisruptionTargetWatcher(_ string, _ bool, _ *v1beta1.Disru
 var _ = Describe("Disruptions watchers manager concurrency", func() {
 	When("the expiry sweep runs while reconcile removes and re-adds watchers for a disruption", func() {
 		It("must not race on the watchers manager map", func() {
-			manager := NewDisruptionsWatchersManager(nil, stubFactory{}, nil).(disruptionsWatchersManager)
+			manager := NewDisruptionsWatchersManager(nil, stubFactory{}, nil, true).(disruptionsWatchersManager)
 
 			// Disruptions whose watchers are continuously removed and re-created by reconcile
 			const names = 20
@@ -134,7 +134,7 @@ var _ = Describe("Disruptions watchers manager orphan sweep", func() {
 
 				manager.watchersManagers[created] = stubManager{}
 				manager.managerUIDs[created] = "uid-created"
-			}}).(disruptionsWatchersManager)
+			}}, true).(disruptionsWatchersManager)
 
 			manager.watchersManagers[orphan] = stubManager{}
 			manager.managerUIDs[orphan] = "uid-orphan"
