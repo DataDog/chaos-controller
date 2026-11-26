@@ -199,7 +199,7 @@ func splitHeaders(headers []string) (map[string]string, error) {
 		if len(splittedHeader) == 2 {
 			key := splittedHeader[0]
 			val := splittedHeader[1]
-			parsedHeaders[key] = val
+			parsedHeaders[http.CanonicalHeaderKey(key)] = val
 		} else {
 			return nil, fmt.Errorf("invalid headers: Must be in the format: key:value, found %s", header)
 		}
