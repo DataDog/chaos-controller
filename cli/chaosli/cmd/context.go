@@ -15,11 +15,11 @@ import (
 	"strconv"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
+	"github.com/DataDog/chaos-controller/targetselector"
 	"github.com/DataDog/chaos-controller/types"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
@@ -177,8 +177,13 @@ func getTargetSize(disruption v1beta1.Disruption) (int, error) {
 }
 
 func getPods(disruption v1beta1.Disruption) (v1.PodList, error) {
+	selector, err := targetselector.GetLabelSelectorFromInstance(&disruption)
+	if err != nil {
+		return v1.PodList{}, err
+	}
+
 	options := metav1.ListOptions{
-		LabelSelector: labels.SelectorFromValidatedSet(disruption.Spec.Selector).String(),
+		LabelSelector: selector.String(),
 	}
 
 	pods, err := clientset.CoreV1().Pods(disruption.ObjectMeta.Namespace).List(context.TODO(), options)
@@ -190,8 +195,13 @@ func getPods(disruption v1beta1.Disruption) (v1.PodList, error) {
 }
 
 func getNodes(disruption v1beta1.Disruption) (v1.NodeList, error) {
+	selector, err := targetselector.GetLabelSelectorFromInstance(&disruption)
+	if err != nil {
+		return v1.NodeList{}, err
+	}
+
 	options := metav1.ListOptions{
-		LabelSelector: labels.SelectorFromValidatedSet(disruption.Spec.Selector).String(),
+		LabelSelector: selector.String(),
 	}
 
 	nodes, err := clientset.CoreV1().Nodes().List(context.TODO(), options)
