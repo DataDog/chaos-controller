@@ -7,7 +7,6 @@ package watchers_test
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
@@ -52,7 +51,7 @@ var _ = Describe("Rollout informer startup", func() {
 			WithObjects(rollout, unobserved).
 			WithIndex(&v1beta1.DisruptionRollout{}, "targetResource", func(obj client.Object) []string {
 				dr := obj.(*v1beta1.DisruptionRollout)
-				return []string{fmt.Sprintf("%s-%s-%s", dr.Spec.TargetResource.Kind, dr.Namespace, dr.Spec.TargetResource.Name)}
+				return []string{watchers.TargetResourceIndexedValue(dr.Spec.TargetResource.Kind, dr.Namespace, dr.Spec.TargetResource.Name)}
 			}).Build()
 		if changed {
 			podSpec.Containers[0].Image = "app:v2"

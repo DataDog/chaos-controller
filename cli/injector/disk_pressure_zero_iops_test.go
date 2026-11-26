@@ -6,8 +6,10 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/DataDog/chaos-controller/api"
@@ -22,13 +24,45 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+func discoverWholeBlockDevice(t *testing.T) (string, string) {
+	t.Helper()
+
+	entries, err := os.ReadDir("/sys/dev/block")
+	if err != nil {
+		t.Skipf("skipping test: cannot read /sys/dev/block: %v", err)
+	}
+
+	for _, entry := range entries {
+		major, minor, ok := strings.Cut(entry.Name(), ":")
+		if !ok {
+			continue
+		}
+
+		device, err := filepath.EvalSymlinks(filepath.Join("/sys/dev/block", entry.Name()))
+		if err != nil {
+			continue
+		}
+
+		if _, err := os.Stat(filepath.Join(device, "partition")); os.IsNotExist(err) {
+			return major, minor
+		}
+	}
+
+	t.Skip("skipping test: no whole block device found in /sys/dev/block")
+
+	return "", ""
+}
+
 func TestDiskPressureCLIExplicitZeroIOPS(t *testing.T) {
+	major, minor := discoverWholeBlockDevice(t)
+	devID := fmt.Sprintf("%s:%s", major, minor)
+
 	for name, v2 := range map[string]bool{"cgroup-v1": false, "cgroup-v2": true} {
 		t.Run(name, func(t *testing.T) {
 			dir := t.TempDir()
 			fixtures := map[string]string{
 				"df": "#!/bin/sh\nprintf '%s\\n' Filesystem /dev/fake\n",
-				"ls": "#!/bin/sh\nprintf '%s\\n' 'brw-rw---- 1 root disk 8, 0 Jan 1 00:00 /dev/fake'\n",
+				"ls": fmt.Sprintf("#!/bin/sh\nprintf '%%s\\n' 'brw-rw---- 1 root disk %s, %s Jan 1 00:00 /dev/fake'\n", major, minor),
 			}
 			for executable, body := range fixtures {
 				if err := os.WriteFile(filepath.Join(dir, executable), []byte(body), 0755); err != nil {
@@ -59,10 +93,10 @@ func TestDiskPressureCLIExplicitZeroIOPS(t *testing.T) {
 			}
 
 			readFile, writeFile := "blkio.throttle.read_iops_device", "blkio.throttle.write_iops_device"
-			readData, writeData := "8:0 0", "8:0 0"
+			readData, writeData := devID+" 0", devID+" 0"
 			if v2 {
 				readFile, writeFile = "io.max", "io.max"
-				readData, writeData = "8:0 riops=max", "8:0 wiops=max"
+				readData, writeData = devID+" riops=max", devID+" wiops=max"
 			}
 			manager := cgroup.NewManagerMock(t)
 			manager.EXPECT().IsCgroupV2().Return(v2).Maybe()
