@@ -94,8 +94,8 @@ func NewTrafficController(log *zap.SugaredLogger, dryRun bool) TrafficController
 func (t *tc) AddNetem(ifaces []string, parent string, handle string, delay time.Duration, delayJitter time.Duration, drop int, corrupt int, duplicate int) error {
 	params := ""
 
-	if delay.Milliseconds() != 0 {
-		params = fmt.Sprintf("%s delay %dms %dms", params, delay.Milliseconds(), delayJitter.Milliseconds())
+	if delay != 0 {
+		params = fmt.Sprintf("%s delay %dus %dus", params, delay.Microseconds(), delayJitter.Microseconds())
 	}
 
 	if drop != 0 {
