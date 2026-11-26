@@ -74,8 +74,8 @@ spec:
       - name: fooo # service name
         namespace: barr # service namespace
         ports: # optional, list of the service ports to drop packets on. Empty list means dropping to all ports of the service
-          - 8080
-          - 8081
+          - port: 8080
+          - port: 8081
     cloud:
       aws:
         - service: "S3" # service name as declared in the provider file (see doc for details)
