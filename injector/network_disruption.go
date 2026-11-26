@@ -11,6 +11,7 @@ import (
 	"math"
 	"net"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -672,7 +673,9 @@ func (i *networkDisruptionInjector) removeTcFilter(interfaces []string, priority
 
 // removeServiceFiltersInList delete a list of tc filters inside of another list of tc filters
 func (i *networkDisruptionInjector) removeServiceFiltersInList(interfaces []string, tcFilters []tcServiceFilter, tcFiltersToRemove []tcServiceFilter) ([]tcServiceFilter, error) {
-	for _, serviceToRemove := range tcFiltersToRemove {
+	// callers may pass the same slice as both arguments (to delete every filter):
+	// iterate over a copy so that removing from tcFilters does not skip entries of tcFiltersToRemove
+	for _, serviceToRemove := range slices.Clone(tcFiltersToRemove) {
 		if deletedIdx := i.findServiceFilter(tcFilters, serviceToRemove); deletedIdx >= 0 {
 			if err := i.removeServiceFilter(interfaces, tcFilters[deletedIdx]); err != nil {
 				return nil, err

@@ -6,10 +6,18 @@
 package injector
 
 import (
+	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
+	"testing"
 
+	"github.com/stretchr/testify/mock"
+	"go.uber.org/zap/zaptest"
+	v1 "k8s.io/api/core/v1"
+
+	"github.com/DataDog/chaos-controller/network"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -113,3 +121,80 @@ var _ = Describe("standardFileWriter.Write", func() {
 		Expect(err).To(HaveOccurred())
 	})
 })
+
+func TestRemoveServiceFiltersInList(t *testing.T) {
+	deleted := map[uint32]bool{}
+
+	tc := network.NewTrafficControllerMock(t)
+	tc.EXPECT().DeleteFilter(mock.Anything, mock.Anything).
+		RunAndReturn(func(_ string, priority uint32) error {
+			deleted[priority] = true
+			return nil
+		}).Maybe()
+
+	inj := &networkDisruptionInjector{
+		config: NetworkDisruptionInjectorConfig{
+			Config:            Config{Log: zaptest.NewLogger(t).Sugar()},
+			TrafficController: tc,
+		},
+	}
+
+	makeFilter := func(ip string, port int, priority uint32) tcServiceFilter {
+		_, ipNet, _ := net.ParseCIDR(fmt.Sprintf("%s/32", ip))
+
+		return tcServiceFilter{
+			service: networkDisruptionService{
+				ip:       ipNet,
+				port:     port,
+				protocol: v1.ProtocolTCP,
+			},
+			priority: priority,
+		}
+	}
+
+	t.Run("same slice passed as both arguments deletes every filter", func(t *testing.T) {
+		// callers pass the same slice as both arguments (network_disruption.go lines
+		// 907, 1069 and 1087): every tc filter must be deleted and the result be empty
+		filters := []tcServiceFilter{
+			makeFilter("10.0.0.1", 80, 1001),
+			makeFilter("10.0.0.2", 80, 1002),
+			makeFilter("10.0.0.3", 80, 1003),
+		}
+
+		remaining, err := inj.removeServiceFiltersInList([]string{"eth0"}, filters, filters)
+		if err != nil {
+			t.Fatalf("removeServiceFiltersInList returned error: %v", err)
+		}
+
+		if len(remaining) != 0 {
+			t.Errorf("expected all filters removed, got %d remaining: %v", len(remaining), remaining)
+		}
+
+		for _, priority := range []uint32{1001, 1002, 1003} {
+			if !deleted[priority] {
+				t.Errorf("tc filter priority %d was never deleted (deleted=%v)", priority, deleted)
+			}
+		}
+	})
+
+	t.Run("partial removal list keeps other filters", func(t *testing.T) {
+		filters := []tcServiceFilter{
+			makeFilter("10.0.0.1", 80, 1001),
+			makeFilter("10.0.0.2", 80, 1002),
+			makeFilter("10.0.0.3", 80, 1003),
+		}
+
+		remaining, err := inj.removeServiceFiltersInList([]string{"eth0"}, filters, []tcServiceFilter{makeFilter("10.0.0.2", 80, 1002)})
+		if err != nil {
+			t.Fatalf("removeServiceFiltersInList returned error: %v", err)
+		}
+
+		if len(remaining) != 2 {
+			t.Fatalf("expected 2 remaining filters, got %d: %v", len(remaining), remaining)
+		}
+
+		if !deleted[1002] {
+			t.Errorf("tc filter priority 1002 was never deleted (deleted=%v)", deleted)
+		}
+	})
+}
