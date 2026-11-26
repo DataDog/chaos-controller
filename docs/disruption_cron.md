@@ -52,6 +52,8 @@ To generate CronJob schedule expressions, you can also use web tools like [cront
 ### Target resource
 The `.spec.targetResource` field specifies which resource to run disruptions against, and is required. Since DisruptionCrons are designed to be semi-permanent, they're best used to target other long-lasting resources. As such, the `.spec.targetResource.kind` field can only be set to either `deployment` or `statefulset`. At runtime, pods from either of these resources are randomly selected for disruption.
 
+If the target remains missing for the controller's `targetResourceMissingThreshold`, the DisruptionCron is deleted. This deadline is checked even while the cron is paused or its next scheduled run is farther away than the missing-target deadline.
+
 ### Disruption template
 The `.spec.disruptionTemplate` defines a template for the Disruptions that the DisruptionCron creates, and it is required.
 Its schema is identical to a `DisruptionSpec` of the `Disruption` CRD. [Detailed examples](examples.md) of various Disruption types, including their respective manifests, are readily available for reference.

@@ -131,11 +131,17 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, err
 	}
 
+	// Missing-target expiration must also be checked while paused or scheduled infrequently.
+	var targetMissingRequeueAfter time.Duration
+	if !targetResourceExists {
+		targetMissingRequeueAfter = max(time.Until(instance.Status.TargetResourcePreviouslyMissing.Add(r.TargetResourceMissingThreshold)), time.Nanosecond)
+	}
+
 	if instance.Spec.Paused {
 		r.handleMetricSinkError(r.MetricsSink.MetricPausedCron(DisruptionCronTags))
 		r.log.Debugw("disruptioncron has been paused, will not resume until spec.paused is false")
 
-		return ctrl.Result{}, nil
+		return ctrl.Result{RequeueAfter: targetMissingRequeueAfter}, nil
 	}
 
 	// Get next scheduled run or time of unprocessed run
@@ -149,6 +155,10 @@ func (r *DisruptionCronReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	// Calculate next requeue time
 	scheduledResult := ctrl.Result{RequeueAfter: time.Until(nextRun)}
+	if targetMissingRequeueAfter > 0 {
+		scheduledResult.RequeueAfter = min(scheduledResult.RequeueAfter, targetMissingRequeueAfter)
+	}
+
 	requeueTime := scheduledResult.RequeueAfter.Round(time.Second)
 
 	r.log.Infow("calculated next scheduled run", tagutil.NextRunKey, nextRun.Format(time.UnixDate), tagutil.NowKey, time.Now().Format(time.UnixDate))
