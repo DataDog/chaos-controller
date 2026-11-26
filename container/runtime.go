@@ -15,6 +15,7 @@ import (
 // being able to return a container PID from its ID
 type Runtime interface {
 	PID(ctx context.Context, id string) (uint32, error)
+	// HostPath resolves a mount or a path below its deepest containing mount.
 	HostPath(ctx context.Context, id, path string) (string, error)
 }
 
@@ -27,4 +28,10 @@ func ParseContainerID(id string) (containerID string, runtime string, err error)
 	}
 
 	return rawID[1], rawID[0], nil
+}
+
+func mountPathContainsPath(mountPath, targetPath string) bool {
+	suffix, found := strings.CutPrefix(targetPath, strings.TrimSuffix(mountPath, "/"))
+
+	return found && (suffix == "" || suffix[0] == '/')
 }

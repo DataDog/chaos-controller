@@ -8,6 +8,7 @@ package container
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 
 	dockerlib "github.com/docker/docker/client"
 )
@@ -45,13 +46,23 @@ func (d dockerRuntime) HostPath(ctx context.Context, id, path string) (string, e
 		return "", fmt.Errorf("error while loading given container: %w", err)
 	}
 
-	// search for the mount in mounts
+	// Resolve the deepest mount containing the target path.
+	path = filepath.Clean(path)
+	bestMountLen := -1
+
 	for _, mount := range ci.Mounts {
-		if mount.Destination != path {
+		mountPath := filepath.Clean(mount.Destination)
+		if len(mountPath) < bestMountLen || !mountPathContainsPath(mountPath, path) {
 			continue
 		}
 
-		hostPath = mount.Source
+		bestMountLen = len(mountPath)
+		hostPath = ""
+
+		// a mount without a host source (such as tmpfs) has no host path below it
+		if mount.Source != "" {
+			hostPath = filepath.Join(mount.Source, path[len(mountPath):])
+		}
 	}
 
 	// ignore if no matching path found

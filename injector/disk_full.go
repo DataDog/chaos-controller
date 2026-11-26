@@ -80,6 +80,19 @@ func NewDiskFullInjector(spec v1beta1.DiskFullSpec, config DiskFullInjectorConfi
 		return nil, fmt.Errorf("target path %s does not exist: %w", hostPath, err)
 	}
 
+	// the runtime mapped the path in the node mount namespace: a symbolic link in it
+	// would be followed in the injector filesystem, outside the target volume
+	if config.Disruption.Level == types.DisruptionLevelPod {
+		resolved, err := filepath.EvalSymlinks(hostPath)
+		if err != nil {
+			return nil, fmt.Errorf("error resolving target path %s: %w", hostPath, err)
+		}
+
+		if resolved != hostPath {
+			return nil, fmt.Errorf("target path %s traverses a symbolic link, disk full requires a real directory in the target volume", spec.Path)
+		}
+	}
+
 	ballastPath := filepath.Join(hostPath, ballastFilePrefix+config.Disruption.DisruptionNamespace+"-"+config.Disruption.DisruptionName+"-"+config.Disruption.TargetName)
 
 	return &diskFullInjector{
