@@ -107,6 +107,8 @@ spec:
 
 #### Node-level memory pressure
 
+At node level, the target percentage is relative to `MemTotal` in the host's `/proc/meminfo`, and current usage is `MemTotal - MemAvailable`. Pod-level disruptions continue to use the container's cgroup memory limit and usage.
+
 ```yaml
 apiVersion: chaos.datadoghq.com/v1beta1
 kind: Disruption
