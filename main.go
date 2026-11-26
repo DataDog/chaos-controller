@@ -227,6 +227,7 @@ func main() {
 			Labels:                        cfg.Injector.Labels,
 			Tolerations:                   cfg.Injector.Tolerations,
 			NetworkDisruptionAllowedHosts: cfg.Injector.NetworkDisruption.AllowedHosts,
+			HostResolveInterval:           cfg.Injector.NetworkDisruption.HostResolveInterval,
 			DNSPodResolvConf:              cfg.Injector.NetworkDisruption.DNSPodResolvConf,
 			DNSNodeResolvConf:             cfg.Injector.NetworkDisruption.DNSNodeResolvConf,
 			ImagePullSecrets:              cfg.Injector.ImagePullSecrets,
