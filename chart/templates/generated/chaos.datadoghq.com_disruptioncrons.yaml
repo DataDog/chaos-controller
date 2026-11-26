@@ -156,6 +156,7 @@ spec:
                         paths:
                           items:
                             type: string
+                          minItems: 1
                           type: array
                         probability:
                           type: string
@@ -317,6 +318,7 @@ spec:
                             required:
                               - endpoint
                             type: object
+                          minItems: 1
                           type: array
                         port:
                           maximum: 65535

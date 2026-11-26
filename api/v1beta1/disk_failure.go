@@ -23,7 +23,8 @@ type OpenatSyscallSpec struct {
 // DiskFailureSpec represents a disk failure disruption
 type DiskFailureSpec struct {
 	// +kubebuilder:validation:Required
-	Paths []string `json:"paths" chaos_validate:"required"`
+	// +kubebuilder:validation:MinItems=1
+	Paths []string `json:"paths" chaos_validate:"required,min=1"`
 	// +nullable
 	OpenatSyscall *OpenatSyscallSpec `json:"openat,omitempty"`
 	Probability   string             `json:"probability,omitempty"`
@@ -46,6 +47,10 @@ func (s *DiskFailureSpec) Validate() (retErr error) {
 }
 
 func (s *DiskFailureSpec) validatePaths() error {
+	if len(s.Paths) == 0 {
+		return fmt.Errorf("at least one path must be specified for the disk failure disruption")
+	}
+
 	for _, path := range s.Paths {
 		trimSpacePath := strings.TrimSpace(path)
 
