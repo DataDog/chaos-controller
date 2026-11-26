@@ -1408,26 +1408,21 @@ func (i *networkDisruptionInjector) addFiltersForHosts(interfaces []string, host
 		filtersForHost := tcFilters{}
 
 		for _, ip := range ips {
-			var (
-				srcPort, dstPort int
-				srcIP, dstIP     *net.IPNet
-			)
+			var srcPort, dstPort int
 
 			// handle flow direction
 			switch host.Flow {
 			case v1beta1.FlowIngress:
 				srcPort = host.Port
-				srcIP = ip
 			default:
 				dstPort = host.Port
-				dstIP = ip
 			}
 
 			// cast connection state
 			connState := network.NewConnState(host.ConnState)
 			for _, protocol := range network.AllProtocols(host.Protocol) {
 				// create tc filter
-				priority, err := i.config.TrafficController.AddFilter(interfaces, "1:0", "", srcIP, dstIP, srcPort, dstPort, protocol, connState, flowid)
+				priority, err := i.config.TrafficController.AddFilter(interfaces, "1:0", "", nil, ip, srcPort, dstPort, protocol, connState, flowid)
 				if err != nil {
 					return nil, fmt.Errorf("error adding filter for host %s: %w", host.Host, err)
 				}

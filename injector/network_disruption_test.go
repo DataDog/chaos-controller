@@ -618,7 +618,7 @@ var _ = Describe("Failure", func() {
 			})
 
 			It("should add a filter to redirect all traffic on main interfaces on the disrupted band with specified port as source port", func() {
-				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", zeroIPNet, nilIPNet, 80, 0, network.TCP, network.ConnStateUndefined, "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, zeroIPNet, 80, 0, network.TCP, network.ConnStateUndefined, "1:4")
 			})
 		})
 
