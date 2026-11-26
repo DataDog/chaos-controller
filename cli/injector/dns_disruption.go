@@ -6,6 +6,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -67,9 +68,32 @@ var dnsDisruptionCmd = &cobra.Command{
 	},
 }
 
-// parseRecords parses the records string format: hostname:type:value:ttl;hostname:type:value:ttl
-// Handles IPv6 addresses in value field by splitting carefully to avoid breaking on colons within the value
+// parseRecords decodes --records: a JSON array when a record contains ";",
+// otherwise the delimited format older controllers also produce.
 func parseRecords(recordsStr string) ([]v1beta1.DNSRecord, error) {
+	if recordsStr == "" {
+		return nil, fmt.Errorf("--records flag is required and cannot be empty")
+	}
+
+	if !strings.HasPrefix(recordsStr, "[") {
+		return parseLegacyRecords(recordsStr)
+	}
+
+	var records []v1beta1.DNSRecord
+	if err := json.Unmarshal([]byte(recordsStr), &records); err != nil {
+		return nil, fmt.Errorf("invalid DNS records JSON: %w", err)
+	}
+
+	if len(records) == 0 {
+		return nil, fmt.Errorf("--records must contain at least one record")
+	}
+
+	return records, nil
+}
+
+// parseLegacyRecords parses the delimited records format: hostname:type:value:ttl;hostname:type:value:ttl
+// Handles IPv6 addresses in value field by splitting carefully to avoid breaking on colons within the value
+func parseLegacyRecords(recordsStr string) ([]v1beta1.DNSRecord, error) {
 	if recordsStr == "" {
 		return nil, fmt.Errorf("--records flag is required and cannot be empty")
 	}
@@ -125,7 +149,7 @@ func parseRecords(recordsStr string) ([]v1beta1.DNSRecord, error) {
 }
 
 func init() {
-	dnsDisruptionCmd.Flags().String("records", "", "DNS records in format hostname:type:value:ttl;hostname:type:value:ttl")
+	dnsDisruptionCmd.Flags().String("records", "", "DNS records as hostname:type:value:ttl;hostname:type:value:ttl, or a JSON array of records when a value contains ';'")
 	dnsDisruptionCmd.Flags().Int("port", 53, "DNS port to intercept (default: 53)")
 	dnsDisruptionCmd.Flags().String("protocol", "both", "DNS protocol to disrupt: udp, tcp, or both (default: both)")
 }

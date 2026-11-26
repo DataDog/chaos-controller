@@ -314,7 +314,7 @@ record:
 ### TXT Records (Text)
 Text records for arbitrary data (SPF, DKIM, domain verification, etc.). Values longer than 255 bytes are split into multiple DNS character-strings within the same TXT record. Concatenating those strings recovers the original value, including literal backslashes.
 
-**Format**: Any string value
+**Format**: Any string value, including semicolons in DKIM or DMARC records. Records containing semicolons are passed to the injector as a JSON array, preserving punctuation and whitespace.
 
 **Example**:
 ```yaml
