@@ -62,8 +62,9 @@ func GetPercentagePerAlteration(endpointSpecList []*pb.AlterationSpec) (map[Alte
 		// (1) add all endpoints where queryPercent is specified
 		// (2) track total percentage odds of queries already claimed by an AlterationConfiguration
 		// (3) track alterations where percentage odds (queryPercent) is not specified (to be calculated later)
+		// Note: identical alterations are cumulative, so percentages are accumulated rather than overwritten
 		if altSpec.QueryPercent > 0 {
-			mapping[alterationConfig] = QueryPercent(altSpec.QueryPercent)
+			mapping[alterationConfig] += QueryPercent(altSpec.QueryPercent)
 			pctClaimed += int(altSpec.QueryPercent)
 
 			if pctClaimed > 100 {
@@ -87,10 +88,11 @@ func GetPercentagePerAlteration(endpointSpecList []*pb.AlterationSpec) (map[Alte
 		pctPerAlt := pctUnclaimed / numUnquantifiedAlts
 
 		for i, altConfig := range unquantifiedAlts {
+			// identical alterations are cumulative, so each adds its share
 			if i == len(unquantifiedAlts)-1 {
-				mapping[altConfig] = QueryPercent(100 - pctClaimed) // grab the remaining
+				mapping[altConfig] += QueryPercent(100 - pctClaimed) // grab the remaining
 			} else {
-				mapping[altConfig] = QueryPercent(pctPerAlt)
+				mapping[altConfig] += QueryPercent(pctPerAlt)
 				pctClaimed += pctPerAlt
 			}
 		}

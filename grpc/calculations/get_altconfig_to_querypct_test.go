@@ -405,6 +405,82 @@ var _ = Describe("get mapping from alterationSpecs to config based on GetPercent
 		})
 	})
 
+	Context("with two identical alterations each specifying 50", func() {
+		It("should accumulate their percentages", func() {
+			alterationSpecs = []*pb.AlterationSpec{
+				{
+					ErrorToReturn:    "NOT_FOUND",
+					OverrideToReturn: "",
+					QueryPercent:     int32(50),
+				},
+				{
+					ErrorToReturn:    "NOT_FOUND",
+					OverrideToReturn: "",
+					QueryPercent:     int32(50),
+				},
+			}
+
+			By("returning no errors", func() {
+				var err error
+				config, err = GetPercentagePerAlteration(alterationSpecs)
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			By("returning 1 element", func() {
+				Expect(config).To(HaveLen(1))
+			})
+
+			By("assigning a cumulative query percentage of 100 to NOT_FOUND error", func() {
+				altCfg := AlterationConfiguration{
+					ErrorToReturn:    "NOT_FOUND",
+					OverrideToReturn: "",
+				}
+				pct_notfound, ok_notfound := config[altCfg]
+
+				Expect(ok_notfound).To(BeTrue())
+				Expect(pct_notfound).To(Equal(QueryPercent(100)))
+			})
+		})
+	})
+
+	Context("with two identical alterations, one of which lacks a queryPercent", func() {
+		It("should accumulate their percentages", func() {
+			alterationSpecs = []*pb.AlterationSpec{
+				{
+					ErrorToReturn:    "NOT_FOUND",
+					OverrideToReturn: "",
+					QueryPercent:     int32(50),
+				},
+				{
+					ErrorToReturn:    "NOT_FOUND",
+					OverrideToReturn: "",
+					QueryPercent:     0,
+				},
+			}
+
+			By("returning no errors", func() {
+				var err error
+				config, err = GetPercentagePerAlteration(alterationSpecs)
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			By("returning 1 element", func() {
+				Expect(config).To(HaveLen(1))
+			})
+
+			By("assigning a cumulative query percentage of 100 to NOT_FOUND error", func() {
+				altCfg := AlterationConfiguration{
+					ErrorToReturn:    "NOT_FOUND",
+					OverrideToReturn: "",
+				}
+				pct_notfound, ok_notfound := config[altCfg]
+
+				Expect(ok_notfound).To(BeTrue())
+				Expect(pct_notfound).To(Equal(QueryPercent(100)))
+			})
+		})
+	})
+
 	Context("with twelve alterations, eleven of which lack a queryPercent", func() {
 		It("should fail", func() {
 			alterationSpecs = []*pb.AlterationSpec{
