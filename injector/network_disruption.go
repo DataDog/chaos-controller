@@ -72,10 +72,10 @@ type NetworkDisruptionInjectorConfig struct {
 	DNSNodeResolvConf   string
 }
 
-// tcServiceFilter describes a tc filter, representing the service filtered and its priority
+// tcServiceFilter tracks all protocol filters for a service endpoint.
 type tcServiceFilter struct {
-	service  networkDisruptionService
-	priority uint32 // one priority per tc filters applied, the priority is the same for all interfaces
+	service    networkDisruptionService
+	priorities []uint32 // one priority per protocol, shared by all interfaces
 }
 
 // tcFilter describes a tc filter
@@ -625,8 +625,6 @@ func (i *networkDisruptionInjector) applyOperations() error {
 
 // addServiceFilters adds a list of service tc filters on a list of interfaces
 func (i *networkDisruptionInjector) addServiceFilters(serviceName string, filters []tcServiceFilter, interfaces []string, flowid string) ([]tcServiceFilter, error) {
-	var err error
-
 	builtServices := []tcServiceFilter{}
 
 	for _, filter := range filters {
@@ -636,13 +634,14 @@ func (i *networkDisruptionInjector) addServiceFilters(serviceName string, filter
 		)
 
 		for _, protocol := range network.AllProtocols(filter.service.protocol) {
-			filter.priority, err = i.config.TrafficController.AddFilter(interfaces, "1:0", "", nil, filter.service.ip, 0, filter.service.port, protocol, network.ConnStateUndefined, flowid)
+			priority, err := i.config.TrafficController.AddFilter(interfaces, "1:0", "", nil, filter.service.ip, 0, filter.service.port, protocol, network.ConnStateUndefined, flowid)
 			if err != nil {
 				return nil, err
 			}
-		}
 
-		i.config.Log.Infow(fmt.Sprintf("added a tc filter for service %s-%s with priority %d", serviceName, filter.service, filter.priority), tags.InterfacesKey, interfaces)
+			filter.priorities = append(filter.priorities, priority)
+			i.config.Log.Infow(fmt.Sprintf("added a tc filter for service %s-%s with priority %d", serviceName, filter.service, priority), tags.InterfacesKey, interfaces)
+		}
 
 		builtServices = append(builtServices, filter)
 	}
@@ -652,8 +651,10 @@ func (i *networkDisruptionInjector) addServiceFilters(serviceName string, filter
 
 // removeServiceFilter delete tc filters for a k8s service
 func (i *networkDisruptionInjector) removeServiceFilter(interfaces []string, tcFilter tcServiceFilter) error {
-	if err := i.removeTcFilter(interfaces, tcFilter.priority); err != nil {
-		return err
+	for _, priority := range tcFilter.priorities {
+		if err := i.removeTcFilter(interfaces, priority); err != nil {
+			return err
+		}
 	}
 
 	i.config.Log.Infow("tc filter deleted for all interfaces", tags.TcServiceFilterKey, tcFilter, tags.InterfacesKey, interfaces)
