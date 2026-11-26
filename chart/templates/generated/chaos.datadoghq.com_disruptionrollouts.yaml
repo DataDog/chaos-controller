@@ -816,6 +816,9 @@ spec:
                   type: string
               type: object
           type: object
+          x-kubernetes-validations:
+            - message: disruption rollout name must be no more than 44 characters so that its disruption name fits in 63 characters
+              rule: size(self.metadata.name) <= 44
       served: true
       storage: true
       subresources:
