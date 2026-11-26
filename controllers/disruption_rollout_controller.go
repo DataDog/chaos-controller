@@ -250,7 +250,10 @@ func (r *DisruptionRolloutReconciler) handleTargetResourceFirstMissing(ctx conte
 // handleTargetResourceMissingPastExpiration handles the scenario when the target resource has been missing for more than the expiration period.
 // It deletes the DisruptionRollout instance.
 func (r *DisruptionRolloutReconciler) handleTargetResourceMissingPastExpiration(ctx context.Context, instance *chaosv1beta1.DisruptionRollout) error {
-	if err := r.Client.Delete(ctx, instance); err != nil {
+	if err := r.Client.Delete(ctx, instance, client.Preconditions{
+		UID:             &instance.UID,
+		ResourceVersion: &instance.ResourceVersion,
+	}); err != nil {
 		return fmt.Errorf("failed to delete instance: %w", err)
 	}
 
