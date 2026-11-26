@@ -322,7 +322,7 @@ var _ = Describe("Disruption", func() {
 				},
 			}), notBeforeTime),
 		Entry(
-			"should return inject.notBefore if set",
+			"should not inject before the createPods offset when inject.notBefore is earlier",
 			builderstest.NewDisruptionBuilder().WithDisruptionTriggers(&DisruptionTriggers{
 				Inject: DisruptionTrigger{
 					NotBefore: metav1.NewTime(notBeforeTime),
@@ -332,7 +332,7 @@ var _ = Describe("Disruption", func() {
 					NotBefore: metav1.Time{},
 					Offset:    "2m",
 				},
-			}), notBeforeTime),
+			}), defaultCreationTimestamp.Add(2*time.Minute)),
 		Entry(
 			"should return a time after creationTimestamp if inject.offset is set",
 			builderstest.NewDisruptionBuilder().WithDisruptionTriggers(&DisruptionTriggers{

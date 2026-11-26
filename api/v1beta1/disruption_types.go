@@ -335,8 +335,9 @@ func (d *Disruption) TimeToInject() time.Time {
 		return d.CreationTimestamp.Time
 	}
 
+	noPodsBefore := d.TimeToCreatePods()
 	if triggers.Inject.IsZero() {
-		return d.TimeToCreatePods()
+		return noPodsBefore
 	}
 
 	var notInjectedBefore time.Time
@@ -348,11 +349,11 @@ func (d *Disruption) TimeToInject() time.Time {
 
 	if triggers.Inject.Offset.Duration() > 0 {
 		// We measure the offset from the latter of two timestamps: creationTimestamp of the disruption, and spec.triggers.createPods
-		notInjectedBefore = d.TimeToCreatePods().Add(triggers.Inject.Offset.Duration())
+		notInjectedBefore = noPodsBefore.Add(triggers.Inject.Offset.Duration())
 	}
 
-	if d.CreationTimestamp.After(notInjectedBefore) {
-		return d.CreationTimestamp.Time
+	if noPodsBefore.After(notInjectedBefore) {
+		return noPodsBefore
 	}
 
 	return notInjectedBefore
