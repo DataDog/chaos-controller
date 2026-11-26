@@ -503,6 +503,7 @@ func (r *DisruptionReconciler) updateInjectionStatus(ctx context.Context, instan
 	r.log.Debugw("checking if injection status needs to be updated", tagutil.InjectionStatusKey, instance.Status.InjectionStatus)
 
 	readyPodsCount := 0
+	fullyInjectedTargetsCount := 0
 
 	// get chaos pods
 	var chaosPods []corev1.Pod
@@ -553,7 +554,7 @@ func (r *DisruptionReconciler) updateInjectionStatus(ctx context.Context, instan
 		// consider the disruption "partially injected" if we found at least one pod
 		status = chaostypes.DisruptionInjectionStatusPartiallyInjected
 
-		injectorTargetsCount := map[string]struct{}{}
+		readyKindsByTarget := map[string]map[chaostypes.DisruptionKindName]struct{}{}
 
 		// check the chaos pods conditions looking for the ready condition
 		for _, chaosPod := range chaosPods {
@@ -563,7 +564,12 @@ func (r *DisruptionReconciler) updateInjectionStatus(ctx context.Context, instan
 			for _, cond := range chaosPod.Status.Conditions {
 				if cond.Type == corev1.PodReady {
 					if cond.Status == corev1.ConditionTrue {
-						injectorTargetsCount[chaosPod.Labels[chaostypes.TargetLabel]] = struct{}{}
+						target := chaosPod.Labels[chaostypes.TargetLabel]
+						if readyKindsByTarget[target] == nil {
+							readyKindsByTarget[target] = make(map[chaostypes.DisruptionKindName]struct{})
+						}
+
+						readyKindsByTarget[target][chaostypes.DisruptionKindName(chaosPod.Labels[chaostypes.DisruptionKindLabel])] = struct{}{}
 						podReady = true
 						readyPodsCount++
 
@@ -580,11 +586,17 @@ func (r *DisruptionReconciler) updateInjectionStatus(ctx context.Context, instan
 			}
 		}
 
+		for _, readyKinds := range readyKindsByTarget {
+			if len(readyKinds) == instance.Spec.DisruptionCount() {
+				fullyInjectedTargetsCount++
+			}
+		}
+
 		// consider the disruption as fully injected when all pods are ready and match desired targets count
-		if instance.Status.DesiredTargetsCount == len(injectorTargetsCount) && !instance.Status.TargetInjections.NotFullyInjected() {
+		if instance.Status.DesiredTargetsCount == fullyInjectedTargetsCount && !instance.Status.TargetInjections.NotFullyInjected() {
 			status = chaostypes.DisruptionInjectionStatusInjected
 		} else {
-			r.log.Debugf("not injected yet because not all pods are ready %d/%d", len(injectorTargetsCount), instance.Status.DesiredTargetsCount)
+			r.log.Debugf("not injected yet because not all pods are ready %d/%d", fullyInjectedTargetsCount, instance.Status.DesiredTargetsCount)
 		}
 	}
 
@@ -592,14 +604,8 @@ func (r *DisruptionReconciler) updateInjectionStatus(ctx context.Context, instan
 	r.log.Infof("from status %s to %s, terminationStatus is %d, readyPodCount is %d, desired targets count is %d", instance.Status.InjectionStatus, status, terminationStatus, readyPodsCount, instance.Status.DesiredTargetsCount)
 	instance.Status.InjectionStatus = status
 
-	// we divide by the number of active disruption types because we create one pod per target per disruption
-	// ex: we would have 10 pods if we target 50% of all targets with 2 disruption types like network and cpu pressure
-	// we also consider a target is not fully injected if not all disruptions are injected in it
-	if instance.Spec.DisruptionCount() == 0 {
-		instance.Status.InjectedTargetsCount = 0
-	} else {
-		instance.Status.InjectedTargetsCount = int(math.Floor(float64(readyPodsCount) / float64(instance.Spec.DisruptionCount())))
-	}
+	// Count targets whose injectors are currently ready for every disruption kind.
+	instance.Status.InjectedTargetsCount = fullyInjectedTargetsCount
 
 	if err := r.Client.Status().Update(ctx, instance); err != nil {
 		return fmt.Errorf("unable to update disruption injection status: %w", err)
