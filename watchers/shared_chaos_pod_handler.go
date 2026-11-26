@@ -8,6 +8,7 @@ package watchers
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
 	"github.com/DataDog/chaos-controller/o11y/tags"
@@ -127,6 +128,36 @@ func (h *SharedChaosPodHandler) sendEvent(pod *corev1.Pod, disruptionName, disru
 			tags.DisruptionNamespaceKey, disruptionNamespace,
 		)
 
+		return
+	}
+
+	// A recreated disruption can share its name with an orphaned injector's parent.
+	// The injector arguments already persist the original disruption UID.
+	var podDisruptionUID string
+
+	for _, container := range pod.Spec.Containers {
+		if container.Name != "injector" {
+			continue
+		}
+
+		for i := len(container.Args) - 1; i >= 0; i-- {
+			arg := container.Args[i]
+			if arg == "--log-context-disruption-uid" && i+1 < len(container.Args) {
+				podDisruptionUID = container.Args[i+1]
+				break
+			}
+
+			if uid, found := strings.CutPrefix(arg, "--log-context-disruption-uid="); found {
+				podDisruptionUID = uid
+				break
+			}
+		}
+
+		break
+	}
+
+	// Keep handling legacy pods that do not carry a UID.
+	if podDisruptionUID != "" && podDisruptionUID != string(disruption.UID) {
 		return
 	}
 
