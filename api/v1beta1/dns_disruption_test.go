@@ -124,6 +124,9 @@ var _ = Describe("DNSDisruptionSpec", func() {
 				Entry("MX record", "example.com", "MX", "10 mail1.example.com,20 mail2.example.com", uint32(3600)),
 				Entry("TXT record", "example.com", "TXT", "v=spf1 include:_spf.example.com ~all", uint32(300)),
 				Entry("SRV record", "_sip._tcp.example.com", "SRV", "10 60 5060 sipserver.example.com", uint32(600)),
+				Entry("MX record with the maximum priority", "example.com", "MX", "65535 mail.example.com", uint32(60)),
+				Entry("MX record with an explicitly signed priority", "example.com", "MX", "+10 mail.example.com", uint32(60)),
+				Entry("SRV record with maximum numeric fields", "_sip._tcp.example.com", "SRV", "65535 65535 65535 sipserver.example.com", uint32(60)),
 			)
 
 			It("should validate multiple records of different types", func() {
@@ -377,6 +380,14 @@ var _ = Describe("DNSDisruptionSpec", func() {
 				Entry("invalid SRV record format - non-numeric priority", "SRV", "abc 60 5060 server.example.com", "SRV priority must be a number"),
 				Entry("invalid SRV record format - non-numeric weight", "SRV", "10 abc 5060 server.example.com", "SRV weight must be a number"),
 				Entry("invalid SRV record format - non-numeric port", "SRV", "10 60 abc server.example.com", "SRV port must be a number"),
+				Entry("invalid MX priority - exceeding the unsigned 16-bit range", "MX", "70000 mail.example.com", "MX priority must be between 0 and 65535"),
+				Entry("invalid MX priority - negative", "MX", "-1 mail.example.com", "MX priority must be between 0 and 65535"),
+				Entry("invalid SRV priority - exceeding the unsigned 16-bit range", "SRV", "70000 60 5060 server.example.com", "SRV priority must be between 0 and 65535"),
+				Entry("invalid SRV priority - negative", "SRV", "-1 60 5060 server.example.com", "SRV priority must be between 0 and 65535"),
+				Entry("invalid SRV weight - exceeding the unsigned 16-bit range", "SRV", "10 70000 5060 server.example.com", "SRV weight must be between 0 and 65535"),
+				Entry("invalid SRV weight - negative", "SRV", "10 -1 5060 server.example.com", "SRV weight must be between 0 and 65535"),
+				Entry("invalid SRV port - exceeding the unsigned 16-bit range", "SRV", "10 60 70000 server.example.com", "SRV port must be between 0 and 65535"),
+				Entry("invalid SRV port - negative", "SRV", "10 60 -1 server.example.com", "SRV port must be between 0 and 65535"),
 			)
 
 			DescribeTable("should return error for invalid port and protocol",
