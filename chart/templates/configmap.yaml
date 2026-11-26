@@ -125,7 +125,7 @@ data:
             {{- if .effect }}
             effect: {{ .effect | quote }}
             {{- end }}
-            {{- if .tolerationSeconds }}
+            {{- if ne .tolerationSeconds nil }}
             tolerationSeconds: {{ .tolerationSeconds }}
             {{- end }}
         {{- end }}
