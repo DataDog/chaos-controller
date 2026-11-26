@@ -570,6 +570,10 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 			log.Infow("an exit signal has been received", tags.SignalKey, sig.String())
 
 			return
+		case <-time.After(getDuration(deadline)):
+			log.Infow("duration has expired before injection")
+
+			return
 		case <-time.After(time.Until(disruptionArgs.NotInjectedBefore)):
 			break
 		}
@@ -579,6 +583,10 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 		log.Infow("waiting for initialDelay to pass", tags.InitialDelayKey, disruptionArgs.PulseInitialDelay)
 
 		select {
+		case <-time.After(getDuration(deadline)):
+			log.Infow("duration has expired before injection")
+
+			return
 		case <-time.After(disruptionArgs.PulseInitialDelay):
 			break
 		case sig := <-signals:
@@ -586,6 +594,12 @@ func injectAndWait(cmd *cobra.Command, args []string) {
 
 			return
 		}
+	}
+
+	if !time.Now().Before(deadline) {
+		log.Infow("duration has expired before injection")
+
+		return
 	}
 
 	processManager := process.NewManager(disruptionArgs.DryRun)

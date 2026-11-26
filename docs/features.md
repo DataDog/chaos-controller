@@ -25,6 +25,8 @@ all chaos pods automatically terminate and the disruption stops injecting new on
 golang's time.Duration's [string format, e.g., "45s", "15m30s", "4h30m".](https://pkg.go.dev/time#ParseDuration) This time is measured from the moment
 that the Disruption resource is created, not from when the injection of the actual failure occurs. It functions as a strict maximum for the lifetime of the Disruption, not a guarantee of how long the failure will persist for.
 
+An injector that reaches its deadline before its first injection skips injection. Waiting for a synchronized start or a pulse's initial delay does not extend that deadline.
+
 If a `duration` is not specified, then a disruption will receive the default duration, which is configured at the controller level by setting
 `controller.defaultDuration` in the controller's config map, and this value defaults to 1 hour.
 
