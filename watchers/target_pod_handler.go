@@ -220,11 +220,8 @@ func (d DisruptionTargetHandler) getEventsFromCurrentDisruption(kind string, obj
 	if kind != v1beta1.DisruptionKind {
 		for i, event := range eventList.Items {
 			if event.Type == corev1.EventTypeWarning && event.Reason == string(v1beta1.EventDisrupted) || event.LastTimestamp.Time.Before(disruptionStartTime) {
-				if i == 0 {
-					return []corev1.Event{}, nil
-				}
-
-				return eventList.Items[:(i - 1)], nil
+				// the current event is the boundary; every event before it happened during the disruption
+				return eventList.Items[:i], nil
 			}
 		}
 	}
