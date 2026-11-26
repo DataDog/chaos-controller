@@ -185,6 +185,9 @@ func (n *Notifier) Notify(ctx context.Context, obj client.Object, event corev1.E
 }
 
 // splitHeaders parses the headers from a slice of strings in the format key:value.
+// Following the field line syntax of RFC 9110 (name ":" OWS value OWS), the value is
+// everything after the first colon, optional whitespace around it is trimmed, and
+// the name must be a valid token.
 // It returns a map of headers or an error if the headers are not in the correct format.
 func splitHeaders(headers []string) (map[string]string, error) {
 	parsedHeaders := make(map[string]string)
@@ -194,18 +197,38 @@ func splitHeaders(headers []string) (map[string]string, error) {
 			continue
 		}
 
-		splittedHeader := strings.Split(header, ":")
-
-		if len(splittedHeader) == 2 {
-			key := splittedHeader[0]
-			val := splittedHeader[1]
-			parsedHeaders[http.CanonicalHeaderKey(key)] = val
-		} else {
+		key, val, found := strings.Cut(header, ":")
+		if !found || !isValidHeaderFieldName(key) {
 			return nil, fmt.Errorf("invalid headers: Must be in the format: key:value, found %s", header)
 		}
+
+		parsedHeaders[http.CanonicalHeaderKey(key)] = strings.Trim(val, " \t") // OWS is SP or HTAB
 	}
 
 	return parsedHeaders, nil
+}
+
+// isValidHeaderFieldName reports whether the given string is a valid HTTP field name,
+// i.e. a token as defined by RFC 9110 (tchar: visible ASCII characters excluding
+// separators such as spaces, colons or control characters).
+func isValidHeaderFieldName(name string) bool {
+	if name == "" {
+		return false
+	}
+
+	for i := 0; i < len(name); i++ {
+		c := name[i]
+		isTchar := (c >= 'a' && c <= 'z') ||
+			(c >= 'A' && c <= 'Z') ||
+			(c >= '0' && c <= '9') ||
+			strings.IndexByte("!#$%&'*+-.^_`|~", c) >= 0
+
+		if !isTchar {
+			return false
+		}
+	}
+
+	return true
 }
 
 // getUserDetails retrieves the user details associated with a given disruption.
