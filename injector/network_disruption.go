@@ -7,6 +7,7 @@ package injector
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -270,7 +271,7 @@ func (i *networkDisruptionInjector) UpdateConfig(config Config) {
 }
 
 // Clean removes all the injected disruption in the given container
-func (i *networkDisruptionInjector) Clean() error {
+func (i *networkDisruptionInjector) Clean() (retErr error) {
 	// stop all background watchers now
 	if i.serviceWatcherCancel != nil {
 		i.serviceWatcherCancel()
@@ -286,6 +287,11 @@ func (i *networkDisruptionInjector) Clean() error {
 	if err := i.config.Netns.Enter(); err != nil {
 		return fmt.Errorf("unable to enter the given container network namespace: %w", err)
 	}
+	defer func() {
+		if err := i.config.Netns.Exit(); err != nil {
+			retErr = errors.Join(retErr, fmt.Errorf("unable to exit the given container network namespace: %w", err))
+		}
+	}()
 
 	if err := i.clearOperations(); err != nil {
 		return fmt.Errorf("error clearing tc operations: %w", err)
@@ -294,11 +300,6 @@ func (i *networkDisruptionInjector) Clean() error {
 	// remove the conntrack reference to disable conntrack in the network namespace
 	if err := i.config.IPTables.Clear(); err != nil {
 		return fmt.Errorf("error cleaning iptables rules and chain: %w", err)
-	}
-
-	// exit target network namespace
-	if err := i.config.Netns.Exit(); err != nil {
-		return fmt.Errorf("unable to exit the given container network namespace: %w", err)
 	}
 
 	// remove the net_cls classid used for cgroup v1
