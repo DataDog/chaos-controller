@@ -489,7 +489,18 @@ func (d *Disruption) initialSafetyNets(ctx context.Context) ([]string, error) {
 		}
 
 		if d.Spec.Network != nil {
-			if caught := safetyNetMissingNetworkFilters(d); caught {
+			// Check the same effective host filters that will be used during injection.
+			networkDisruption := d
+			if d.Spec.Network.Cloud != nil && (d.Spec.Unsafemode == nil || !d.Spec.Unsafemode.DisableNeitherHostNorPort) {
+				networkSpec := d.Spec.Network.DeepCopy()
+				if err := networkSpec.UpdateHostsOnCloudDisruption(ctx, cloudServicesProvidersManager); err != nil {
+					return nil, fmt.Errorf("error resolving cloud filters for network safety net: %w", err)
+				}
+
+				networkDisruption = &Disruption{Spec: DisruptionSpec{Network: networkSpec, Unsafemode: d.Spec.Unsafemode}}
+			}
+
+			if caught := safetyNetMissingNetworkFilters(networkDisruption); caught {
 				logger.Debugw("the specified disruption either contains no Host or Service filters. This will result in all network traffic being affected.", tagutil.SafetyNetCatchKey, "Network")
 
 				responses = append(responses, "the specified disruption either contains no Host or Service filters. This will result in all network traffic being affected.")
