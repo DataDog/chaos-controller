@@ -38,7 +38,7 @@ func TestCleanupReportsOnlyActualOutcomes(t *testing.T) {
 			healthy := injector.NewInjectorMock(t)
 			healthy.EXPECT().Clean().Return(nil).Once()
 			healthy.EXPECT().GetDisruptionKind().Return(chaostypes.DisruptionKindName(chaostypes.DisruptionKindNetworkDisruption)).Once()
-			injectors = []injector.Injector{failed, healthy}
+			injectors = []targetInjector{{config: 0, Injector: failed}, {config: 1, Injector: healthy}}
 
 			if clean(chaostypes.DisruptionKindNetworkDisruption, true, reinjection) {
 				t.Fatal("cleanup should report the failed injector")
