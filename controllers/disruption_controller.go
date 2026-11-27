@@ -21,9 +21,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"math/rand"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -84,7 +86,19 @@ type DisruptionReconciler struct {
 	FinalizerDeletionDelay     time.Duration
 }
 
-const TargetsCountLogLimit = 50
+const (
+	TargetsCountLogLimit        = 50
+	chaosPodRunNumberAnnotation = chaostypes.GroupName + "/run-number"
+)
+
+func chaosPodRunNumber(chaosPod corev1.Pod) int {
+	runNumber, err := strconv.Atoi(chaosPod.Annotations[chaosPodRunNumberAnnotation])
+	if err != nil {
+		return 0
+	}
+
+	return runNumber
+}
 
 func (r *DisruptionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
 	instance := &chaosv1beta1.Disruption{}
@@ -643,7 +657,13 @@ func (r *DisruptionReconciler) startInjection(ctx context.Context, instance *cha
 		chaosPodsMap[targetName] = make(map[string]bool)
 	}
 
+	hasPendingRound := false
+
 	for _, chaosPod := range chaosPods {
+		if chaosPodRunNumber(chaosPod) > instance.Status.RunCount {
+			hasPendingRound = true
+		}
+
 		if !instance.Status.HasTarget(chaosPod.Labels[chaostypes.TargetLabel]) {
 			r.deleteChaosPod(ctx, instance, chaosPod)
 		} else {
@@ -713,9 +733,11 @@ func (r *DisruptionReconciler) startInjection(ctx context.Context, instance *cha
 
 	// Increment run count once after the injection round succeeds so transient errors on a later
 	// target do not consume the run before the retry finishes injecting the remaining targets.
+	// Checking hasPendingRound finalizes accounting on retry even if the failed target disappeared
+	// or a prior status update failed after chaos pods were already created.
 	// Tradeoff: a target whose chaos pod disappeared between the failed pass and the retry gets
 	// injected again when the retry completes the round.
-	if newPodsCreated {
+	if newPodsCreated || hasPendingRound {
 		// Update the status in the cluster using a deep copy to preserve in-memory spec changes
 		// (such as cloud disruption hosts populated by UpdateHostsOnCloudDisruption)
 		statusCopy := instance.DeepCopy()
@@ -814,6 +836,16 @@ func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *ch
 		case 0:
 			chaosPodArgs := r.ChaosPodService.GetPodInjectorArgs(ctx, targetChaosPod)
 			r.log.Infow("creating chaos pod", tagutil.TargetNameKey, target, tagutil.ChaosPodArgsKey, chaosPodArgs)
+
+			// Tag the chaos pod with the 1-based run number being executed so retries can
+			// finalize RunCount even if another target disappears or the status update fails.
+			annotations := maps.Clone(targetChaosPod.Annotations)
+			if annotations == nil {
+				annotations = make(map[string]string, 1)
+			}
+
+			annotations[chaosPodRunNumberAnnotation] = strconv.Itoa(instance.Status.RunCount + 1)
+			targetChaosPod.Annotations = annotations
 
 			// create the pod
 			if err = r.ChaosPodService.CreatePod(ctx, &targetChaosPod); err != nil {
