@@ -257,12 +257,48 @@ func (s *cloudServicesProvidersManager) pullIPRangesPerCloudProvider(ctx context
 		}
 	}
 
-	provider.IPRangeInfo, err = provider.CloudProviderIPRangeManager.ConvertToGenericIPRanges(unparsedIPRange)
-	if err == nil && provider.IPRangeInfo != nil {
-		logger.Debugw("successfully parsed new IP ranges", tags.CloudProviderNameKey, cloudProviderName, tags.CloudProviderVersionKey, provider.IPRangeInfo.Version)
+	ipRangeInfo, err := provider.CloudProviderIPRangeManager.ConvertToGenericIPRanges(unparsedIPRange)
+	if err != nil {
+		return err
 	}
 
-	for _, ipRangeList := range provider.Conf.ExtraIPRanges {
+	if ipRangeInfo == nil {
+		return fmt.Errorf("cloud provider %s returned empty IP range info", cloudProviderName)
+	}
+
+	extraRanges, err := parseExtraIPRanges(provider.Conf.ExtraIPRanges)
+	if err != nil {
+		return err
+	}
+
+	if ipRangeInfo.IPRanges == nil {
+		ipRangeInfo.IPRanges = make(map[string][]string, len(extraRanges))
+	}
+
+	for _, extra := range extraRanges {
+		ipRangeInfo.IPRanges[extra.service] = append(ipRangeInfo.IPRanges[extra.service], extra.ipRanges...)
+	}
+
+	provider.IPRangeInfo = ipRangeInfo
+
+	logger.Debugw("successfully parsed new IP ranges", tags.CloudProviderNameKey, cloudProviderName, tags.CloudProviderVersionKey, provider.IPRangeInfo.Version)
+
+	return nil
+}
+
+type extraIPRangeEntry struct {
+	service  string
+	ipRanges []string
+}
+
+func parseExtraIPRanges(entries []string) ([]extraIPRangeEntry, error) {
+	if len(entries) == 0 {
+		return nil, nil
+	}
+
+	parsed := make([]extraIPRangeEntry, 0, len(entries))
+
+	for _, ipRangeList := range entries {
 		// Viper "normalizes" all map keys by casting them all to lower case: https://github.com/spf13/viper/issues/373
 		// Because the services for each cloud provider use different case methods, e.g., "Google" vs "S3" vs "synthetics",
 		// there's no easy way to undo this lowercasing. So we've stored the extra ranges in the following syntax:
@@ -270,20 +306,23 @@ func (s *cloudServicesProvidersManager) pullIPRangesPerCloudProvider(ctx context
 		// all extra ranges
 		service, ranges, found := strings.Cut(ipRangeList, ";")
 		if !found || strings.TrimSpace(service) == "" {
-			return fmt.Errorf("invalid extra IP range entry %q: expected service;iprange[;iprange...]", ipRangeList)
+			return nil, fmt.Errorf("invalid extra IP range entry %q: expected service;iprange[;iprange...]", ipRangeList)
 		}
 
 		splitIPRange := strings.Split(ranges, ";")
 		for _, ipRange := range splitIPRange {
 			if strings.TrimSpace(ipRange) == "" {
-				return fmt.Errorf("invalid extra IP range entry %q: IP ranges must not be empty", ipRangeList)
+				return nil, fmt.Errorf("invalid extra IP range entry %q: IP ranges must not be empty", ipRangeList)
 			}
 		}
 
-		provider.IPRangeInfo.IPRanges[service] = append(provider.IPRangeInfo.IPRanges[service], splitIPRange...)
+		parsed = append(parsed, extraIPRangeEntry{
+			service:  service,
+			ipRanges: splitIPRange,
+		})
 	}
 
-	return err
+	return parsed, nil
 }
 
 // requestIPRangesFromProvider launches a HTTP GET request to pull the ip range json file from a url

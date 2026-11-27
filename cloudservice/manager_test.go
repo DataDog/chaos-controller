@@ -8,9 +8,12 @@ package cloudservice
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"reflect"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -363,5 +366,241 @@ var _ = Describe("New function", func() {
 				},
 			})).To(BeTrue())
 		})
+	})
+})
+
+var _ = Describe("Pulling IP ranges on parse error", func() {
+	It("returns an error without panicking when New receives an unparseable 200 body with GCP extra IP ranges", func(ctx SpecContext) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = fmt.Fprint(w, `garbage{`)
+		}))
+		DeferCleanup(server.Close)
+
+		logger, err := log.NewZapLogger()
+		Expect(err).ToNot(HaveOccurred())
+		ctxWithLogger := log.WithLogger(ctx, logger)
+
+		var (
+			manager CloudServicesProvidersManager
+			newErr  error
+		)
+		Expect(func() {
+			manager, newErr = New(ctxWithLogger, types.CloudProviderConfigs{
+				PullInterval: time.Minute,
+				GCP: types.CloudProviderConfig{
+					Enabled:       true,
+					IPRangesURL:   server.URL,
+					ExtraIPRanges: []string{"Google;10.9.0.0/16"},
+				},
+			}, server.Client())
+		}).ToNot(Panic())
+
+		Expect(newErr).To(HaveOccurred())
+		Expect(manager).To(BeNil())
+	})
+
+	It("retains previously pulled ranges including extras when a refresh returns an unparseable 200 body", func(ctx SpecContext) {
+		var corrupt atomic.Bool
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			if corrupt.Load() {
+				_, _ = fmt.Fprint(w, `garbage{`)
+				return
+			}
+			_, _ = fmt.Fprint(w, `{"syncToken":"1","prefixes":[{"ipv4Prefix":"192.0.2.0/24"}]}`)
+		}))
+		DeferCleanup(server.Close)
+
+		logger, err := log.NewZapLogger()
+		Expect(err).ToNot(HaveOccurred())
+		ctxWithLogger := log.WithLogger(ctx, logger)
+
+		manager, err := New(ctxWithLogger, types.CloudProviderConfigs{
+			PullInterval: time.Minute,
+			GCP: types.CloudProviderConfig{
+				Enabled:       true,
+				IPRangesURL:   server.URL,
+				ExtraIPRanges: []string{"Google;10.9.0.0/16"},
+			},
+		}, server.Client())
+		Expect(err).ToNot(HaveOccurred())
+
+		corrupt.Store(true)
+		refreshErr := manager.PullIPRanges(ctxWithLogger)
+		Expect(refreshErr).To(HaveOccurred())
+
+		ranges, err := manager.GetServicesIPRanges(ctxWithLogger, types.CloudProviderGCP, []string{gcp.GoogleCloudService})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(ranges[gcp.GoogleCloudService]).To(Equal([]string{"192.0.2.0/24", "10.9.0.0/16"}))
+	})
+
+	It("retains previously pulled ranges including extras when ConvertToGenericIPRanges fails on refresh", func(ctx SpecContext) {
+		var corrupt atomic.Bool
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			if corrupt.Load() {
+				_, _ = fmt.Fprint(w, `garbage{`)
+				return
+			}
+			_, _ = fmt.Fprint(w, `{"syncToken":"1","prefixes":[{"ipv4Prefix":"192.0.2.0/24"}]}`)
+		}))
+		DeferCleanup(server.Close)
+
+		logger, err := log.NewZapLogger()
+		Expect(err).ToNot(HaveOccurred())
+		ctxWithLogger := log.WithLogger(ctx, logger)
+
+		manager, err := New(ctxWithLogger, types.CloudProviderConfigs{
+			PullInterval: time.Minute,
+			GCP: types.CloudProviderConfig{
+				Enabled:       true,
+				IPRangesURL:   server.URL,
+				ExtraIPRanges: []string{"Google;10.9.0.0/16"},
+			},
+		}, server.Client())
+		Expect(err).ToNot(HaveOccurred())
+
+		converterMock := NewCloudProviderIPRangeManagerMock(GinkgoT())
+		converterMock.EXPECT().IsNewVersion([]byte(`garbage{`), "1").Return(true, nil)
+		converterMock.EXPECT().ConvertToGenericIPRanges([]byte(`garbage{`)).Return(nil, errors.New("parse error"))
+		manager.GetProviderByName(types.CloudProviderGCP).CloudProviderIPRangeManager = converterMock
+
+		corrupt.Store(true)
+		var refreshErr error
+		Expect(func() {
+			refreshErr = manager.PullIPRanges(ctxWithLogger)
+		}).ToNot(Panic())
+		Expect(refreshErr).To(HaveOccurred())
+		Expect(refreshErr.Error()).To(ContainSubstring("parse error"))
+
+		ranges, err := manager.GetServicesIPRanges(ctxWithLogger, types.CloudProviderGCP, []string{gcp.GoogleCloudService})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(ranges[gcp.GoogleCloudService]).To(Equal([]string{"192.0.2.0/24", "10.9.0.0/16"}))
+	})
+
+	It("retains previously pulled ranges without extras when ConvertToGenericIPRanges fails on refresh", func(ctx SpecContext) {
+		var corrupt atomic.Bool
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			if corrupt.Load() {
+				_, _ = fmt.Fprint(w, `garbage{`)
+				return
+			}
+			_, _ = fmt.Fprint(w, `{"syncToken":"1","prefixes":[{"ipv4Prefix":"192.0.2.0/24"}]}`)
+		}))
+		DeferCleanup(server.Close)
+
+		logger, err := log.NewZapLogger()
+		Expect(err).ToNot(HaveOccurred())
+		ctxWithLogger := log.WithLogger(ctx, logger)
+
+		manager, err := New(ctxWithLogger, types.CloudProviderConfigs{
+			PullInterval: time.Minute,
+			GCP: types.CloudProviderConfig{
+				Enabled:     true,
+				IPRangesURL: server.URL,
+			},
+		}, server.Client())
+		Expect(err).ToNot(HaveOccurred())
+
+		converterMock := NewCloudProviderIPRangeManagerMock(GinkgoT())
+		converterMock.EXPECT().IsNewVersion([]byte(`garbage{`), "1").Return(true, nil)
+		converterMock.EXPECT().ConvertToGenericIPRanges([]byte(`garbage{`)).Return(nil, errors.New("parse error"))
+		manager.GetProviderByName(types.CloudProviderGCP).CloudProviderIPRangeManager = converterMock
+
+		corrupt.Store(true)
+		refreshErr := manager.PullIPRanges(ctxWithLogger)
+		Expect(refreshErr).To(HaveOccurred())
+		Expect(refreshErr.Error()).To(ContainSubstring("parse error"))
+
+		var (
+			ranges map[string][]string
+			getErr error
+		)
+		Expect(func() {
+			ranges, getErr = manager.GetServicesIPRanges(ctxWithLogger, types.CloudProviderGCP, []string{gcp.GoogleCloudService})
+		}).ToNot(Panic())
+		Expect(getErr).ToNot(HaveOccurred())
+		Expect(ranges[gcp.GoogleCloudService]).To(Equal([]string{"192.0.2.0/24"}))
+	})
+
+	It("handles a converter returning a non-nil info with a nil IPRanges map", func(ctx SpecContext) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = fmt.Fprint(w, `{"syncToken":"1","prefixes":[{"ipv4Prefix":"192.0.2.0/24"}]}`)
+		}))
+		DeferCleanup(server.Close)
+
+		logger, err := log.NewZapLogger()
+		Expect(err).ToNot(HaveOccurred())
+		ctxWithLogger := log.WithLogger(ctx, logger)
+
+		manager, err := New(ctxWithLogger, types.CloudProviderConfigs{
+			PullInterval: time.Minute,
+			GCP: types.CloudProviderConfig{
+				Enabled:       true,
+				IPRangesURL:   server.URL,
+				ExtraIPRanges: []string{"Google;10.9.0.0/16"},
+			},
+		}, server.Client())
+		Expect(err).ToNot(HaveOccurred())
+
+		converterMock := NewCloudProviderIPRangeManagerMock(GinkgoT())
+		converterMock.EXPECT().IsNewVersion(mock.Anything, "1").Return(true, nil)
+		converterMock.EXPECT().ConvertToGenericIPRanges(mock.Anything).Return(&types.CloudProviderIPRangeInfo{
+			Version:     "2",
+			ServiceList: []string{gcp.GoogleCloudService},
+			IPRanges:    nil,
+		}, nil)
+		manager.GetProviderByName(types.CloudProviderGCP).CloudProviderIPRangeManager = converterMock
+
+		var refreshErr error
+		Expect(func() {
+			refreshErr = manager.PullIPRanges(ctxWithLogger)
+		}).ToNot(Panic())
+		Expect(refreshErr).ToNot(HaveOccurred())
+
+		ranges, err := manager.GetServicesIPRanges(ctxWithLogger, types.CloudProviderGCP, []string{gcp.GoogleCloudService})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(ranges[gcp.GoogleCloudService]).To(Equal([]string{"10.9.0.0/16"}))
+	})
+
+	It("retains previously pulled ranges without partial updates when an extra IP range entry is invalid", func(ctx SpecContext) {
+		var versionTwo atomic.Bool
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			if versionTwo.Load() {
+				_, _ = fmt.Fprint(w, `{"syncToken":"2","prefixes":[{"ipv4Prefix":"198.51.100.0/24"}]}`)
+				return
+			}
+			_, _ = fmt.Fprint(w, `{"syncToken":"1","prefixes":[{"ipv4Prefix":"192.0.2.0/24"}]}`)
+		}))
+		DeferCleanup(server.Close)
+
+		logger, err := log.NewZapLogger()
+		Expect(err).ToNot(HaveOccurred())
+		ctxWithLogger := log.WithLogger(ctx, logger)
+
+		manager, err := New(ctxWithLogger, types.CloudProviderConfigs{
+			PullInterval: time.Minute,
+			GCP: types.CloudProviderConfig{
+				Enabled:       true,
+				IPRangesURL:   server.URL,
+				ExtraIPRanges: []string{"Google;10.9.0.0/16"},
+			},
+		}, server.Client())
+		Expect(err).ToNot(HaveOccurred())
+
+		manager.GetProviderByName(types.CloudProviderGCP).Conf.ExtraIPRanges = []string{"Google;10.10.0.0/16", "invalid-entry"}
+		versionTwo.Store(true)
+
+		refreshErr := manager.PullIPRanges(ctxWithLogger)
+		Expect(refreshErr).To(HaveOccurred())
+		Expect(refreshErr.Error()).To(ContainSubstring(`invalid extra IP range entry "invalid-entry": expected service;iprange[;iprange...]`))
+
+		ranges, err := manager.GetServicesIPRanges(ctxWithLogger, types.CloudProviderGCP, []string{gcp.GoogleCloudService})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(ranges[gcp.GoogleCloudService]).To(Equal([]string{"192.0.2.0/24", "10.9.0.0/16"}))
 	})
 })
