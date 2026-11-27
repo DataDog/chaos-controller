@@ -73,7 +73,7 @@ func TestInjectAndWaitDeadline(t *testing.T) {
 			parentPID = 0
 			deadline = time.Now().Add(test.expiresAfter)
 			probe := &deadlineProbe{}
-			injectors = []injector.Injector{probe}
+			injectors = []targetInjector{{config: 0, Injector: probe}}
 
 			done := make(chan struct{})
 			go func() {

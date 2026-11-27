@@ -168,6 +168,9 @@ func fakeEventsClient(events ...client.Object) client.Reader {
 		WithIndex(&corev1.Event{}, "involvedObject.name", func(o client.Object) []string {
 			return []string{o.(*corev1.Event).InvolvedObject.Name}
 		}).
+		WithIndex(&corev1.Event{}, "involvedObject.uid", func(o client.Object) []string {
+			return []string{string(o.(*corev1.Event).InvolvedObject.UID)}
+		}).
 		WithObjects(events...).Build()
 }
 

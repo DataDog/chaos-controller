@@ -148,7 +148,7 @@ func TestRemoveServiceFiltersInList(t *testing.T) {
 				port:     port,
 				protocol: v1.ProtocolTCP,
 			},
-			priority: priority,
+			priorities: []uint32{priority},
 		}
 	}
 
