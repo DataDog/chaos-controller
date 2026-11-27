@@ -48,6 +48,12 @@ data:
         aws:
           enabled: {{ .Values.controller.cloudProviders.aws.enabled }}
           ipRangesURL: {{ .Values.controller.cloudProviders.aws.ipRangesURL }}
+        {{- if .Values.controller.cloudProviders.aws.extraIpRanges }}
+          extraIpRanges:
+          {{- range $index, $val := .Values.controller.cloudProviders.aws.extraIpRanges }}
+            - {{ $val | quote }}
+          {{- end }}
+        {{- end }}
         gcp:
           enabled: {{ .Values.controller.cloudProviders.gcp.enabled }}
           ipRangesURL: {{ .Values.controller.cloudProviders.gcp.ipRangesURL }}
@@ -60,6 +66,12 @@ data:
         datadog:
           enabled: {{ .Values.controller.cloudProviders.datadog.enabled }}
           ipRangesURL: {{ .Values.controller.cloudProviders.datadog.ipRangesURL }}
+        {{- if .Values.controller.cloudProviders.datadog.extraIpRanges }}
+          extraIpRanges:
+          {{- range $index, $val := .Values.controller.cloudProviders.datadog.extraIpRanges }}
+            - {{ $val | quote }}
+          {{- end }}
+        {{- end }}
       deleteOnly: {{ .Values.controller.deleteOnly }}
       defaultDuration: {{ .Values.controller.defaultDuration }}
       defaultCronDelayedStartTolerance: {{ .Values.controller.defaultCronDelayedStartTolerance }}

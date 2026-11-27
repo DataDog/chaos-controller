@@ -103,17 +103,13 @@ func New(ctx context.Context, config types.CloudProviderConfigs, httpClientMock 
 		switch cp {
 		case types.CloudProviderAWS:
 			provider.CloudProviderIPRangeManager = aws.New()
-			provider.Conf.Enabled = config.AWS.Enabled
-			provider.Conf.IPRangesURL = config.AWS.IPRangesURL
+			provider.Conf = config.AWS
 		case types.CloudProviderGCP:
 			provider.CloudProviderIPRangeManager = gcp.New()
-			provider.Conf.Enabled = config.GCP.Enabled
-			provider.Conf.IPRangesURL = config.GCP.IPRangesURL
-			provider.Conf.ExtraIPRanges = config.GCP.ExtraIPRanges
+			provider.Conf = config.GCP
 		case types.CloudProviderDatadog:
 			provider.CloudProviderIPRangeManager = datadog.New()
-			provider.Conf.Enabled = config.Datadog.Enabled
-			provider.Conf.IPRangesURL = config.Datadog.IPRangesURL
+			provider.Conf = config.Datadog
 		}
 
 		if !provider.Conf.Enabled {

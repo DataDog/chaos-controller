@@ -185,6 +185,73 @@ var _ = Describe("New function", func() {
 		})
 	})
 
+	Context("Creating a new manager with extra IP ranges for all providers", func() {
+		BeforeEach(func() {
+			configs.AWS.ExtraIPRanges = []string{"S3;10.10.0.0/16"}
+			configs.GCP.ExtraIPRanges = []string{"Google;10.30.0.0/16"}
+			configs.Datadog.ExtraIPRanges = []string{"synthetics;10.20.0.0/16"}
+
+			httpRoundTripperMock = mocks.NewRoundTripperMock(GinkgoT())
+			httpRoundTripperMock.EXPECT().RoundTrip(mock.Anything).RunAndReturn(func(request *http.Request) (*http.Response, error) {
+				var body []byte
+				switch request.URL.String() {
+				case AWSURL:
+					body = []byte(`{
+  "syncToken": "1693194189",
+  "createDate": "2023-08-28-03-43-09",
+  "prefixes": [
+    {
+      "ip_prefix": "1.2.3.0/24",
+      "region": "af-south-1",
+      "service": "S3",
+      "network_border_group": "af-south-1"
+    }
+  ]
+}`)
+				case GCPURL:
+					body = []byte(`{
+  "syncToken": "1693209970630",
+  "creationTime": "2023-08-28T01:06:10.63098",
+  "prefixes": [{
+    "ipv4Prefix": "6.2.3.0/24"
+  }]
+}`)
+				case DatadogURL:
+					body = []byte(`{
+  "version": 54,
+  "modified": "2023-07-14-00-00-00",
+  "synthetics": {
+    "prefixes_ipv4": [
+      "3.233.144.0/20"
+    ]
+  }
+}`)
+				default:
+					return nil, errors.New("unknown URL")
+				}
+
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(bytes.NewReader(body)),
+				}, nil
+			}).Maybe()
+		})
+
+		It("should expose configured extra IP ranges for AWS, GCP, and Datadog", func(ctx SpecContext) {
+			awsRanges, err := manager.GetServicesIPRanges(ctx, types.CloudProviderAWS, []string{"S3"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(awsRanges["S3"]).To(Equal([]string{"1.2.3.0/24", "10.10.0.0/16"}))
+
+			gcpRanges, err := manager.GetServicesIPRanges(ctx, types.CloudProviderGCP, []string{gcp.GoogleCloudService})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(gcpRanges[gcp.GoogleCloudService]).To(Equal([]string{"6.2.3.0/24", "10.30.0.0/16"}))
+
+			datadogRanges, err := manager.GetServicesIPRanges(ctx, types.CloudProviderDatadog, []string{"synthetics"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(datadogRanges["synthetics"]).To(Equal([]string{"3.233.144.0/20", "10.20.0.0/16"}))
+		})
+	})
+
 	Context("Pull new ip ranges from aws and gcp", func() {
 		BeforeEach(func() {
 			// Arrange
