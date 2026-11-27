@@ -62,6 +62,18 @@ var _ = Describe("DiskFullSpec", func() {
 					Remaining: "512Ki",
 				},
 			),
+			Entry("with nested mount path",
+				DiskFullSpec{
+					Path:     "/mnt/data",
+					Capacity: "95%",
+				},
+			),
+			Entry("with nested mount path and trailing slash",
+				DiskFullSpec{
+					Path:     "/mnt/data/",
+					Capacity: "95%",
+				},
+			),
 		)
 
 		DescribeTable("error cases",
@@ -152,6 +164,34 @@ var _ = Describe("DiskFullSpec", func() {
 			Entry("with path as root",
 				DiskFullSpec{
 					Path:     "/",
+					Capacity: "95%",
+				},
+				[]string{"path '/' is not allowed"},
+			),
+			Entry("with root-equivalent path '//'",
+				DiskFullSpec{
+					Path:     "//",
+					Capacity: "95%",
+				},
+				[]string{"path '/' is not allowed"},
+			),
+			Entry("with root-equivalent path '/.'",
+				DiskFullSpec{
+					Path:     "/.",
+					Capacity: "95%",
+				},
+				[]string{"path '/' is not allowed"},
+			),
+			Entry("with root-equivalent path '/./'",
+				DiskFullSpec{
+					Path:     "/./",
+					Capacity: "95%",
+				},
+				[]string{"path '/' is not allowed"},
+			),
+			Entry("with whitespace-padded root path",
+				DiskFullSpec{
+					Path:     " / ",
 					Capacity: "95%",
 				},
 				[]string{"path '/' is not allowed"},

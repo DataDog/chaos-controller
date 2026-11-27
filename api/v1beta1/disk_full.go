@@ -8,6 +8,7 @@ package v1beta1
 import (
 	"fmt"
 	"math"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -32,11 +33,13 @@ type DiskFullSpec struct {
 
 // Validate validates args for the given disruption
 func (s *DiskFullSpec) Validate() (retErr error) {
-	if strings.TrimSpace(s.Path) == "" {
+	trimmedPath := strings.TrimSpace(s.Path)
+
+	if trimmedPath == "" {
 		retErr = multierror.Append(retErr, fmt.Errorf("the path of the disk full disruption must not be empty"))
 	}
 
-	if s.Path == "/" {
+	if filepath.Clean(trimmedPath) == "/" {
 		retErr = multierror.Append(retErr, fmt.Errorf("path '/' is not allowed for disk full disruptions; it would fill the node's shared container storage"))
 	}
 
