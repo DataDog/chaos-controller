@@ -40,6 +40,20 @@ func TestCreateChaosPodsRetainsStatusResourceVersion(t *testing.T) {
 			Duration: "1h",
 			Network:  &chaosv1beta1.NetworkDisruptionSpec{Drop: 10},
 		},
+		Status: chaosv1beta1.DisruptionStatus{
+			TargetInjections: chaosv1beta1.TargetInjections{
+				"node-a": {
+					chaostypes.DisruptionKindNetworkDisruption: {
+						InjectionStatus: chaostypes.DisruptionTargetInjectionStatusNotInjected,
+					},
+				},
+				"node-b": {
+					chaostypes.DisruptionKindNetworkDisruption: {
+						InjectionStatus: chaostypes.DisruptionTargetInjectionStatusNotInjected,
+					},
+				},
+			},
+		},
 	}
 	cl := fake.NewClientBuilder().WithScheme(scheme).
 		WithStatusSubresource(&chaosv1beta1.Disruption{}).
@@ -64,10 +78,15 @@ func TestCreateChaosPodsRetainsStatusResourceVersion(t *testing.T) {
 		Client: cl, APIReader: cl, BaseLog: logger, log: logger, Scheme: scheme,
 		Recorder: record.NewFakeRecorder(20), MetricsSink: metricsSink, ChaosPodService: service,
 	}
-	for _, target := range []string{"node-a", "node-b"} {
-		if err := r.createChaosPods(ctx, instance, target); err != nil {
-			t.Fatalf("creating injectors for %s with the same reconciliation instance: %v", target, err)
-		}
+	if err := r.startInjection(ctx, instance); err != nil {
+		t.Fatalf("creating injectors for selected targets with the same reconciliation instance: %v", err)
+	}
+	chaosPods, err := service.GetChaosPodsOfDisruption(ctx, instance, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(chaosPods) != 2 {
+		t.Fatalf("expected 2 chaos pods created across node-a and node-b, got %d", len(chaosPods))
 	}
 	if len(instance.Spec.Network.Hosts) != 1 || instance.Spec.Network.Hosts[0].Host != "192.0.2.0/24" {
 		t.Fatal("status write discarded transient cloud host expansion")
@@ -76,8 +95,8 @@ func TestCreateChaosPodsRetainsStatusResourceVersion(t *testing.T) {
 	if err := cl.Get(ctx, client.ObjectKeyFromObject(instance), stored); err != nil {
 		t.Fatal(err)
 	}
-	if stored.Status.RunCount != 2 {
-		t.Fatalf("lost successful creation accounting: RunCount = %d, want 2", stored.Status.RunCount)
+	if stored.Status.RunCount != 1 {
+		t.Fatalf("lost successful creation accounting: RunCount = %d, want 1", stored.Status.RunCount)
 	}
 	if instance.ResourceVersion != stored.ResourceVersion {
 		t.Fatalf("working resourceVersion %q differs from persisted %q", instance.ResourceVersion, stored.ResourceVersion)
