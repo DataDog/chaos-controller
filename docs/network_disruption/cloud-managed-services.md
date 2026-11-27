@@ -15,6 +15,8 @@ The manager handles regular IP ranges files pulls to refresh the file content on
 
 An unsuccessful HTTP response is rejected rather than parsed as an IP range file. During refresh, the manager retains the last successfully loaded ranges when this happens.
 
+Each provider (`aws`, `gcp`, and `datadog`) also supports an optional `extraIpRanges` list of `"service;iprange;iprange;...;iprange"` entries to append additional CIDR ranges to a service alongside the pulled IP ranges.
+
 ```
 cloudProviders:
     disableAll: false
@@ -22,12 +24,16 @@ cloudProviders:
     aws:
       enabled: true
       ipRangesURL: "https://ip-ranges.amazonaws.com/ip-ranges.json"
+      extraIpRanges: []
     gcp:
       enabled: true
       ipRangesURL: "https://www.gstatic.com/ipranges/goog.json"
+      extraIpRanges:
+        - "Google;199.36.153.8/30;199.36.153.4/30"
     datadog:
       enabled: true
       ipRangesURL: "https://ip-ranges.datadoghq.com/"
+      extraIpRanges: []
 ```
 
 On the creation of the chaos pod, the chaos-controller will then use those ip ranges for the Network Disruption and transform it into a Host Network Disruption.
@@ -89,8 +95,8 @@ We'd like to include the private ranges alongside the public ranges. The private
 https://cloud.google.com/vpc/docs/configure-private-google-access#config-options
 https://cloud.google.com/vpc/docs/subnets#restricted-ranges
 
-So we configure this directly in the configmap under `controller.cloudProviders.gcp.extraIpRanges`, which takes a list of strings,
-of the form `"service;iprange;iprange;...;iprange`. We aren't able to use a map because of how viper normalizes map keys.
+So we configure this directly in the configmap under `controller.cloudProviders.gcp.extraIpRanges` (the same `extraIpRanges` field is also supported under `aws` and `datadog`), which takes a list of strings
+of the form `"service;iprange;iprange;...;iprange"`. We aren't able to use a map because of how viper normalizes map keys.
 
 ### Datadog
 
