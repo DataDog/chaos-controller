@@ -291,7 +291,6 @@ func (d *DisruptionCron) validateMinimumFrequency(minFrequency time.Duration) er
 
 	now := time.Now()
 	nextDisruptionStarts := schedule.Next(now)
-	nextDisruptionCompletes := nextDisruptionStarts.Add(specDuration)
 
 	// Measure, "frequency", the time between when we would schedule the next two disruptions.
 	// We don't want to measure from "now", because the cron standard will try to run at whole intervals, e.g.,
@@ -299,10 +298,11 @@ func (d *DisruptionCron) validateMinimumFrequency(minFrequency time.Duration) er
 	// which would be 1:15 and 1:30, and find the difference
 	frequency := schedule.Next(nextDisruptionStarts).Sub(nextDisruptionStarts)
 
-	// Measure, "interval", the time from when the next disruption completes, until the following disruption would start.
-	// This lets us know how long the target will be undisrupted for, between two disruptions. If that's less than the minimum frequency,
-	// we need to return an error
-	interval := schedule.Next(nextDisruptionCompletes).Sub(nextDisruptionCompletes)
+	// Measure "interval", the undisrupted time between two consecutive scheduled disruptions.
+	// If specDuration >= frequency, the following scheduled run occurs while the prior disruption is still active
+	// and will start as soon as it finishes, leaving 0 undisrupted time between disruptions.
+	// If that is less than the minimum frequency, we need to return an error.
+	interval := max(frequency-specDuration, 0)
 	if interval < minFrequency {
 		return fmt.Errorf("this cron's spec.Schedule is \"%s\", which will create disruptions that last %s every %s. This leaves only %s between disruptions, but the minimum tolerated frequency is %s",
 			d.Spec.Schedule, specDuration.String(), frequency.String(), interval.String(), minFrequency.String())

@@ -182,6 +182,27 @@ var _ = Describe("DisruptionCron Webhook", func() {
 					Expect(err).ShouldNot(HaveOccurred())
 				})
 			})
+
+			When("the disruption duration leaves at least the minimum frequency between runs", func() {
+				It("should accept a 15m schedule with a 5m duration and 10m minimum frequency", func(ctx SpecContext) {
+					// Arrange
+					minimumCronFrequency = 10 * time.Minute
+					disruptionCron := makeValidDisruptionCron()
+					disruptionCron.Spec.Schedule = "*/15 * * * *"
+					disruptionCron.Spec.DisruptionTemplate.Duration = "5m"
+
+					mockEventRecorder := mocks.NewEventRecorderMock(GinkgoT())
+					mockEventRecorder.EXPECT().AnnotatedEventf(disruptionCron, mock.Anything, Events[EventDisruptionCronCreated].Type, string(EventDisruptionCronCreated), "%s", mock.Anything)
+					disruptionCronWebhookRecorder = mockEventRecorder
+
+					// Act
+					warnings, err := disruptionCron.ValidateCreate(ctx, disruptionCron)
+
+					// Assert
+					Expect(warnings).To(BeNil())
+					Expect(err).ShouldNot(HaveOccurred())
+				})
+			})
 		})
 
 		Describe("error cases", func() {
@@ -252,6 +273,33 @@ var _ = Describe("DisruptionCron Webhook", func() {
 					Expect(err).Should(HaveOccurred())
 					Expect(err).To(MatchError(ContainSubstring("between disruptions, but the minimum tolerated frequency is 8760h")))
 				})
+			})
+
+			When("disruption template duration meets or exceeds the schedule period", func() {
+				DescribeTable("should return an error",
+					func(ctx SpecContext, duration DisruptionDuration) {
+						// Arrange
+						minimumCronFrequency = 10 * time.Minute
+						disruptionCron := makeValidDisruptionCron()
+						disruptionCron.Spec.Schedule = "*/15 * * * *"
+						disruptionCron.Spec.DisruptionTemplate.Duration = duration
+
+						mockEventRecorder := mocks.NewEventRecorderMock(GinkgoT())
+						mockEventRecorder.EXPECT().AnnotatedEventf(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
+						disruptionCronWebhookRecorder = mockEventRecorder
+
+						// Act
+						warnings, err := disruptionCron.ValidateCreate(ctx, disruptionCron)
+
+						// Assert
+						Expect(warnings).To(BeNil())
+						Expect(err).Should(HaveOccurred())
+						Expect(err).To(MatchError(ContainSubstring("leaves only 0s between disruptions, but the minimum tolerated frequency is 10m0s")))
+						mockEventRecorder.AssertNotCalled(GinkgoT(), "AnnotatedEventf", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+					},
+					Entry("when duration equals the schedule period", DisruptionDuration("15m")),
+					Entry("when duration exceeds the schedule period", DisruptionDuration("20m")),
+				)
 			})
 
 			When("disruption cron spec.delayedStartTolerance is invalid", func() {
@@ -661,6 +709,40 @@ var _ = Describe("DisruptionCron Webhook", func() {
 					Expect(err).Should(HaveOccurred())
 					Expect(err).To(MatchError(ContainSubstring("between disruptions, but the minimum tolerated frequency is 30m")))
 				})
+			})
+
+			When("the disruption template duration is updated to meet or exceed the schedule period", func() {
+				DescribeTable("should return an error",
+					func(ctx SpecContext, updatedDuration DisruptionDuration) {
+						// Arrange
+						minimumCronFrequency = 10 * time.Minute
+						disruptionCron := makeValidDisruptionCron()
+						disruptionCron.Spec.Schedule = "*/15 * * * *"
+						disruptionCron.Spec.DisruptionTemplate.Duration = "5m"
+
+						oldDisruptionCron := disruptionCron.DeepCopy()
+
+						mockEventRecorder := mocks.NewEventRecorderMock(GinkgoT())
+						mockEventRecorder.EXPECT().AnnotatedEventf(disruptionCron, mock.Anything, Events[EventDisruptionCronCreated].Type, string(EventDisruptionCronCreated), "%s", mock.Anything).Once()
+						mockEventRecorder.EXPECT().AnnotatedEventf(disruptionCron, mock.Anything, Events[EventDisruptionCronUpdated].Type, string(EventDisruptionCronUpdated), "%s", mock.Anything).Maybe()
+						disruptionCronWebhookRecorder = mockEventRecorder
+
+						_, err := disruptionCron.ValidateCreate(ctx, disruptionCron)
+						Expect(err).ShouldNot(HaveOccurred())
+
+						// Act: update only the duration so it meets or exceeds the 15m schedule period
+						disruptionCron.Spec.DisruptionTemplate.Duration = updatedDuration
+						warnings, err := disruptionCron.ValidateUpdate(ctx, oldDisruptionCron, disruptionCron)
+
+						// Assert
+						Expect(warnings).To(BeNil())
+						Expect(err).Should(HaveOccurred())
+						Expect(err).To(MatchError(ContainSubstring("leaves only 0s between disruptions, but the minimum tolerated frequency is 10m0s")))
+						mockEventRecorder.AssertNotCalled(GinkgoT(), "AnnotatedEventf", disruptionCron, mock.Anything, Events[EventDisruptionCronUpdated].Type, string(EventDisruptionCronUpdated), "%s", mock.Anything)
+					},
+					Entry("when updated duration equals the schedule period", DisruptionDuration("15m")),
+					Entry("when updated duration exceeds the schedule period", DisruptionDuration("20m")),
+				)
 			})
 			When("the disruption template duration and schedule are unchanged", func() {
 				It("should not return an error", func(ctx SpecContext) {
