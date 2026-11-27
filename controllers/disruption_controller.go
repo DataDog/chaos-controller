@@ -651,6 +651,13 @@ func (r *DisruptionReconciler) startInjection(ctx context.Context, instance *cha
 		}
 	}
 
+	// Check maxRuns limit before creating any chaos pods for this injection round
+	if instance.Spec.MaxRuns != nil && instance.Status.RunCount >= *instance.Spec.MaxRuns {
+		r.log.Debugw("skipping creation of chaos pods, maximum runs reached", tagutil.RunCountKey, instance.Status.RunCount, tagutil.MaxRunsKey, *instance.Spec.MaxRuns)
+
+		return nil
+	}
+
 	if len(instance.Status.TargetInjections) > 0 && (len(instance.Status.TargetInjections) != len(chaosPodsMap)) {
 		r.log.Infow("starting targets injection", tagutil.TargetsKey, instance.Status.TargetInjections)
 	}
@@ -662,6 +669,8 @@ func (r *DisruptionReconciler) startInjection(ctx context.Context, instance *cha
 			return fmt.Errorf("update hosts on cloud disruption: %w", err)
 		}
 	}
+
+	newPodsCreated := false
 
 	// iterate through target + existing disruption kind -- to ensure all chaos pods exist
 	for targetName, injections := range instance.Status.TargetInjections {
@@ -685,23 +694,48 @@ func (r *DisruptionReconciler) startInjection(ctx context.Context, instance *cha
 				continue
 			}
 
-			if err = r.createChaosPods(ctx, instance, targetName); err != nil {
-				if !apierrors.IsNotFound(err) {
-					return fmt.Errorf("error creating chaos pods: %w", err)
+			targetPodsCreated, createErr := r.createChaosPods(ctx, instance, targetName)
+			if createErr != nil {
+				if !apierrors.IsNotFound(createErr) {
+					return fmt.Errorf("error creating chaos pods: %w", createErr)
 				}
 
-				r.log.Warnw("could not create chaos pod", tagutil.ErrorKey, err)
+				r.log.Warnw("could not create chaos pod", tagutil.ErrorKey, createErr)
+			}
+
+			if targetPodsCreated {
+				newPodsCreated = true
 			}
 
 			break
 		}
 	}
 
+	// Increment run count once after the injection round succeeds so transient errors on a later
+	// target do not consume the run before the retry finishes injecting the remaining targets.
+	// Tradeoff: a target whose chaos pod disappeared between the failed pass and the retry gets
+	// injected again when the retry completes the round.
+	if newPodsCreated {
+		// Update the status in the cluster using a deep copy to preserve in-memory spec changes
+		// (such as cloud disruption hosts populated by UpdateHostsOnCloudDisruption)
+		statusCopy := instance.DeepCopy()
+		statusCopy.Status.RunCount++
+
+		if err = r.Client.Status().Update(ctx, statusCopy); err != nil {
+			return fmt.Errorf("error updating disruption status with run count: %w", err)
+		}
+
+		instance.Status.RunCount = statusCopy.Status.RunCount
+		instance.ResourceVersion = statusCopy.ResourceVersion
+		r.log.Infow("incremented disruption run count", tagutil.RunCountKey, instance.Status.RunCount, tagutil.DisruptionNameKey, instance.Name)
+	}
+
 	return nil
 }
 
-// createChaosPods attempts to create all the chaos pods for a given target. If a given chaos pod already exists, it is not recreated.
-func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *chaosv1beta1.Disruption, target string) (err error) {
+// createChaosPods attempts to create all the chaos pods for a given target and reports whether any new chaos pod was created.
+// If a given chaos pod already exists, it is not recreated.
+func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *chaosv1beta1.Disruption, target string) (newPodsCreated bool, err error) {
 	ctx, span := otel.Tracer(tracer.InstrumentationScopeDisruption).Start(ctx, "disruption.create_chaos_pods",
 		trace.WithSpanKind(trace.SpanKindInternal),
 		trace.WithAttributes(
@@ -723,7 +757,7 @@ func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *ch
 		pod := corev1.Pod{}
 
 		if err = r.APIReader.Get(ctx, types.NamespacedName{Namespace: instance.Namespace, Name: target}, &pod); err != nil {
-			return fmt.Errorf("error getting target to inject: %w", err)
+			return false, fmt.Errorf("error getting target to inject: %w", err)
 		}
 
 		targetNodeName = pod.Spec.NodeName
@@ -735,7 +769,7 @@ func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *ch
 
 			r.recordEventOnDisruption(instance, chaosv1beta1.EventInvalidSpecDisruption, dErr.Error(), pod.Name)
 
-			return dErr
+			return false, dErr
 		}
 
 		// get IP of targeted pod
@@ -749,7 +783,7 @@ func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *ch
 
 	targetChaosPods, err = r.ChaosPodService.GenerateChaosPodsOfDisruption(instance, target, targetNodeName, targetContainers, targetPodIP)
 	if err != nil {
-		return fmt.Errorf("error generating chaos pods: %w", err)
+		return false, fmt.Errorf("error generating chaos pods: %w", err)
 	}
 
 	span.SetAttributes(attribute.Int(attributes.DisruptionInjectorPodsToCreate, len(targetChaosPods)))
@@ -757,24 +791,14 @@ func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *ch
 	if len(targetChaosPods) == 0 {
 		r.recordEventOnDisruption(instance, chaosv1beta1.EventEmptyDisruption, instance.Name, "")
 
-		return nil
+		return false, nil
 	}
 
 	if instance.RemainingDuration().Seconds() < 1 {
 		r.log.Debugw("skipping creation of chaos pods, remaining duration is too small", tagutil.RemainingDurationKey, instance.RemainingDuration().String())
 
-		return nil
+		return false, nil
 	}
-
-	// Check maxRuns limit
-	if instance.Spec.MaxRuns != nil && instance.Status.RunCount >= *instance.Spec.MaxRuns {
-		r.log.Debugw("skipping creation of chaos pods, maximum runs reached", tagutil.RunCountKey, instance.Status.RunCount, tagutil.MaxRunsKey, *instance.Spec.MaxRuns)
-
-		return nil
-	}
-
-	// create injection pods
-	newPodsCreated := false
 
 	for _, targetChaosPod := range targetChaosPods {
 		// check if an injection pod already exists for the given (instance, namespace, disruption kind) tuple
@@ -782,7 +806,7 @@ func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *ch
 
 		found, err = r.ChaosPodService.GetChaosPodsOfDisruption(ctx, instance, targetChaosPod.Labels)
 		if err != nil {
-			return fmt.Errorf("error getting existing chaos pods: %w", err)
+			return newPodsCreated, fmt.Errorf("error getting existing chaos pods: %w", err)
 		}
 
 		// create injection pods if none have been found
@@ -796,8 +820,11 @@ func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *ch
 				r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionCreationFailed, instance.Name, target)
 				r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(target, instance.Name, instance.Namespace, false))
 
-				return fmt.Errorf("error creating chaos pod: %w", err)
+				return newPodsCreated, fmt.Errorf("error creating chaos pod: %w", err)
 			}
+
+			// mark that we created new pods in this cycle
+			newPodsCreated = true
 
 			// wait for the pod to be existing
 			if waitErr := r.ChaosPodService.WaitForPodCreation(ctx, targetChaosPod); waitErr != nil {
@@ -810,9 +837,6 @@ func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *ch
 			r.recordEventOnDisruption(instance, chaosv1beta1.EventDisruptionChaosPodCreated, instance.Name, target)
 			r.recordEventOnTarget(ctx, instance, target, chaosv1beta1.EventDisrupted, targetChaosPod.Name, instance.Name)
 			r.handleMetricSinkError(r.MetricsSink.MetricPodsCreated(target, instance.Name, instance.Namespace, true))
-
-			// mark that we created new pods in this cycle
-			newPodsCreated = true
 		case 1:
 			r.log.Debugw("an injection pod is already existing for the selected target", tagutil.TargetNameKey, target, tagutil.ChaosPodNameKey, found[0].Name)
 		default:
@@ -829,22 +853,7 @@ func (r *DisruptionReconciler) createChaosPods(ctx context.Context, instance *ch
 		}
 	}
 
-	// Increment run count if we created new pods in this cycle
-	if newPodsCreated {
-		instance.Status.RunCount++
-		r.log.Infow("incremented disruption run count", tagutil.RunCountKey, instance.Status.RunCount, tagutil.DisruptionNameKey, instance.Name)
-
-		// Update the status in the cluster using a deep copy to preserve in-memory spec changes
-		// (such as cloud disruption hosts populated by UpdateHostsOnCloudDisruption)
-		statusCopy := instance.DeepCopy()
-		if err = r.Client.Status().Update(ctx, statusCopy); err != nil {
-			return fmt.Errorf("error updating disruption status with run count: %w", err)
-		}
-
-		instance.ResourceVersion = statusCopy.ResourceVersion
-	}
-
-	return nil
+	return newPodsCreated, nil
 }
 
 // cleanDisruption triggers the cleanup of the given instance
