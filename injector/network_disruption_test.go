@@ -853,6 +853,236 @@ var _ = Describe("Failure", func() {
 		})
 	})
 
+	Describe("inj.Inject with a named service target port", func() {
+		var servicesWatcher, podsWatcher *watch.FakeWatcher
+
+		setupWatchers := func() {
+			spec.Services = []v1beta1.NetworkDisruptionServiceSpec{
+				{
+					Name:      "foo",
+					Namespace: "bar",
+				},
+			}
+
+			// Rebuild the fake clientset so Get/List see the modified service and pod specs.
+			k8sClient = kubernetes.NewSimpleClientset(fakeService, fakeService2, fakeEndpoint, fakeEndpoint2)
+			config.K8sClient = k8sClient
+
+			podsWatcher = watch.NewFakeWithChanSize(1, false)
+			servicesWatcher = watch.NewFakeWithChanSize(1, false)
+
+			k8sClient.PrependWatchReactor("pods", testing.DefaultWatchReactor(podsWatcher, nil))
+			k8sClient.PrependWatchReactor("services", testing.DefaultWatchReactor(servicesWatcher, nil))
+
+			servicesWatcher.Add(fakeService)
+			podsWatcher.Add(fakeEndpoint)
+		}
+
+		JustBeforeEach(func() {
+			err = inj.Inject()
+		})
+
+		AfterEach(func() {
+			Expect(inj.Clean()).To(Succeed())
+		})
+
+		Context("when the endpoint pod declares the named container port", func() {
+			BeforeEach(func() {
+				fakeService.Spec.Ports = []corev1.ServicePort{
+					{
+						Name:       "test-port-name",
+						Port:       80,
+						TargetPort: intstr.FromString("http"),
+						Protocol:   corev1.ProtocolTCP,
+					},
+				}
+				fakeEndpoint.Spec.Containers = []corev1.Container{
+					{
+						Name: "app",
+						Ports: []corev1.ContainerPort{
+							{
+								Name:          "http",
+								ContainerPort: 8080,
+								Protocol:      corev1.ProtocolTCP,
+							},
+						},
+					},
+				}
+
+				setupWatchers()
+			})
+
+			It("should add a filter on the resolved container port and never on port 0", func() {
+				Expect(err).ShouldNot(HaveOccurred())
+				WatchersAreEmpty(servicesWatcher, podsWatcher)
+
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(clusterIP), 0, 80, network.TCP, network.ConnStateUndefined, "1:4")
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(podIP), 0, 8080, network.TCP, network.ConnStateUndefined, "1:4")
+				// port 0 would disrupt every port of the endpoint
+				tc.AssertNotCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(podIP), 0, 0, network.TCP, network.ConnStateUndefined, "1:4")
+			})
+		})
+
+		Context("when the endpoint pod omits the container port protocol", func() {
+			BeforeEach(func() {
+				fakeService.Spec.Ports = []corev1.ServicePort{
+					{
+						Name:       "test-port-name",
+						Port:       80,
+						TargetPort: intstr.FromString("http"),
+						Protocol:   corev1.ProtocolTCP,
+					},
+				}
+				fakeEndpoint.Spec.Containers = []corev1.Container{
+					{
+						Name: "app",
+						Ports: []corev1.ContainerPort{
+							{
+								Name:          "http",
+								ContainerPort: 8080,
+							},
+						},
+					},
+				}
+
+				setupWatchers()
+			})
+
+			It("should default the omitted container port protocol to TCP and resolve the port", func() {
+				Expect(err).ShouldNot(HaveOccurred())
+				WatchersAreEmpty(servicesWatcher, podsWatcher)
+
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(podIP), 0, 8080, network.TCP, network.ConnStateUndefined, "1:4")
+				tc.AssertNotCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(podIP), 0, 0, network.TCP, network.ConnStateUndefined, "1:4")
+			})
+		})
+
+		Context("when the endpoint pod declares the same port name on multiple protocols", func() {
+			BeforeEach(func() {
+				fakeService.Spec.Ports = []corev1.ServicePort{
+					{
+						Name:       "dns-udp",
+						Port:       53,
+						TargetPort: intstr.FromString("dns"),
+						Protocol:   corev1.ProtocolUDP,
+					},
+				}
+				fakeEndpoint.Spec.Containers = []corev1.Container{
+					{
+						Name: "app",
+						Ports: []corev1.ContainerPort{
+							{
+								Name:          "dns",
+								ContainerPort: 5353,
+								Protocol:      corev1.ProtocolTCP,
+							},
+							{
+								Name:          "dns",
+								ContainerPort: 5354,
+								Protocol:      corev1.ProtocolUDP,
+							},
+						},
+					},
+				}
+
+				setupWatchers()
+			})
+
+			It("should match both port name and protocol", func() {
+				Expect(err).ShouldNot(HaveOccurred())
+				WatchersAreEmpty(servicesWatcher, podsWatcher)
+
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(podIP), 0, 5354, network.UDP, network.ConnStateUndefined, "1:4")
+				tc.AssertNotCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(podIP), 0, 5353, network.UDP, network.ConnStateUndefined, "1:4")
+				tc.AssertNotCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(podIP), 0, 0, network.UDP, network.ConnStateUndefined, "1:4")
+			})
+		})
+
+		Context("when the endpoint pod declares the named port on a sidecar init container", func() {
+			BeforeEach(func() {
+				always := corev1.ContainerRestartPolicyAlways
+				fakeService.Spec.Ports = []corev1.ServicePort{
+					{
+						Name:       "test-port-name",
+						Port:       80,
+						TargetPort: intstr.FromString("http"),
+						Protocol:   corev1.ProtocolTCP,
+					},
+				}
+				fakeEndpoint.Spec.InitContainers = []corev1.Container{
+					{
+						Name: "init-setup",
+						Ports: []corev1.ContainerPort{
+							{
+								Name:          "http",
+								ContainerPort: 9999,
+								Protocol:      corev1.ProtocolTCP,
+							},
+						},
+					},
+					{
+						Name:          "sidecar-proxy",
+						RestartPolicy: &always,
+						Ports: []corev1.ContainerPort{
+							{
+								Name:          "http",
+								ContainerPort: 15001,
+								Protocol:      corev1.ProtocolTCP,
+							},
+						},
+					},
+				}
+
+				setupWatchers()
+			})
+
+			It("should resolve the port from the restartable sidecar init container", func() {
+				Expect(err).ShouldNot(HaveOccurred())
+				WatchersAreEmpty(servicesWatcher, podsWatcher)
+
+				tc.AssertCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(podIP), 0, 15001, network.TCP, network.ConnStateUndefined, "1:4")
+				tc.AssertNotCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(podIP), 0, 9999, network.TCP, network.ConnStateUndefined, "1:4")
+				tc.AssertNotCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(podIP), 0, 0, network.TCP, network.ConnStateUndefined, "1:4")
+			})
+		})
+
+		Context("when the named target port is not declared on the endpoint pod", func() {
+			BeforeEach(func() {
+				fakeService.Spec.Ports = []corev1.ServicePort{
+					{
+						Name:       "test-port-name",
+						Port:       80,
+						TargetPort: intstr.FromString("unknown-port"),
+						Protocol:   corev1.ProtocolTCP,
+					},
+				}
+				fakeEndpoint.Spec.Containers = []corev1.Container{
+					{
+						Name: "app",
+						Ports: []corev1.ContainerPort{
+							{
+								Name:          "http",
+								ContainerPort: 8080,
+								Protocol:      corev1.ProtocolTCP,
+							},
+						},
+					},
+				}
+
+				setupWatchers()
+			})
+
+			It("should not add any filter on the endpoint or restart the pod watcher", func() {
+				Expect(err).ShouldNot(HaveOccurred())
+				WatchersAreEmpty(servicesWatcher, podsWatcher)
+
+				// no port 0 (or any other) filter may be added: port 0 would disrupt every port of the endpoint
+				tc.AssertNotCalled(GinkgoT(), "AddFilter", []string{"lo", "eth0", "eth1"}, "1:0", "", nilIPNet, buildSingleIPNetUsingParse(podIP), 0, mock.Anything, mock.Anything, network.ConnStateUndefined, "1:4")
+				Expect(podsWatcher.IsStopped()).To(BeFalse())
+			})
+		})
+	})
+
 	Describe("inj.Clean", func() {
 		JustBeforeEach(func() {
 			Expect(inj.Clean()).To(Succeed())

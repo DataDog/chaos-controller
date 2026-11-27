@@ -20,6 +20,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/watch"
 
 	"github.com/DataDog/chaos-controller/api/v1beta1"
@@ -698,10 +699,25 @@ func (i *networkDisruptionInjector) buildServiceFiltersFromPod(pod v1.Pod, servi
 	endpointsToWatch := []tcServiceFilter{}
 
 	for _, port := range servicePorts {
+		targetPort, err := resolveServicePortTarget(port, pod)
+		if err != nil {
+			// a target port we cannot resolve must not become port 0: a tc filter
+			// with no port would disrupt every port of the endpoint
+			if i.config.Log != nil {
+				i.config.Log.Warnw("could not resolve service target port for pod, skipping port",
+					tags.ErrorKey, err,
+					tags.TargetPodNameKey, pod.Name,
+					tags.PortKey, port.TargetPort.String(),
+				)
+			}
+
+			continue
+		}
+
 		filter := tcServiceFilter{
 			service: networkDisruptionService{
 				ip:       endpointIP,
-				port:     int(port.TargetPort.IntVal),
+				port:     targetPort,
 				protocol: port.Protocol,
 			},
 		}
@@ -712,6 +728,60 @@ func (i *networkDisruptionInjector) buildServiceFiltersFromPod(pod v1.Pod, servi
 	}
 
 	return endpointsToWatch
+}
+
+func normalizeProtocol(protocol v1.Protocol) v1.Protocol {
+	if protocol == "" {
+		return v1.ProtocolTCP
+	}
+
+	return protocol
+}
+
+// resolveServicePortTarget returns the port number a service port targets on the given pod.
+// A numeric target port is used as is (falling back to servicePort.Port when unset, per Kubernetes defaults);
+// a named target port is resolved against the container ports declared by the pod (matching name and protocol).
+// It returns an error if a named target port cannot be resolved.
+func resolveServicePortTarget(servicePort v1.ServicePort, pod v1.Pod) (int, error) {
+	if servicePort.TargetPort.Type == intstr.String {
+		if servicePort.TargetPort.StrVal == "" {
+			return 0, fmt.Errorf("target port name is empty")
+		}
+
+		serviceProtocol := normalizeProtocol(servicePort.Protocol)
+
+		for _, container := range pod.Spec.Containers {
+			for _, containerPort := range container.Ports {
+				if containerPort.Name == servicePort.TargetPort.StrVal &&
+					normalizeProtocol(containerPort.Protocol) == serviceProtocol &&
+					containerPort.ContainerPort > 0 {
+					return int(containerPort.ContainerPort), nil
+				}
+			}
+		}
+
+		for _, container := range pod.Spec.InitContainers {
+			if container.RestartPolicy == nil || *container.RestartPolicy != v1.ContainerRestartPolicyAlways {
+				continue
+			}
+
+			for _, containerPort := range container.Ports {
+				if containerPort.Name == servicePort.TargetPort.StrVal &&
+					normalizeProtocol(containerPort.Protocol) == serviceProtocol &&
+					containerPort.ContainerPort > 0 {
+					return int(containerPort.ContainerPort), nil
+				}
+			}
+		}
+
+		return 0, fmt.Errorf("target port %q is not declared as a %s container port in any container of the pod", servicePort.TargetPort.StrVal, serviceProtocol)
+	}
+
+	if servicePort.TargetPort.IntVal != 0 {
+		return int(servicePort.TargetPort.IntVal), nil
+	}
+
+	return int(servicePort.Port), nil
 }
 
 // buildServiceFiltersFromService builds a list of tc filters per service using the service ports
@@ -1024,7 +1094,19 @@ func (i *networkDisruptionInjector) handleKubernetesPodsChanges(event watch.Even
 
 	tcFiltersFromPod := i.buildServiceFiltersFromPod(*pod, watcher.servicePorts)
 	if len(tcFiltersFromPod) == 0 {
-		return fmt.Errorf("unable to find service %s/%s endpoints to filter", watcher.watchedServiceSpec.Name, watcher.watchedServiceSpec.Namespace)
+		if len(watcher.servicePorts) == 0 {
+			return fmt.Errorf("unable to find service %s/%s endpoints to filter", watcher.watchedServiceSpec.Name, watcher.watchedServiceSpec.Namespace)
+		}
+
+		// none of the service's named target ports exists on this pod, so it
+		// serves no traffic to filter
+		i.config.Log.Infow("pod exposes none of the service target ports, nothing to filter", tags.DestinationPodNameKey, pod.Name)
+
+		if err := i.config.Netns.Exit(); err != nil {
+			return fmt.Errorf("unable to exit the given container network namespace: %w", err)
+		}
+
+		return nil
 	}
 
 	switch event.Type {
